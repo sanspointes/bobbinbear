@@ -72,11 +72,6 @@ export interface Performance {
   regress: () => void
 }
 
-export interface Renderer {
-  render: (scene: THREE.Scene, camera: THREE.Camera) => any
-}
-export const isRenderer = (def: any) => !!def?.render
-
 export type StageTypes = Stage | FixedStage
 
 export interface InternalState {
@@ -90,8 +85,6 @@ export interface InternalState {
   active: boolean
   priority: number
   frames: number
-  /** The ordered stages defining the lifecycle. */
-  stages: StageTypes[]
   /** Render function flags */
   render: 'auto' | 'manual'
   /** The max delta time between two frames. */
@@ -112,7 +105,7 @@ export interface RootState {
   /** Default camera */
   // camera: Camera
   /** Default scene */
-  scene: layers.Stage
+  scene: display.Container
   /** Default raycaster */
   // raycaster: THREE.Raycaster
   /** Default clock */
@@ -187,7 +180,7 @@ const createThreeStore = (
     // Mock objects that have to be configured
     gl: null as unknown as app.Application,
     events: { priority: 1, enabled: true, connected: false },
-    scene: null as unknown as layers.Stage,
+    scene: null as unknown as display.Container,
     xr: null as unknown as XRManager,
 
     invalidate: (frames = 1) => invalidate(get(), frames),

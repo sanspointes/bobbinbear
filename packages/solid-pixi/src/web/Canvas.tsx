@@ -108,7 +108,7 @@ export function Canvas(props: Props) {
       root.getState().app.stage as any,
       true
     );
-    root.getState().app.destroy();
+    // root.getState().app.destroy();
   });
 
   return containerRef;

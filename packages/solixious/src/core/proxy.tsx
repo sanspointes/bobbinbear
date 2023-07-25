@@ -14,6 +14,7 @@ import {
 
 import * as display from '@pixi/display';
 import * as mesh from '@pixi/mesh';
+import * as meshExtras from '@pixi/mesh-extras';
 import * as core from '@pixi/core';
 
 import { useThree } from './hooks'
@@ -44,30 +45,30 @@ export interface InstanceProps<T = any, P = any> {
 }
 
 export interface Instance<O = any> {
-  root: RootState
-  type: string
-  parent: Instance | null
-  children: Instance[]
-  props: InstanceProps<O> & Record<string, unknown>
-  object: O & { __r3f?: Instance<O> }
-  eventCount: number
-  handlers: Partial<EventHandlers>
-  attach?: AttachType<O>
-  previousAttach?: any
-  isHidden: boolean
-  autoRemovedBeforeAppend?: boolean
+  root: RootState;
+  type: string;
+  parent: Instance | null;
+  children: Instance[];
+  props: InstanceProps<O> & Record<string, unknown>;
+  object: O & { __r3f?: Instance<O> };
+  eventCount: number;
+  handlers: Partial<EventHandlers>;
+  attach?: AttachType<O>;
+  previousAttach?: any;
+  isHidden: boolean;
+  autoRemovedBeforeAppend?: boolean;
 }
 
-export const catalogue: Catalogue = {}
-export const extend = (objects: Partial<Catalogue>): void => void Object.assign(catalogue, objects)
+export const catalogue: Catalogue = {};
+export const extend = (objects: Partial<Catalogue>): void => void Object.assign(catalogue, objects);
 
-export const ParentContext = createContext<() => Instance>()
+export const ParentContext = createContext<() => Instance>();
 
-export type Constructor<Instance = any> = { new (...args: any[]): Instance }
+export type Constructor<Instance = any> = { new (...args: any[]): Instance };
 
-export type ThreeComponent<Source extends Constructor> = Component<PixiElement<Source>>
+export type ThreeComponent<Source extends Constructor> = Component<PixiElement<Source>>;
 type ThreeComponentProxy<Source> = {
-  [K in keyof Source]: Source[K] extends Constructor ? ThreeComponent<Source[K]> : undefined
+  [K in keyof Source]: Source[K] extends Constructor ? ThreeComponent<Source[K]> : undefined;
 }
 
 export const createPixiComponent = <TSource extends Constructor>(source: TSource): ThreeComponent<TSource> => {
@@ -77,7 +78,7 @@ export const createPixiComponent = <TSource extends Constructor>(source: TSource
     /* Create instance */
     const getObject = createMemo(() => {
       try {
-        const el = prepare(new source(...(props.args ?? [])), store, '', {}) as Instance<Container>
+        const el = prepare(new source(...(props.args ?? [])), store, '', {}) as Instance<display.Container>
         el.root = store
         return el.object
       } catch (e) {
@@ -100,23 +101,24 @@ function resolve<T>(child: Accessor<T> | T) {
 }
 
 /* manages the relationship between parent and children */
-export const parentChildren = <T extends Container>(getObject: Accessor<Instance<T>['object']>, props: any) => {
-  const memo = children(() => {
+export const parentChildren = <T extends display.Container>(getObject: Accessor<Instance<T>['object']>, props: any) => {
+  const childNodes = children(() => {
     const result = resolve(props.children)
     return Array.isArray(result) ? result : [result]
   })
   const parent = getObject()
   createRenderEffect(
-    mapArray(memo as unknown as Accessor<(Instance | Accessor<Instance>)[]>, (_child) => {
+    mapArray(childNodes as unknown as Accessor<(Instance | Accessor<Instance>)[]>, (_child) => {
       const child = resolve(_child)
 
       /* <Show/> will return undefined if it's hidden */
       if (!child?.__r3f || !parent.__r3f) return
 
       /* Connect children */
-      if (child instanceof Container && parent instanceof Container && !parent.children.includes(child)) {
-        parent.addChild(child)
-        onCleanup(() => parent.removeChild(child as Container))
+      console.log(parent);
+      if (child instanceof display.Container && parent.addChild && !parent.children.includes(child)) {
+        parent.addChild(child);
+        onCleanup(() => parent.removeChild(child as display.Container))
       }
 
       child.__r3f.parent = parent.__r3f
@@ -219,6 +221,6 @@ export const T = /*#__PURE__*/ createThreeComponentProxy({
   Mesh: mesh.Mesh,
   MeshMaterial: mesh.MeshMaterial,
   MeshGeometry: mesh.MeshGeometry,
-  PlaneGeometry: mesh.PlaneGeometry,
+  PlaneGeometry: meshExtras.PlaneGeometry,
   Shader: core.Shader,
 })

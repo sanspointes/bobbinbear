@@ -3,10 +3,9 @@ import * as display from '@pixi/display';
 import * as mesh from '@pixi/mesh';
 import * as core from '@pixi/core';
 
-import { createRoot, extend } from '../core/index'
+import { createRoot, extend, RootState } from '../core/index'
 // import { createPointerEvents } from './events'
 
-import type { DomEvent } from '../core/events'
 import type { RenderProps } from '../core/index'
 
 export interface CanvasProps extends Omit<RenderProps, 'size'>, ComponentProps<'div'> {
@@ -23,7 +22,7 @@ export interface CanvasProps extends Omit<RenderProps, 'size'>, ComponentProps<'
   /** The event prefix that is cast into canvas pointer x/y events, default: "offset" */
   eventPrefix?: 'offset' | 'client' | 'page' | 'layer' | 'screen'
 
-  style?: JSX.CSSProperties
+  style?: JSX.CSSProperties;
 }
 
 export interface Props extends CanvasProps {}
@@ -53,13 +52,13 @@ export function Canvas(props: Props) {
   // Create a known catalogue of Threejs-native elements
   // This will include the entire THREE namespace by default, users can extend
   // their own elements by using the createRoot API instead
-  createComputed(() => extend({
-    Container: display.Container,
-    Mesh: mesh.Mesh,
-    MeshMaterial: mesh.MeshMaterial,
-    MeshGeometry: mesh.MeshGeometry,
-    Shader: core.Shader,
-  }), [])
+  // createComputed(() => extend({
+  //   Container: display.Container,
+  //   Mesh: mesh.Mesh,
+  //   MeshMaterial: mesh.MeshMaterial,
+  //   MeshGeometry: mesh.MeshGeometry,
+  //   Shader: core.Shader,
+  // }), [])
 
   const [other, threeProps] = splitProps(
     mergeProps(

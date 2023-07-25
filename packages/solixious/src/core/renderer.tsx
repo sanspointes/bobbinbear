@@ -10,7 +10,7 @@ import { useThree } from "./hooks";
 import { advance, invalidate } from "./loop";
 import { parentChildren } from "./proxy";
 import { Lifecycle, Stage, Stages } from "./stages";
-import { context, createThreeStore, isRenderer } from "./store";
+import { context, createThreeStore } from "./store";
 import { applyProps, calculateDpr, dispose, is, prepare } from "./utils";
 
 import { insert } from "solid-js/web";
@@ -21,7 +21,6 @@ import type {
   Dpr,
   Frameloop,
   Performance,
-  Renderer,
   RootState,
   Size,
   Subscription,
@@ -43,7 +42,6 @@ type Properties<T> = Pick<
 
 export type GLProps =
   | Application
-  | ((canvas: Canvas) => Renderer)
   | Partial<Properties<Application> | IApplicationOptions>;
 
 export interface RenderProps {
@@ -65,8 +63,6 @@ export interface RenderProps {
   dpr?: Dpr;
   /** Props that go into the default raycaster */
   raycaster?: Partial<THREE.Raycaster>;
-  /** A `THREE.Scene` instance or props that go into the default scene */
-  scene?: THREE.Scene | Partial<THREE.Scene>;
   /** An R3F event manager to manage elements' pointer events */
   events?: (store: RootState) => EventManager<HTMLElement>;
   /** Callback after the canvas has rendered (but not yet committed) */
@@ -81,10 +77,6 @@ const createRendererInstance = <TCanvas extends Canvas>(
   gl: GLProps | undefined,
   canvas: TCanvas,
 ): app.Application => {
-  const customRenderer =
-    (typeof gl === "function" ? gl(canvas) : gl) as app.Application;
-  if (isRenderer(customRenderer)) return customRenderer;
-
   return new app.Application({
     powerPreference: "high-performance",
     view: canvas,
@@ -93,43 +85,43 @@ const createRendererInstance = <TCanvas extends Canvas>(
   });
 };
 
-const createStages = (stages: Stage[] | undefined, store: RootState) => {
-  let subscribers: Subscription[];
-  let subscription: Subscription;
-
-  const _stages = stages ?? Lifecycle;
-
-  if (!_stages.includes(Stages.Update)) {
-    throw "The Stages.Update stage is required for R3F.";
-  }
-  if (!_stages.includes(Stages.Render)) {
-    throw "The Stages.Render stage is required for R3F.";
-  }
-
-  store.set("internal", "stages", _stages);
-
-  // Add useFrame loop to update stage
-  const frameCallback = (
-    state: RootState,
-    delta: number,
-    frame?: XRFrame | undefined,
-  ) => {
-    subscribers = state.internal.subscribers;
-    for (let i = 0; i < subscribers.length; i++) {
-      subscription = subscribers[i];
-      subscription.ref(subscription.store, delta, frame);
-    }
-  };
-  Stages.Update.add(frameCallback, store);
-
-  // Add render callback to render stage
-  const renderCallback = (state: RootState) => {
-    if (state.internal.render === "auto" && state.gl.render) {
-      state.gl.render();
-    }
-  };
-  Stages.Render.add(renderCallback, store);
-};
+// const createStages = (stages: Stage[] | undefined, store: RootState) => {
+//   let subscribers: Subscription[];
+//   let subscription: Subscription;
+//
+//   const _stages = stages ?? Lifecycle;
+//
+//   if (!_stages.includes(Stages.Update)) {
+//     throw "The Stages.Update stage is required for R3F.";
+//   }
+//   if (!_stages.includes(Stages.Render)) {
+//     throw "The Stages.Render stage is required for R3F.";
+//   }
+//
+//   store.set("internal", "stages", _stages);
+//
+//   // Add useFrame loop to update stage
+//   const frameCallback = (
+//     state: RootState,
+//     delta: number,
+//     frame?: XRFrame | undefined,
+//   ) => {
+//     subscribers = state.internal.subscribers;
+//     for (let i = 0; i < subscribers.length; i++) {
+//       subscription = subscribers[i];
+//       subscription.ref(subscription.store, delta, frame);
+//     }
+//   };
+//   Stages.Update.add(frameCallback, store);
+//
+//   // Add render callback to render stage
+//   const renderCallback = (state: RootState) => {
+//     if (state.internal.render === "auto" && state.gl.render) {
+//       state.gl.render();
+//     }
+//   };
+//   Stages.Render.add(renderCallback, store);
+// };
 
 export interface ReconcilerRoot<TCanvas extends Canvas> {
   configure: (config?: RenderProps) => ReconcilerRoot<TCanvas>;
@@ -183,7 +175,6 @@ export function createRoot<TCanvas extends Canvas>(
       let {
         gl: glConfig,
         size: propsSize,
-        scene: sceneOptions,
         events,
         onCreated: onCreatedCallback,
         frameloop = "always",
@@ -198,25 +189,11 @@ export function createRoot<TCanvas extends Canvas>(
         store.set("gl", gl = createRendererInstance(glConfig, canvas));
       }
 
-      // Set up scene (one time only!)
-      if (!store.scene) {
-        let stage: layers.Stage;
-
-        if (sceneOptions instanceof layers.Stage) {
-          stage = sceneOptions;
-          prepare(stage, store, "", {});
-        } else {
-          stage = new layers.Stage();
-          prepare(stage, store, "", {});
-          if (sceneOptions) applyProps(stage as any, sceneOptions as any);
-        }
-
-        store.set("scene", stage);
-      }
+      store.set("scene", gl.stage);
 
       // Set gl props
       if (
-        glConfig && !is.fun(glConfig) && !isRenderer(glConfig) &&
+        glConfig && !is.fun(glConfig) &&
         !is.equ(glConfig, gl, shallowLoose)
       ) {
         applyProps(gl, glConfig as any);

@@ -17,14 +17,15 @@
     "README.md"
   ],
   "scripts": {
-    "test": "vitest",
+    "storybook": "storybook dev -p 6006",
     "wdio": "wdio run ./wdio.conf.ts",
     "build:lib": "BUILD_MODE=lib vite build",
     "build": "vite build",
     "types": "tsc --emitDeclarationOnly --declarationDir types",
     "dev": "BUILD_MODE=lib vite build -w",
     "playground": "vite",
-    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist"
+    "clean": "rm -rf .turbo && rm -rf node_modules && rm -rf dist",
+    "build-storybook": "storybook build"
   },
   "exports": {
     ".": {
@@ -38,33 +39,37 @@
     "@pixi/core": "^7.2.4",
     "@pixi/layers": "^2.1.0",
     "@solidjs/testing-library": "^0.8.4",
+    "@storybook/addon-essentials": "^7.1.1",
+    "@storybook/addon-interactions": "^7.1.1",
+    "@storybook/addon-links": "^7.1.1",
+    "@storybook/blocks": "^7.1.1",
+    "@storybook/testing-library": "^0.2.0",
     "@types/node": "^18.17.0",
     "@typescript-eslint/eslint-plugin": "^6.2.0",
     "@typescript-eslint/parser": "^6.2.0",
-    "chromedriver": "^115.0.0",
     "esbuild": "^0.16.17",
     "esbuild-register": "^3.4.2",
     "eslint": "^8.45.0",
     "eslint-plugin-solid": "^0.12.1",
-    "happy-dom": "^10.5.2",
-    "jsdom": "^22.1.0",
+    "eslint-plugin-storybook": "^0.6.13",
     "pixi.js": "^7.2.4",
-    "playwright": "^1.36.1",
+    "prettier-plugin-tailwindcss": "^0.4.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
     "remark-gfm": "^3.0.1",
     "rollup": "^3.26.3",
     "solid-app-router": "^0.1.14",
     "solid-js": "^1.7.8",
-    "ts-node": "^10.9.1",
+    "storybook": "^7.1.1",
+    "storybook-solidjs": "^1.0.0-beta.2",
+    "storybook-solidjs-vite": "^1.0.0-beta.2",
     "tsm": "^2.3.0",
     "tsup": "^6.7.0",
     "typescript": "^4.9.5",
     "vite": "^4.4.7",
     "vite-plugin-dts": "^3.3.1",
     "vite-plugin-inspect": "0.7.14",
-    "vite-plugin-solid": "^2.7.0",
-    "wdio-chromedriver-service": "^8.1.1",
-    "wdio-safaridriver-service": "^2.1.1",
-    "webdriverio": "^8.13.12"
+    "vite-plugin-solid": "^2.7.0"
   },
   "peerDependencies": {
     "pixi.js": "*",
@@ -73,5 +78,10 @@
   "dependencies": {
     "zustand": "^3.7.2"
   },
-  "packageManager": "pnpm@7.26.0"
+  "packageManager": "pnpm@7.26.0",
+  "eslintConfig": {
+    "extends": [
+      "plugin:storybook/recommended"
+    ]
+  }
 }

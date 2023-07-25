@@ -1,9 +1,11 @@
 {
-  "extends": "@vinxi/tsconfig/solid-library.json",
   "include": ["src"],
   "compilerOptions": {
-    "outDir": "./types",
+    "outDir": "./dist",
     "target": "esnext",
+    "jsx": "preserve",
+    "jsxImportSource": "solid-js",
+    "moduleResolution": "node",
     "lib": ["dom", "esnext"]
   },
   "exclude": ["dist", "build", "node_modules"]

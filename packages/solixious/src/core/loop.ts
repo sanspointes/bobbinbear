@@ -66,9 +66,7 @@ function update(timestamp: number, state: RootState, frame?: XRFrame) {
     delta = Math.max(Math.min(delta, state.internal.maxDelta), 0)
   }
   // Call subscribers (useUpdate)
-  for (const stage of state.internal.stages) {
-    stage.frame(delta, frame)
-  }
+  state.gl.render();
 
   state.set('internal', 'frames', Math.max(0, state.internal.frames - 1))
   return state.frameloop === 'always' ? 1 : state.internal.frames
