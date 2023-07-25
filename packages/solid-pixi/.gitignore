@@ -1,0 +1,6 @@
+.scratch
+dist
+types
+node_modules
+packed/
+packages/solid-pixi-2/

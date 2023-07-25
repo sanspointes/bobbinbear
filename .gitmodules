@@ -1,0 +1,3 @@
+[submodule "packages/solid-three"]
+	path = packages/solid-three
+	url = git@github.com:solidjs-community/solid-three.git

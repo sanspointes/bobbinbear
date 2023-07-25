@@ -1,0 +1,21 @@
+{
+  "name": "solid-pixi-3",
+  "description": "SolidJS bindings for ThreeJS",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/solidjs-community/solid-three.git"
+  },
+  "sideEffects": false,
+  "license": "MIT",
+  "scripts": {
+    "build:fiber": "pnpm --filter @solid-three/fiber build",
+    "watch:fiber": "pnpm --filter @solid-three/fiber watch",
+    "dev:playground": "pnpm --filter @solid-three/playground dev",
+    "build:playground": "pnpm --filter @solid-three/playground build"
+  },
+  "devDependencies": {
+    "@vinxi/tsconfig": "0.0.3"
+  },
+  "packageManager": "pnpm@7.26.0"
+}

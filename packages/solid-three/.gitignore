@@ -1,0 +1,7 @@
+.scratch
+dist
+types
+node_modules
+packed/
+
+.pnpm-store/
