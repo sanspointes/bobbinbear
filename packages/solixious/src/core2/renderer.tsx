@@ -10,7 +10,6 @@ type SxiProviderProps<TCanvas extends Canvas> = {
   rootElement: TCanvas;
 }
 const SxiProvider = <TCanvas extends Canvas>(props: SxiProviderProps<TCanvas>) => {
-
   return (
     <SxiContext.Provider value={props.state}>
       {props.children}
