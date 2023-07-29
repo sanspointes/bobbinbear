@@ -1,6 +1,3 @@
-import { Container } from "@pixi/display";
-import { Mesh, MeshGeometry, MeshMaterial } from "@pixi/mesh";
-import * as interaction from "@pixi/interaction";
 import {
   createMemo,
   createRenderEffect,
@@ -8,7 +5,6 @@ import {
   mapArray,
   splitProps,
 } from "solid-js";
-import { usePixi } from "./store";
 import {
   AttachStrategy,
   Constructable,
@@ -18,9 +14,7 @@ import {
 
   SxiInstance,
   SxiObject,
-  SxiState,
 } from "./types";
-import { ObservablePoint, Point, Texture } from "@pixi/core";
 
 export const INTERNAL_PROPS = ["children", "ref"];
 
@@ -41,10 +35,9 @@ export function getInstanceProps<T extends Constructable>(
 //   const instance = object.__sxi as SxiInstance<T>;
 // };
 
-export const applyProps = <TSource extends Constructable, TObject extends InstanceType<TSource>, >(
-  object: TObject,
-  props: SxiInstance<T>["props"],
-  options: 
+export const applyProps = <TSource extends Constructable, TContext extends object, >(
+  object: SxiObject<TSource, TContext>,
+  props: SxiInstance<TSource, TContext>["props"],
 ) =>
   createRenderEffect(mapArray(() => Object.keys(props), (key) => {
     /* We wrap it in an effect only if a prop is a getter or a function */
@@ -67,23 +60,23 @@ export const applyProps = <TSource extends Constructable, TObject extends Instan
  * @returns
  */
 const prepareObject = <
+  TContext extends object,
   TSource extends Constructable,
-  TObject extends InstanceType<TSource>,
-  TExtraProps extends Record<string, ExtraPropHandler<TSource>>,
+  TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>>,
 >(
-  target: TObject & { __sxi?: SxiInstance<TSource, TObject> },
-  state: SxiState,
+  target: InstanceType<TSource> & { __sxi?: SxiInstance<TSource, TContext> },
+  state: TContext,
   type: string,
-  props: SxiInstance<TSource>["props"],
+  props: SxiInstance<TSource, TContext>["props"],
   options: ClassTypeProps<TSource, TExtraProps>,
 ) => {
-  const object: TObject & { __sxi?: SxiInstance<TSource> } = target;
+  const object: InstanceType<TSource> & { __sxi?: SxiInstance<TSource, TContext> } = target;
 
-  const instance: SxiInstance<TSource> = object?.__sxi ?? {
+  const instance: SxiInstance<TSource, TContext> = object?.__sxi ?? {
     solixi: state,
     type,
-    parent: null,
-    object: object as SxiObject<TSource>,
+    parent: null as unknown as SxiInstance<Constructable, TContext>,
+    object: object as SxiObject<TSource, TContext>,
     children: [],
     props: getInstanceProps(props),
   };
@@ -98,43 +91,46 @@ const prepareObject = <
   return instance;
 };
 
-type ExtraPropHandler<
+export type ExtraPropHandler<
   TSource extends Constructable,
+  TContext extends object,
   V = unknown,
 > = (
-  state: SxiState,
-  parent: SxiObject<Constructable>,
-  object: SxiObject<TSource>,
+  parent: SxiObject<Constructable, TContext>,
+  object: SxiObject<TSource, TContext>,
   value: V,
 ) => void | (() => void);
 
 type ExtraPropsHandlers<
   TSource extends Constructable,
-> = { [k: string]: ExtraPropHandler<TSource> };
+  TContext extends {},
+> = { [k: string]: ExtraPropHandler<TSource, TContext> };
 
-type ExtraPropsSignature<T extends ExtraPropsHandlers<Constructable>> = {
+type ExtraPropsSignature<TContext extends {}, T extends ExtraPropsHandlers<Constructable, TContext>> = {
   [K in keyof T]: Parameters<T[K]>[3]
 }
 export type ClassTypeProps<
   TSource extends Constructable,
-  TExtraProps extends Record<string, ExtraPropHandler<TSource>> = Record<string, ExtraPropHandler<Constructable>>,
+  TContext extends object,
+  TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>> = Record<string, ExtraPropHandler<Constructable, TContext>>,
   TObject extends InstanceType<TSource> = InstanceType<TSource>,
 > = 
   & { args?: ConstructorParameters<TSource>, children?: JSX.Element | JSX.Element[] } 
   & Partial<
       Overwrite<
         Pick<TObject, NonFunctionKeys<TObject>>, // All fields can be set
-        ExtraPropsSignature<TExtraProps>
+        ExtraPropsSignature<TExtraProps, TContext>
       >
     > 
 ;
 
 export type WrapConstructableOptions<
   TSource extends Constructable,
-  TExtraProps extends Record<string, ExtraPropHandler<TSource>> = Record<string, ExtraPropHandler<TSource>>,
+  TContext extends object,
+  TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>> = Record<string, ExtraPropHandler<TSource, TContext>>,
 > = {
   // How to attach this object to the parent
-  attach: AttachStrategy<TSource, InstanceType<TSource>>;
+  attach: AttachStrategy<TSource, TContext>;
   // Extra props and their handlers
   extraProps: TExtraProps;
 };
@@ -149,25 +145,27 @@ export type WrapConstructableOptions<
  * @returns
  */
 export const wrapConstructable = <
+  TContext extends object,
   TSource extends Constructable,
-  TExtraProps extends Record<string, ExtraPropHandler<TSource>>,
+  TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>>,
   TObject extends InstanceType<TSource> = InstanceType<TSource>,
 >(
   source: TSource,
   options: WrapConstructableOptions<TSource, TExtraProps>,
+  useState: () => TContext,
 ) => {
   const Component = (
     props: ClassTypeProps<TSource, TExtraProps>
   ) => {
-    const store = usePixi();
+    const state = useState();
 
     const object = createMemo(() => {
       const args: ConstructorParameters<TSource> | unknown[] = props.args ?? [];
 
       const sourceObject: TObject = new source(args);
-      const instance = prepareObject<TSource, TObject, TExtraProps>(
+      const instance = prepareObject<TContext, TSource, TExtraProps>(
         sourceObject,
-        store,
+        state,
         source.name,
         props,
         options,

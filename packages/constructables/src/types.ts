@@ -1,9 +1,3 @@
-import * as core from "@pixi/core";
-import * as app from "@pixi/app";
-import * as interaction from "@pixi/interaction";
-import * as display from "@pixi/display";
-import * as ticker from "@pixi/ticker";
-
 /*
  * UTILITY TYPES
  */
@@ -12,7 +6,8 @@ export type NonFunctionKeys<T> = {
   [K in keyof T]: T[K] extends Function ? never : K;
 }[keyof T];
 export type Overwrite<T, O> = Omit<T, NonFunctionKeys<O>> & O;
-export type Constructable = new (...args: unknown[]) => unknown;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Constructable = new (...args: any[]) => any;
 export type Args<T> = T extends Constructable ? ConstructorParameters<T>
   : unknown[];
 
@@ -21,110 +16,63 @@ export interface ClassType<T> extends Function {
   new (...args: unknown[]): T;
 }
 
-/*
- * GENERAL TYPES
- */
-export interface EventHandlers {
-  onClick?: (event: interaction.InteractionEvent) => void;
-  onContextMenu?: (event: interaction.InteractionEvent) => void;
-  onDoubleClick?: (event: interaction.InteractionEvent) => void;
-  onPointerUp?: (event: interaction.InteractionEvent) => void;
-  onPointerDown?: (event: interaction.InteractionEvent) => void;
-  onPointerOver?: (event: interaction.InteractionEvent) => void;
-  onPointerOut?: (event: interaction.InteractionEvent) => void;
-  onPointerEnter?: (event: interaction.InteractionEvent) => void;
-  onPointerLeave?: (event: interaction.InteractionEvent) => void;
-  onPointerMove?: (event: interaction.InteractionEvent) => void;
-  onPointerMissed?: (event: interaction.InteractionEvent) => void;
-  onPointerCancel?: (event: interaction.InteractionEvent) => void;
-  onWheel?: (event: interaction.InteractionEvent) => void;
-}
-
-/*
- * MATH TYPES
- */
-export interface MathRepresentation {
-  set(...args: number[]): unknown;
-}
-export type Matrix =
-  | core.Matrix
-  | Parameters<core.Matrix["set"]>
-  | Readonly<core.Matrix["set"]>;
-export type MathType<T extends MathRepresentation | core.Color> = T extends
-  core.Color
-  ? ConstructorParameters<typeof core.Color> | core.Color | core.ColorSource
-  : T extends MathRepresentation ? T | Parameters<T["set"]> | number
-  : T;
-
-export type Point = ConstructorParameters<typeof core.Point> | core.Point;
-export type Color =
-  | ConstructorParameters<typeof core.Color>
-  | core.Color
-  | core.ColorSource;
-
 // Attach
 export type AttachFnStrategy<
   TSource extends Constructable,
-  TObject extends InstanceType<TSource> = InstanceType<TSource>,
-> = (parent: SxiObject<Constructable, unknown>, child: SxiObject<TSource, TObject>) => () => void;
+  TContext extends object,
+> = (
+  state: TContext,
+  parent: SxiObject<Constructable, TContext>,
+  child: SxiObject<TSource, TContext>,
+) => () => void;
 /**
  * Strategy for attaching/detatching a child to a parent.  Can either be a string, representing the function field on the parent
  * where the child is passed in as a parameter, or a method that provides access to both the parent and child.
  */
 export type AttachStrategy<
   TSource extends Constructable,
-  TObject extends InstanceType<TSource> = InstanceType<TSource>,
-> = string | AttachFnStrategy<TSource, TObject>;
-
-/*
- * STATE TYPES
- */
-
-/**
- * Root state of the Pixi app
- */
-export type SxiState = {
-  // Pixi objects
-  app: app.Application;
-  stage: display.Container;
-  ticker: ticker.Ticker;
-
-  /** Whether or not this SxiState content is mounted to the page */
-  active: boolean;
-};
+  TContext extends object,
+> = string | AttachFnStrategy<TSource, TContext>;
 
 // INSTANCE TYPES
 //
 
 export type SxiInstanceReservedProps<
   TSource extends Constructable,
-  TObject extends InstanceType<TSource>,
-  O extends SxiObject<TSource, TObject> = SxiObject<TSource, TObject>,
+  TContext extends object,
+  O extends SxiObject<TSource, TContext> = SxiObject<TSource, TContext>,
 > = {
-    args?: ConstructorParameters<TSource>;
-    object?: O;
-    visible?: boolean;
-    attach?: AttachStrategy<TSource, TObject>;
-  };
+  args?: ConstructorParameters<TSource>;
+  object?: O;
+  visible?: boolean;
+  attach?: AttachStrategy<TSource, TContext>;
+};
 
-export type SxiObjectMetadata<TSource extends Constructable> = {
-  __sxi: SxiInstance<TSource>;
-}
-export type SxiObject<TSource extends Constructable, TObject extends InstanceType<TSource> = InstanceType<TSource>> =
-  & TObject 
-  & SxiObjectMetadata<TSource>;
+export type SxiObjectMetadata<
+  TSource extends Constructable,
+  TContext extends object,
+> = {
+  __sxi: SxiInstance<TSource, TContext>;
+};
+export type SxiObject<
+  TSource extends Constructable,
+  TContext extends object,
+  TObject extends InstanceType<TSource> = InstanceType<TSource>,
+> =
+  & TObject
+  & SxiObjectMetadata<TSource, TContext>;
 
 /**
  * Internal state for a SxiObject, stored under the object's `__sxi` iey.
  */
 export type SxiInstance<
   TSource extends Constructable,
-  TObject extends InstanceType<TSource> = InstanceType<TSource>,
+  TContext extends object,
 > = {
-  solixi: SxiState;
+  solixi: TContext;
   type: string;
-  parent?: SxiInstance<Constructable, unknown>;
-  object: SxiObject<TSource, TObject>;
-  children: SxiInstance<Constructable, unknown>[];
-  props: SxiInstanceReservedProps<TSource, TObject>;
+  parent?: SxiInstance<Constructable, TContext>;
+  object: SxiObject<TSource, TContext>;
+  children: SxiInstance<Constructable, TContext>[];
+  props: SxiInstanceReservedProps<TSource, TContext>;
 };
