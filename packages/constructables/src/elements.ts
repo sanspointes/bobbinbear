@@ -36,8 +36,8 @@ export function getInstanceProps<T extends Constructable>(
 // };
 
 export const applyProps = <TSource extends Constructable, TContext extends object, >(
-  object: SxiObject<TSource, TContext>,
-  props: SxiInstance<TSource, TContext>["props"],
+  object: SxiObject<TContext, TSource>,
+  props: SxiInstance<TContext, TSource>["props"],
 ) =>
   createRenderEffect(mapArray(() => Object.keys(props), (key) => {
     /* We wrap it in an effect only if a prop is a getter or a function */
@@ -62,21 +62,22 @@ export const applyProps = <TSource extends Constructable, TContext extends objec
 const prepareObject = <
   TContext extends object,
   TSource extends Constructable,
-  TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>>,
+  TExtraProps extends Record<string, ExtraPropHandler<TContext, TSource>>,
 >(
-  target: InstanceType<TSource> & { __sxi?: SxiInstance<TSource, TContext> },
+  target: InstanceType<TSource> & { __sxi?: SxiInstance<TContext, TSource> },
   state: TContext,
   type: string,
-  props: SxiInstance<TSource, TContext>["props"],
-  options: ClassTypeProps<TSource, TExtraProps>,
+  props: ClassTypeProps2<TContext, TSource, TExtraProps>,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  options: WrapConstructableOptions<TContext, TSource, TExtraProps>,
 ) => {
-  const object: InstanceType<TSource> & { __sxi?: SxiInstance<TSource, TContext> } = target;
+  const object: InstanceType<TSource> & { __sxi?: SxiInstance<TContext, TSource> } = target;
 
-  const instance: SxiInstance<TSource, TContext> = object?.__sxi ?? {
+  const instance: SxiInstance<TContext, TSource> = object?.__sxi ?? {
     solixi: state,
     type,
-    parent: null as unknown as SxiInstance<Constructable, TContext>,
-    object: object as SxiObject<TSource, TContext>,
+    parent: null as unknown as SxiInstance<TContext, Constructable>,
+    object: object as SxiObject<TContext, TSource>,
     children: [],
     props: getInstanceProps(props),
   };
@@ -84,7 +85,7 @@ const prepareObject = <
   if (object) {
     object.__sxi = instance;
     if (type) {
-      applyProps(object, props, )
+      // applyProps(object, props, )
 
     }
   }
@@ -92,45 +93,51 @@ const prepareObject = <
 };
 
 export type ExtraPropHandler<
-  TSource extends Constructable,
   TContext extends object,
-  V = unknown,
+  TSource extends Constructable,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  V = any,
 > = (
-  parent: SxiObject<Constructable, TContext>,
-  object: SxiObject<TSource, TContext>,
+  ctx: TContext,
+  parent: SxiObject<TContext, Constructable>,
+  object: SxiObject<TContext, TSource>,
   value: V,
 ) => void | (() => void);
 
-type ExtraPropsHandlers<
+export type ExtraPropsHandlers<
+  TContext extends object,
   TSource extends Constructable,
-  TContext extends {},
-> = { [k: string]: ExtraPropHandler<TSource, TContext> };
+> = { [k: string]: ExtraPropHandler<TContext, TSource> };
 
-type ExtraPropsSignature<TContext extends {}, T extends ExtraPropsHandlers<Constructable, TContext>> = {
+type ExtraPropsSignature<TContext extends object, T extends ExtraPropsHandlers<TContext, Constructable>> = {
   [K in keyof T]: Parameters<T[K]>[3]
 }
-export type ClassTypeProps<
-  TSource extends Constructable,
+export type ClassTypeReservedProps<TContext extends object, TSource extends Constructable> = {
+  ref?: InstanceType<TSource>|SxiObject<TContext, TSource>,
+  args?: ConstructorParameters<TSource>,
+  children?: JSX.Element | null
+}
+
+
+export type ClassTypeProps2<
   TContext extends object,
-  TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>> = Record<string, ExtraPropHandler<Constructable, TContext>>,
-  TObject extends InstanceType<TSource> = InstanceType<TSource>,
-> = 
-  & { args?: ConstructorParameters<TSource>, children?: JSX.Element | JSX.Element[] } 
-  & Partial<
-      Overwrite<
-        Pick<TObject, NonFunctionKeys<TObject>>, // All fields can be set
-        ExtraPropsSignature<TExtraProps, TContext>
-      >
-    > 
-;
+  TSource extends Constructable,
+  TExtraProps extends ExtraPropsHandlers<TContext, TSource>,
+> = Partial<Overwrite<
+  Pick<InstanceType<TSource>, NonFunctionKeys<InstanceType<TSource>>>, // Set all fields on instance type.
+  ExtraPropsSignature<TContext, TExtraProps> & ClassTypeReservedProps<TContext, TSource> // Overwride defaults with extra props + reserved props types.
+>>;
+  
 
 export type WrapConstructableOptions<
-  TSource extends Constructable,
   TContext extends object,
-  TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>> = Record<string, ExtraPropHandler<TSource, TContext>>,
+  TSource extends Constructable,
+  TExtraProps extends Record<string, ExtraPropHandler<TContext, TSource>>,
 > = {
   // How to attach this object to the parent
-  attach: AttachStrategy<TSource, TContext>;
+  attach: AttachStrategy<TContext, TSource>;
+  // Default args incase args is emitted in props
+  defaultArgs: ConstructorParameters<TSource>;
   // Extra props and their handlers
   extraProps: TExtraProps;
 };
@@ -147,20 +154,20 @@ export type WrapConstructableOptions<
 export const wrapConstructable = <
   TContext extends object,
   TSource extends Constructable,
-  TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>>,
+  TExtraProps extends Record<string, ExtraPropHandler<TContext, TSource>>,
   TObject extends InstanceType<TSource> = InstanceType<TSource>,
 >(
   source: TSource,
-  options: WrapConstructableOptions<TSource, TExtraProps>,
+  options: WrapConstructableOptions<TContext, TSource, TExtraProps>,
   useState: () => TContext,
 ) => {
   const Component = (
-    props: ClassTypeProps<TSource, TExtraProps>
+    props: ClassTypeProps2<TContext, TSource, TExtraProps>
   ) => {
     const state = useState();
 
     const object = createMemo(() => {
-      const args: ConstructorParameters<TSource> | unknown[] = props.args ?? [];
+      const args: ConstructorParameters<TSource> = props.args ?? options.defaultArgs;
 
       const sourceObject: TObject = new source(args);
       const instance = prepareObject<TContext, TSource, TExtraProps>(

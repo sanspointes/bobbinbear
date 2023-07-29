@@ -26,13 +26,13 @@ export const createRenderer = <TContext extends object>(initialState: TContext) 
   return {
     useConstructableState,
     createRoot: <TRootObject>(rootObject: TRootObject) =>
-      createRoot<TRootObject, TContext>(rootObject, Context, initialState),
+      createRoot<TContext, TRootObject>(rootObject, Context, initialState),
     wrapConstructable: <
       TSource extends Constructable,
-      TExtraProps extends Record<string, ExtraPropHandler<TSource, TContext>>,
+      TExtraProps extends Record<string, ExtraPropHandler<TContext, TSource>>,
     >(
       source: TSource,
-      options: WrapConstructableOptions<TSource, TExtraProps>,
+      options: WrapConstructableOptions<TContext, TSource, TExtraProps>,
     ) => wrapConstructable<TContext, TSource, TExtraProps>(source, options, useConstructableState),
   };
 };

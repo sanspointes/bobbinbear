@@ -8,6 +8,7 @@ import { createRenderer, SxiObject } from '../src';
 import { JSX } from 'solid-js/jsx-runtime';
 import { onMount, splitProps } from 'solid-js';
 import { SolixiRoot } from '../src/renderer';
+import { Constructable } from '../src/types';
 
 class ClassGraphNode {
   public id: number;
@@ -36,7 +37,8 @@ const {
 } = createRenderer(initialState);
 
 const GraphNode = wrapConstructable(ClassGraphNode, {
-  attach: (state: typeof initialState, parent: SxiObject<typeof ClassGraphNode, typeof initialState>, child) => {
+  defaultArgs: [0],
+  attach: (state, parent: SxiObject<typeof initialState, Constructable>, child) => {
     parent.addChild(child);
     state.mountedNodes.add(child.id);
     return () => { 
@@ -51,7 +53,7 @@ type BasicRootProps<TRootObj> = {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rootObject: TRootObj,
   children: JSX.Element | JSX.Element[],
-  onCreated: (root: SolixiRoot<TRootObj, typeof initialState>) => void,
+  onCreated: (root: SolixiRoot<typeof initialState, TRootObj>) => void,
 }
 const BasicRoot = <TRootObj,>(props: BasicRootProps<TRootObj>) => {
   onMount(() => {
@@ -67,15 +69,39 @@ const BasicRoot = <TRootObj,>(props: BasicRootProps<TRootObj>) => {
   return <div>Root</div>
 }
 
-describe('App', () => {
-  it('should render the app', (): Promise<void> => {
+describe('createRenderer', () => {
+  it('Should set the root object correctly', (): Promise<void> => {
     return new Promise((res) => {
-      render(() => (<BasicRoot rootObject={new ClassGraphNode(0)} onCreated={(root) => {
-        expect(root.state.mountedNodes.size).toBe(2);
+      const rootObject = new ClassGraphNode(0);
+
+      let parentNode: ClassGraphNode|undefined;
+      let childNode: ClassGraphNode|undefined;
+
+      render(() => (<BasicRoot rootObject={rootObject} onCreated={(root) => {
+        expect(root.rootObject).toBe(rootObject);
         res();
       }}>
-        <GraphNode args={[1]}>
-          <GraphNode args={[2]} />
+        <GraphNode ref={parentNode} args={[1]}>
+          <GraphNode ref={childNode} args={[3]} />
+        </GraphNode>
+      </BasicRoot>
+      ));
+    })
+  });
+  it('Should set refs correctly.', (): Promise<void> => {
+    return new Promise((res) => {
+      const rootObject = new ClassGraphNode(0);
+
+      let parentNode: ClassGraphNode|undefined;
+      let childNode: ClassGraphNode|undefined;
+
+      render(() => (<BasicRoot rootObject={rootObject} onCreated={() => {
+        expect(parentNode).not.toBeUndefined();
+        expect(childNode).not.toBeUndefined();
+        res();
+      }}>
+        <GraphNode ref={parentNode} args={[1]}>
+          <GraphNode ref={childNode} args={[3]} />
         </GraphNode>
       </BasicRoot>
       ));

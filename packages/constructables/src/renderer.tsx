@@ -18,7 +18,7 @@ import { Constructable } from "./types";
 //   );
 // }
 
-export type SolixiRoot<TRootObject extends InstanceType<Constructable>, TContext> = {
+export type SolixiRoot<TContext, TRootObject extends InstanceType<Constructable>> = {
   rootObject: TRootObject,
   state: TContext;
   setState: SetStoreFunction<TContext>;
@@ -36,16 +36,16 @@ export type SolixiRoot<TRootObject extends InstanceType<Constructable>, TContext
  * @returns 
  */
 export const createRoot = <
+  TContext extends object,
   TRootObject extends InstanceType<Constructable>,
-  TContext extends object
 >(
   rootObject: TRootObject,
   context: Context<TContext>,
   contextValue: TContext
-): SolixiRoot<TRootObject, TContext> => {
+): SolixiRoot<TContext, TRootObject> => {
   const [sxiState, setSxiState] = createStore(contextValue);
 
-  const root: SolixiRoot<TRootObject, TContext> = {
+  const root: SolixiRoot<TContext, TRootObject> = {
     rootObject,
     state: sxiState,
     setState: setSxiState,
