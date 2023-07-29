@@ -1,7 +1,8 @@
-import { Context, createMemo, JSX } from "solid-js";
+import { Context, createMemo, JSX, Accessor } from "solid-js";
 import { createStore, SetStoreFunction } from "solid-js/store";
 import { withContext } from "./utils";
-import { Constructable } from "./types";
+import { Constructable, SxiObject } from "./types";
+import { parentChildren, prepareObject, resolve } from "./elements";
 
 
 // type SxiProviderProps<TCanvas extends Canvas> = {
@@ -18,8 +19,8 @@ import { Constructable } from "./types";
 //   );
 // }
 
-export type SolixiRoot<TContext, TRootObject extends InstanceType<Constructable>> = {
-  rootObject: TRootObject,
+export type SolixiRoot<TContext extends object, TRootObject extends SxiObject<TContext, Constructable>> = {
+  rootObject: TRootObject|undefined,
   state: TContext;
   setState: SetStoreFunction<TContext>;
   render: (props: { children: JSX.Element | JSX.Element[] }) => void;
@@ -39,20 +40,30 @@ export const createRoot = <
   TContext extends object,
   TRootObject extends InstanceType<Constructable>,
 >(
-  rootObject: TRootObject,
+  rootObject: TRootObject | Accessor<TRootObject>,
   context: Context<TContext>,
   contextValue: TContext
 ): SolixiRoot<TContext, TRootObject> => {
   const [sxiState, setSxiState] = createStore(contextValue);
 
   const root: SolixiRoot<TContext, TRootObject> = {
-    rootObject,
+    rootObject: undefined,
     state: sxiState,
     setState: setSxiState,
     render(props) {
+      console.log('ROOT: Rendering root');
+      const instance = prepareObject(resolve(rootObject), sxiState, 'root', {}, {attach: null, extraProps: {}, defaultArgs:[  'never' ]});
+      this.rootObject = instance as SxiObject<TContext, Constructable>;
+
       const childrenWithContext = createMemo(
         withContext(() => props.children, context, contextValue),
       );
+
+      parentChildren(sxiState, () => instance.object, {
+        get children() {
+          return childrenWithContext();
+        }
+      })
     }
   }
 

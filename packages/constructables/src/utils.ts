@@ -8,8 +8,8 @@ import { type JSX,  Accessor, Context } from "solid-js"
  * @param value - Value of context
  * @returns 
  */
-export function withContext<T>(children: Accessor<JSX.Element | JSX.Element[]>, context: Context<T>, value: T) {
-  let result: JSX.Element | JSX.Element[]
+export function withContext<T>(children: Accessor<JSX.Element | null>, context: Context<T>, value: T) {
+  let result: JSX.Element | null
 
   context.Provider({
     value,

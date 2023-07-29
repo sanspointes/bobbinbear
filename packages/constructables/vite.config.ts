@@ -19,6 +19,7 @@ export default defineConfig(({mode})  => {
   return {
     plugins,
     build: {
+      emptyOutDir: false,
       lib: {
         entry: './src/index.ts',
         formats: ['es', 'cjs', 'umd'],

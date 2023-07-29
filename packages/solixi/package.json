@@ -1,0 +1,24 @@
+{
+  "name": "@bearbroidery/solixi",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "playground": "vite",
+    "dev": "vite build -w",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@bearbroidery/constructables": "workspace:*",
+    "@solid-primitives/raf": "^2.1.12",
+    "pixi.js": "^7.2.4",
+    "solid-js": "^1.7.8"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vite-plugin-inspect": "0.7.14",
+    "vite-plugin-solid": "^2.7.0"
+  }
+}

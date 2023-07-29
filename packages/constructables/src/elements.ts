@@ -1,10 +1,13 @@
 import {
   createMemo,
   createRenderEffect,
-  createEffect,
+  on,
   JSX,
   mapArray,
   splitProps,
+  children,
+  Accessor,
+  onCleanup,
 } from "solid-js";
 import {
   AttachStrategy,
@@ -17,40 +20,120 @@ import {
   SxiObject,
 } from "./types";
 
-export const INTERNAL_PROPS = ["children", "ref"];
+export const INTERNAL_PROPS = ["children", "ref", "args"];
 
-// Gets only instance props from proxy-component
-export function getInstanceProps<T extends Constructable>(
-  queue: Record<string, unknown>,
-): SxiInstance<T>["props"] {
-  // SOLID-THREE-NOTE:  solid-three has to use splitProps so getters are not resolved
-  const [_, props] = splitProps(queue, INTERNAL_PROPS);
-  return props;
+export function resolve<T>(value: Accessor<T> | T): T {
+  return typeof value !== 'function' ? value : resolve((value as Accessor<T>)())
 }
 
-// export const applyProp = <T extends Constructable>(
-//   object: SxiObject<T>,
-//   prop: string,
-//   value: unknown,
-// ) => {
-//   const instance = object.__sxi as SxiInstance<T>;
-// };
+export const parentChildren = <
+  TContext extends object,
+  TSource extends Constructable
+>(
+  context: TContext,
+  getObject: Accessor<SxiObject<TContext, TSource>>,
+  props: ClassTypeReservedProps<TContext, TSource>
+) => {
+  const childNodes = children(() => {
+    const result = resolve(props.children)
+    return Array.isArray(result) ? result : [result]
+  });
 
-export const applyProps = <TSource extends Constructable, TContext extends object, >(
+  const parent = getObject()
+  createRenderEffect(
+    mapArray(childNodes as unknown as Accessor<(SxiObject<TContext, Constructable>)[]>, (_child) => {
+      const child: SxiObject<TContext, Constructable> = resolve(_child)
+
+      /* <Show/> will return undefined if it's hidden */
+      if (!child) return;
+      if (!child?.__sxi || !parent?.__sxi) {
+        console.warn('CNST: Attempting to attach child to parent but internal state not set. Ignoring...', child, parent);
+        return;
+      }
+
+      const { attach } = child.__sxi;
+      // Default attach behaviour, setting a field on the parent
+      if (!attach) {
+        return;
+      } else if (typeof(attach) === 'string') {
+        parent[attach] = child;
+        onCleanup(() => {
+          if (parent[attach] === child) {
+            parent[attach] = undefined;
+          }
+        });
+      } else if (attach instanceof Function) {
+        console.log('Attach function');
+        const cleanup = attach(context, parent, child);
+        onCleanup(() => {
+          console.log('Cleanup ');
+          cleanup();
+        });
+      } else {
+        console.error({ child, parent });
+        throw new Error('CNST: Error attaching child to parent.  The attach strategy is not a string, null, or an attach strategy function. See above for child/parent objects.');
+      }
+
+      // Update internal state
+      child.__sxi.parent = parent;
+      parent.__sxi.children.push(child);
+      onCleanup(() => {
+        const childIndex = parent.__sxi.children.findIndex(c => c === child);
+        if (childIndex >= 0) {
+          parent.__sxi.children.splice(childIndex, 1);
+        }
+      })
+    })
+  );
+}
+
+
+/**
+ * Reactively manages props using either the extra prop handler or just setting the field on the class.
+ */
+export const applyProps = <TContext extends object, TSource extends Constructable>(
   object: SxiObject<TContext, TSource>,
-  props: SxiInstance<TContext, TSource>["props"],
+  props: Record<string, unknown>,
+  extraPropHandlers: ExtraPropsHandlers<TContext, TSource>,
 ) =>
-  createRenderEffect(mapArray(() => Object.keys(props), (key) => {
+  createRenderEffect(mapArray(() => Object.keys(props) , (key) => {
+    console.log(`Starting to manage prop "${key}" for `, object.__sxi.type);
     /* We wrap it in an effect only if a prop is a getter or a function */
-    // const descriptors = Object.getOwnPropertyDescriptor(props, key);
-    // const isDynamic =
-    //   !!(descriptors?.get || typeof descriptors?.value === "function");
-    // const update = (value: unknown) => applyProp(object, key, value);
-    // isDynamic
-    //   ? createRenderEffect(on(() => props[key], update))
-    //   : update(props[key]);
+    const descriptors = Object.getOwnPropertyDescriptor(props, key);
+    const isDynamic =
+      !!(descriptors?.get || typeof descriptors?.value === "function");
+    const applyProp = (value: unknown) => {
+      const v = resolve(value);
+      if (extraPropHandlers[key]) extraPropHandlers[key](object.__sxi.state, object.__sxi.parent, object, v);
+      else object[key] = v;
+    }
+
+    isDynamic
+      ? createRenderEffect(on(props[key], applyProp))
+      : applyProp(props[key]);
   }));
 
+
+export const useObject = <TContext extends object, TSource extends Constructable>(
+  context: TContext,
+  options: WrapConstructableOptions<TContext, TSource, Record<string, ExtraPropHandler<TContext, TSource>>>,
+  getObject: Accessor<SxiObject<TContext, TSource>>,
+  props: ClassTypeProps2<TContext, TSource, ExtraPropsHandlers<TContext, TSource>>
+) => {
+  // Old internal props ['ref', 'args', 'object', 'attach', 'children']
+  const [internalProps, externalProps] = splitProps(props, INTERNAL_PROPS);
+
+  // Manage parent / child relations
+  parentChildren(context, getObject, internalProps);
+
+  // @ts-expect-error; I can't be bothered to fix this.  `ref` is converted to a function by solid.
+  createRenderEffect(() => internalProps.ref instanceof Function && internalProps.ref(getObject()))
+
+  // Apply props to object on change.
+  createRenderEffect(() => {
+    applyProps(getObject(), externalProps, options.extraProps);
+  })
+}
 /**
  * Wraps an object in a SxiInstance<T>
  * @template T extends Constructable - Type of obj to wrap
@@ -60,7 +143,7 @@ export const applyProps = <TSource extends Constructable, TContext extends objec
  * @param props - Props
  * @returns
  */
-const prepareObject = <
+export const prepareObject = <
   TContext extends object,
   TSource extends Constructable,
   TExtraProps extends Record<string, ExtraPropHandler<TContext, TSource>>,
@@ -81,17 +164,13 @@ const prepareObject = <
     parent: null as unknown as SxiInstance<TContext, Constructable>,
     object: object as SxiObject<TContext, TSource>,
     children: [],
-    props: getInstanceProps(props),
+    attach: options.attach,
+    props,
   };
 
   if (object) {
     object.__sxi = instance;
-    if (type) {
-      // applyProps(object, props, )
-
-    }
   }
-
 
   if (props.ref) {
     props.ref(object);
@@ -173,10 +252,10 @@ export const wrapConstructable = <
   ) => {
     const state = useState();
 
-    const object = createMemo(() => {
+    const getObject = createMemo(() => {
       const args: ConstructorParameters<TSource> = props.args ?? options.defaultArgs;
 
-      const sourceObject: TObject = new source(args);
+      const sourceObject: TObject = new source(...args);
       const instance = prepareObject<TContext, TSource, TExtraProps>(
         sourceObject,
         state,
@@ -187,7 +266,9 @@ export const wrapConstructable = <
       return instance.object;
     });
 
-    return object as unknown as JSX.Element;
+    useObject(state, options, getObject, props)
+
+    return getObject as unknown as Element;
   };
   return Component;
 };

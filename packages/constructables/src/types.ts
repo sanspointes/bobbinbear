@@ -1,3 +1,5 @@
+import { JSX } from "solid-js/h/jsx-runtime";
+
 /*
  * UTILITY TYPES
  */
@@ -33,12 +35,12 @@ export type AttachFnStrategy<
 export type AttachStrategy<
   TContext extends object,
   TSource extends Constructable,
-> = string | AttachFnStrategy<TContext, TSource>;
+> = null | string | AttachFnStrategy<TContext, TSource>;
 
 // INSTANCE TYPES
 //
 
-export type SxiInstanceReservedProps<
+export type ClassT<
   TContext extends object,
   TSource extends Constructable,
   O extends SxiObject<TContext, TSource> = SxiObject<TContext, TSource>,
@@ -47,6 +49,7 @@ export type SxiInstanceReservedProps<
   object?: O;
   visible?: boolean;
   attach?: AttachStrategy<TContext, TSource>;
+  children?: JSX.Element | null,
 };
 
 export type SxiObjectMetadata<
@@ -58,9 +61,8 @@ export type SxiObjectMetadata<
 export type SxiObject<
   TContext extends object,
   TSource extends Constructable,
-  TObject extends InstanceType<TSource> = InstanceType<TSource>,
 > =
-  & TObject
+  & InstanceType<TSource>
   & SxiObjectMetadata<TContext, TSource>;
 
 /**
@@ -75,6 +77,6 @@ export type SxiInstance<
   parent?: SxiInstance<TContext, TSource>;
   object: SxiObject<TContext, TSource>;
   children: SxiInstance<TContext, TSource>[];
-  props: SxiInstanceReservedProps<TContext, TSource>;
+  attach: AttachStrategy<TContext, TSource>;
 };
 
