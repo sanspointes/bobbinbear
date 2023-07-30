@@ -105,7 +105,6 @@ export const applyProps = <TContext extends object, TSource extends Constructabl
     const isGetterFunction = typeof descriptors?.value === "function" && !isEvent;
 
     const applyProp = (value: unknown) => {
-      console.log('Applying prop', props, value);
       const v = isEvent ? value : resolve(value);
       
       if (extraPropHandlers[key]) extraPropHandlers[key](object.__sxi.state, object.__sxi.parent, object, v);
