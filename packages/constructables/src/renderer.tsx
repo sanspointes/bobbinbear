@@ -22,7 +22,6 @@ import { parentChildren, prepareObject, resolve } from "./elements";
 export type SolixiRoot<TContext extends object, TRootObject extends SxiObject<TContext, Constructable>> = {
   rootObject: TRootObject|undefined,
   state: TContext;
-  setState: SetStoreFunction<TContext>;
   render: (props: { children: JSX.Element | JSX.Element[] }) => void;
 }
 
@@ -44,22 +43,20 @@ export const createRoot = <
   context: Context<TContext>,
   contextValue: TContext
 ): SolixiRoot<TContext, TRootObject> => {
-  const [sxiState, setSxiState] = createStore(contextValue);
 
   const root: SolixiRoot<TContext, TRootObject> = {
     rootObject: undefined,
-    state: sxiState,
-    setState: setSxiState,
+    state: contextValue,
     render(props) {
       console.log('ROOT: Rendering root');
-      const instance = prepareObject(resolve(rootObject), sxiState, 'root', {}, {attach: null, extraProps: {}, defaultArgs:[  'never' ]});
+      const instance = prepareObject(resolve(rootObject), contextValue, 'root', {}, {attach: null, extraProps: {}, defaultArgs:[  'never' ]});
       this.rootObject = instance as SxiObject<TContext, Constructable>;
 
       const childrenWithContext = createMemo(
         withContext(() => props.children, context, contextValue),
       );
 
-      parentChildren(sxiState, () => instance.object, {
+      parentChildren(contextValue, () => instance.object, {
         get children() {
           return childrenWithContext();
         }

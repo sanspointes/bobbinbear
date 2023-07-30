@@ -1,9 +1,10 @@
 import { Application, Container, DisplayObject, IApplicationOptions } from "pixi.js"
 import { ComponentProps, onMount, splitProps, JSX, createSignal } from "solid-js"
 import { Solixi } from "."
-import { SolixiState } from "./state"
+import { InternalState, RootState, SolixiState } from "./state"
 import { SolixiRoot } from "@bearbroidery/constructables/src/renderer"
 import { createRAF, targetFPS } from '@solid-primitives/raf';
+import { SetStoreFunction, createStore, produce } from "solid-js/store"
 
 type InternalCanvasProps = {
   app?: Omit<Partial<IApplicationOptions>, 'canvas'>,
@@ -25,23 +26,33 @@ export const Canvas = (props: CanvasProps) => {
   let containerEl: HTMLDivElement|undefined;
   let canvasEl: HTMLCanvasElement|undefined;
 
-  let solixiRoot: SolixiRoot<SolixiState, Container<DisplayObject>>|undefined = undefined;
+  let solixiRoot: SolixiRoot<InternalState & SolixiState, Container<DisplayObject>>|undefined = undefined;
 
   let canRender = true;
   const invalidate = () => {
     canRender = true;
   }
+
+  let time = 0;
   const [running, start, stop] = createRAF((time) => {
     if (solixiRoot && canRender) {
+      const state = solixiRoot.state;
+      const { internal } = state;
+
+      // Call useFrame handlers
+      time += state.ticker.deltaTime;
+      for (const registration of internal.useFrameRegistrations) {
+        registration.handler(state, time, state.ticker.deltaTime);
+      }
+      
+
       solixiRoot.state.app.render();
       if (!internalProps.frameloop || internalProps.frameloop === 'always') {
         invalidate();
       }
     }
   })
-
-
-  start();
+  // setState('set', setState);
 
   onMount(() => {
     const defaultAppOptions: Partial<IApplicationOptions> = {
@@ -54,19 +65,28 @@ export const Canvas = (props: CanvasProps) => {
     // @ts-expect-error ; Pixi.js devtools
     if (internalProps.devtools) globalThis.__PIXI_APP__ = app;
 
-    const state: SolixiState = {
+    const [state, setState] = createStore<RootState & InternalState>({
       app, 
       stage: app.stage,
       ticker: app.ticker,
       invalidate,
-    }
+      internal: {
+        useFrameRegistrations: [],
+      },
+      set: null as unknown as SetStoreFunction<SolixiState & InternalState>,
+    });
+    setState(produce(state => {
+      state.set = setState as SetStoreFunction<SolixiState & InternalState>;
+    }));
 
-    const root = Solixi.createRoot<typeof app.stage>(app.stage, state);
+    const root = Solixi.createRoot<typeof app.stage>(app.stage, state as SolixiState);
 
     root.render(childrenProps);
 
     if (internalProps.onCreated) internalProps.onCreated(root.state);
-    solixiRoot = root;
+    solixiRoot = root as unknown as SolixiRoot<InternalState & SolixiState, typeof app.stage>;
+
+    start();
   })
 
   return (

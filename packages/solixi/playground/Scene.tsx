@@ -2,7 +2,7 @@
 import { createRAF } from '@solid-primitives/raf';
 
 import { Show, createSignal, onMount } from "solid-js"
-import { PContainer, PMesh, PMeshMaterial, PPlaneGeometry } from "../src"
+import { PContainer, PMesh, PMeshMaterial, PPlaneGeometry, useFrame } from "../src"
 import { Mesh, MeshMaterial } from 'pixi.js';
 
 export const Scene = () => {
@@ -10,10 +10,9 @@ export const Scene = () => {
   });
   const [visible, setVisible] = createSignal(false);
 
-  const [ running, start, stop ] = createRAF((time) => {
+  useFrame((state, time, delta) => {
     setPosition([200 + Math.sin(time / 1000) * 100, 200 + Math.cos(time / 1000) * 100])
   });
-  start();
 
   const toggleVisibility = () => {
     console.log('Toggling visibility')

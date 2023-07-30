@@ -1,4 +1,4 @@
-import { Accessor, createContext, useContext } from "solid-js";
+import { Accessor, Context, useContext } from "solid-js";
 import { SolixiRoot, createRoot } from "./renderer";
 import { ExtraPropHandler, wrapConstructable, WrapConstructableOptions } from "./elements";
 import { Constructable } from "./types";
@@ -19,11 +19,9 @@ type ConstructableRenderer<TContext extends object> = {
  * Creates a new type of renderer that returns functions for generating 
  * the root of the renderer, sharing the context around, and wrapping new Constructables.
  */
-export const createRenderer = <TContext extends object>(): ConstructableRenderer<TContext> => {
-  const Context = createContext<TContext>(null as unknown as TContext);
-
+export const createRenderer = <TContext extends object>(context: Context<TContext>): ConstructableRenderer<TContext> => {
   const useConstructableState = () => {
-    const state = useContext(Context);
+    const state = useContext(context);
     if (!state) {
       throw new Error(
         "Constructable: Must use constructable state within constructable root.",
@@ -34,14 +32,17 @@ export const createRenderer = <TContext extends object>(): ConstructableRenderer
 
   return {
     useConstructableState,
-    createRoot: <TRootObject>(rootObject: TRootObject | Accessor<TRootObject>, initialState: TContext) =>
-      createRoot<TContext, TRootObject>(rootObject, Context, initialState),
+    createRoot: <TRootObject>(rootObject: TRootObject | Accessor<TRootObject>, initialState: TContext) => {
+      return createRoot<TContext, TRootObject>(rootObject, context, initialState);
+    },
     wrapConstructable: <
       TSource extends Constructable,
       TExtraProps extends Record<string, ExtraPropHandler<TContext, TSource>>,
     >(
       source: TSource,
       options: WrapConstructableOptions<TContext, TSource, TExtraProps>,
-    ) => wrapConstructable<TContext, TSource, TExtraProps>(source, options, useConstructableState),
+    ) => {
+      return wrapConstructable<TContext, TSource, TExtraProps>(source, options, useConstructableState);
+    },
   };
 };

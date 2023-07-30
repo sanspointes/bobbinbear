@@ -1,3 +1,4 @@
+import { Accessor } from "solid-js";
 import { JSX } from "solid-js/h/jsx-runtime";
 
 /*
@@ -7,6 +8,10 @@ export type NonFunctionKeys<T> = {
   // eslint-disable-next-line @typescript-eslint/ban-types
   [K in keyof T]: T[K] extends Function ? never : K;
 }[keyof T];
+export type WrapFieldsWithAccessor<T> = {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  [K in keyof T]: Accessor<T[K]> | T[K];
+};
 
 export type Overwrite<T, O> = Omit<T, keyof O> & O;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

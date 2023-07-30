@@ -18,12 +18,13 @@ import {
 
   SxiInstance,
   SxiObject,
+  WrapFieldsWithAccessor,
 } from "./types";
 
 export const INTERNAL_PROPS = ["children", "ref", "args"];
 
 export function resolve<T>(value: Accessor<T> | T): T {
-  return typeof value !== 'function' ? value : resolve((value as Accessor<T>)())
+  return typeof value === 'function' ? (value as Accessor<T>)() : value as T
 }
 
 export const parentChildren = <
@@ -45,7 +46,6 @@ export const parentChildren = <
       const child: SxiObject<TContext, Constructable> = resolve(_child)
 
       /* <Show/> will return undefined if it's hidden */
-      if (!child) return;
       if (!child?.__sxi || !parent?.__sxi) {
         console.warn('CNST: Attempting to attach child to parent but internal state not set. Ignoring...', child, parent);
         return;
@@ -93,24 +93,30 @@ export const parentChildren = <
  */
 export const applyProps = <TContext extends object, TSource extends Constructable>(
   object: SxiObject<TContext, TSource>,
-  props: Record<string, unknown>,
+  props: Record<string, Accessor<unknown>|unknown>,
   extraPropHandlers: ExtraPropsHandlers<TContext, TSource>,
 ) =>
   createRenderEffect(mapArray(() => Object.keys(props) , (key) => {
     console.log(`Starting to manage prop "${key}" for `, object.__sxi.type);
     /* We wrap it in an effect only if a prop is a getter or a function */
     const descriptors = Object.getOwnPropertyDescriptor(props, key);
-    const isDynamic =
-      !!(descriptors?.get || typeof descriptors?.value === "function");
+    const isEvent = key.startsWith('on');
+    const isGetterField = !!descriptors?.get
+    const isGetterFunction = typeof descriptors?.value === "function" && !isEvent;
+
     const applyProp = (value: unknown) => {
-      const v = resolve(value);
+      console.log('Applying prop', props, value);
+      const v = isEvent ? value : resolve(value);
+      
       if (extraPropHandlers[key]) extraPropHandlers[key](object.__sxi.state, object.__sxi.parent, object, v);
       else object[key] = v;
     }
 
-    isDynamic
-      ? createRenderEffect(on(props[key], applyProp))
-      : applyProp(props[key]);
+    isGetterField
+      ? createRenderEffect(on(() => props[key], applyProp))
+      : isGetterFunction 
+        ? createRenderEffect(on(props[key], applyProp))
+        : applyProp(props[key]);
   }));
 
 
@@ -209,10 +215,10 @@ export type ClassTypeProps2<
   TContext extends object,
   TSource extends Constructable,
   TExtraProps extends ExtraPropsHandlers<TContext, TSource>,
-> = Partial<Overwrite<
+> = Partial<WrapFieldsWithAccessor<Overwrite<
   Pick<InstanceType<TSource>, NonFunctionKeys<InstanceType<TSource>>>, // Set all fields on instance type.
   ExtraPropsSignature<TContext, TExtraProps> & ClassTypeReservedProps<TContext, TSource> // Overwride defaults with extra props + reserved props types.
->>;
+>>>;
   
 
 export type WrapConstructableOptions<
