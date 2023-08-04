@@ -1,8 +1,8 @@
 import { Point } from "pixi.js";
-import { store } from "."
 import { newUuid } from "../utils/uuid";
-import { CanvasSceneObject, SceneObject } from "./scene";
-import { CreateObjectCommand } from "./scene/commands"
+import { dispatch } from ".";
+import { CreateObjectCommand } from "./commands/object";
+import { CanvasSceneObject, SceneObject } from "../types/scene";
 
 export const createCanvas = (name?: string, size = new Point(512, 512)) => {
   const canvas: CanvasSceneObject = {
@@ -15,5 +15,5 @@ export const createCanvas = (name?: string, size = new Point(512, 512)) => {
     children: [],
     backgroundColor: 'white',
   };
-  store.dispatch('perform-command', new CreateObjectCommand(canvas))
+  dispatch('scene:do-command', new CreateObjectCommand(canvas))
 }

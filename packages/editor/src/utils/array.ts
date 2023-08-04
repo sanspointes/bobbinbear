@@ -25,3 +25,9 @@ export const arrayLast = <T>(arr: T[]): T|undefined => {
 
   return arr[arr.length -1];
 }
+
+export const arrayFirst = <T>(arr: T[]): T|undefined => {
+  if (arr.length === 0) return undefined;
+
+  return arr[0];
+}

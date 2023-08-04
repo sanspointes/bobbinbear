@@ -1,19 +1,28 @@
 /* eslint-disable solid/reactivity */
 import { SetStoreFunction, createStore, produce } from "solid-js/store";
-import { ObjectMapData, SceneObject, SceneStore, traverse } from ".";
 import { Uuid } from "../../utils/uuid";
 import { arrayRemove } from "../../utils/array";
 import { AbstractCommand, CommandType, SerializedCommand } from "../commands";
 import { Point } from "pixi.js";
+import { SceneObject } from "../../types/scene";
+import { ObjectMapData, SceneStoreModel } from "../sceneStore";
 
 /**
  * HELPERS
  */
+export const traverse = (obj: SceneObject, handler: (obj: SceneObject) => void) => {
+  handler(obj);
+  if (obj.children) {
+    for (const child of obj.children) {
+      traverse(child, handler);
+    }
+  }
+}
 
 /**
  * Adds object and children to store
  */
-const addObject = (store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>, newObjectData: SceneObject) => {
+const addObject = (setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>, newObjectData: SceneObject) => {
   // Add all children to store
   traverse(newObjectData, (obj) => {
     const [object, setObject] = createStore(obj);
@@ -40,7 +49,7 @@ const addObject = (store: SceneStore, setStore: SetStoreFunction<SceneStore>, ob
 /**
  * Deletes object and children from store
  */
-const deleteObject = (store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>, id: Uuid<SceneObject>): boolean => {
+const deleteObject = (setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>, id: Uuid<SceneObject>): boolean => {
   const result = objMap.get(id);
   if (!result) return false;
 
@@ -65,14 +74,9 @@ const deleteObject = (store: SceneStore, setStore: SetStoreFunction<SceneStore>,
 }
 
 abstract class SceneCommand extends AbstractCommand {
-  handler: string = 'scene' as const;
-
   constructor() {
     super()
   }
-
-  abstract perform(store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void;
-  abstract undo(store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void;
 }
 
 export class CreateObjectCommand extends SceneCommand {
@@ -82,11 +86,11 @@ export class CreateObjectCommand extends SceneCommand {
     super();
   }
 
-  perform(store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
-    addObject(store, setStore, objMap, this.object);
+  perform(store: SceneStoreModel, setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
+    addObject(setStore, objMap, this.object);
   }
-  undo(store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
-    const success = deleteObject(store, setStore, objMap, this.object.id);
+  undo(store: SceneStoreModel, setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
+    const success = deleteObject(setStore, objMap, this.object.id);
     if (!success) {
       console.warn(`CreateObjectCommand (undo) failed to delete ${this.object.id}`);
     }
@@ -108,14 +112,14 @@ export class DeleteObjectCommand extends SceneCommand {
     super();
   }
 
-  perform(store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
-    const success = deleteObject(store, setStore, objMap, this.object.id);
+  perform(store: SceneStoreModel, setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
+    const success = deleteObject(setStore, objMap, this.object.id);
     if (!success) {
       console.warn(`DeleteObjectCommand failed to delete ${this.object.id}`);
     }
   }
-  undo(store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
-    addObject(store, setStore, objMap, this.object);
+  undo(store: SceneStoreModel, setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
+    addObject(setStore, objMap, this.object);
   }
 
   toObject(object: Record<string, unknown>): void {
@@ -136,7 +140,7 @@ export class MoveObjectCommand extends SceneCommand {
   constructor(private objectId: Uuid<SceneObject>, private newPosition: Point) {
     super();
   }
-  perform(store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
+  perform(_store: SceneStoreModel, _setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
     const result = objMap.get(this.objectId);
     if (!result) throw new Error(`MoveObjectCommand: Could not get object ${this.objectId} to move`);
 
@@ -145,7 +149,7 @@ export class MoveObjectCommand extends SceneCommand {
     result.set(produce(object => object.position = this.newPosition));
   }
 
-  undo(store: SceneStore, setStore: SetStoreFunction<SceneStore>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
+  undo(_store: SceneStoreModel, _setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void {
     const result = objMap.get(this.objectId);
     if (!result) throw new Error(`MoveObjectCommand (undo): Could not get object ${this.objectId} to move`);
     if (!this.oldPosition) throw new Error(`MoveObjectCommand (undo): Could not get old position of ${this.objectId} to move`);

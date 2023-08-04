@@ -1,4 +1,9 @@
-import { CreateObjectCommand, DeleteObjectCommand, MoveObjectCommand, SceneCommands } from "./scene/commands";
+import { SetStoreFunction } from "solid-js/store";
+import { ObjectMapData, SceneStoreModel } from "../sceneStore";
+import { CreateObjectCommand, DeleteObjectCommand, MoveObjectCommand, SceneCommands } from "./object";
+import { Uuid } from "../../utils/uuid";
+import { SceneObject } from "../../types/scene";
+export * from './object';
 
 export type Command = SceneCommands;
 export type CommandType = Command['type']
@@ -23,10 +28,12 @@ export abstract class AbstractCommand {
 
   public readonly abstract name: string;
   public readonly abstract type: string;
-  public readonly abstract handler: string;
   constructor() {
 
   }
+
+  abstract perform(store: SceneStoreModel, setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void;
+  abstract undo(store: SceneStoreModel, setStore: SetStoreFunction<SceneStoreModel>, objMap: Map<Uuid<SceneObject>, ObjectMapData>): void;
 
   toObject(object: Record<string, unknown>) {
     object.type = this.type;
@@ -37,7 +44,6 @@ export abstract class AbstractCommand {
     const cmd = Object.create(commandPrototypeMap[object.type]) as Command;
     cmd.type = object.type;
     cmd.name = object.name as Command['name'];
-    cmd.handler = object.handler as Command['handler'];
     cmd.final = object.final;
     cmd.fromObject(object);
 
@@ -54,3 +60,4 @@ export abstract class AbstractCommand {
     return this.type;
   }
 }
+

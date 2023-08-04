@@ -1,129 +1,92 @@
-import { createStore, produce, SetStoreFunction } from "solid-js/store";
-import { batch } from "solid-js";
-import { Command } from "./commands";
-import { createSceneStore } from "./scene";
-import { arrayLast } from "../utils/array";
+import { SceneStoreMessages, createSceneStore } from "./sceneStore";
+import { ToolStoreMessage, createToolStore } from "./toolStore";
 
-export type WithSetter<T> = T & {
-  set: SetStoreFunction<T>
+/**
+ * TYPE DEFS
+ */
+import { SetStoreFunction, createStore } from "solid-js/store";
+
+type BaseMessages = Record<string, unknown>
+type BaseModel = Record<string, unknown>
+
+type GeneralHandler<
+  TMessages extends BaseMessages,
+  K extends keyof TMessages = keyof TMessages,
+  M extends TMessages[K] = TMessages[K]
+> = (type: K, message: M) => void;
+
+type BaseHandler<TStore, TMessage> = (store: TStore, set: SetStoreFunction<TStore>, message: TMessage) => void;
+
+export type BaseMessageHandlers<TStore, TMessage extends BaseMessages> = {[K in keyof TMessage]: BaseHandler<TStore, TMessage[K]>}
+
+type BaseStore<TModel, TMessages extends BaseMessages> = {
+  store: TModel,
+  handle: GeneralHandler<TMessages>;
 }
 
-type StoreMessages = {
-  'perform-command': Command,
-  'perform-undo': void,
-  'perform-redo': void,
+/**
+ * Generates a store that adheres to the dispatch model.
+ *
+ * @template TModel extends BaseModel - Model of store
+ * @template TMessages extends BaseMessages - Message types
+ * @param model - initial state of model
+ * @param handlers - handlers for message types
+ * @returns 
+ */
+export function generateStore<TModel extends BaseModel, TMessages extends BaseMessages>(
+  model: TModel|(() => TModel),
+  handlers: BaseMessageHandlers<TModel, TMessages> | GeneralHandler<TMessages>
+): BaseStore<TModel, TMessages> {
+  const resolvedModel: TModel = typeof(model) === 'function' ? (model as () => TModel)() : model;
+
+  const [store, setStore] = createStore(resolvedModel);
+
+  const handle: GeneralHandler<TMessages> = typeof(handlers) === 'function' 
+    ? handlers as GeneralHandler<TMessages>
+    : (type, message) => {
+      handlers[type](store, setStore, message);
+    };
+
+  return {
+    store,
+    handle,
+  } as BaseStore<TModel, TMessages>;
 }
 
-type SceneObjectStore = {
-  undoStack: Command[],
-  redoStack: Command[],
-  dispatch: <TEvent extends keyof StoreMessages, TEventModel extends StoreMessages[TEvent]>(event: TEvent, model: TEventModel) => void,
+/**
+ * Intialising Store
+ */
+
+type AllMessages = SceneStoreMessages & ToolStoreMessage;
+
+type EditorModel = {
+  temp: 1
 }
 
-// eslint-disable-next-line solid/reactivity
-export const SceneObjectStore = createStore<SceneObjectStore>({
-  undoStack: [],
-  redoStack: [],
-  dispatch: (event, model) => {
-    MESSAGE_HANDLERS[event](model);
+export const createEditorStore = () => {
+  const { store: sceneStore, handle: sceneHandler } = createSceneStore();
+  const { store: toolStore, handle: toolHandle } = createToolStore();
+
+
+  const res = generateStore<EditorModel, AllMessages>({
+  temp: 1,
+}, (type, message) => {
+      if (type.startsWith('scene')) {
+        // @ts-expect-error; Can't be bothered typing. 
+        sceneHandler(type, message)
+      } else if (type.startsWith('tool')) {
+        // @ts-expect-error; Can't be bothered typing. 
+        toolHandle(type, message);
+      } else {
+        throw new Error(`EditorStore: Unable to dispatch message to correct store.  Not store with prefix for ${type}.`)
+      }
+  });
+
+  return {
+    sceneStore,
+    toolStore,
+    dispatch: res.handle,
   }
-})
-
-export type StoreHandler<TCommands, TStore> = {
-  store: TStore,
-  performCommand: (history: Command[], command: TCommands) => void;
-  undoCommand: (history: Command[], command: TCommands) => void;
 }
 
-const sceneStoreHandler = createSceneStore();
-export const sceneStore = sceneStoreHandler.store;
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const handlers: Record<Command['handler'], StoreHandler<any, any>> = {
-  scene: sceneStoreHandler,
-}
-
-type MessageHandler<T> = (model: T) => void;
-const MESSAGE_HANDLERS: { [K in keyof StoreMessages]: MessageHandler<StoreMessages[K]> } = {
-  'perform-command': (command) => {
-    const lastCommand = arrayLast(store.undoStack);
-    if (lastCommand) {
-      const sameType = lastCommand.type === command.type;
-      const needsPush = lastCommand.final;
-      const needsUpdate = !lastCommand.final && sameType;
-
-      // Error if not an update of previous or a new command entirely
-      if (!needsPush && !needsUpdate) {
-        throw new Error('perform-command: Invalid lastCommand/command.  Maybe you forgot to finalize the previous command?');
-      }
-
-      if (needsUpdate) {
-        if (!lastCommand.updateData) throw new Error(`perform-command: Last Command marked as non final but no update method for ${lastCommand.type}:${lastCommand.name}`);
-
-        // @ts-expect-error; Type is asserted to be same by the `sameType` check above.
-        lastCommand.updateData(command);
-      }
-
-      // Perform the command
-      const commandToPerform = needsUpdate ? lastCommand : command;
-      const handler = handlers[command.handler];
-      if (!handler) throw new Error(`perform-command: No handler for command ${command.name} with handler: ${command.handler}`);
-      handler.performCommand(store.undoStack, commandToPerform);
-
-      // Push undo stack, clear redo stack
-      if (needsPush) {
-        setStore(produce(store => {
-          store.undoStack.push(command)
-          store.redoStack = []
-        }));
-      }
-    } else {
-      const handler = handlers[command.handler];
-      if (!handler) throw new Error(`perform-command: No handler for command ${command.name} with handler: ${command.handler}`);
-      handler.performCommand(store.undoStack, command);
-
-      setStore(produce(store => {
-        store.undoStack.push(command)
-        store.redoStack = []
-      }));
-    }
-  },
-  'perform-undo': () => {
-    batch(() => {
-      let command: Command|undefined;  
-      setStore(produce(store => {
-        command = store.undoStack.pop();
-      }))
-      if (command) {
-        const handler = handlers[command.handler];
-        if (!handler) throw new Error(`perform-command: No handler for command ${command.name} with handler: ${command.handler}`);
-
-        handler.undoCommand(store.undoStack, command);
-
-        setStore(produce(store => {
-          store.redoStack.push(command!);
-        }))
-      }
-    })
-  },
-  'perform-redo': () => {
-    batch(() => {
-      let command: Command|undefined;  
-      setStore(produce(store => {
-        command = store.redoStack.pop();
-      }))
-      if (command) {
-        const handler = handlers[command.handler];
-        if (!handler) throw new Error(`perform-command: No handler for command ${command.name} with handler: ${command.handler}`);
-
-        handler.undoCommand(store.undoStack, command);
-
-        setStore(produce(store => {
-          store.undoStack.push(command!);
-        }))
-      }
-    })
-  }
-};
-
-export const [store, setStore] = SceneObjectStore;
+export const { sceneStore, toolStore, dispatch } = createEditorStore()
