@@ -1,9 +1,12 @@
 import { Application, Container, DisplayObject, IApplicationOptions } from "pixi.js"
-import { ComponentProps, onMount, splitProps, JSX, createSignal } from "solid-js"
+import { ComponentProps, onMount, splitProps, JSX, createEffect } from "solid-js"
+import { createRAF } from '@solid-primitives/raf';
+import { createElementSize } from '@solid-primitives/resize-observer';
+import { throttle } from '@solid-primitives/scheduled';
+
 import { Solixi } from "."
 import { InternalState, RootState, SolixiState } from "./state"
 import { SolixiRoot } from "@bearbroidery/constructables/src/renderer"
-import { createRAF, targetFPS } from '@solid-primitives/raf';
 import { SetStoreFunction, createStore, produce } from "solid-js/store"
 
 type InternalCanvasProps = {
@@ -19,6 +22,7 @@ type CanvasProps = ComponentProps<'div'> & InternalCanvasProps;
 const INTERNAL_PROP_KEYS = ['app', 'resolution', 'devtools', 'frameloop'] as unknown as (keyof InternalCanvasProps[]);
 
 export const Canvas = (props: CanvasProps) => {
+  // @ts-expect-error ; Can't be bothered to type this right now
   const [internalProps, divElementProps] = splitProps(props, INTERNAL_PROP_KEYS);
   const [childrenProps, _] = splitProps(props, ['children']);
 
@@ -34,7 +38,7 @@ export const Canvas = (props: CanvasProps) => {
   }
 
   let time = 0;
-  const [running, start, stop] = createRAF((time) => {
+  const [_running, start, _stop] = createRAF(() => {
     if (solixiRoot && canRender) {
       const state = solixiRoot.state;
       const { internal } = state;
@@ -85,6 +89,16 @@ export const Canvas = (props: CanvasProps) => {
 
     if (internalProps.onCreated) internalProps.onCreated(root.state);
     solixiRoot = root as unknown as SolixiRoot<InternalState & SolixiState, typeof app.stage>;
+
+    // Automatic resizing to parent window.
+    if (!containerEl) throw new Error('<Canvas> `containerEl` is not set.  This should never happen.');
+    const size = createElementSize(containerEl);
+    const performResize = throttle((width: number, height: number) => {
+      app.renderer.resize(width, height);
+    })
+    createEffect(() => {
+      performResize(size.width, size.height);
+    })
 
     start();
   })
