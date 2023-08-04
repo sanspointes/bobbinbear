@@ -1,3 +1,9 @@
 [submodule "packages/solid-three"]
 	path = packages/solid-three
 	url = git@github.com:solidjs-community/solid-three.git
+[submodule "externals/solixi"]
+	path = externals/solixi
+	url = git@github.com:sanspointes/solixi.git
+[submodule "externals/constructables"]
+	path = externals/constructables
+	url = git@github.com:sanspointes/constructables.git
