@@ -1,0 +1,31 @@
+{
+  "name": "editor",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "playground": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@bearbroidery/solixi": "*",
+    "@kobalte/core": "^0.9.8",
+    "pixi-viewport": "^5.0.1",
+    "pixi.js": "^7.2.4",
+    "solid-icons": "^1.0.11",
+    "solid-js": "^1.7.8"
+  },
+  "devDependencies": {
+    "@kobalte/tailwindcss": "^0.6.5",
+    "autoprefixer": "^10.4.13",
+    "postcss": "^8.4.21",
+    "solid-devtools": "^0.27.4",
+    "tailwindcss": "^3.2.4",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5",
+    "vite-plugin-dts": "^3.3.1",
+    "vite-plugin-inspect": "0.7.14",
+    "vite-plugin-solid": "^2.7.0"
+  }
+}
