@@ -1,7 +1,9 @@
-import { Application, Container, Ticker } from "pixi.js"
+import { Application } from "@pixi/app"
+import { Container } from "@pixi/display"
+import { Ticker } from "@pixi/ticker"
 import { createRenderer } from "@bearbroidery/constructables"
-import { createContext, onCleanup, onMount, useContext } from "solid-js"
-import { SetStoreFunction, StoreSetter, createStore, produce } from "solid-js/store"
+import { createContext, onCleanup, onMount } from "solid-js"
+import { SetStoreFunction, produce } from "solid-js/store"
 
 export type InternalState = {
   internal: {
@@ -21,7 +23,7 @@ export type SolixiState = RootState & {
   set: SetStoreFunction<SolixiState>,
 }
 
-export const SolixiContext = createContext<SolixiState>({} as unknown as SolixiState)
+export const SolixiContext = createContext<SolixiState>({ solixi_ctx: true } as unknown as SolixiState)
 
 export const Solixi = createRenderer(SolixiContext)
 
@@ -31,12 +33,12 @@ export type UseFrameRegistration = {
 };
 export type UseFrameHandler = ((state: SolixiState, time: number, delta: number) => void);
 
+export const useSolixi = Solixi.useConstructableState;
+
+export const useSolixiInternal = Solixi.useConstructableState as () => InternalState & SolixiState;
 /* Adds an onFrame callback with a priority (lowest is higher priority) */
 export const useFrame = (handler: UseFrameHandler, priority = 0) => {
-  const state = useContext(SolixiContext) as unknown as InternalState;
-  if (!state) {
-    throw new Error('Solixi: useFrame must be called within a <Canvas> component.');
-  }
+  const state = useSolixiInternal();
 
   onMount(() => {
     const nextIndex = state.internal.useFrameRegistrations.findIndex(reg => {
@@ -66,12 +68,4 @@ export const useFrame = (handler: UseFrameHandler, priority = 0) => {
       }
     })
   })
-}
-
-export const usePixi = () => {
-  const state = useContext(SolixiContext) as unknown as InternalState;
-  if (!state) {
-    throw new Error('Solixi: useFrame must be called within a <Canvas> component.');
-  }
-  return state;
 }

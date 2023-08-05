@@ -1,9 +1,14 @@
-import { Container, GraphicsGeometry, Mesh, MeshMaterial, PlaneGeometry, Texture } from "pixi.js";
+import { Container } from "@pixi/display";
+import { Mesh, MeshMaterial, MeshGeometry } from "@pixi/mesh";
+import { PlaneGeometry } from "@pixi/mesh-extras";
+import { Texture } from "@pixi/core";
+import { GraphicsGeometry } from "@pixi/graphics";
 import { Solixi } from "./state";
-import { HasInteractivityFragment, HasPositionFragment, HasRotationFragment, HasScaleFragment, HasVisibilityFragment } from "./prop-fragments";
+import { HasPositionFragment, HasRotationFragment, HasScaleFragment, HasVisibilityFragment } from "./prop-fragments";
 
 export const PContainer = Solixi.wrapConstructable(Container, {
-  attach: (_, b: Container, c: Container) => {
+  // @ts-expect-error ; Hard to type parent of attach function
+  attach: (_, b: Container, c) => {
     b.addChild(c);
     return () => b.removeChild(c);
   },
@@ -13,22 +18,23 @@ export const PContainer = Solixi.wrapConstructable(Container, {
     ...HasScaleFragment,
     ...HasVisibilityFragment,
     ...HasRotationFragment,
-    ...HasInteractivityFragment,
   }
 });
 
 export const PMesh = Solixi.wrapConstructable(Mesh<MeshMaterial>, {
-  attach: (_, b: Container, c: Mesh<MeshMaterial>) => {
+  // @ts-expect-error ; Hard to type parent of attach function
+  attach: (_, b: Container, c) => {
     b.addChild(c);
     return () => b.removeChild(c);
   },
   defaultArgs: [new PlaneGeometry(), new MeshMaterial(Texture.WHITE)],
+  // @ts-expect-error; Erroring because it's not wrapping a Container (base of Mesh, used for Position/scale/visibility/rotation props).
+  // Need to figure out how to permit classes that extend the base class of the prop fragments.
   extraProps: {
     ...HasPositionFragment,
     ...HasScaleFragment,
     ...HasVisibilityFragment,
     ...HasRotationFragment,
-    ...HasInteractivityFragment,
   }
 });
 
@@ -46,6 +52,12 @@ export const PGraphicsGeometry = Solixi.wrapConstructable(GraphicsGeometry, {
   extraProps: {
   }
 })
+
+export const PMeshGeometry = Solixi.wrapConstructable(MeshGeometry, {
+  attach: 'geometry',
+  defaultArgs: [],
+  extraProps: {},
+});
 
 export const PMeshMaterial = Solixi.wrapConstructable(MeshMaterial, {
   attach: 'material',

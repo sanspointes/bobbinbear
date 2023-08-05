@@ -1,4 +1,5 @@
-import { Application, Container, DisplayObject, IApplicationOptions } from "pixi.js"
+import { Application, IApplicationOptions } from "@pixi/app";
+import { Container, DisplayObject } from "@pixi/display"
 import { ComponentProps, onMount, splitProps, JSX, createEffect } from "solid-js"
 import { createRAF } from '@solid-primitives/raf';
 import { createElementSize } from '@solid-primitives/resize-observer';
@@ -8,6 +9,9 @@ import { Solixi } from "."
 import { InternalState, RootState, SolixiState } from "./state"
 import { SolixiRoot } from "@bearbroidery/constructables/src/renderer"
 import { SetStoreFunction, createStore, produce } from "solid-js/store"
+import { Constructable, SxiObject } from "@bearbroidery/constructables/dist/types";
+import { EventSystem } from "@pixi/events";
+import { ICanvas, IRenderer, ISystemConstructor } from "@pixi/core";
 
 type InternalCanvasProps = {
   app?: Omit<Partial<IApplicationOptions>, 'canvas'>,
@@ -19,18 +23,18 @@ type InternalCanvasProps = {
 }
 type CanvasProps = ComponentProps<'div'> & InternalCanvasProps;
 
-const INTERNAL_PROP_KEYS = ['app', 'resolution', 'devtools', 'frameloop'] as unknown as (keyof InternalCanvasProps[]);
+const INTERNAL_PROP_KEYS = ['app', 'resolution', 'devtools', 'frameloop', 'children'] as unknown as (keyof InternalCanvasProps[]);
 
 export const Canvas = (props: CanvasProps) => {
   // @ts-expect-error ; Can't be bothered to type this right now
   const [internalProps, divElementProps] = splitProps(props, INTERNAL_PROP_KEYS);
-  const [childrenProps, _] = splitProps(props, ['children']);
+  const [childrenProps, pixiProps] = splitProps(internalProps, ['children']);
 
   let wrapperEl: HTMLDivElement|undefined;
   let containerEl: HTMLDivElement|undefined;
   let canvasEl: HTMLCanvasElement|undefined;
 
-  let solixiRoot: SolixiRoot<InternalState & SolixiState, Container<DisplayObject>>|undefined = undefined;
+  let solixiRoot: SolixiRoot<InternalState & SolixiState, SxiObject<InternalState & SolixiState, Constructable>>|undefined = undefined;
 
   let canRender = true;
   const invalidate = () => {
@@ -38,6 +42,7 @@ export const Canvas = (props: CanvasProps) => {
   }
 
   let time = 0;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_running, start, _stop] = createRAF(() => {
     if (solixiRoot && canRender) {
       const state = solixiRoot.state;
@@ -51,23 +56,26 @@ export const Canvas = (props: CanvasProps) => {
       
 
       solixiRoot.state.app.render();
-      if (!internalProps.frameloop || internalProps.frameloop === 'always') {
+      if (!pixiProps.frameloop || pixiProps.frameloop === 'always') {
         invalidate();
       }
     }
   })
-  // setState('set', setState);
 
   onMount(() => {
     const defaultAppOptions: Partial<IApplicationOptions> = {
       view: canvasEl,
-      resolution: internalProps.resolution,
+      resolution: pixiProps.resolution,
     }
-    const appOptions = {...(internalProps.app ?? {}), ...defaultAppOptions };
+    const appOptions = {...(pixiProps.app ?? {}), ...defaultAppOptions };
     const app = new Application(appOptions)
 
+    if (!EventSystem) {
+      console.warn('Solixi: No event system provided.');
+    }
+
     // @ts-expect-error ; Pixi.js devtools
-    if (internalProps.devtools) globalThis.__PIXI_APP__ = app;
+    if (pixiProps.devtools) globalThis.__PIXI_APP__ = app;
 
     const [state, setState] = createStore<RootState & InternalState>({
       app, 
@@ -83,12 +91,12 @@ export const Canvas = (props: CanvasProps) => {
       state.set = setState as SetStoreFunction<SolixiState & InternalState>;
     }));
 
-    const root = Solixi.createRoot<typeof app.stage>(app.stage, state as SolixiState);
+    const root = Solixi.createRoot<typeof Container<DisplayObject>>(app.stage, state as SolixiState);
 
     root.render(childrenProps);
 
-    if (internalProps.onCreated) internalProps.onCreated(root.state);
-    solixiRoot = root as unknown as SolixiRoot<InternalState & SolixiState, typeof app.stage>;
+    if (pixiProps.onCreated) pixiProps.onCreated(root.state);
+    solixiRoot = root as unknown as SolixiRoot<InternalState & SolixiState, SxiObject<InternalState & SolixiState, Constructable>>;
 
     // Automatic resizing to parent window.
     if (!containerEl) throw new Error('<Canvas> `containerEl` is not set.  This should never happen.');
@@ -114,7 +122,7 @@ export const Canvas = (props: CanvasProps) => {
       }}
       {...divElementProps}>
       <div ref={containerEl} style={{ width: '100%', height: '100%' }}>
-        <canvas ref={canvasEl} style={{ display: 'block' }} />
+        <canvas ref={canvasEl} tabindex={0} style={{ display: 'block' }} />
       </div>
     </div>
   )
