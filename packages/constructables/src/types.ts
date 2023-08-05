@@ -15,7 +15,7 @@ export type WrapFieldsWithAccessor<T> = {
 
 export type Overwrite<T, O> = Omit<T, keyof O> & O;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Constructable = new (...args: any[]) => any;
+export type Constructable = new (...args: any[]) => unknown;
 export type Args<T> = T extends Constructable ? ConstructorParameters<T>
   : unknown[];
 
@@ -62,6 +62,7 @@ export type SxiObjectMetadata<
   TSource extends Constructable,
 > = {
   __sxi: SxiInstance<TContext, TSource>;
+  help: 1,
 };
 export type SxiObject<
   TContext extends object,

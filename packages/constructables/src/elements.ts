@@ -42,8 +42,8 @@ export const parentChildren = <
 
   const parent = getObject()
   createRenderEffect(
-    mapArray(childNodes as unknown as Accessor<(SxiObject<TContext, Constructable>)[]>, (_child) => {
-      const child: SxiObject<TContext, Constructable> = resolve(_child)
+    mapArray(childNodes as unknown as Accessor<(SxiObject<TContext, Constructable>)[]>, (_child: SxiObject<TContext, Constructable>) => {
+      const child = resolve(_child) as SxiObject<TContext, Constructable>;
 
       /* <Show/> will return undefined if it's hidden */
       if (!child?.__sxi || !parent?.__sxi) {
@@ -56,9 +56,12 @@ export const parentChildren = <
       if (!attach) {
         return;
       } else if (typeof(attach) === 'string') {
+        // @ts-expect-error; Impossible to know runtime fields of parent
         parent[attach] = child;
         onCleanup(() => {
+          // @ts-expect-error; Impossible to know runtime fields of parent
           if (parent[attach] === child) {
+            // @ts-expect-error; Impossible to know runtime fields of parent
             parent[attach] = undefined;
           }
         });
@@ -75,10 +78,10 @@ export const parentChildren = <
       }
 
       // Update internal state
-      child.__sxi.parent = parent;
-      parent.__sxi.children.push(child);
+      child.__sxi.parent = parent.__sxi;
+      parent.__sxi.children.push(child.__sxi);
       onCleanup(() => {
-        const childIndex = parent.__sxi.children.findIndex(c => c === child);
+        const childIndex = parent.__sxi.children.findIndex(c => c === child.__sxi);
         if (childIndex >= 0) {
           parent.__sxi.children.splice(childIndex, 1);
         }
@@ -100,20 +103,22 @@ export const applyProps = <TContext extends object, TSource extends Constructabl
     console.log(`Starting to manage prop "${key}" for `, object.__sxi.type);
     /* We wrap it in an effect only if a prop is a getter or a function */
     const descriptors = Object.getOwnPropertyDescriptor(props, key);
-    const isEvent = key.startsWith('on');
     const isGetterField = !!descriptors?.get
+    const isEvent = key.startsWith('on');
     const isGetterFunction = typeof descriptors?.value === "function" && !isEvent;
 
     const applyProp = (value: unknown) => {
       const v = isEvent ? value : resolve(value);
       
-      if (extraPropHandlers[key]) extraPropHandlers[key](object.__sxi.state, object.__sxi.parent, object, v);
+      if (extraPropHandlers[key]) extraPropHandlers[key](object.__sxi.solixi, object.__sxi.parent?.object, object, v);
+      // @ts-expect-error; Impossible to know runtime fields of object
       else object[key] = v;
     }
 
     isGetterField
       ? createRenderEffect(on(() => props[key], applyProp))
       : isGetterFunction 
+        // @ts-expect-error; Bad typing
         ? createRenderEffect(on(props[key], applyProp))
         : applyProp(props[key]);
   }));
@@ -170,7 +175,6 @@ export const prepareObject = <
     object: object as SxiObject<TContext, TSource>,
     children: [],
     attach: options.attach,
-    props,
   };
 
   if (object) {
@@ -190,7 +194,7 @@ export type ExtraPropHandler<
   V = any,
 > = (
   ctx: TContext,
-  parent: SxiObject<TContext, Constructable>,
+  parent: SxiObject<TContext, Constructable>|undefined,
   object: SxiObject<TContext, TSource>,
   value: V,
 ) => void | (() => void);
@@ -228,7 +232,7 @@ export type WrapConstructableOptions<
   // How to attach this object to the parent
   attach: AttachStrategy<TContext, TSource>;
   // Default args incase args is emitted in props
-  defaultArgs: ConstructorParameters<TSource>;
+  defaultArgs: ConstructorParameters<TSource> | ((context: TContext) => ConstructorParameters<TSource>);
   // Extra props and their handlers
   extraProps: TExtraProps;
 };
@@ -246,7 +250,6 @@ export const wrapConstructable = <
   TContext extends object,
   TSource extends Constructable,
   TExtraProps extends Record<string, ExtraPropHandler<TContext, TSource>>,
-  TObject extends InstanceType<TSource> = InstanceType<TSource>,
 >(
   source: TSource,
   options: WrapConstructableOptions<TContext, TSource, TExtraProps>,
@@ -258,9 +261,16 @@ export const wrapConstructable = <
     const state = useState();
 
     const getObject = createMemo(() => {
-      const args: ConstructorParameters<TSource> = props.args ?? options.defaultArgs;
+      const getDefaultArgs = () => {
+        if (typeof(options.defaultArgs) === "function") {
+          return options.defaultArgs(state);
+        } else {
+          return options.defaultArgs;
+        }
+      }
+      const args: ConstructorParameters<TSource> = props.args as ConstructorParameters<TSource> ?? getDefaultArgs();
 
-      const sourceObject: TObject = new source(...args);
+      const sourceObject = new source(...args) as unknown as InstanceType<TSource> & { __sxi?: SxiInstance<TContext, TSource> };
       const instance = prepareObject<TContext, TSource, TExtraProps>(
         sourceObject,
         state,
@@ -271,7 +281,7 @@ export const wrapConstructable = <
       return instance.object;
     });
 
-    useObject(state, options, getObject, props)
+    useObject(state, options, getObject, props as unknown as ClassTypeProps2<TContext, TSource, ExtraPropsHandlers<TContext, TSource>>)
 
     return getObject as unknown as Element;
   };

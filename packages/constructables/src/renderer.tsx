@@ -1,7 +1,6 @@
-import { Context, createMemo, JSX, Accessor } from "solid-js";
-import { createStore, SetStoreFunction } from "solid-js/store";
+import { Context, createMemo, JSX, Accessor, children } from "solid-js";
 import { withContext } from "./utils";
-import { Constructable, SxiObject } from "./types";
+import { Constructable, SxiObject, SxiObjectMetadata } from "./types";
 import { parentChildren, prepareObject, resolve } from "./elements";
 
 
@@ -37,22 +36,24 @@ export type SolixiRoot<TContext extends object, TRootObject extends SxiObject<TC
  */
 export const createRoot = <
   TContext extends object,
-  TRootObject extends InstanceType<Constructable>,
+  TRootObject extends Constructable,
 >(
-  rootObject: TRootObject | Accessor<TRootObject>,
+  rootObject: InstanceType<TRootObject> | Accessor<InstanceType<TRootObject>>,
   context: Context<TContext>,
   contextValue: TContext
-): SolixiRoot<TContext, TRootObject> => {
+): SolixiRoot<TContext, SxiObject<TContext, TRootObject>> => {
+  console.log('CNST: Creating Root', context, contextValue);
 
-  const root: SolixiRoot<TContext, TRootObject> = {
+  const root: SolixiRoot<TContext, SxiObject<TContext, TRootObject>> = {
     rootObject: undefined,
     state: contextValue,
     render(props) {
-      console.log('ROOT: Rendering root');
-      const instance = prepareObject(resolve(rootObject), contextValue, 'root', {}, {attach: null, extraProps: {}, defaultArgs:[  'never' ]});
-      this.rootObject = instance as SxiObject<TContext, Constructable>;
+      console.log('CNST: Rendering root', context, contextValue);
+      const ro = resolve(rootObject) as InstanceType<TRootObject> & SxiObjectMetadata<TContext, TRootObject>;
+      const instance = prepareObject(ro, contextValue, 'root', {}, { attach: null, extraProps: {}, defaultArgs: [] as unknown as ConstructorParameters<TRootObject> });
+      this.rootObject = instance.object as SxiObject<TContext, TRootObject>;
 
-      const childrenWithContext = createMemo(
+      const childrenWithContext = createMemo( 
         withContext(() => props.children, context, contextValue),
       );
 
@@ -60,7 +61,7 @@ export const createRoot = <
         get children() {
           return childrenWithContext();
         }
-      })
+      });
     }
   }
 
