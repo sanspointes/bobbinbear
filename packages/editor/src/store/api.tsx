@@ -1,10 +1,10 @@
-import { Point } from "pixi.js";
+import { Point } from "@pixi/core";
 import { newUuid } from "../utils/uuid";
-import { dispatch } from ".";
 import { CreateObjectCommand } from "./commands/object";
 import { CanvasSceneObject, SceneObject } from "../types/scene";
+import { AppDispatcher } from ".";
 
-export const createCanvas = (name?: string, size = new Point(512, 512)) => {
+export const createCanvas = (dispatch: AppDispatcher, name?: string, size = new Point(512, 512)) => {
   const canvas: CanvasSceneObject = {
     id: newUuid<SceneObject>(),
     type: 'canvas',

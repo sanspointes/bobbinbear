@@ -1,11 +1,11 @@
 import { PMesh, PMeshMaterial, PPlaneGeometry } from "@bearbroidery/solixi";
-import { CanvasSceneObject } from "../../store/scene";
 import { SceneObjectChildren } from "./general";
+import { GraphicSceneObject } from "../types/scene";
 
-export const GraphicSceneObjectView = (props: CanvasSceneObject) => ( 
-  <PMesh scale={props.size} position={props.position}>
+export const GraphicSceneObjectView = (props: GraphicSceneObject) => ( 
+  <PMesh position={props.position} interactive={true}>
     <PPlaneGeometry args={[1, 1]} />
-    <PMeshMaterial tint={props.backgroundColor} />
+    <PMeshMaterial />
     <SceneObjectChildren children={props.children} />
   </PMesh>
 );

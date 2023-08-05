@@ -1,8 +1,13 @@
 import { Solixi } from '@bearbroidery/solixi'
-import { Viewport as PixiViewport, IViewportOptions, Drag, Pinch, Decelerate } from 'pixi-viewport'
+import { Viewport as PixiViewport, IViewportOptions, Drag, Pinch } from 'pixi-viewport'
+import { useContext, type JSX } from 'solid-js';
+import { createMemo } from 'solid-js';
+import { Cursor } from '../store/toolStore';
+import { AppContext } from '../store';
+import { Container } from '@pixi/display';
 
-export const Viewport = Solixi.wrapConstructable(PixiViewport, {
-  attach: (_, parent, object) => {
+const PViewport = Solixi.wrapConstructable(PixiViewport, {
+  attach: (_, parent: Container, object) => {
     parent.addChild(object);
     return () => parent.removeChild(object);
   },
@@ -32,6 +37,20 @@ export const Viewport = Solixi.wrapConstructable(PixiViewport, {
       return () => {
         if (object.plugins.list.includes(dragPlugin)) object.plugins.remove('drag');
       }
-    }
+    },
   },
 })
+
+type ViewportProps = {
+  children: JSX.Element
+}
+export const Viewport = (props: ViewportProps) => {
+  // const { toolStore } = useContext(AppContext);
+  const viewportPaused = createMemo(() => {
+    const { Grab, Grabbing} = Cursor;
+    // const currentTool = toolStore.currentCursor;
+    // return currentTool !== Grab && currentTool !== Grabbing;
+    return true;
+  })
+  return <PViewport pause={viewportPaused} drag pinch children={props.children} />
+}

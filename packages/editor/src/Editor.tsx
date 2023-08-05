@@ -1,13 +1,25 @@
-import { Canvas } from "@bearbroidery/solixi"
-import { Viewport } from "./components/Viewport"
-import { sceneStore } from "./store"
-import { Show, onMount } from 'solid-js';
-import { SceneObjectChildren } from './components/scene/general';
+import { Canvas, PContainer, useSolixi } from "@bearbroidery/solixi"
+import { AppContext, createAppStore} from "./store"
+import { Show, createEffect, onMount, useContext } from 'solid-js';
 import { Toolbar } from './components/Toolbar';
-import { initialiseCommandPrototypeMap } from './store/commands';
+import { Cursor } from "./store/toolStore";
+import { SceneObjectChildren } from "./sxi-components/general";
+import { Viewport } from "./sxi-components/Viewport";
 
 const EditorView = () => {
-  return <Viewport drag={true} pinch={true}>
+  const { sceneStore, dispatch } = useContext(AppContext);
+  const pixi = useSolixi();
+  
+  onMount(() => {
+    dispatch('input:set-source', {
+      element: pixi.app.view as unknown as HTMLCanvasElement,
+    })
+  })
+
+  createEffect(() => {
+    console.log(Object.keys(pixi));
+  })
+  return <Viewport>
     <Show when={sceneStore.root}>
       <SceneObjectChildren children={sceneStore.root} />
     </Show>
@@ -15,18 +27,25 @@ const EditorView = () => {
 }
 
 export const Editor = () => {
-  onMount(() => {
-    initialiseCommandPrototypeMap();
-  })
+  const contextModel = createAppStore();
+  
+  console.log(contextModel);
 
   return (
     <div class="flex flex-col items-stretch w-full h-full">
-      <Toolbar />
-      <div class="flex-grow">
+              <AppContext.Provider value={contextModel}>
+        <Toolbar />
+      <div class="flex-grow" classList={{
+        'cursor-grab': contextModel.toolStore.currentCursor === Cursor.Grab,
+        'cursor-grabbing': contextModel.toolStore.currentCursor === Cursor.Grabbing,
+      }}>
         <Canvas devtools={true}>
-          <EditorView />
+          <PContainer>
+                <EditorView />
+          </PContainer>
         </Canvas>
       </div>
+            </AppContext.Provider>
     </div>
   )
 }

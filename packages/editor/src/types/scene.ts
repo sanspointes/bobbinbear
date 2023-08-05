@@ -1,4 +1,4 @@
-import { ColorSource, Point } from "pixi.js";
+import { ColorSource, Point } from "@pixi/core";
 import { Uuid } from "../utils/uuid";
 
 export type BaseSceneObject = {

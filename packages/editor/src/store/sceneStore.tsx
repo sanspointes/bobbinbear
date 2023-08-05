@@ -18,7 +18,7 @@ export type SceneStoreMessages = {
   'scene:redo': void,
 }
 
-export type SceneStoreModel = {
+export type SceneModel = {
   undoStack: Command[],
   redoStack: Command[],
   root: SceneObject[],
@@ -28,7 +28,7 @@ export const createSceneStore = () => {
 
   const objMap = new Map<Uuid<SceneObject>, ObjectMapData>();
 
-  return generateStore<SceneStoreModel, SceneStoreMessages>({
+  return generateStore<SceneModel, SceneStoreMessages>({
     undoStack: [],
     redoStack: [],
     root: [],
