@@ -3,6 +3,12 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:constructables": "turbo run --filter ./packages/constructables dev",
+    "dev:solixi": "turbo run --filter ./packages/solixi dev",
+    "dev:editor": "turbo run --filter ./packages/editor dev",
+    "playground:constructables": "turbo run --filter ./packages/constructables playground",
+    "playground:solixi": "turbo run --filter ./packages/solixi playground",
+    "playground:editor": "turbo run --filter ./packages/editor playground",
     "lint": "turbo run lint",
     "test:constructables": "pnpm run --filter ./packages/constructables/ test",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""
