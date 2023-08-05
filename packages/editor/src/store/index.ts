@@ -1,6 +1,6 @@
 import { createContext } from "solid-js";
 import { SceneStoreMessages, SceneModel, createSceneStore } from "./sceneStore";
-import { ToolModel, ToolStoreMessage, createToolStore } from "./toolStore";
+import { Tool, ToolModel, ToolStoreMessage, createToolStore } from "./toolStore";
 
 /**
  * TYPE DEFS
@@ -69,18 +69,21 @@ type EditorModel = {
 export type AppDispatcher = GeneralHandler<AllMessages>;
 
 export const createAppStore = () => {
+  // Pre-declare handlers so they can be referenced by the main store.
   let sceneStore: SceneModel,
     sceneHandler: GeneralHandler<SceneStoreMessages>;
-
   let inputStore: InputModel,
     inputHandler: GeneralHandler<InputMessages>;
   let toolStore: ToolModel,
     toolHandler: GeneralHandler<ToolStoreMessage>;
 
-  const res = generateStore<EditorModel, AllMessages>({
-  temp: 1,
-}, (type, message) => {
+  const model: EditorModel = {
+    temp: 1,
+  };
 
+  const appStoreResult = generateStore<EditorModel, AllMessages>(
+    model,
+    (type, message) => {
       const responses = [{
         type,
         message,
@@ -112,21 +115,25 @@ export const createAppStore = () => {
       }
   });
 
+  // Assign handlers
   const sceneResult = createSceneStore();
   sceneStore = sceneResult.store;
   sceneHandler = sceneResult.handle;
-  const inputResult = createInputStore(res.handle);
+  const inputResult = createInputStore(appStoreResult.handle);
   inputStore = inputResult.store;
   inputHandler = inputResult.handle;
-  const toolResult = createToolStore(res.handle);
+  const toolResult = createToolStore(appStoreResult.handle);
   toolStore = toolResult.store;
   toolHandler = toolResult.handle;
+
+  // Setup initial state
+  appStoreResult.handle('tool:switch', Tool.Select);
 
   const [finalStore, _set] = createStore({
     inputStore,
     sceneStore,
     toolStore,
-    dispatch: res.handle,
+    dispatch: appStoreResult.handle,
   })
   return finalStore;
 }

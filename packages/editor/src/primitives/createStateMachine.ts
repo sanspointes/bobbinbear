@@ -1,4 +1,4 @@
-import { Accessor, createEffect, createSignal, untrack } from 'solid-js';
+import { Accessor, createEffect, createRenderEffect, createSignal, untrack } from 'solid-js';
 import { MaybeAccessor, access } from '@solid-primitives/utils';
 import { StateMachine, ITransition, Callback, t } from 'typescript-fsm';
 
@@ -17,7 +17,7 @@ export function createStateMachine<TState, TEvent>(initialState: TState, transit
   const [state, setState] = createSignal(initialState);
   let machine: StateMachine<TState, TEvent>;
 
-  createEffect(() => {
+  createRenderEffect(() => {
     machine = new StateMachine<TState, TEvent>(untrack(state), access(transitions));
   })
 

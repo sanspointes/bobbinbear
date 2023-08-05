@@ -21,7 +21,6 @@
     "@types/three": "^0.154.0",
     "solid-js": "^1.7.2",
     "solid-start": "^0.2.26",
-    "@bearbroidery/solid-pixi": "*",
     "three": "^0.154.0",
     "undici": "^5.15.1"
   },

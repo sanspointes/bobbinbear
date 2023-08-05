@@ -7,6 +7,7 @@ import { ToolInputMessage } from "./tools/shared";
 type SubToolStores = SelectToolStore;
 
 export enum Tool {
+  None,
   Select,
 }
 
@@ -18,6 +19,7 @@ export enum Cursor {
 }
 
 export const TOOL_TO_DEFAULT_CURSOR_MAP: Record<Tool, Cursor> = {
+  [Tool.None]: Cursor.Default,
   [Tool.Select]: Cursor.Default,
 }
 
@@ -39,7 +41,7 @@ export type ToolHandler = GeneralHandler<ToolStoreMessage>;
 
 export const createToolStore = (dispatch: GeneralHandler<AllMessages>) => {
   const toolStore =  generateStore<ToolModel, ToolStoreMessage>({
-    tool: Tool.Select,
+    tool: Tool.None,
     cursorStack: [],
     get currentCursor() {
       const last = arrayLast<Cursor>(this.cursorStack);
@@ -67,16 +69,27 @@ export const createToolStore = (dispatch: GeneralHandler<AllMessages>) => {
     'tool:clear-cursor': (_, set) => {
       set(produce(store => store.cursorStack = []))
     },
-    'tool:switch': (_, set, message) => {
-      set(produce(store => store.tool = message));
+    'tool:switch': (_, set, newTool) => {
+      set(produce(store => {
+        if (store.tool !== newTool) {
+            const oldToolStore = TOOL_TO_STORE_MAP[store.tool];
+            if (oldToolStore) oldToolStore.handle('deactivate', undefined, dispatch);
+
+            store.tool = newTool 
+
+            const newToolStore = TOOL_TO_STORE_MAP[store.tool];
+            if (newToolStore) newToolStore.handle('activate', undefined, dispatch);
+        }
+      }));
     },
     'tool:input': (store, _2, message) => {
-      TOOL_TO_STORE_MAP[store.tool].handle('input', message, dispatch);
+      const toolStore = TOOL_TO_STORE_MAP[store.tool];
+      if (toolStore) toolStore.handle('input', message, dispatch);
     }
   })
-  const TOOL_TO_STORE_MAP: Record<Tool, SubToolStores> = {
+  const TOOL_TO_STORE_MAP: Record<Tool, SubToolStores|undefined> = {
+    [Tool.None]: undefined,
     [Tool.Select]: createSelectToolStore(toolStore),
   }
-  
   return toolStore;
 }

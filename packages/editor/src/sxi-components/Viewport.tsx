@@ -45,12 +45,11 @@ type ViewportProps = {
   children: JSX.Element
 }
 export const Viewport = (props: ViewportProps) => {
-  // const { toolStore } = useContext(AppContext);
+  const { toolStore } = useContext(AppContext);
   const viewportPaused = createMemo(() => {
     const { Grab, Grabbing} = Cursor;
-    // const currentTool = toolStore.currentCursor;
-    // return currentTool !== Grab && currentTool !== Grabbing;
-    return true;
+    const currentTool = toolStore.currentCursor;
+    return currentTool !== Grab && currentTool !== Grabbing;
   })
   return <PViewport pause={viewportPaused} drag pinch children={props.children} />
 }
