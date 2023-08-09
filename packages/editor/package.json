@@ -16,6 +16,7 @@
     "@pixi/core": "^7.2.4",
     "@pixi/display": "^7.2.4",
     "@pixi/events": "^7.2.4",
+    "@pixi/filter-outline": "^5.2.0",
     "@pixi/graphics": "^7.2.4",
     "@pixi/interaction": "^6.5.10",
     "@pixi/layers": "^2.1.0",

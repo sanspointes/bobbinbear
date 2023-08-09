@@ -1,5 +1,5 @@
 import { createEventListener } from '@solid-primitives/event-listener';
-import { t } from 'typescript-fsm';
+import { t } from './utils/fsm';
 import { createStateMachine, tFromMulti } from "./primitives/createStateMachine";
 import { createEffect, useContext } from 'solid-js';
 import { AppContext } from './store';

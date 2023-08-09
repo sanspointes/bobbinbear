@@ -2,7 +2,9 @@ import { Accessor, Context, useContext } from "solid-js";
 import { SolixiRoot, createRoot } from "./renderer";
 import { ExtraPropHandler, wrapConstructable, WrapConstructableOptions } from "./elements";
 import { Constructable, SxiObjectMetadata } from "./types";
-import { ClassTypeProps2 } from "./elements";
+import { ClassProps } from "./elements";
+
+export type { ClassProps, Constructable };
 
 export type { SxiObject, SxiInstance } from './types';
 
@@ -13,7 +15,7 @@ type ConstructableRenderer<TContext extends object> = {
     TSource extends Constructable,
     TExtraProps extends Record<string, ExtraPropHandler<TContext, TSource>>
   >(source: TSource, options: WrapConstructableOptions<TContext, TSource, TExtraProps>) 
-    => (props: ClassTypeProps2<TContext, TSource, TExtraProps>) => Element | null;
+    => (props: ClassProps<TContext, TSource, TExtraProps>) => Element | null;
 }
 /**
  * Creates a new type of renderer that returns functions for generating 

@@ -27,7 +27,6 @@ export abstract class AbstractCommand {
     object.type = this.type;
     object.name = this.name;
   }
-  abstract fromObject<T extends CommandType>(object: SerializedCommand<T>): void;
   static fromObject<T extends CommandType>(prototypeMap: CommandPrototypeMap, object: SerializedCommand<T>): CommandPrototypeMap[T] {
     const cmd = Object.create(prototypeMap[object.type]) as Command;
     cmd.type = object.type;
@@ -37,6 +36,7 @@ export abstract class AbstractCommand {
 
     return cmd;
   }
+  protected abstract fromObject<T extends CommandType>(object: SerializedCommand<T>): void;
 
   updateData?(newer: AbstractCommand): void;
 

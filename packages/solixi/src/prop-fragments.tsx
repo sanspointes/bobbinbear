@@ -2,19 +2,20 @@ import { ExtraPropHandler } from "@bearbroidery/constructables/dist/elements";
 import { Container } from "@pixi/display";
 import { Point } from "@pixi/core";
 import { SolixiState } from "./state";
+import { Constructable } from "@bearbroidery/constructables";
 
-const PositionHandler: ExtraPropHandler<SolixiState, typeof Container, Point | [number, number]> = (_1, _2, object: Container, value) => {
+const PositionHandler: ExtraPropHandler<SolixiState, Constructable, Point | [number, number]> = (_1, _2, object, value) => {
   if (Array.isArray(value)) {
-    object.position.set(value[0], value[1]);
+    (object as unknown as Container).position.set(value[0], value[1]);
   } else {
-    object.position.copyFrom(value)
+    (object as unknown as Container).position.copyFrom(value)
   }
 }
-const PositionXHandler: ExtraPropHandler<SolixiState, typeof Container, number> = (_1, _2, object, value) => {
-  object.position.x = value;
+const PositionXHandler: ExtraPropHandler<SolixiState, Constructable, number> = (_1, _2, object, value) => {
+  (object as unknown as Container).position.x = value;
 }
-const PositionYHandler: ExtraPropHandler<SolixiState, typeof Container, number> = (_1, _2, object, value) => {
-  object.position.y = value;
+const PositionYHandler: ExtraPropHandler<SolixiState, Constructable, number> = (_1, _2, object, value) => {
+  (object as unknown as Container).position.y = value;
 }
 
 export const HasPositionFragment = {
@@ -23,18 +24,18 @@ export const HasPositionFragment = {
   ['position-y']: PositionYHandler,
 }
 
-const ScaleHandler: ExtraPropHandler<SolixiState, typeof Container, Point | [number, number]> = (_1, _2, object, value) => {
+const ScaleHandler: ExtraPropHandler<SolixiState, Constructable, Point | [number, number]> = (_1, _2, object, value) => {
   if (Array.isArray(value)) {
-    object.scale.set(value[0], value[1]);
+    (object as unknown as Container).scale.set(value[0], value[1]);
   } else {
-    object.scale.copyFrom(value)
+    (object as unknown as Container).scale.copyFrom(value)
   }
 }
-const ScaleXHandler: ExtraPropHandler<SolixiState, typeof Container, number> = (_1, _2, object, value) => {
-  object.scale.x = value;
+const ScaleXHandler: ExtraPropHandler<SolixiState, Constructable, number> = (_1, _2, object, value) => {
+  (object as unknown as Container).scale.x = value;
 }
-const ScaleYHandler: ExtraPropHandler<SolixiState, typeof Container, number> = (_1, _2, object, value) => {
-  object.scale.y = value;
+const ScaleYHandler: ExtraPropHandler<SolixiState, Constructable, number> = (_1, _2, object, value) => {
+  (object as unknown as Container).scale.y = value;
 }
 
 export const HasScaleFragment = {
@@ -43,61 +44,61 @@ export const HasScaleFragment = {
   ['scale-y']: ScaleYHandler,
 }
 
-const RotationHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object, value: number) => {
-  object.rotation = value;
+const RotationHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object, value: number) => {
+  (object as unknown as Container).rotation = value;
 };
 export const HasRotationFragment = {
   ['rotation']: RotationHandler,
 }
 
-const VisibilityHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object, value: boolean) => {
-  object.visible = value;
+const VisibilityHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object, value: boolean) => {
+  (object as unknown as Container).visible = value;
 };
 export const HasVisibilityFragment = {
   ['visible']: VisibilityHandler,
 }
 
-// const OnWheelHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object, value: (event: FederatedWheelEvent) => void) => {
+// const OnWheelHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object, value: (event: FederatedWheelEvent) => void) => {
 //   object.on('wheel', value)
 //   return () => object.off('wheel', value);
 // };
-// const OnPointerOverHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnPointerOverHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('pointerover', value)
 //   return () => object.off('pointerover', value);
 // }
-// const OnPointerOutHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnPointerOutHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('pointerout', value)
 //   return () => object.off('pointerout', value);
 // }
-// const OnPointerEnterHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnPointerEnterHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('pointerenter', value)
 //   return () => object.off('pointerenter', value);
 // }
-// const OnPointerLeaveHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnPointerLeaveHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('pointerleave', value)
 //   return () => object.off('pointerleave', value);
 // }
-// const OnRightClickHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnRightClickHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('rightclick', value)
 //   return () => object.off('rightclick', value);
 // }
-// const OnRightDownHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnRightDownHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('rightdown', value)
 //   return () => object.off('rightdown', value);
 // }
-// const OnRightUpHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnRightUpHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('rightup', value)
 //   return () => object.off('rightup', value);
 // }
-// const OnClickHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnClickHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('click', value)
 //   return () => object.off('click', value);
 // }
-// const OnPointerDownHandler: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnPointerDownHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('pointerdown', value)
 //   return () => object.off('pointerdown', value);
 // }
-// const OnPointerU: ExtraPropHandler<SolixiState, typeof Container> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
+// const OnPointerU: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object: Container, value: (event: FederatedPointerEvent) => void) => {
 //   object.on('pointerdown', value)
 //   return () => object.off('pointerdown', value);
 // }

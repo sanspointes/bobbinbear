@@ -4,6 +4,7 @@ import { Ticker } from "@pixi/ticker"
 import { createRenderer } from "@bearbroidery/constructables"
 import { createContext, onCleanup, onMount } from "solid-js"
 import { SetStoreFunction, produce } from "solid-js/store"
+import { EventBoundary } from "@pixi/events"
 
 export type InternalState = {
   internal: {
@@ -15,6 +16,7 @@ export type RootState = {
   readonly app: Application,
   readonly ticker: Ticker,
   readonly stage: Container,
+  readonly boundary: EventBoundary,
 
   invalidate: () => void,
 }

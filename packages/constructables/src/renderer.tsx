@@ -1,4 +1,4 @@
-import { Context, createMemo, JSX, Accessor, children } from "solid-js";
+import { Context, createMemo, JSX, Accessor } from "solid-js";
 import { withContext } from "./utils";
 import { Constructable, SxiObject, SxiObjectMetadata } from "./types";
 import { parentChildren, prepareObject, resolve } from "./elements";

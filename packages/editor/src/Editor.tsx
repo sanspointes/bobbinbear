@@ -1,10 +1,23 @@
-import { Canvas, PContainer, useSolixi } from "@bearbroidery/solixi";
+import {
+  Canvas,
+  PContainer,
+  SolixiState,
+  useSolixi,
+} from "@bearbroidery/solixi";
 import { AppContext, createAppStore } from "./store";
-import { createEffect, onMount, Show, useContext } from "solid-js";
+import {
+  createSignal,
+  onMount,
+  Show,
+  useContext,
+} from "solid-js";
 import { Toolbar } from "./components/Toolbar";
 import { Cursor } from "./store/toolStore";
 import { SceneObjectChildren } from "./sxi-components/general";
 import { Viewport } from "./sxi-components/Viewport";
+import { CursorTest } from "./sxi-components/CursorTest";
+import { SelectBox } from "./sxi-components/SelectBox";
+import { preventDefault } from "@solid-primitives/event-listener";
 
 const EditorView = () => {
   const { sceneStore, dispatch } = useContext(AppContext);
@@ -12,26 +25,42 @@ const EditorView = () => {
 
   onMount(() => {
     dispatch("input:set-source", {
-      element: pixi.app.view as unknown as HTMLCanvasElement,
+      pointer: pixi.app.view as unknown as HTMLCanvasElement,
     });
   });
 
   return (
-    <Viewport>
-      <Show when={sceneStore.root}>
-        <SceneObjectChildren children={sceneStore.root} />
-      </Show>
-    </Viewport>
+    <>
+      <CursorTest />
+      <SelectBox />
+      <Viewport>
+        <Show when={sceneStore.root}>
+          <SceneObjectChildren children={sceneStore.root} />
+        </Show>
+      </Viewport>
+    </>
   );
 };
 
 export const Editor = () => {
-  const contextModel = createAppStore();
+  const [solixi, setSolixi] = createSignal<SolixiState>();
+  const onCreated = (state: SolixiState) => {
+    console.log("Created", state);
+    setSolixi(state);
+  };
 
-  console.log(contextModel);
+  const contextModel = createAppStore(solixi);
+  let wrapperEl: HTMLDivElement | undefined;
+  onMount(() => {
+    contextModel.dispatch("input:set-source", {
+      keys: wrapperEl,
+    });
+  })
+
+  const onWheel = preventDefault(() => {});
 
   return (
-    <div class="flex flex-col items-stretch w-full h-full">
+    <div ref={wrapperEl} tabindex={0} class="flex flex-col items-stretch w-full h-full" onWheel={onWheel}>
       <AppContext.Provider value={contextModel}>
         <Toolbar />
         <div
@@ -40,12 +69,12 @@ export const Editor = () => {
             "cursor-grab": contextModel.toolStore.currentCursor === Cursor.Grab,
             "cursor-grabbing":
               contextModel.toolStore.currentCursor === Cursor.Grabbing,
+            "cursor-pointer":
+              contextModel.toolStore.currentCursor === Cursor.Point,
           }}
         >
-          <Canvas devtools={true}>
-            <PContainer>
-              <EditorView />
-            </PContainer>
+          <Canvas devtools={true} onCreated={onCreated}>
+            <EditorView />
           </Canvas>
         </div>
       </AppContext.Provider>

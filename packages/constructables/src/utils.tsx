@@ -1,5 +1,4 @@
 import { type JSX,  Accessor, Context, } from "solid-js"
-import { resolve } from "./elements"
 
 /**
  * Renders children with a given context
@@ -10,7 +9,7 @@ import { resolve } from "./elements"
  * @returns 
  */
 export function withContext<T>(children: Accessor<JSX.Element | JSX.Element[]>, context: Context<T>, value: T) {
-  let result: JSX.Element | JSX.Element[]
+  let result: JSX.Element | JSX.Element[];
 
   console.log('WITH CONTEXT: ')
 
@@ -23,5 +22,5 @@ export function withContext<T>(children: Accessor<JSX.Element | JSX.Element[]>, 
     }) as any as JSX.Element,
   })
 
-  return result
+  return () => result
 }

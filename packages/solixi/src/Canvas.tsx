@@ -10,8 +10,7 @@ import { InternalState, RootState, SolixiState } from "./state"
 import { SolixiRoot } from "@bearbroidery/constructables/src/renderer"
 import { SetStoreFunction, createStore, produce } from "solid-js/store"
 import { Constructable, SxiObject } from "@bearbroidery/constructables/dist/types";
-import { EventSystem } from "@pixi/events";
-import { ICanvas, IRenderer, ISystemConstructor } from "@pixi/core";
+import { EventBoundary, EventSystem } from "@pixi/events";
 
 type InternalCanvasProps = {
   app?: Omit<Partial<IApplicationOptions>, 'canvas'>,
@@ -23,7 +22,7 @@ type InternalCanvasProps = {
 }
 type CanvasProps = ComponentProps<'div'> & InternalCanvasProps;
 
-const INTERNAL_PROP_KEYS = ['app', 'resolution', 'devtools', 'frameloop', 'children'] as unknown as (keyof InternalCanvasProps[]);
+const INTERNAL_PROP_KEYS = ['app', 'resolution', 'devtools', 'frameloop', 'children', 'onCreated'] as unknown as (keyof InternalCanvasProps[]);
 
 export const Canvas = (props: CanvasProps) => {
   // @ts-expect-error ; Can't be bothered to type this right now
@@ -69,6 +68,7 @@ export const Canvas = (props: CanvasProps) => {
     }
     const appOptions = {...(pixiProps.app ?? {}), ...defaultAppOptions };
     const app = new Application(appOptions)
+    const boundary = new EventBoundary(app.stage);
 
     if (!EventSystem) {
       console.warn('Solixi: No event system provided.');
@@ -81,6 +81,7 @@ export const Canvas = (props: CanvasProps) => {
       app, 
       stage: app.stage,
       ticker: app.ticker,
+      boundary,
       invalidate,
       internal: {
         useFrameRegistrations: [],
@@ -122,7 +123,7 @@ export const Canvas = (props: CanvasProps) => {
       }}
       {...divElementProps}>
       <div ref={containerEl} style={{ width: '100%', height: '100%' }}>
-        <canvas ref={canvasEl} tabindex={0} style={{ display: 'block' }} />
+        <canvas ref={canvasEl} style={{ display: 'block' }} />
       </div>
     </div>
   )

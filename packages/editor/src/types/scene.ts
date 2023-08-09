@@ -8,6 +8,8 @@ export type BaseSceneObject = {
   parent?: Uuid<SceneObject>,
   locked: boolean,
   children: SceneObject[],
+  hovered: boolean,
+  selected: boolean,
 }
 export type GraphicSceneObject = BaseSceneObject & {
   type: 'graphic',

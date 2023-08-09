@@ -1,11 +1,11 @@
-import { PMesh, PMeshMaterial, PPlaneGeometry } from "@bearbroidery/solixi";
+import { P } from "@bearbroidery/solixi";
 import { SceneObjectChildren } from "./general";
 import { GraphicSceneObject } from "../types/scene";
 
 export const GraphicSceneObjectView = (props: GraphicSceneObject) => ( 
-  <PMesh position={props.position} interactive={true}>
-    <PPlaneGeometry args={[1, 1]} />
-    <PMeshMaterial />
+  <P.Mesh position={props.position} interactive={true}>
+    <P.PlaneGeometry args={[1, 1]} />
+    <P.MeshMaterial />
     <SceneObjectChildren children={props.children} />
-  </PMesh>
+  </P.Mesh>
 );

@@ -5,10 +5,13 @@ import { createEffect } from "solid-js";
 import { pointDistance } from "../utils/point";
 import { ToolInputs } from "./tools/shared";
 import { createEventListener } from "@solid-primitives/event-listener";
+import { ViewportModel } from "./viewportStore";
+import { SceneModel } from "./sceneStore";
 
 export type InputMessages = {
   "input:set-source": {
-    element: HTMLElement;
+    pointer?: HTMLElement;
+    keys?: HTMLElement;
   };
   "input:pointerdown": {
     position: Point;
@@ -39,9 +42,11 @@ export type InputToolSettings = {
 export type InputModel = {
   settings: InputToolSettings;
 
-  source: HTMLElement | undefined;
+  pointerSource: HTMLElement | undefined;
+  keySource: HTMLElement | undefined;
   isDragging: boolean;
   keys: Set<string>;
+  position: Point;
   downPosition?: Point;
 };
 
@@ -55,19 +60,31 @@ const makeToolInputResponse = <
   };
 };
 
-export const createInputStore = (dispatch: GeneralHandler<AllMessages>) => {
+export const createInputStore = (
+  dispatch: GeneralHandler<AllMessages>,
+) => {
   const store = generateStore<InputModel, InputMessages>({
     settings: {
       dragThreshold: 2,
     },
-    source: undefined,
+    pointerSource: undefined,
+    keySource: undefined,
     isDragging: false,
     keys: new Set(),
+    position: new Point(),
     downPosition: undefined,
   }, {
     "input:set-source": (_, set, message) => {
-      set(produce((store) => store.source = message.element));
+      set(produce((store) => {
+        if (message.pointer) {
+          store.pointerSource = message.pointer;
+        }
+        if (message.keys) {
+          store.keySource = message.keys;
+        }
+      }));
     },
+
     "input:pointerdown": (_, set, message, respond) => {
       set(produce((store) => store.downPosition = message.position));
       respond!(
@@ -77,7 +94,10 @@ export const createInputStore = (dispatch: GeneralHandler<AllMessages>) => {
         }),
       );
     },
-    "input:pointermove": (store, _, message, respond) => {
+
+    "input:pointermove": (store, set, message, respond) => {
+      set(produce((store) => store.position = message.position));
+
       const dragDistance = store.downPosition &&
         pointDistance(store.downPosition, message.position);
       if (store.isDragging) {
@@ -106,6 +126,7 @@ export const createInputStore = (dispatch: GeneralHandler<AllMessages>) => {
         );
       }
     },
+
     "input:pointerup": (store, set, message, respond) => {
       if (store.isDragging) {
         respond!(
@@ -132,6 +153,7 @@ export const createInputStore = (dispatch: GeneralHandler<AllMessages>) => {
       );
       set(produce((store) => store.downPosition = undefined));
     },
+
     "input:keypress": (_1, _2, message, respond) => {
       respond!(
         "tool:input",
@@ -140,6 +162,7 @@ export const createInputStore = (dispatch: GeneralHandler<AllMessages>) => {
         }),
       );
     },
+
     "input:keydown": (store, set, message, respond) => {
       if (!store.keys.has(message.key)) {
         set(produce((store) => store.keys.add(message.key)));
@@ -152,6 +175,7 @@ export const createInputStore = (dispatch: GeneralHandler<AllMessages>) => {
         );
       }
     },
+
     "input:keyup": (store, set, message, respond) => {
       set(produce((store) => store.keys.delete(message.key)));
       respond!(
@@ -164,40 +188,18 @@ export const createInputStore = (dispatch: GeneralHandler<AllMessages>) => {
     },
   });
 
-  // Bind all the event listeners when source is provided.
+  // Pointer events are handled by the Viewport.tsx class.
+
+  // Bind key events on the key source
   createEffect(() => {
-    if (store.store.source) {
-      createEventListener(
-        store.store.source,
-        "pointerdown",
-        (e) =>
-          store.handle("input:pointerdown", {
-            position: new Point(e.clientX, e.clientY),
-          }, dispatch),
-      );
-      createEventListener(
-        store.store.source,
-        "pointermove",
-        (e) =>
-          store.handle("input:pointermove", {
-            position: new Point(e.clientX, e.clientY),
-          }, dispatch),
-      );
-      createEventListener(
-        store.store.source,
-        "pointerup",
-        (e) =>
-          store.handle("input:pointerup", {
-            position: new Point(e.clientX, e.clientY),
-          }, dispatch),
-      );
-      createEventListener(store.store.source, "keydown", (e) => {
+    if (store.store.keySource) {
+      createEventListener(store.store.keySource, "keydown", (e) => {
         store.handle("input:keydown", {
           key: e.key,
         }, dispatch);
       });
       createEventListener(
-        store.store.source,
+        store.store.keySource,
         "keyup",
         (e) =>
           store.handle("input:keyup", {
@@ -205,7 +207,7 @@ export const createInputStore = (dispatch: GeneralHandler<AllMessages>) => {
           }, dispatch),
       );
       createEventListener(
-        store.store.source,
+        store.store.keySource,
         "keypress",
         (e) =>
           store.handle("input:keypress", {

@@ -1,4 +1,4 @@
-import { createContext } from "solid-js";
+import { Accessor, createContext } from "solid-js";
 import { SceneStoreMessages, SceneModel, createSceneStore } from "./sceneStore";
 import { Tool, ToolModel, ToolStoreMessage, createToolStore } from "./toolStore";
 
@@ -7,6 +7,8 @@ import { Tool, ToolModel, ToolStoreMessage, createToolStore } from "./toolStore"
  */
 import { SetStoreFunction, createStore } from "solid-js/store";
 import { InputMessages, InputModel, createInputStore } from "./inputStore";
+import { SolixiState } from "@bearbroidery/solixi";
+import { ViewportMessage, ViewportModel, createViewportStore } from "./viewportStore";
 
 type BaseMessages = Record<string, unknown>
 type BaseModel = Record<string, unknown>
@@ -60,7 +62,7 @@ export function generateStore<TModel extends BaseModel, TMessages extends BaseMe
  * Intialising Store
  */
 
-export type AllMessages = SceneStoreMessages & ToolStoreMessage & InputMessages;
+export type AllMessages = SceneStoreMessages & ToolStoreMessage & InputMessages & ViewportMessage;
 
 type EditorModel = {
   temp: 1
@@ -68,7 +70,7 @@ type EditorModel = {
 
 export type AppDispatcher = GeneralHandler<AllMessages>;
 
-export const createAppStore = () => {
+export const createAppStore = (solixi: Accessor<SolixiState|undefined>) => {
   // Pre-declare handlers so they can be referenced by the main store.
   let sceneStore: SceneModel,
     sceneHandler: GeneralHandler<SceneStoreMessages>;
@@ -76,6 +78,8 @@ export const createAppStore = () => {
     inputHandler: GeneralHandler<InputMessages>;
   let toolStore: ToolModel,
     toolHandler: GeneralHandler<ToolStoreMessage>;
+  let viewportStore: ViewportModel,
+    viewportHandler: GeneralHandler<ViewportMessage>;
 
   const model: EditorModel = {
     temp: 1,
@@ -97,9 +101,6 @@ export const createAppStore = () => {
       }
 
       for (const {type, message} of responses) {
-        if (!type.startsWith('input') && type !== 'tool:input')
-          console.debug('Handing message ', type, message)
-
         if (type.startsWith('scene')) {
           // @ts-expect-error; Can't be bothered typing. 
           sceneHandler(type, message, handleResponse)
@@ -109,6 +110,9 @@ export const createAppStore = () => {
         } else if (type.startsWith('input')) {
           // @ts-expect-error; Can't be bothered typing. 
           inputHandler(type, message, handleResponse);
+        } else if (type.startsWith('viewport')) {
+          // @ts-expect-error; Can't be bothered typing. 
+          viewportHandler(type, message, handleResponse);
         } else {
           throw new Error(`EditorStore: Unable to dispatch message to correct store.  Not store with prefix for ${type}.`)
         }
@@ -122,9 +126,12 @@ export const createAppStore = () => {
   const inputResult = createInputStore(appStoreResult.handle);
   inputStore = inputResult.store;
   inputHandler = inputResult.handle;
-  const toolResult = createToolStore(appStoreResult.handle);
+  const toolResult = createToolStore(appStoreResult.handle, solixi, inputStore, sceneStore);
   toolStore = toolResult.store;
   toolHandler = toolResult.handle;
+  const viewportResult = createViewportStore(appStoreResult.handle);
+  viewportStore = viewportResult.store;
+  viewportHandler = viewportResult.handle;
 
   // Setup initial state
   appStoreResult.handle('tool:switch', Tool.Select);
@@ -133,6 +140,7 @@ export const createAppStore = () => {
     inputStore,
     sceneStore,
     toolStore,
+    viewportStore,
     dispatch: appStoreResult.handle,
   })
   return finalStore;
@@ -142,6 +150,7 @@ type AppContextModel = {
   inputStore: InputModel,
   sceneStore: SceneModel,
   toolStore: ToolModel,
+  viewportStore: ViewportModel,
   dispatch: GeneralHandler<AllMessages>,
 }
 export const AppContext = createContext({ app_context: true } as unknown as AppContextModel)

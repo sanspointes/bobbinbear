@@ -8,6 +8,7 @@ export default defineConfig(({mode})  => {
   const plugins = [
     dts({
       insertTypesEntry: true,
+      outDir: "./dist/",
     }),
     inspect(),
     solid(),
@@ -22,7 +23,7 @@ export default defineConfig(({mode})  => {
       emptyOutDir: false,
       lib: {
         entry: './src/index.ts',
-        formats: ['es', 'cjs', 'umd'],
+        formats: ['es'],
         fileName: (format) => `solixi.${format}.js`,
         name: 'solixi',
       },
@@ -36,7 +37,6 @@ export default defineConfig(({mode})  => {
           '@pixi/assets',
           '@pixi/core',
           '@pixi/display',
-          '@pixi/interaction',
           '@pixi/layers',
           '@pixi/mesh',
           '@pixi/mesh-extras',

@@ -13,7 +13,7 @@ export type WrapFieldsWithAccessor<T> = {
   [K in keyof T]: Accessor<T[K]> | T[K];
 };
 
-export type Overwrite<T, O> = Omit<T, keyof O> & O;
+export type Overwrite<TBase, TOverride> = Omit<TBase, keyof TOverride> & TOverride;
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Constructable = new (...args: any[]) => unknown;
 export type Args<T> = T extends Constructable ? ConstructorParameters<T>

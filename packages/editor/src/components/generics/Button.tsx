@@ -12,7 +12,7 @@ export const Button = (p: ButtonProps) => {
 
   return (
     <KButton.Root class='p-4 rounded-md' classList={{
-      'bg-gray-50 text-gray-800': props.variant === 'default',
+      'bg-gray-100 hover:bg-gray-200 text-gray-800': props.variant === 'default',
     }} {...props} />
   )
 }
