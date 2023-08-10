@@ -8,7 +8,6 @@ import { AppContext, createAppStore } from "./store";
 import {
   createSignal,
   onMount,
-  Show,
   useContext,
 } from "solid-js";
 import { Toolbar } from "./components/Toolbar";
@@ -18,6 +17,7 @@ import { Viewport } from "./sxi-components/Viewport";
 import { CursorTest } from "./sxi-components/CursorTest";
 import { SelectBox } from "./sxi-components/SelectBox";
 import { preventDefault } from "@solid-primitives/event-listener";
+import { Sidebar } from "./components/Sidebar";
 
 const EditorView = () => {
   const { sceneStore, dispatch } = useContext(AppContext);
@@ -34,9 +34,9 @@ const EditorView = () => {
       <CursorTest />
       <SelectBox />
       <Viewport>
-        <Show when={sceneStore.root}>
+        { sceneStore.root && (
           <SceneObjectChildren children={sceneStore.root} />
-        </Show>
+        )}
       </Viewport>
     </>
   );
@@ -50,6 +50,7 @@ export const Editor = () => {
   };
 
   const contextModel = createAppStore(solixi);
+  const { toolStore } = contextModel;
   let wrapperEl: HTMLDivElement | undefined;
   onMount(() => {
     contextModel.dispatch("input:set-source", {
@@ -64,18 +65,21 @@ export const Editor = () => {
       <AppContext.Provider value={contextModel}>
         <Toolbar />
         <div
-          class="flex-grow"
+          class="flex-grow flex"
           classList={{
-            "cursor-grab": contextModel.toolStore.currentCursor === Cursor.Grab,
+            "cursor-grab": toolStore.currentCursor === Cursor.Grab,
             "cursor-grabbing":
-              contextModel.toolStore.currentCursor === Cursor.Grabbing,
+              toolStore.currentCursor === Cursor.Grabbing,
             "cursor-pointer":
-              contextModel.toolStore.currentCursor === Cursor.Point,
+              toolStore.currentCursor === Cursor.Point,
+            "cursor-crosshair": 
+              toolStore.currentCursor === Cursor.Cross,
           }}
         >
-          <Canvas devtools={true} onCreated={onCreated}>
+          <Canvas devtools={true} onCreated={onCreated} app={{backgroundColor: 0xE1E1E1}}>
             <EditorView />
           </Canvas>
+          <Sidebar />
         </div>
       </AppContext.Provider>
     </div>

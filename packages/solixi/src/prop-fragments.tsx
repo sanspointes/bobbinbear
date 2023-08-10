@@ -4,6 +4,15 @@ import { Point } from "@pixi/core";
 import { SolixiState } from "./state";
 import { Constructable } from "@bearbroidery/constructables";
 
+const NameHandler: ExtraPropHandler<SolixiState, Constructable, string> = (_1, _2, object, value) => {
+  // @ts-expect-error ; This is not technically a field but widely supported by pixi ecosystem.
+  object.name = value
+}
+
+export const HasNameFragment = {
+  ['name']: NameHandler,
+}
+
 const PositionHandler: ExtraPropHandler<SolixiState, Constructable, Point | [number, number]> = (_1, _2, object, value) => {
   if (Array.isArray(value)) {
     (object as unknown as Container).position.set(value[0], value[1]);

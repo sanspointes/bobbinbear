@@ -22,6 +22,7 @@ export type SceneStoreMessages = {
 
 export type SceneModel = {
   selectedIds: Uuid<SceneObject>[];
+  selectedObjects: SceneObject[],
   undoStack: Command[];
   redoStack: Command[];
   root: SceneObject[];
@@ -32,6 +33,13 @@ export const createSceneStore = () => {
 
   const result = generateStore<SceneModel, SceneStoreMessages>({
     selectedIds: [],
+    get selectedObjects() {
+      return this.selectedIds.map(( id: Uuid<SceneObject> ) => {
+        const result = objMap.get(id);
+        if (!result) throw new Error(`sceneStore.selectedObjects could not get object for id ${id}.`)
+        return result.object;
+      })
+    },
     undoStack: [],
     redoStack: [],
     root: [],
@@ -71,6 +79,7 @@ export const createSceneStore = () => {
 
           // @ts-expect-error; Type is asserted to be same by the `sameType` check above.
           lastCommand.updateData(command);
+          lastCommand.final = command.final;
         }
 
         // Perform the command

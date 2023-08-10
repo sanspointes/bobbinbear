@@ -9,16 +9,16 @@ import {
 import { ToolInputMessage } from "./tools/shared";
 import { Accessor } from "solid-js";
 import { SolixiState } from "@bearbroidery/solixi";
-import { Uuid } from "../utils/uuid";
 import { SceneModel } from "./sceneStore";
-import { SceneObject } from "../types/scene";
 import { InputModel } from "./inputStore";
+import { BoxToolModel, BoxToolStore, createBoxToolStore } from "./tools/box";
 
-type SubToolStores = SelectToolStore;
+type SubToolStores = SelectToolStore | BoxToolStore;
 
 export enum Tool {
-  None,
-  Select,
+  None = 'None',
+  Select = 'Select',
+  Box = 'Box',
 }
 
 export enum Cursor {
@@ -26,11 +26,13 @@ export enum Cursor {
   Grab,
   Grabbing,
   Point,
+  Cross,
 }
 
 export const TOOL_TO_DEFAULT_CURSOR_MAP: Record<Tool, Cursor> = {
   [Tool.None]: Cursor.Default,
   [Tool.Select]: Cursor.Default,
+  [Tool.Box]: Cursor.Cross,
 };
 
 export type ToolStoreMessage = {
@@ -47,6 +49,7 @@ export type ToolModel = {
   currentCursor: Cursor; // Resolved current tool (stack overlayed on base)
 
   selectTool: SelectToolModel;
+  boxTool: BoxToolModel;
 };
 
 export type ToolHandler = GeneralHandler<ToolStoreMessage>;
@@ -60,6 +63,7 @@ export const createToolStore = (
   const TOOL_TO_STORE_MAP: Record<Tool, SubToolStores | undefined> = {
     [Tool.None]: undefined,
     [Tool.Select]: createSelectToolStore(dispatch, solixi, inputModel, sceneModel),
+    [Tool.Box]: createBoxToolStore(dispatch),
   };
 
   const model: ToolModel = {
@@ -70,7 +74,8 @@ export const createToolStore = (
       return last ?? TOOL_TO_DEFAULT_CURSOR_MAP[this.tool as Tool];
     },
 
-    selectTool: TOOL_TO_STORE_MAP[Tool.Select]!.store,
+    selectTool: TOOL_TO_STORE_MAP[Tool.Select]!.store as SelectToolModel,
+    boxTool: TOOL_TO_STORE_MAP[Tool.Box]!.store as BoxToolModel,
   };
 
   const toolStore = generateStore<ToolModel, ToolStoreMessage>(model, {

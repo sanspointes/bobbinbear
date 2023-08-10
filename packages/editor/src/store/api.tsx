@@ -13,7 +13,7 @@ export const createCanvas = (dispatch: AppDispatcher, name?: string, size = new 
     position: new Point(0, 0),
     locked: false,
     children: [],
-    backgroundColor: 'white',
+    fillColor: 'white',
   };
   dispatch('scene:do-command', new CreateObjectCommand(canvas))
 }

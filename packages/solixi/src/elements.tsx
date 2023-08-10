@@ -9,6 +9,7 @@ import { Texture } from "@pixi/core";
 import { Graphics as PixiGraphics, GraphicsGeometry as PixiGraphicsGeometry } from "@pixi/graphics";
 import { Solixi, SolixiState } from "./state";
 import {
+    HasNameFragment,
   HasPositionFragment,
   HasRotationFragment,
   HasScaleFragment,
@@ -19,6 +20,7 @@ import { ClassProps } from "@bearbroidery/constructables";
 export const temp = (a: number) => a + 1;
 
 const ContainerExtraProps = {
+  ...HasNameFragment,
   ...HasPositionFragment,
   ...HasScaleFragment,
   ...HasVisibilityFragment,
@@ -39,6 +41,7 @@ export const Container = Solixi.wrapConstructable(PixiContainer, {
  * Mesh
  */
 const MeshExtraProps = {
+  ...HasNameFragment,
   ...HasPositionFragment,
   ...HasScaleFragment,
   ...HasVisibilityFragment,
@@ -52,14 +55,29 @@ export const Mesh = Solixi.wrapConstructable(PixiMesh<PixiMeshMaterial>, {
     return () => b.removeChild(c);
   },
   defaultArgs: [new PixiPlaneGeometry(), new PixiMeshMaterial(Texture.WHITE)],
-  // Need to figure out how to permit classes that extend the base class of the prop fragments.
-  extraProps: {
-    ...HasPositionFragment,
-    ...HasScaleFragment,
-    ...HasVisibilityFragment,
-    ...HasRotationFragment,
-  },
+  extraProps: MeshExtraProps,
 });
+
+/**
+ * Graphics
+ */
+const GraphicsExtraProps = {
+  ...HasNameFragment,
+  ...HasPositionFragment,
+  ...HasScaleFragment,
+  ...HasVisibilityFragment,
+  ...HasRotationFragment,
+};
+export type GraphicsProps = ClassProps<SolixiState, typeof PixiGraphics, typeof GraphicsExtraProps>;
+export const Graphics = Solixi.wrapConstructable(PixiGraphics, {
+  // @ts-expect-error ; Hard to type parent of attach function
+  attach: (_, b: PixiContainer, c) => {
+    b.addChild(c);
+    return () => b.removeChild(c);
+  },
+  defaultArgs: [new PixiGraphicsGeometry()],
+  extraProps: GraphicsExtraProps,
+})
 
 export const PlaneGeometry = Solixi.wrapConstructable(PixiPlaneGeometry, {
   attach: "geometry",
@@ -85,17 +103,3 @@ export const MeshMaterial = Solixi.wrapConstructable(PixiMeshMaterial, {
   extraProps: {},
 });
 
-export const Graphics = Solixi.wrapConstructable(PixiGraphics, {
-  // @ts-expect-error ; Hard to type parent of attach function
-  attach: (_, b: PixiContainer, c) => {
-    b.addChild(c);
-    return () => b.removeChild(c);
-  },
-  defaultArgs: [new PixiGraphicsGeometry()],
-  extraProps: {
-    ...HasPositionFragment,
-    ...HasScaleFragment,
-    ...HasVisibilityFragment,
-    ...HasRotationFragment,
-  },
-})

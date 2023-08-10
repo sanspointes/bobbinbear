@@ -14,7 +14,6 @@ import { metadata } from "../../utils/metadata.ts";
 import { Uuid } from "../../utils/uuid.ts";
 import { SceneObject } from "../../types/scene.ts";
 import { DeselectObjectsCommand, SelectObjectsCommand } from "../commands/object.ts";
-import { TbFileUnknown } from "solid-icons/tb";
 import { SceneModel } from "../sceneStore.tsx";
 import { InputModel } from "../inputStore.ts";
 import { MultiCommand } from "../commands/index.ts";
@@ -106,9 +105,7 @@ export const createSelectToolStore = (
         dispatch("scene:do-command", cmd);
       },
     ),
-    t(SelectStates.Default, SelectEvents.PointerDown, SelectStates.PointerDownOnEmpty, () => {
-
-    }),
+    t(SelectStates.Default, SelectEvents.PointerDown, SelectStates.PointerDownOnEmpty),
     t(SelectStates.PointerDownOnEmpty, SelectEvents.DragStart, SelectStates.Selecting, () => {
       result.store.isSelecting = true;
     }),
@@ -117,7 +114,7 @@ export const createSelectToolStore = (
     }),
     t(SelectStates.PointerDownOnElement, SelectEvents.PointerUp, SelectStates.Hoverring),
     t(SelectStates.PointerDownOnElement, SelectEvents.DragStart, SelectStates.Moving),
-    t(SelectStates.Default, SelectEvents.PointerDown, SelectStates.Default, () => {
+    t(SelectStates.PointerDownOnEmpty, SelectEvents.PointerUp, SelectStates.Default, () => {
       const deselectAllCmd = new DeselectObjectsCommand(...sceneModel.selectedIds);
       dispatch('scene:do-command', deselectAllCmd);
     }),

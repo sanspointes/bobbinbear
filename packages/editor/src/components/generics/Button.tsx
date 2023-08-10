@@ -1,18 +1,25 @@
-import { Button as KButton, } from '@kobalte/core';
-import { mergeProps } from 'solid-js';
+import { Button as KButton } from "@kobalte/core";
+import { mergeProps } from "solid-js";
 
 export type ButtonProps = KButton.ButtonRootProps & {
-  variant?: 'default'
-}
+  variant?: "default";
+};
 const DEFAULT_PROPS: ButtonProps = {
-  variant: 'default',
-}
+  variant: "default",
+};
 export const Button = (p: ButtonProps) => {
-  const props: ButtonProps = mergeProps(p, DEFAULT_PROPS)
+  const props: ButtonProps = mergeProps(p, DEFAULT_PROPS);
 
   return (
-    <KButton.Root class='p-4 rounded-md' classList={{
-      'bg-gray-100 hover:bg-gray-200 text-gray-800': props.variant === 'default',
-    }} {...props} />
-  )
-}
+    <KButton.Root
+      class="p-4 rounded-md"
+      classList={{
+        [props.class ?? '']: props.class !== undefined,
+        "bg-gray-100 hover:bg-gray-200 text-gray-800":
+          props.variant === "default",
+ 
+      }}
+      {...props}
+    />
+  );
+};

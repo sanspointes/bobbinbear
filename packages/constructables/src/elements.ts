@@ -339,5 +339,6 @@ export const wrapConstructable = <
 
     return getObject as unknown as Element;
   };
+  Object.defineProperty(Component, 'name', { value: source.name, writable: false })
   return Component;
 };

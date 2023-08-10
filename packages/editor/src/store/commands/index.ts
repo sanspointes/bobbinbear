@@ -5,6 +5,7 @@ import {
   MoveObjectCommand,
   SceneCommands,
   SelectObjectsCommand,
+  SetSceneObjectFieldCommand,
 } from "./object";
 import { SetStoreFunction } from "solid-js/store";
 import { SceneObject } from "../../types/scene";
@@ -24,9 +25,11 @@ export const _commandPrototypeMap: Record<CommandType, AbstractCommand> = {
   "DeleteObjectCommand": DeleteObjectCommand.prototype,
   "MoveObjectCommand": MoveObjectCommand.prototype,
   "SelectObjectsCommand": SelectObjectsCommand.prototype,
+  "SetSceneObjectFieldCommand": SetSceneObjectFieldCommand.prototype
 };
 
 export class MultiCommand extends AbstractCommand {
+  public updatable: boolean = true;
   name = "Multi Command";
   type = "MultiCommand";
   commands: Command[];
@@ -73,6 +76,17 @@ export class MultiCommand extends AbstractCommand {
       cmd.toObject(cmdObject);
       object[i] = cmdObject;
       i++;
+    }
+  }
+
+  updateData(newer: MultiCommand): void {
+    if (this.commands.length !== newer.commands.length) 
+      throw new Error(`MultiCommand.updateData() Cant update MultiCommand as newer version has a different number of commands.  Expected ${this.commands.length}, found ${newer.commands.length}.`);
+    let i = 0;
+    for (const cmd of this.commands) {
+      // @ts-ignore-error; Typescript pains.
+      if (cmd.updateData) cmd.updateData(newer.commands[i]);
+      i += 1;
     }
   }
 }

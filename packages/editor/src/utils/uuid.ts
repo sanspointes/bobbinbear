@@ -7,5 +7,5 @@ export const uuid = <T extends OptionalRecord = undefined>(value: string) => {
     return value as Uuid<T>
 }
 export const newUuid = <T extends OptionalRecord = undefined>() => {
-  return uuid<T>(createUniqueId());
+  return uuid<T>(createUniqueId())
 }

@@ -109,6 +109,7 @@ export const createInputStore = (
           }),
         );
       } else if (dragDistance && dragDistance > store.settings.dragThreshold) {
+        set('isDragging', true);
         respond!(
           "tool:input",
           makeToolInputResponse("pointer1-dragstart", {
@@ -136,6 +137,7 @@ export const createInputStore = (
             downPosition: store.downPosition as Point,
           }),
         );
+        set('isDragging', false);
       } else {
         respond!(
           "tool:input",

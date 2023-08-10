@@ -33,26 +33,31 @@ const addObject = (
   objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   newObjectData: SceneObject,
 ) => {
-  // Add all children to store
-  traverse(newObjectData, (obj) => {
-    const [object, setObject] = createStore(obj);
-    objMap.set(object.id, {
-      object,
-      set: setObject,
-    });
-  });
-
-  const object = objMap.get(newObjectData.id)!.object;
-  // Attach to parent or add to root
-  if (newObjectData.parent) {
-    const parentStore = objMap.get(newObjectData.parent);
-    if (parentStore) {
-      parentStore.set(produce((parent) => {
-        parent.children.push(object);
-      }));
-    }
+  if (objMap.has(newObjectData.id)) {
+    const data = objMap.get(newObjectData.id) as ObjectMapData;
+    data.set(newObjectData);
   } else {
-    setStore(produce((store) => store.root.push(object)));
+    // Add all children to store
+    traverse(newObjectData, (obj) => {
+      const [object, setObject] = createStore(obj);
+      objMap.set(object.id, {
+        object,
+        set: setObject,
+      });
+    });
+
+    const object = objMap.get(newObjectData.id)!.object;
+    // Attach to parent or add to root
+    if (newObjectData.parent) {
+      const parentStore = objMap.get(newObjectData.parent);
+      if (parentStore) {
+        parentStore.set(produce((parent) => {
+          parent.children.push(object);
+        }));
+      }
+    } else {
+      setStore(produce((store) => store.root.push(object)));
+    }
   }
 };
 
@@ -92,7 +97,9 @@ const deleteObject = (
 };
 
 export class CreateObjectCommand extends AbstractCommand {
-  name = "Create Object" as const;
+  public updatable: boolean = false;
+
+  name = "Create Object";
   type = "CreateObjectCommand" as const;
   constructor(private object: SceneObject) {
     super();
@@ -125,10 +132,69 @@ export class CreateObjectCommand extends AbstractCommand {
   fromObject<T extends CommandType>(object: SerializedCommand<T>): void {
     this.object = JSON.parse(object.object as string) as SceneObject;
   }
+
+  updateData(newer: CreateObjectCommand): void {
+    this.object = newer.object;
+  }
+}
+
+export class SetSceneObjectFieldCommand<TObj extends SceneObject, K extends keyof TObj> extends AbstractCommand {
+  public updatable: boolean = true;
+
+  name = "Set Scene Object Field";
+  type = "SetSceneObjectFieldCommand" as const;
+  oldValue: TObj[K] | undefined = undefined;
+  constructor(private objectId: Uuid<SceneObject>, private field: K, private value: TObj[K]) {
+    super();
+  }
+
+  perform(
+    _store: SceneModel,
+    _setStore: SetStoreFunction<SceneModel>,
+    objMap: Map<Uuid<SceneObject>, ObjectMapData>,
+  ): void {
+    console.debug(`SetSceneObjectFieldCommand: ${this.objectId}.${this.field.toString()} to ${this.value}`);
+    const result = objMap.get(this.objectId);
+    if (!result) throw new Error(`SetSceneObjectFieldCommand: Can not get object ${this.objectId}`);
+    this.oldValue = result.object[this.field as keyof SceneObject] as TObj[K];
+    // @ts-ignore-error; Complicated typescript
+    result.set(this.field, this.value)
+  }
+  undo(
+    _store: SceneModel,
+    _setStore: SetStoreFunction<SceneModel>,
+    objMap: Map<Uuid<SceneObject>, ObjectMapData>,
+  ): void {
+    console.debug(`SetSceneObjectFieldCommand: (undo) ${this.objectId}.${this.field.toString()} to ${this.oldValue}`);
+    const result = objMap.get(this.objectId);
+    if (!result) throw new Error(`SetSceneObjectFieldCommand: (undo) Can not get object ${this.objectId}`);
+    // @ts-ignore-error; Complicated typescript
+    result.set(this.field, this.oldValue)
+  }
+
+  toObject(object: Record<string, unknown>): void {
+    super.toObject(object);
+    object.objectId = this.objectId;
+    object.field = this.field;
+    object.value = this.value;
+  }
+  fromObject<T extends CommandType>(object: SerializedCommand<T>): void {
+    this.objectId = object.objectId as Uuid<SceneObject>;
+    this.field = object.field as K;
+    this.value = object.value as TObj[K];
+  }
+
+  updateData(newer: SetSceneObjectFieldCommand<TObj, keyof TObj>): void {
+    if (newer.field !== this.field) throw new Error('SetSceneObjectFieldCommand.updateData() Can\'t update command to use new field.  Make sure field matches previous commands');
+    // @ts-ignore-error ; Complicated typescript
+    this.value = newer.value;
+  }
 }
 
 export class DeleteObjectCommand extends AbstractCommand {
-  name = "Delete Object" as const;
+  public updatable: boolean = false;
+
+  name = "Delete Object";
   type = "DeleteObjectCommand" as const;
   constructor(private object: SceneObject) {
     super();
@@ -162,7 +228,9 @@ export class DeleteObjectCommand extends AbstractCommand {
 }
 
 export class MoveObjectCommand extends AbstractCommand {
-  name = "Move Object" as const;
+  public updatable: boolean = true;
+
+  name = "Move Object";
   type = "MoveObjectCommand" as const;
 
   oldPosition?: Point;
@@ -223,7 +291,9 @@ export class MoveObjectCommand extends AbstractCommand {
 }
 
 export class SelectObjectsCommand extends AbstractCommand {
-  name = "Select Objects" as const;
+  public updatable: boolean = true;
+
+  name = "Select Objects";
   type = "SelectObjectsCommand" as const;
 
   toSelect: Uuid<SceneObject>[] = [];
@@ -286,7 +356,9 @@ export class SelectObjectsCommand extends AbstractCommand {
 }
 
 export class DeselectObjectsCommand extends AbstractCommand {
-  name = "Deselect Objects" as const;
+  public updatable: boolean = true;
+
+  name = "Deselect Objects";
   type = "DeselectObjectsCommand" as const;
 
   toSelect: Uuid<SceneObject>[] = [];
@@ -351,6 +423,7 @@ export class DeselectObjectsCommand extends AbstractCommand {
 export type SceneCommands =
   | CreateObjectCommand
   | DeleteObjectCommand
+  | SetSceneObjectFieldCommand<SceneObject, keyof SceneObject>
   | MoveObjectCommand
   | SelectObjectsCommand
   | DeselectObjectsCommand

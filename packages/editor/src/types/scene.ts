@@ -1,8 +1,10 @@
 import { ColorSource, Point } from "@pixi/core";
 import { Uuid } from "../utils/uuid";
+import { IFillStyleOptions, ILineStyleOptions, LINE_CAP } from "@pixi/graphics";
 
 export type BaseSceneObject = {
   id: Uuid<SceneObject>,
+  visible: boolean,
   name: string,
   position: Point,
   parent?: Uuid<SceneObject>,
@@ -11,13 +13,37 @@ export type BaseSceneObject = {
   hovered: boolean,
   selected: boolean,
 }
+
+export enum GraphicNodeTypes {
+  Jump = 0,
+  Control = 1,
+  Point = 2,
+}
+
+export type BasicGraphicsNode = {
+  type: GraphicNodeTypes.Jump|GraphicNodeTypes.Control,
+  x: number,
+  y: number,
+}
+export type CloseableGraphicsNode = {
+  type: GraphicNodeTypes.Point,
+  x: number,
+  y: number,
+  close?: boolean,
+}
+
+export type GraphicsNode = BasicGraphicsNode | CloseableGraphicsNode;
+
 export type GraphicSceneObject = BaseSceneObject & {
   type: 'graphic',
+  shape: GraphicsNode[],
+  fill: IFillStyleOptions,
+  stroke: ILineStyleOptions,
 }
 export type CanvasSceneObject = BaseSceneObject & {
   type: 'canvas',
   size: Point,
-  backgroundColor: ColorSource,
+  fillColor: ColorSource,
 }
 
 export type SceneObject = (GraphicSceneObject | CanvasSceneObject);

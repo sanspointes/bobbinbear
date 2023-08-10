@@ -1,6 +1,5 @@
 import {
   Accessor,
-  createMemo,
   createRenderEffect,
   createSignal,
   untrack,
@@ -162,6 +161,7 @@ export function createStateMachine<TState, TEvent>(
   return {
     state,
     force: (state) => {
+      setState(() => state);
       machine.force(state);
     },
     can: (event) => {

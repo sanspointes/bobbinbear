@@ -40,9 +40,9 @@ export const CanvasSceneObjectView = (props: CanvasSceneObject) => {
   })
 
   return ( 
-  <P.Mesh ref={mesh} scale={props.size} position={props.position} interactive={true}>
+  <P.Mesh name={`Mesh-${props.id}`} ref={mesh} scale={props.size} position={props.position} interactive={true}>
     <P.PlaneGeometry args={[1, 1]} />
-    <P.MeshMaterial tint={props.backgroundColor} />
+    <P.MeshMaterial tint={props.fillColor} />
     <SceneObjectChildren children={props.children} />
   </P.Mesh>
 )

@@ -9,10 +9,12 @@ export type SerializedCommand<T extends CommandType> = {
   type: T,
   name: string,
   final: boolean,
+  updatable: boolean,
 } & Record<string, unknown>;
 
 export abstract class AbstractCommand {
   public final = true;
+  public abstract updatable: boolean;
 
   public readonly abstract name: string;
   public readonly abstract type: string;
