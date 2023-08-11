@@ -4,6 +4,10 @@ import {
   MeshGeometry as PixiMeshGeometry,
   MeshMaterial as PixiMeshMaterial,
 } from "@pixi/mesh";
+import {
+  Sprite as PixiSprite
+} from '@pixi/sprite';
+
 import { PlaneGeometry as PixiPlaneGeometry } from "@pixi/mesh-extras";
 import { Texture } from "@pixi/core";
 import {
@@ -13,6 +17,7 @@ import {
 import { Solixi, SolixiState } from "./state";
 import {
   HasNameFragment,
+  HasParentLayerFragment,
   HasPositionFragment,
   HasRotationFragment,
   HasScaleFragment,
@@ -28,6 +33,7 @@ const ContainerExtraProps = {
   ...HasScaleFragment,
   ...HasVisibilityFragment,
   ...HasRotationFragment,
+  ...HasParentLayerFragment,
 };
 export type ContainerProps = ClassProps<
   SolixiState,
@@ -53,6 +59,7 @@ const MeshExtraProps = {
   ...HasScaleFragment,
   ...HasVisibilityFragment,
   ...HasRotationFragment,
+  ...HasParentLayerFragment,
 };
 export type MeshProps = ClassProps<
   SolixiState,
@@ -82,6 +89,7 @@ const GraphicsExtraProps = {
   ...HasScaleFragment,
   ...HasVisibilityFragment,
   ...HasRotationFragment,
+  ...HasParentLayerFragment,
 };
 export type GraphicsProps = ClassProps<
   SolixiState,
@@ -97,6 +105,34 @@ export const Graphics = Solixi.wrapConstructable(PixiGraphics, {
   defaultArgs: (_ctx) =>
     [new PixiGraphicsGeometry()] as ConstructorParameters<typeof PixiGraphics>,
   extraProps: GraphicsExtraProps,
+});
+
+
+/**
+ * Sprite
+ */
+const SpriteExtraProps = {
+  ...HasNameFragment,
+  ...HasPositionFragment,
+  ...HasScaleFragment,
+  ...HasVisibilityFragment,
+  ...HasRotationFragment,
+  ...HasParentLayerFragment,
+};
+export type SpriteProps = ClassProps<
+  SolixiState,
+  typeof PixiGraphics,
+  typeof SpriteExtraProps
+>;
+export const Sprite = Solixi.wrapConstructable(PixiSprite, {
+  // @ts-expect-error ; Hard to type parent of attach function
+  attach: (_, b: PixiContainer, c) => {
+    b.addChild(c);
+    return () => b.removeChild(c);
+  },
+  defaultArgs: (_ctx) =>
+    [Texture.WHITE] as ConstructorParameters<typeof PixiSprite>,
+  extraProps: SpriteExtraProps,
 });
 
 export const PlaneGeometry = Solixi.wrapConstructable(PixiPlaneGeometry, {

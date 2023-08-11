@@ -64,7 +64,7 @@ export const Canvas = (props: CanvasProps) => {
   onMount(() => {
     const defaultAppOptions: Partial<IApplicationOptions> = {
       view: canvasEl,
-      resolution: pixiProps.resolution,
+      antialias: true,
     }
     const appOptions = {...(pixiProps.app ?? {}), ...defaultAppOptions };
     const app = new Application(appOptions)
@@ -122,8 +122,8 @@ export const Canvas = (props: CanvasProps) => {
         overflow: 'hidden',
       }}
       {...divElementProps}>
-      <div ref={containerEl} style={{ width: '100%', height: '100%' }}>
-        <canvas ref={canvasEl} style={{ display: 'block' }} />
+      <div ref={containerEl} style={{ position: 'absolute', width: '100%', height: '100%' }}>
+        <canvas ref={canvasEl} style={{ display: 'block', width: '100%', height: '100%' }} />
       </div>
     </div>
   )

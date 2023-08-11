@@ -1,9 +1,8 @@
-import { attachDevtoolsOverlay } from '@solid-devtools/overlay'
+/** @jsxImportSource solid-js */
 import { render } from 'solid-js/web'
 import './styles.css';
 
-import 'solid-devtools'
-
+import { attachDevtoolsOverlay } from '@solid-devtools/overlay'
 attachDevtoolsOverlay()
 
 import { Editor } from '../src';

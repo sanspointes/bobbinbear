@@ -1,9 +1,5 @@
 import { Point } from "@pixi/core";
 import { CreateExclusiveStateMachineOptions, createExclusiveStateMachine, t } from "../../utils/fsm";
-import {
-  createStateMachine,
-  tFromMulti,
-} from "../../primitives/createStateMachine";
 import { Cursor, ToolHandler } from "../toolStore";
 
 export type ToolInputs = {
@@ -19,6 +15,9 @@ export type ToolInputs = {
     position: Point;
   };
   "pointer1-click": {
+    position: Point;
+  };
+  "pointer1-doubleclick": {
     position: Point;
   };
   "pointer1-dragstart": {

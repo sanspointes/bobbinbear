@@ -16,7 +16,6 @@ export function ColorPicker(props: ColorPickerProps) {
   ]);
   const strValue = createMemo(() => {
     const v = remainingProps.colorValue ? remainingProps.colorValue.toString(16) : 'FFFFFF';
-    console.log(v);
     // const a = remainingProps.opacityValue ? remainingProps.opacityValue.toString(16) : 'FF';
     return '#' + v;
   });

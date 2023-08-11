@@ -147,6 +147,9 @@ importers:
       '@pixi/mesh-extras':
         specifier: ^7.2.4
         version: 7.2.4(@pixi/core@7.2.4)(@pixi/mesh@7.2.4)
+      '@pixi/sprite':
+        specifier: ^7.2.4
+        version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
       '@pixi/ticker':
         specifier: ^7.2.4
         version: 7.2.4
@@ -247,6 +250,9 @@ importers:
       '@pixi/mesh-extras':
         specifier: ^7.2.4
         version: 7.2.4(@pixi/core@7.2.4)(@pixi/mesh@7.2.4)
+      '@pixi/sprite':
+        specifier: ^7.2.4
+        version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
       '@pixi/ticker':
         specifier: ^7.2.4
         version: 7.2.4

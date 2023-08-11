@@ -25,6 +25,7 @@ export const SelectEvents = {
   PointerDown: Symbol("s-Pointerdown"),
   PointerUp: Symbol("s-Pointerup"),
   DragStart: Symbol("s-Dragstart"),
+  DoubleClick: Symbol("s-Doubleclick"),
   DragMove: Symbol("s-Dragmove"),
   DragEnd: Symbol("s-Dragend"),
 } as const;
@@ -110,6 +111,7 @@ export const createSelectToolStore = (
       },
     ),
     t(SelectStates.PointerDownOnEmpty, SelectEvents.PointerUp, SelectStates.Default, () => {
+      if (sceneModel.inspecting !== undefined) dispatch('scene:uninspect');
       const deselectAllCmd = new DeselectObjectsCommand(...sceneModel.selectedIds);
       dispatch('scene:do-command', deselectAllCmd);
     }),
@@ -119,6 +121,10 @@ export const createSelectToolStore = (
     t(SelectStates.Selecting, SelectEvents.DragEnd, SelectStates.Default, () => {
     }),
     t(SelectStates.PointerDownOnElement, SelectEvents.PointerUp, SelectStates.Hoverring),
+    t(SelectStates.PointerDownOnElement, SelectEvents.DoubleClick, SelectStates.PointerDownOnElement, () => {
+      if (!currHover) throw new Error('Attempted to inspect: Currently hovered element but no element hovered.');
+      dispatch('scene:inspect', currHover);
+    }),
     t(SelectStates.PointerDownOnElement, SelectEvents.DragStart, SelectStates.Moving, () => {
       const obj = sceneModel.selectedObjects[0];
       inputModel.position
@@ -215,6 +221,11 @@ export const createSelectToolStore = (
             if (sCan(SelectEvents.PointerDown)) {
               sDispatch(SelectEvents.PointerDown, currHover);
             }
+          }
+          break;
+        case "pointer1-doubleclick": 
+          {
+            if (sCan(SelectEvents.DoubleClick)) sDispatch(SelectEvents.DoubleClick);
           }
           break;
         case "pointer1-up":

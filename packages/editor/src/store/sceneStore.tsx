@@ -1,48 +1,76 @@
 /* eslint-disable solid/reactivity */
-import { produce, SetStoreFunction } from "solid-js/store";
+import { createStore, produce, SetStoreFunction } from "solid-js/store";
 import { batch } from "solid-js";
-import { Uuid } from "../utils/uuid";
+import { uuid, Uuid } from "../utils/uuid";
 import { Command } from "./commands";
 import { generateStore } from ".";
 import { arrayLast } from "../utils/array";
-import { SceneObject } from "../types/scene";
+import { GraphicSceneObject, SceneObject } from "../types/scene";
+import { Point } from "@pixi/core";
 
-export type ObjectMapData = {
-  object: SceneObject;
-  set: SetStoreFunction<SceneObject>;
+export type ObjectMapData<T extends SceneObject = SceneObject> = {
+  object: T;
+  set: SetStoreFunction<T>;
 };
 
 export type SceneStoreMessages = {
   "scene:hover": Uuid<SceneObject>;
   "scene:unhover": Uuid<SceneObject>;
+  "scene:inspect": Uuid<SceneObject>;
+  "scene:uninspect": void;
   "scene:do-command": Command;
   "scene:undo": void;
   "scene:redo": void;
 };
 
 export type SceneModel = {
+  inspecting: Uuid<SceneObject> | undefined;
   selectedIds: Uuid<SceneObject>[];
-  selectedObjects: SceneObject[],
+  selectedObjects: SceneObject[];
   undoStack: Command[];
   redoStack: Command[];
-  root: SceneObject[];
+  root: SceneObject;
 };
 
 export const createSceneStore = () => {
   const objMap = new Map<Uuid<SceneObject>, ObjectMapData>();
 
+  // Set the root object, this can't be edited
+  const [object, set] = createStore<SceneObject>({
+    type: 'group',
+    hovered: false,
+    id: uuid('root'),
+    name: 'Root',
+    locked: false,
+    shallowLocked: true,
+    parent: undefined as unknown as Uuid<SceneObject>,
+    visible: true,
+    children: [],
+    position: new Point(0, 0),
+    selected: false,
+  })
+  objMap.set(uuid('root'), {
+    object,
+    set,
+  });
+
   const result = generateStore<SceneModel, SceneStoreMessages>({
+    inspecting: undefined,
     selectedIds: [],
     get selectedObjects() {
-      return this.selectedIds.map(( id: Uuid<SceneObject> ) => {
+      return this.selectedIds.map((id: Uuid<SceneObject>) => {
         const result = objMap.get(id);
-        if (!result) throw new Error(`sceneStore.selectedObjects could not get object for id ${id}.`)
+        if (!result) {
+          throw new Error(
+            `sceneStore.selectedObjects could not get object for id ${id}.`,
+          );
+        }
         return result.object;
-      })
+      });
     },
     undoStack: [],
     redoStack: [],
-    root: [],
+    root: object,
   }, {
     "scene:hover": (_1, _2, uuid) => {
       const obj = objMap.get(uuid);
@@ -54,6 +82,24 @@ export const createSceneStore = () => {
       const obj = objMap.get(uuid);
       if (obj) {
         obj.set("hovered", false);
+      }
+    },
+    "scene:inspect": (_1, setStore, uuid) => {
+      setStore(produce((store) => store.inspecting = uuid));
+      const obj = objMap.get(uuid) as ObjectMapData<GraphicSceneObject>;
+      if (obj && obj.object.inspecting !== undefined) {
+        obj.set("inspecting", true);
+      }
+    },
+    "scene:uninspect": (store, setStore) => {
+      if (store.inspecting) {
+        const obj = objMap.get(store.inspecting) as ObjectMapData<
+          GraphicSceneObject
+        >;
+        if (obj && obj.object.inspecting !== undefined) {
+          obj.set("inspecting", true);
+        }
+        setStore(produce((store) => store.inspecting = undefined));
       }
     },
     "scene:do-command": (store, set, command) => {

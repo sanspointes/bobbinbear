@@ -6,7 +6,9 @@
   "main": "./dist/solixi.cjs.js",
   "module": "./dist/solixi.es.js",
   "types": "./dist/index.d.ts",
-  "files": ["./dist/"],
+  "files": [
+    "./dist/"
+  ],
   "scripts": {
     "playground": "vite",
     "dev": "vite build -w",
@@ -16,6 +18,8 @@
   },
   "dependencies": {
     "@bearbroidery/constructables": "*",
+    "@pixi/layers": "^2.1.0",
+    "@pixi/sprite": "^7.2.4",
     "@solid-primitives/raf": "^2.1.12",
     "@solid-primitives/resize-observer": "^2.0.18",
     "@solid-primitives/scheduled": "^1.4.0"

@@ -33,7 +33,6 @@ export function AccordionItem(props: AccordionItemProps) {
       <KAccordion.Header class="py-2">
         <KAccordion.Trigger class="flex justify-between items-center w-full font-bold">
           {remainingProps.header}{" "}
-          <TbChevronDown class="w-6 h-6 transform transition-transform kb-expanded:rotate-180" />
         </KAccordion.Trigger>
       </KAccordion.Header>
       <KAccordion.Content

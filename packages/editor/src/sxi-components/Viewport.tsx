@@ -166,6 +166,7 @@ export const Viewport = (props: ViewportProps) => {
       wheel
       position={viewportStore.position}
       children={props.children}
+      sortableChildren={true}
     />
   );
 };

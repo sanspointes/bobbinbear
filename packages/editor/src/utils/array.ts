@@ -31,3 +31,15 @@ export const arrayFirst = <T>(arr: T[]): T|undefined => {
 
   return arr[0];
 }
+
+export const arrayInsertAtIndex = <T>(arr: T[], el: T, index: number) => {
+  arr.splice(index, 0, el);
+}
+
+export const arrayMoveElToIndex = <T>(arr: T[], el: T, index: number): boolean => {
+  const success = arrayRemoveEl(arr, el);
+  if (success) {
+    arrayInsertAtIndex(arr, el, index);
+  }
+  return success;
+}

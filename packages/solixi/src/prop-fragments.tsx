@@ -1,6 +1,7 @@
 import { ExtraPropHandler } from "@bearbroidery/constructables/dist/elements";
 import { Container } from "@pixi/display";
 import { Point } from "@pixi/core";
+import { Layer } from "@pixi/layers";
 import { SolixiState } from "./state";
 import { Constructable } from "@bearbroidery/constructables";
 
@@ -11,6 +12,15 @@ const NameHandler: ExtraPropHandler<SolixiState, Constructable, string> = (_1, _
 
 export const HasNameFragment = {
   ['name']: NameHandler,
+}
+
+const ParentLayerHandler: ExtraPropHandler<SolixiState, Constructable, Layer> = (_1, _2, object, value) => {
+  // @ts-expect-error ; This is not technically a field but widely supported by pixi ecosystem.
+  object.parentLayer = value;
+}
+
+export const HasParentLayerFragment = {
+  ['parentLayer']: ParentLayerHandler,
 }
 
 const PositionHandler: ExtraPropHandler<SolixiState, Constructable, Point | [number, number]> = (_1, _2, object, value) => {

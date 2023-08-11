@@ -3,9 +3,13 @@ import { Point } from "@pixi/core";
 import { createStore, produce, SetStoreFunction } from "solid-js/store";
 
 import { Uuid } from "../../utils/uuid";
-import { arrayRemove, arrayRemoveEl } from "../../utils/array";
+import {
+  arrayMoveElToIndex,
+  arrayRemove,
+  arrayRemoveEl,
+} from "../../utils/array";
 import { CommandType } from "../commands";
-import { SceneObject } from "../../types/scene";
+import { BaseSceneObject, GraphicSceneObject, SceneObject } from "../../types/scene";
 import { ObjectMapData, SceneModel } from "../sceneStore";
 import { AbstractCommand, SerializedCommand } from "./shared";
 import { batch } from "solid-js";
@@ -29,7 +33,7 @@ export const traverse = (
  * Adds object and children to store
  */
 const addObject = (
-  setStore: SetStoreFunction<SceneModel>,
+  _1: SetStoreFunction<SceneModel>,
   objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   newObjectData: SceneObject,
 ) => {
@@ -55,8 +59,6 @@ const addObject = (
           parent.children.push(object);
         }));
       }
-    } else {
-      setStore(produce((store) => store.root.push(object)));
     }
   }
 };
@@ -65,7 +67,7 @@ const addObject = (
  * Deletes object and children from store
  */
 const deleteObject = (
-  setStore: SetStoreFunction<SceneModel>,
+  _1: SetStoreFunction<SceneModel>,
   objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   id: Uuid<SceneObject>,
 ): boolean => {
@@ -86,12 +88,6 @@ const deleteObject = (
       );
       return true;
     }
-  } else {
-    let success = false;
-    setStore(produce((store) => {
-      success = arrayRemove(store.root, (child) => child.id === id);
-    }));
-    return success;
   }
   return false;
 };
@@ -113,16 +109,23 @@ export class CreateObjectCommand extends AbstractCommand {
     addObject(setStore, objMap, this.object);
   }
   undo(
-    _store: SceneModel,
+    store: SceneModel,
     setStore: SetStoreFunction<SceneModel>,
     objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   ): void {
-    const success = deleteObject(setStore, objMap, this.object.id);
-    if (!success) {
-      console.warn(
-        `CreateObjectCommand (undo) failed to delete ${this.object.id}`,
-      );
-    }
+    batch(() => {
+      if (store.selectedIds.includes(this.object.id)) {
+        setStore(
+          produce((store) => arrayRemoveEl(store.selectedIds, this.object.id)),
+        );
+      }
+      const success = deleteObject(setStore, objMap, this.object.id);
+      if (!success) {
+        console.warn(
+          `CreateObjectCommand (undo) failed to delete ${this.object.id}`,
+        );
+      }
+    });
   }
 
   toObject(object: Record<string, unknown>): void {
@@ -138,13 +141,137 @@ export class CreateObjectCommand extends AbstractCommand {
   }
 }
 
-export class SetSceneObjectFieldCommand<TObj extends SceneObject, K extends keyof TObj> extends AbstractCommand {
+export class ChangeObjectOrderCommand extends AbstractCommand {
+  public updatable: boolean = true;
+  name = "Change Object Order";
+  type = "ChangeObjectOrderCommand" as const;
+
+  oldIndex: number | undefined;
+
+  constructor(
+    private objectId: Uuid<SceneObject>,
+    private strategy: "first" | "last" | "offset" | "absolute",
+    private index?: number,
+  ) {
+    super();
+  }
+
+  perform(
+    _1: SceneModel,
+    _2: SetStoreFunction<SceneModel>,
+    objMap: Map<Uuid<SceneObject>, ObjectMapData>,
+  ): void {
+    const result = objMap.get(this.objectId);
+    if (!result) {
+      throw new Error(
+        `getObjectSiblings: Could not get object ${this.objectId} to change order of.`,
+      );
+    }
+    const { object } = result;
+    const parentResult = objMap.get(object.parent);
+    if (!parentResult) {
+      throw new Error(
+        `getObjectSiblings: Could not get parent (${result.object.parent}) of object ${this.objectId} to change order of.`,
+      );
+    }
+    const siblings = parentResult.object.children;
+    this.oldIndex = siblings.findIndex((el) => el.id === this.objectId);
+    if (this.oldIndex < 0) {
+      throw new Error(
+        `ChangeObjectOrderCommand: Could not get current index of ${this.objectId}`,
+      );
+    }
+
+    let targetIndex: number | undefined;
+    if (this.strategy === "absolute") {
+      if (!this.index) {
+        throw new Error(
+          `ChangeObjectOrderCommand: Move strategy is 'absolute' but no index provided for ${this.objectId}.`,
+        );
+      }
+      targetIndex = this.index;
+    } else if (this.strategy === "offset") {
+      if (!this.index) {
+        throw new Error(
+          `ChangeObjectOrderCommand: Move strategy is 'offset' but no offset provided for ${this.objectId}.`,
+        );
+      }
+      targetIndex = this.oldIndex + this.index;
+    } else if (this.strategy === "first") {
+      targetIndex = 0;
+    } else if (this.strategy === "last") {
+      targetIndex = siblings.length - 1;
+    }
+
+    parentResult.set(produce((parent) => {
+      if (targetIndex === undefined) {
+        throw new Error(
+          "ChangeObjectOrderCommand: Unknown error getting target index to move child to. ",
+        );
+      }
+      arrayMoveElToIndex(parent.children, object, targetIndex);
+    }));
+  }
+
+  undo(
+    _1: SceneModel,
+    _2: SetStoreFunction<SceneModel>,
+    objMap: Map<Uuid<SceneObject>, ObjectMapData>,
+  ): void {
+    const result = objMap.get(this.objectId);
+    if (!result) {
+      throw new Error(
+        `getObjectSiblings: Could not get object ${this.objectId} to change order of.`,
+      );
+    }
+    const { object } = result;
+    const parentResult = objMap.get(object.parent);
+    if (!parentResult) {
+      throw new Error(
+        `getObjectSiblings: Could not get parent (${result.object.parent}) of object ${this.objectId} to change order of.`,
+      );
+    }
+    parentResult.set(produce((parent) => {
+      if (this.oldIndex === undefined) {
+        throw new Error(
+          "ChangeObjectOrderCommand: (undo) Unknown error getting old index to move child to. ",
+        );
+      }
+      arrayMoveElToIndex(parent.children, object, this.oldIndex);
+    }));
+  }
+
+  protected fromObject<T extends CommandType>(
+    object: SerializedCommand<T>,
+  ): void {
+    this.objectId = object.objectId as Uuid<SceneObject>;
+    this.oldIndex = object.oldIndex as number | undefined;
+    this.strategy = object.strategy as "first" | "last" | "offset" | "absolute";
+    this.index = object.index as number | undefined;
+  }
+
+  toObject(object: Record<string, unknown>): void {
+    object.objectId = this.objectId as Uuid<SceneObject>;
+    object.oldIndex = this.oldIndex as number | undefined;
+    object.strategy = this.strategy as "first" | "last" | "offset" | "absolute";
+    object.index = this.index as number | undefined;
+  }
+}
+
+export class SetSceneObjectFieldCommand<
+  TObj extends BaseSceneObject = BaseSceneObject,
+  K extends keyof TObj = keyof TObj,
+> extends AbstractCommand {
   public updatable: boolean = true;
 
   name = "Set Scene Object Field";
   type = "SetSceneObjectFieldCommand" as const;
   oldValue: TObj[K] | undefined = undefined;
-  constructor(private objectId: Uuid<SceneObject>, private field: K, private value: TObj[K]) {
+  constructor(
+    private objectId: Uuid<SceneObject>,
+    private field: K,
+    private value: TObj[K],
+  ) {
     super();
   }
 
@@ -155,10 +282,14 @@ export class SetSceneObjectFieldCommand<TObj extends SceneObject, K extends keyo
   ): void {
     // console.debug(`SetSceneObjectFieldCommand: ${this.objectId}.${this.field.toString()} to ${this.value}`);
     const result = objMap.get(this.objectId);
-    if (!result) throw new Error(`SetSceneObjectFieldCommand: Can not get object ${this.objectId}`);
+    if (!result) {
+      throw new Error(
+        `SetSceneObjectFieldCommand: Can not get object ${this.objectId}`,
+      );
+    }
     this.oldValue = result.object[this.field as keyof SceneObject] as TObj[K];
     // @ts-ignore-error; Complicated typescript
-    result.set(this.field, this.value)
+    result.set(this.field, this.value);
   }
   undo(
     _store: SceneModel,
@@ -167,9 +298,13 @@ export class SetSceneObjectFieldCommand<TObj extends SceneObject, K extends keyo
   ): void {
     // console.debug(`SetSceneObjectFieldCommand: (undo) ${this.objectId}.${this.field.toString()} to ${this.oldValue}`);
     const result = objMap.get(this.objectId);
-    if (!result) throw new Error(`SetSceneObjectFieldCommand: (undo) Can not get object ${this.objectId}`);
+    if (!result) {
+      throw new Error(
+        `SetSceneObjectFieldCommand: (undo) Can not get object ${this.objectId}`,
+      );
+    }
     // @ts-ignore-error; Complicated typescript
-    result.set(this.field, this.oldValue)
+    result.set(this.field, this.oldValue);
   }
 
   toObject(object: Record<string, unknown>): void {
@@ -185,7 +320,11 @@ export class SetSceneObjectFieldCommand<TObj extends SceneObject, K extends keyo
   }
 
   updateData(newer: SetSceneObjectFieldCommand<TObj, keyof TObj>): void {
-    if (newer.field !== this.field) throw new Error('SetSceneObjectFieldCommand.updateData() Can\'t update command to use new field.  Make sure field matches previous commands');
+    if (newer.field !== this.field) {
+      throw new Error(
+        "SetSceneObjectFieldCommand.updateData() Can't update command to use new field.  Make sure field matches previous commands",
+      );
+    }
     // @ts-ignore-error ; Complicated typescript
     this.value = newer.value;
   }
@@ -201,14 +340,21 @@ export class DeleteObjectCommand extends AbstractCommand {
   }
 
   perform(
-    _store: SceneModel,
+    store: SceneModel,
     setStore: SetStoreFunction<SceneModel>,
     objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   ): void {
-    const success = deleteObject(setStore, objMap, this.object.id);
-    if (!success) {
-      console.warn(`DeleteObjectCommand failed to delete ${this.object.id}`);
-    }
+    batch(() => {
+      if (store.selectedIds.includes(this.object.id)) {
+        setStore(
+          produce((store) => arrayRemoveEl(store.selectedIds, this.object.id)),
+        );
+      }
+      const success = deleteObject(setStore, objMap, this.object.id);
+      if (!success) {
+        console.warn(`DeleteObjectCommand failed to delete ${this.object.id}`);
+      }
+    });
   }
   undo(
     _store: SceneModel,
@@ -251,6 +397,28 @@ export class MoveObjectCommand extends AbstractCommand {
     }
 
     if (!this.oldPosition) this.oldPosition = result.object.position;
+
+    // If moving a node, update the mesh of the graphic.
+    if (result.object.type === 'node' && result.object.relatesTo) {
+      const currentNode = result.object.node;
+      const graphicResult = objMap.get(result.object.relatesTo);
+      if (!graphicResult) throw new Error('MoveObjectCommand: Attempting to graphic related to moved node but no graphic found.')
+      const { set: setGraphics } = graphicResult;
+
+      const graphicObject = graphicResult.object as GraphicSceneObject;
+      const oldIndex = graphicObject.shape.findIndex(node => node.id === currentNode.id);
+      console.log(oldIndex);
+      setGraphics(produce(obj => {
+        const graphic = obj as GraphicSceneObject;
+
+        graphic.shape.splice(oldIndex, 1, {
+          ...currentNode,
+          x: this.newPosition.x,
+          y: this.newPosition.y,
+        });
+      }));
+
+    }
 
     result.set(produce((object) => object.position = this.newPosition));
   }
@@ -311,13 +479,10 @@ export class SelectObjectsCommand extends AbstractCommand {
     batch(() => {
       for (const id of this.toSelect) {
         const result = objMap.get(id);
-        if (!result) {
-          throw new Error(
-            `DeselectObjectsCommand: Could not get object ${id} to select`,
-          );
+        if (result) {
+          if (result.object.selected) this.toDeselect.push(id);
+          result.set("selected", true);
         }
-        if (result.object.selected) this.toDeselect.push(id);
-        result.set("selected", true);
         setStore(produce((store) => store.selectedIds.push(id)));
       }
     });
@@ -331,12 +496,9 @@ export class SelectObjectsCommand extends AbstractCommand {
     batch(() => {
       for (const id of this.toDeselect) {
         const result = objMap.get(id);
-        if (!result) {
-          throw new Error(
-            `DeselectObjectsCommand: (undo) Could not get object ${id} to select`,
-          );
+        if (result) {
+          result.set("selected", false);
         }
-        result.set("selected", false);
         setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
       }
     });
@@ -376,13 +538,10 @@ export class DeselectObjectsCommand extends AbstractCommand {
     batch(() => {
       for (const id of this.toSelect) {
         const result = objMap.get(id);
-        if (!result) {
-          throw new Error(
-            `DeselectObjectsCommand: Could not get object ${id} to select`,
-          );
+        if (result) {
+          if (result.object.selected) this.toDeselect.push(id);
+          result.set("selected", false);
         }
-        if (result.object.selected) this.toDeselect.push(id);
-        result.set("selected", false);
         setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
       }
     });
@@ -396,12 +555,9 @@ export class DeselectObjectsCommand extends AbstractCommand {
     batch(() => {
       for (const id of this.toDeselect) {
         const result = objMap.get(id);
-        if (!result) {
-          throw new Error(
-            `DeselectObjectsCommand: (undo) Could not get object ${id} to select`,
-          );
+        if (result) {
+          result.set("selected", true);
         }
-        result.set("selected", true);
         setStore(produce((store) => store.selectedIds.push(id)));
       }
     });
@@ -423,8 +579,8 @@ export class DeselectObjectsCommand extends AbstractCommand {
 export type SceneCommands =
   | CreateObjectCommand
   | DeleteObjectCommand
-  | SetSceneObjectFieldCommand<SceneObject, keyof SceneObject>
+  | SetSceneObjectFieldCommand
+  | ChangeObjectOrderCommand
   | MoveObjectCommand
   | SelectObjectsCommand
-  | DeselectObjectsCommand
-;
+  | DeselectObjectsCommand;

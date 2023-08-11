@@ -5,8 +5,6 @@ import { createEffect } from "solid-js";
 import { pointDistance } from "../utils/point";
 import { ToolInputs } from "./tools/shared";
 import { createEventListener } from "@solid-primitives/event-listener";
-import { ViewportModel } from "./viewportStore";
-import { SceneModel } from "./sceneStore";
 
 export type InputMessages = {
   "input:set-source": {
@@ -37,6 +35,7 @@ export type InputMessages = {
 
 export type InputToolSettings = {
   dragThreshold: number;
+  doubleClickTime: number;
 };
 
 export type InputModel = {
@@ -63,9 +62,26 @@ const makeToolInputResponse = <
 export const createInputStore = (
   dispatch: GeneralHandler<AllMessages>,
 ) => {
+  // Internal state
+  let doubleClickTimeout: number | undefined;
+
+  const startDoubleClickTimeout = () => {
+    window.clearTimeout(doubleClickTimeout);
+    doubleClickTimeout = window.setTimeout(() => {
+      doubleClickTimeout = undefined;
+    }, store.store.settings.doubleClickTime);
+  };
+  const shouldDoubleClick = () => {
+    const result = doubleClickTimeout !== undefined;
+    window.clearTimeout(doubleClickTimeout);
+    doubleClickTimeout = undefined;
+    return result;
+  };
+
   const store = generateStore<InputModel, InputMessages>({
     settings: {
       dragThreshold: 2,
+      doubleClickTime: 300,
     },
     pointerSource: undefined,
     keySource: undefined,
@@ -109,7 +125,7 @@ export const createInputStore = (
           }),
         );
       } else if (dragDistance && dragDistance > store.settings.dragThreshold) {
-        set('isDragging', true);
+        set("isDragging", true);
         respond!(
           "tool:input",
           makeToolInputResponse("pointer1-dragstart", {
@@ -137,14 +153,24 @@ export const createInputStore = (
             downPosition: store.downPosition as Point,
           }),
         );
-        set('isDragging', false);
+        set("isDragging", false);
       } else {
-        respond!(
-          "tool:input",
-          makeToolInputResponse("pointer1-click", {
-            position: message.position,
-          }),
-        );
+        if (shouldDoubleClick()) {
+          respond!(
+            "tool:input",
+            makeToolInputResponse("pointer1-doubleclick", {
+              position: message.position,
+            }),
+          );
+        } else {
+          startDoubleClickTimeout();
+          respond!(
+            "tool:input",
+            makeToolInputResponse("pointer1-click", {
+              position: message.position,
+            }),
+          );
+        }
       }
       respond!(
         "tool:input",

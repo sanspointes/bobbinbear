@@ -8,9 +8,9 @@ import {
 import { AllMessages, BaseStore, GeneralHandler, generateStore } from "..";
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
 import { CreateObjectCommand, MultiCommand } from "../commands";
-import { GraphicsNode, SceneObject } from "../../types/scene";
+import { SceneObject } from "../../types/scene";
 import { GraphicSceneObject } from "../../types/scene";
-import { newUuid, Uuid } from "../../utils/uuid";
+import { newUuid, uuid, Uuid } from "../../utils/uuid";
 import { createBoxGraphicsCommands } from "../../utils/graphics";
 import { SetSceneObjectFieldCommand } from "../commands/object";
 import { Point } from "@pixi/core";
@@ -72,18 +72,22 @@ export const createBoxToolStore = (
         currentlyBuildingId = newUuid();
         const currentShape = createBoxGraphicsCommands(0, 0);
 
+        console.log("Creating box");
         createCommand = new CreateObjectCommand({
           type: "graphic",
           name: "Box",
           visible: true,
           position: e.position,
           id: currentlyBuildingId,
-          parent: parent?.id,
+          parent: parent ? parent.id : uuid("root"),
           children: [],
           selected: false,
           locked: false,
+          inspectingRoot: undefined,
+          shallowLocked: false,
           hovered: false,
           shape: currentShape,
+          inspecting: false,
           fill: {
             color: 0xcccccc,
             alpha: 1,
@@ -92,17 +96,15 @@ export const createBoxToolStore = (
             width: 1,
             color: 0x000000,
             alpha: 1,
-          }
+          },
         });
 
         const setShapeCommand = new SetSceneObjectFieldCommand<
-          GraphicSceneObject,
-          keyof GraphicSceneObject
+          GraphicSceneObject
         >(currentlyBuildingId, "shape", currentShape);
         setShapeCommand.final = false;
         const setPositionCommand = new SetSceneObjectFieldCommand<
-          GraphicSceneObject,
-          keyof GraphicSceneObject
+          GraphicSceneObject
         >(currentlyBuildingId, "position", e.position);
         setPositionCommand.final = false;
 

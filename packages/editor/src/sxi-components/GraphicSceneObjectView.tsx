@@ -4,12 +4,19 @@ import {
   GraphicNodeTypes,
   GraphicSceneObject,
   GraphicsNode,
+  GroupSceneObject,
+  NodeSceneObject,
+  SceneObject,
 } from "../types/scene";
 import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
-import { createEffect, createRenderEffect, onMount, untrack } from "solid-js";
-import { OutlineFilter } from "@pixi/filter-outline";
+import { createEffect, createMemo, onMount, untrack, useContext } from "solid-js";
 import { metadata } from "../utils/metadata";
-import { arrayRemoveEl } from "../utils/array";
+import { AppContext } from "../store";
+import { CreateObjectCommand, DeleteObjectCommand, MultiCommand } from "../store/commands";
+import { Point } from "@pixi/core";
+import { newUuid, uuid } from "../utils/uuid";
+import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
+import { SetSceneObjectFieldCommand } from "../store/commands/object";
 
 const updateGraphics = (g: Graphics, shape: GraphicsNode[], fill: IFillStyleOptions, stroke: ILineStyleOptions) => {
   g.clear();
@@ -57,7 +64,10 @@ const updateGraphics = (g: Graphics, shape: GraphicsNode[], fill: IFillStyleOpti
   g.endFill();
 };
 
-export const GraphicSceneObjectView = (props: GraphicSceneObject) => {
+type GraphicSceneObjectViewProps = GraphicSceneObject & {
+  order: number;
+};
+export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
   let graphics: Graphics | undefined;
   onMount(() => {
     if (!graphics) return;
@@ -66,53 +76,77 @@ export const GraphicSceneObjectView = (props: GraphicSceneObject) => {
       type: props.type,
       id: props.id,
     })
+
+    useHoverSelectOutline(graphics, props);
   })
+
+  const { sceneStore, dispatch } = useContext(AppContext);
 
   createEffect(() => {
     if (graphics) updateGraphics(graphics, props.shape, props.fill, props.stroke);
   });
 
-  let outlinePushed = false;
-  const outlineFilter = new OutlineFilter(1, 0x0A8CE9, 0.1, 1);
-  createRenderEffect(() => {
-    const needsPush = !outlinePushed && (props.hovered || props.selected);
-    const needsRemove = outlinePushed && (!props.hovered && !props.selected);
+  const isAppInspecting = createMemo(() => sceneStore.inspecting !== undefined);
+  const isThisInspecting = createMemo(() => isAppInspecting() && sceneStore.inspecting === props.id);
 
-    if (props.selected) {
-      outlineFilter.color = 0x41A3E9;
-      outlineFilter.thickness = 2;
-    }
-    else if (props.hovered) {
-      outlineFilter.color = 0x0A8CE9;
-      outlineFilter.thickness = 1;
-    }
+  let inspectingRootObject: GroupSceneObject|undefined;
+  createEffect(() => {
+    const inspecting = isThisInspecting()
+    untrack(() => {
+      if (inspecting && !inspectingRootObject) {
+        const inspectingRootObjectId = newUuid<SceneObject>();
 
-    if (!graphics) return;
-    if (needsPush) {
-      graphics.filters!.push(outlineFilter);
-      outlinePushed = true;
-    } else if (needsRemove) {
-      arrayRemoveEl(graphics.filters!, outlineFilter);
-      outlinePushed = false;
-    } 
+        const children: NodeSceneObject[] = props.shape.map((node, i) => ({
+          type: 'node',
+          node,
+          name: `Node ${i}`,
+          position: new Point(node.x, node.y),
+          id: newUuid(),
+          hovered: false,
+          selected: false,
+          visible: true,
+          locked: false,
+          shallowLocked: false,
+          parent: inspectingRootObjectId,
+          relatesTo: props.id,
+          children: [],
+        }));
+        inspectingRootObject = {
+          type: 'group',
+          name: `Nodes of ${props.name}`,
+          position: props.position.clone(),
+          id: inspectingRootObjectId,
+          hovered: false,
+          selected: false,
+          visible: true,
+          shallowLocked: true,
+          locked: false,
+          parent: uuid('root'),
+          children,
+        }
+        const setInspectingRoot = new SetSceneObjectFieldCommand<GraphicSceneObject>(props.id, 'inspectingRoot', inspectingRootObjectId);
+        const createNodeRootCommand = new CreateObjectCommand(inspectingRootObject)
+
+        // @ts-ignore-error; setInspectingRoot bad typing for non BaseSceneObjects
+        const cmd = new MultiCommand(setInspectingRoot, createNodeRootCommand);
+        dispatch('scene:do-command', cmd);
+      } else if (inspectingRootObject) {
+        const cmd = new DeleteObjectCommand(inspectingRootObject);
+        dispatch('scene:do-command', cmd);
+        inspectingRootObject = undefined
+      }
+    })
   })
-
-  // onMount(() => {
-  //   if (!graphics) throw new Error('Aafbasbdkjan')
-  //   graphics.beginFill(0xff0000);
-  //   graphics.lineTo(100, 0)
-  //   graphics.lineTo(100, 100)
-  //   graphics.lineTo(0, 100)
-  //   graphics.closePath();
-  // })
 
   return (
     <P.Graphics
       name={`${props.id} ${props.name}`}
       visible={props.visible}
       ref={graphics}
+      zIndex={sceneStore.inspecting === props.id ? 500 : props.order}
       position={props.position}
-      interactive={true}
+      interactive={!isAppInspecting() || isThisInspecting()}
+      alpha={!isAppInspecting() || isThisInspecting() ? 1 : 0.5}
     >
       <SceneObjectChildren children={props.children} />
     </P.Graphics>

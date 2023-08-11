@@ -11,6 +11,7 @@ import { SetStoreFunction } from "solid-js/store";
 import { SceneObject } from "../../types/scene";
 import { Uuid } from "../../utils/uuid";
 import { ObjectMapData, SceneModel } from "../sceneStore";
+import { UpdateGraphicsNodeCommand } from "./GraphicsNodesCommands";
 
 export { CreateObjectCommand, DeleteObjectCommand, MoveObjectCommand };
 
@@ -25,7 +26,8 @@ export const _commandPrototypeMap: Record<CommandType, AbstractCommand> = {
   "DeleteObjectCommand": DeleteObjectCommand.prototype,
   "MoveObjectCommand": MoveObjectCommand.prototype,
   "SelectObjectsCommand": SelectObjectsCommand.prototype,
-  "SetSceneObjectFieldCommand": SetSceneObjectFieldCommand.prototype
+  "SetSceneObjectFieldCommand": SetSceneObjectFieldCommand.prototype,
+  "UpdateGraphicsNodeCommand": UpdateGraphicsNodeCommand.prototype,
 };
 
 export class MultiCommand extends AbstractCommand {
