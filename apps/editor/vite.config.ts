@@ -19,15 +19,8 @@ export default defineConfig(({mode})  => {
   return {
     plugins,
     build: {
-      emptyOutDir: false,
-      minify: false,
-      rollupOptions: {
-        external: [
-          'solid-js',
-          'solid-js/web',
-          'solid-js/store',
-        ]
-      },
+      emptyOutDir: true,
+      minify: true,
     },
   }
 })
