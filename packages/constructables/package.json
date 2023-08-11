@@ -3,7 +3,6 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "main": "./dist/constructables.cjs.js",
   "module": "./dist/constructables.es.js",
   "types": "./dist/index.d.ts",
   "scripts": {

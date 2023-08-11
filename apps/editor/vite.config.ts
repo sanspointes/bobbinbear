@@ -20,12 +20,6 @@ export default defineConfig(({mode})  => {
     plugins,
     build: {
       emptyOutDir: false,
-      lib: {
-        entry: './src/index.ts',
-        formats: ['es', 'cjs', 'umd'],
-        fileName: (format) => `editor.${format}.js`,
-        name: 'editor',
-      },
       minify: false,
       rollupOptions: {
         external: [

@@ -164,8 +164,8 @@ export const useObject = <
   // Manage parent / child relations
   parentChildren(context, getObject, internalProps);
 
-  // @ts-expect-error; I can't be bothered to fix this.  `ref` is converted to a function by solid.
   createRenderEffect(() =>
+    // @ts-expect-error; I can't be bothered to fix this.  `ref` is converted to a function by solid.
     internalProps.ref instanceof Function && internalProps.ref(getObject())
   );
 
