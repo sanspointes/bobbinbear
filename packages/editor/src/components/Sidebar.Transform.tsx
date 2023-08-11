@@ -21,7 +21,7 @@ export function SidebarTransform(props: SidebarTransformProps) {
   }
 
   return (
-      <AccordionItem value="pos-and-size" header="Position and Size" innerClass="grid grid-cols-2 gap-4">
+      <AccordionItem value="transform" header="Position and Size" innerClass="grid grid-cols-2 gap-4">
         <NumberInput 
           label="X"
           value={props.object.position.x}

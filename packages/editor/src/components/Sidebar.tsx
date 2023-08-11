@@ -5,6 +5,7 @@ import { SidebarTransform } from "./Sidebar.Transform";
 import { Accordion } from "./generics/Accordian";
 import { SidebarDebug } from "./Sidebar.Debug";
 import { SidebarSceneObject } from "./Sidebar.SceneObject";
+import { SidebarStyle } from "./Sidebar.Style";
 
 export function Sidebar () {
   const { sceneStore } = useContext(AppContext)
@@ -13,12 +14,13 @@ export function Sidebar () {
   return (
     <div class="p-4 bg-yellow-400 border-l border-yellow-500 border-solid w-[400px] box-border">
       <div class="grid grid-cols-2 gap-4">
-        <Accordion class="col-span-2" multiple collapsible>
+        <Accordion class="col-span-2" multiple collapsible defaultValue={['scene-object', 'transform', 'style']}>
           <Show when={firstObject()}>
             {(obj) => (
               <>
                 <SidebarSceneObject object={obj()} />
                 <SidebarTransform object={obj()} />
+                <SidebarStyle object={obj()} />
               </>
             )}
           </Show>

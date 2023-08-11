@@ -49,7 +49,7 @@ export function SelectBox () {
   })
 
   return (
-    <P.Graphics name="SelectBox" visible={visible()} zIndex={1000} ref={graphicsEl} position={[bounds().x, bounds().y]}>
+    <P.Graphics name="SelectBox" visible={visible()} zIndex={-1000} ref={graphicsEl} position={[bounds().x, bounds().y]}>
     </P.Graphics>
   )
 }

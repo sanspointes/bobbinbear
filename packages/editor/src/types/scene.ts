@@ -43,7 +43,7 @@ export type GraphicSceneObject = BaseSceneObject & {
 export type CanvasSceneObject = BaseSceneObject & {
   type: 'canvas',
   size: Point,
-  fillColor: ColorSource,
+  fill: IFillStyleOptions,
 }
 
 export type SceneObject = (GraphicSceneObject | CanvasSceneObject);
