@@ -153,7 +153,7 @@ export class SetSceneObjectFieldCommand<TObj extends SceneObject, K extends keyo
     _setStore: SetStoreFunction<SceneModel>,
     objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   ): void {
-    console.debug(`SetSceneObjectFieldCommand: ${this.objectId}.${this.field.toString()} to ${this.value}`);
+    // console.debug(`SetSceneObjectFieldCommand: ${this.objectId}.${this.field.toString()} to ${this.value}`);
     const result = objMap.get(this.objectId);
     if (!result) throw new Error(`SetSceneObjectFieldCommand: Can not get object ${this.objectId}`);
     this.oldValue = result.object[this.field as keyof SceneObject] as TObj[K];
@@ -165,7 +165,7 @@ export class SetSceneObjectFieldCommand<TObj extends SceneObject, K extends keyo
     _setStore: SetStoreFunction<SceneModel>,
     objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   ): void {
-    console.debug(`SetSceneObjectFieldCommand: (undo) ${this.objectId}.${this.field.toString()} to ${this.oldValue}`);
+    // console.debug(`SetSceneObjectFieldCommand: (undo) ${this.objectId}.${this.field.toString()} to ${this.oldValue}`);
     const result = objMap.get(this.objectId);
     if (!result) throw new Error(`SetSceneObjectFieldCommand: (undo) Can not get object ${this.objectId}`);
     // @ts-ignore-error; Complicated typescript

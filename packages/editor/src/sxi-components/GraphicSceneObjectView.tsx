@@ -73,13 +73,19 @@ export const GraphicSceneObjectView = (props: GraphicSceneObject) => {
   });
 
   let outlinePushed = false;
-  const outlineFilter = new OutlineFilter(3, 0x0A8CE9, 0.1, 1);
+  const outlineFilter = new OutlineFilter(1, 0x0A8CE9, 0.1, 1);
   createRenderEffect(() => {
     const needsPush = !outlinePushed && (props.hovered || props.selected);
     const needsRemove = outlinePushed && (!props.hovered && !props.selected);
 
-    if (props.selected) outlineFilter.color = 0x41A3E9;
-    else if (props.hovered) outlineFilter.color = 0x0A8CE9;
+    if (props.selected) {
+      outlineFilter.color = 0x41A3E9;
+      outlineFilter.thickness = 2;
+    }
+    else if (props.hovered) {
+      outlineFilter.color = 0x0A8CE9;
+      outlineFilter.thickness = 1;
+    }
 
     if (!graphics) return;
     if (needsPush) {

@@ -6,10 +6,13 @@ import {
 } from "@pixi/mesh";
 import { PlaneGeometry as PixiPlaneGeometry } from "@pixi/mesh-extras";
 import { Texture } from "@pixi/core";
-import { Graphics as PixiGraphics, GraphicsGeometry as PixiGraphicsGeometry } from "@pixi/graphics";
+import {
+  Graphics as PixiGraphics,
+  GraphicsGeometry as PixiGraphicsGeometry,
+} from "@pixi/graphics";
 import { Solixi, SolixiState } from "./state";
 import {
-    HasNameFragment,
+  HasNameFragment,
   HasPositionFragment,
   HasRotationFragment,
   HasScaleFragment,
@@ -26,7 +29,11 @@ const ContainerExtraProps = {
   ...HasVisibilityFragment,
   ...HasRotationFragment,
 };
-export type ContainerProps = ClassProps<SolixiState, typeof PixiContainer, typeof ContainerExtraProps>;
+export type ContainerProps = ClassProps<
+  SolixiState,
+  typeof PixiContainer,
+  typeof ContainerExtraProps
+>;
 export const Container = Solixi.wrapConstructable(PixiContainer, {
   // @ts-expect-error ; Hard to type parent of attach function
   attach: (_, b: PixiContainer, c) => {
@@ -47,14 +54,22 @@ const MeshExtraProps = {
   ...HasVisibilityFragment,
   ...HasRotationFragment,
 };
-export type MeshProps = ClassProps<SolixiState, typeof PixiMesh, typeof MeshExtraProps>;
+export type MeshProps = ClassProps<
+  SolixiState,
+  typeof PixiMesh,
+  typeof MeshExtraProps
+>;
 export const Mesh = Solixi.wrapConstructable(PixiMesh<PixiMeshMaterial>, {
   // @ts-expect-error ; Hard to type parent of attach function
   attach: (_, b: PixiContainer, c) => {
     b.addChild(c);
     return () => b.removeChild(c);
   },
-  defaultArgs: [new PixiPlaneGeometry(), new PixiMeshMaterial(Texture.WHITE)],
+  defaultArgs: () =>
+    [
+      new PixiPlaneGeometry(),
+      new PixiMeshMaterial(Texture.WHITE),
+    ] as ConstructorParameters<typeof PixiMesh<PixiMeshMaterial>>,
   extraProps: MeshExtraProps,
 });
 
@@ -68,16 +83,21 @@ const GraphicsExtraProps = {
   ...HasVisibilityFragment,
   ...HasRotationFragment,
 };
-export type GraphicsProps = ClassProps<SolixiState, typeof PixiGraphics, typeof GraphicsExtraProps>;
+export type GraphicsProps = ClassProps<
+  SolixiState,
+  typeof PixiGraphics,
+  typeof GraphicsExtraProps
+>;
 export const Graphics = Solixi.wrapConstructable(PixiGraphics, {
   // @ts-expect-error ; Hard to type parent of attach function
   attach: (_, b: PixiContainer, c) => {
     b.addChild(c);
     return () => b.removeChild(c);
   },
-  defaultArgs: [new PixiGraphicsGeometry()],
+  defaultArgs: (_ctx) =>
+    [new PixiGraphicsGeometry()] as ConstructorParameters<typeof PixiGraphics>,
   extraProps: GraphicsExtraProps,
-})
+});
 
 export const PlaneGeometry = Solixi.wrapConstructable(PixiPlaneGeometry, {
   attach: "geometry",
@@ -102,4 +122,3 @@ export const MeshMaterial = Solixi.wrapConstructable(PixiMeshMaterial, {
   defaultArgs: [Texture.WHITE],
   extraProps: {},
 });
-

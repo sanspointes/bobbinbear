@@ -14,13 +14,6 @@ export const Toolbar = () => {
       <Button onClick={() => API.createCanvas(dispatch)}>New Canvas</Button>
       <Button onClick={() => dispatch('tool:switch', Tool.Select)}><TbPointer /></Button>
       <Button onClick={() => dispatch('tool:switch', Tool.Box)}><CgSquare /></Button>
-      <p>
-        {toolStore.tool}
-
-        {toolStore.selectTool.state().toString()}
-
-        {toolStore.boxTool.state().toString()}
-      </p>
     </div>
   )
 }

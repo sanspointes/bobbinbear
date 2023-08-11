@@ -10,12 +10,8 @@ export function SidebarDebug() {
 
   return (
     <AccordionItem value="debug" header="Debug">
-      <h3>SelectTool</h3>
-      <p>State: {selectTool.state().toString()}</p>
-      <p>Is selecting: {selectTool.isSelecting}</p>
-      <div class="border-b border-solid border-yellow-500"></div>
-      <h3>BoxTool</h3>
-      <p>State: {boxTool.state().toString()}</p>
+      <h3>SelectTool: {selectTool.state().toString()}</h3>
+      <h3>BoxTool: {boxTool.state().toString()}</h3>
 
     </AccordionItem>
   )

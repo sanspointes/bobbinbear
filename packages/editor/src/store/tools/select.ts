@@ -13,19 +13,22 @@ import { SolixiState } from "@bearbroidery/solixi";
 import { metadata } from "../../utils/metadata.ts";
 import { Uuid } from "../../utils/uuid.ts";
 import { SceneObject } from "../../types/scene.ts";
-import { DeselectObjectsCommand, SelectObjectsCommand } from "../commands/object.ts";
+import { DeselectObjectsCommand, MoveObjectCommand, SelectObjectsCommand } from "../commands/object.ts";
 import { SceneModel } from "../sceneStore.tsx";
 import { InputModel } from "../inputStore.ts";
 import { MultiCommand } from "../commands/index.ts";
+import { Point } from "@pixi/core";
 
 export const SelectEvents = {
   Hover: Symbol("s-Hover"),
   Unhover: Symbol("s-Unhover"),
   PointerDown: Symbol("s-Pointerdown"),
   PointerUp: Symbol("s-Pointerup"),
-  DragStart: Symbol("Dragstart"),
+  DragStart: Symbol("s-Dragstart"),
+  DragMove: Symbol("s-Dragmove"),
   DragEnd: Symbol("s-Dragend"),
 } as const;
+
 export const SelectStates = {
   Default: Symbol("s-Default"),
   Hoverring: Symbol("s-Hoverring"),
@@ -41,7 +44,6 @@ export type SelectToolMessage = {
   "input": ToolInputMessage;
 };
 export type SelectToolModel = {
-  isSelecting: boolean;
   state: Accessor<typeof SelectStates[keyof typeof SelectStates]>,
 };
 
@@ -50,7 +52,7 @@ export type SelectToolStore = BaseStore<SelectToolModel, SelectToolMessage>;
 export const createSelectToolStore = (
   dispatch: GeneralHandler<AllMessages>,
   solixi: Accessor<SolixiState | undefined>,
-  _inputModel: InputModel,
+  inputModel: InputModel,
   sceneModel: SceneModel,
 ) => {
   let boundary: EventBoundary | undefined;
@@ -64,6 +66,8 @@ export const createSelectToolStore = (
   });
   // Internal State
   let currHover: Uuid<SceneObject> | undefined;
+  let offset = new Point();
+  let newPosition: Point|undefined;
 
   // Viewport FSM
   const {
@@ -105,19 +109,52 @@ export const createSelectToolStore = (
         dispatch("scene:do-command", cmd);
       },
     ),
-    t(SelectStates.Default, SelectEvents.PointerDown, SelectStates.PointerDownOnEmpty),
-    t(SelectStates.PointerDownOnEmpty, SelectEvents.DragStart, SelectStates.Selecting, () => {
-      result.store.isSelecting = true;
-    }),
-    t(SelectStates.Selecting, SelectEvents.DragEnd, SelectStates.Default, () => {
-      result.store.isSelecting = false;
-    }),
-    t(SelectStates.PointerDownOnElement, SelectEvents.PointerUp, SelectStates.Hoverring),
-    t(SelectStates.PointerDownOnElement, SelectEvents.DragStart, SelectStates.Moving),
     t(SelectStates.PointerDownOnEmpty, SelectEvents.PointerUp, SelectStates.Default, () => {
       const deselectAllCmd = new DeselectObjectsCommand(...sceneModel.selectedIds);
       dispatch('scene:do-command', deselectAllCmd);
     }),
+    t(SelectStates.Default, SelectEvents.PointerDown, SelectStates.PointerDownOnEmpty),
+    t(SelectStates.PointerDownOnEmpty, SelectEvents.DragStart, SelectStates.Selecting, () => {
+    }),
+    t(SelectStates.Selecting, SelectEvents.DragEnd, SelectStates.Default, () => {
+    }),
+    t(SelectStates.PointerDownOnElement, SelectEvents.PointerUp, SelectStates.Hoverring),
+    t(SelectStates.PointerDownOnElement, SelectEvents.DragStart, SelectStates.Moving, () => {
+      const obj = sceneModel.selectedObjects[0];
+      inputModel.position
+
+      const diffx = obj.position.x - inputModel.position.x;
+      const diffy = obj.position.y - inputModel.position.y;
+      offset.set(diffx, diffy);
+
+      newPosition = inputModel.position.clone();
+      newPosition.x += offset.x;
+      newPosition.y += offset.y;
+
+      const moveCommand = new MoveObjectCommand(obj.id, newPosition);
+      moveCommand.final = false;
+      dispatch('scene:do-command', moveCommand);
+    }),
+    t(SelectStates.Moving, SelectEvents.DragMove, SelectStates.Moving, () => {
+      const obj = sceneModel.selectedObjects[0];
+      newPosition = inputModel.position.clone();
+      newPosition.x += offset.x;
+      newPosition.y += offset.y;
+
+      const moveCommand = new MoveObjectCommand(obj.id, newPosition);
+      moveCommand.final = false;
+      dispatch('scene:do-command', moveCommand);
+    }),
+    t(SelectStates.Moving, SelectEvents.DragEnd, SelectStates.Hoverring, () => {
+      const obj = sceneModel.selectedObjects[0];
+      newPosition = inputModel.position.clone();
+      newPosition.x += offset.x;
+      newPosition.y += offset.y;
+
+      const moveCommand = new MoveObjectCommand(obj.id, newPosition);
+      moveCommand.final = true;
+      dispatch('scene:do-command', moveCommand);
+    })
   ];
 
   const { state, block: sBlock, unblock: sUnblock, can: sCan, dispatch: sDispatch } =
@@ -135,7 +172,6 @@ export const createSelectToolStore = (
   vpUnblock();
 
   const model: SelectToolModel = {
-    isSelecting: false,
     state: state,
   }
 
@@ -149,12 +185,19 @@ export const createSelectToolStore = (
               const result = boundary.hitTest(data.position.x, data.position.y);
               if (result) {
                 const data = metadata.get(result);
-                if (data && sCan(SelectEvents.Hover)) {
-                  // console.log("Hovering");
-                  sDispatch(SelectEvents.Hover);
-                  dispatch("scene:hover", data.id);
-                  currHover = data.id;
-                } else if (!data && sCan(SelectEvents.Unhover)) {
+                if (data) {
+                  if (currHover && data.id !== currHover) {
+                    if (sCan(SelectEvents.Unhover)) {
+                      sDispatch(SelectEvents.Unhover);
+                      dispatch("scene:unhover", currHover);
+                    }
+                  }
+                  if (sCan(SelectEvents.Hover)) {
+                    sDispatch(SelectEvents.Hover);
+                    dispatch("scene:hover", data.id);
+                    currHover = data.id;
+                  }
+                } else if (sCan(SelectEvents.Unhover)) {
                   // console.log("Unhovering");
                   sDispatch(SelectEvents.Unhover);
                   if (currHover) dispatch("scene:unhover", currHover);
@@ -187,6 +230,11 @@ export const createSelectToolStore = (
             if (sCan(SelectEvents.DragStart)) sDispatch(SelectEvents.DragStart);
           }
           break;
+        case "pointer1-dragmove":
+          {
+            if (sCan(SelectEvents.DragMove)) sDispatch(SelectEvents.DragMove);
+          }
+        break;
         case "pointer1-dragend":
           {
             if (sCan(SelectEvents.DragEnd)) sDispatch(SelectEvents.DragEnd);
