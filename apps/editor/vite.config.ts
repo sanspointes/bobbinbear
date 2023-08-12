@@ -16,8 +16,7 @@ export default defineConfig(({mode})  => {
     plugins,
     build: {
       emptyOutDir: true,
-      minify: false,
-      sourcemap: true,
+      minify: true,
     },
   }
 })
