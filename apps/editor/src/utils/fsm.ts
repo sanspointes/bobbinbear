@@ -1,10 +1,6 @@
-import {
-  Accessor,
-  createRenderEffect,
-  createSignal,
-  untrack,
-} from "solid-js";
-import { MaybeAccessor, access } from "@solid-primitives/utils";
+import { Accessor, createRenderEffect, createSignal, untrack } from "solid-js";
+import { access, MaybeAccessor } from "@solid-primitives/utils";
+import { setAppError } from "../Editor";
 //
 // https://github.com/eram/typescript-fsm/tree/master
 // Adapted from typescript-fsm
@@ -13,7 +9,10 @@ import { MaybeAccessor, access } from "@solid-primitives/utils";
  * FSM Class definitions/implementations
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type Callback = ((...args: any[]) => Promise<void>) | ((...args: any[]) => void) | undefined;
+export type Callback =
+  | ((...args: any[]) => Promise<void>)
+  | ((...args: any[]) => void)
+  | undefined;
 
 export interface ITransition<STATE, EVENT> {
   fromState: STATE;
@@ -23,21 +22,25 @@ export interface ITransition<STATE, EVENT> {
 }
 
 export type Transitions<STATE, EVENT> = Map<EVENT, {
-  toState: STATE,
-  cb: Callback,
+  toState: STATE;
+  cb: Callback;
 }>;
-export type AllTranstions<STATE, EVENT> = Map<STATE, Transitions<STATE, EVENT>>
+export type AllTranstions<STATE, EVENT> = Map<STATE, Transitions<STATE, EVENT>>;
 
 export function t<STATE, EVENT>(
-  fromState: STATE, event: EVENT, toState: STATE,
-  cb?: Callback): ITransition<STATE, EVENT> {
+  fromState: STATE,
+  event: EVENT,
+  toState: STATE,
+  cb?: Callback,
+): ITransition<STATE, EVENT> {
   return { fromState, event, toState, cb };
 }
 
 export class StateMachine<STATE, EVENT> {
-
   protected _current: STATE;
   protected transitions: AllTranstions<STATE, EVENT> = new Map();
+
+  static errorHandler?: (error: Error) => void;
 
   // initialize the state-machine
   constructor(
@@ -51,16 +54,20 @@ export class StateMachine<STATE, EVENT> {
 
   addTransitions(transitions: ITransition<STATE, EVENT>[]): void {
     for (const trans of transitions) {
-      if (!this.transitions.has(trans.fromState)) this.transitions.set(trans.fromState, new Map());
+      if (!this.transitions.has(trans.fromState)) {
+        this.transitions.set(trans.fromState, new Map());
+      }
 
       this.transitions.get(trans.fromState)!.set(trans.event, {
         toState: trans.toState,
         cb: trans.cb,
-      })
+      });
     }
   }
 
-  getState(): STATE { return this._current; }
+  getState(): STATE {
+    return this._current;
+  }
 
   can(event: EVENT): boolean {
     const availiableTransitions = this.transitions.get(this._current);
@@ -68,7 +75,7 @@ export class StateMachine<STATE, EVENT> {
     return availiableTransitions.has(event);
   }
 
-  peak(event: EVENT): STATE|undefined {
+  peak(event: EVENT): STATE | undefined {
     const availiableTransitions = this.transitions.get(this._current);
     if (!availiableTransitions) return undefined;
     return availiableTransitions.get(event)?.toState;
@@ -80,20 +87,31 @@ export class StateMachine<STATE, EVENT> {
     return availiableTransitions.size === 0;
   }
 
-  // post event async
-  dispatch(event: EVENT, ...args: unknown[]): Promise<void> {
+  dispatchUnwrapped(event: EVENT, ...args: unknown[]): Promise<void> {
     return new Promise<void>((resolve, reject) => {
       const availiableTransitions = this.transitions.get(this._current);
       if (!availiableTransitions) {
-        // @ts-expect-error ; To string may not be implemeneted on unknown type
-        console.error(`No transition: from ${this._current.toString ? this._current.toString() : this._current} event ${event}`);
+        console.error(
+          `No transition: from ${
+            // @ts-expect-error ; To string may not be implemeneted on unknown type
+            this._current.toString
+              // @ts-expect-error ; To string may not be implemeneted on unknown type
+              ? this._current.toString()
+              : this._current} event ${event}`,
+        );
         reject();
       }
 
       const toTransition = availiableTransitions!.get(event);
       if (!toTransition) {
-        // @ts-expect-error ; To string may not be implemeneted on unknown type
-        console.error(`No transition: from ${this._current.toString ? this._current.toString() : this._current} event ${event}`);
+        console.error(
+          `No transition: from ${
+            // @ts-expect-error ; To string may not be implemeneted on unknown type
+            this._current.toString
+              // @ts-expect-error ; To string may not be implemeneted on unknown type
+              ? this._current.toString()
+              : this._current} event ${event}`,
+        );
         reject();
       }
 
@@ -107,6 +125,15 @@ export class StateMachine<STATE, EVENT> {
         }
       }
     });
+  }
+  // post event async
+  dispatch(event: EVENT, ...args: unknown[]) {
+    const promise = this.dispatchUnwrapped(event, ...args);
+    promise.catch(reason => {
+      console.log('FSM Error during dispatch.', reason)
+      setAppError(reason);
+    })
+    return promise;
   }
 
   force(state: STATE) {
@@ -134,7 +161,7 @@ export function tFromMulti<TState, TEvent>(
 type StateMachineResult<TState, TEvent> = {
   state: Accessor<TState>;
   can: (event: TEvent) => boolean;
-  peak: (event: TEvent) => TState|undefined;
+  peak: (event: TEvent) => TState | undefined;
   dispatch: (event: TEvent, ...extraArgs: unknown[]) => Promise<void>;
   force: (state: TState) => void;
 };
@@ -173,19 +200,21 @@ export function createStateMachine<TState, TEvent>(
   };
 }
 
-export type ExclusiveStateMachineResult<TState, TEvent> = StateMachineResult<TState, TEvent> & {
-  needsExclusive: Accessor<boolean>,
-  block: () => void,
-  unblock: () => void,
-}
+export type ExclusiveStateMachineResult<TState, TEvent> =
+  & StateMachineResult<TState, TEvent>
+  & {
+    needsExclusive: Accessor<boolean>;
+    block: () => void;
+    unblock: () => void;
+  };
 
 export type CreateExclusiveStateMachineOptions<TState, TEvent> = {
-  exclusiveStates: TState[],
-  onBlock?: () => void,
-  onUnblock?: () => void,
-  onExclusive?: () => void,
-  onNonExclusive?: () => void,
-}
+  exclusiveStates: TState[];
+  onBlock?: () => void;
+  onUnblock?: () => void;
+  onExclusive?: () => void;
+  onNonExclusive?: () => void;
+};
 
 const BLOCKED_STATE = Symbol("Blocked");
 
@@ -194,10 +223,14 @@ export function createExclusiveStateMachine<TState, TEvent>(
   transitions: MaybeAccessor<ITransition<TState, TEvent>[]>,
   opts: MaybeAccessor<CreateExclusiveStateMachineOptions<TState, TEvent>>,
 ): ExclusiveStateMachineResult<TState, TEvent> {
+  const { state, can, dispatch, peak, force } = createStateMachine(
+    initialState,
+    transitions,
+  );
 
-  const { state, can, dispatch, peak, force } = createStateMachine(initialState, transitions);
-
-  const [needsExclusive, setNeedsExclusive] = createSignal(access(opts).exclusiveStates.includes(initialState));
+  const [needsExclusive, setNeedsExclusive] = createSignal(
+    access(opts).exclusiveStates.includes(initialState),
+  );
 
   return {
     block: () => {
@@ -210,7 +243,7 @@ export function createExclusiveStateMachine<TState, TEvent>(
       const o = access(opts);
       if (o.onUnblock) o.onUnblock();
     },
-    needsExclusive, 
+    needsExclusive,
     state,
     can,
     peak,
@@ -220,10 +253,12 @@ export function createExclusiveStateMachine<TState, TEvent>(
       const o = access(opts);
       if (!needsExclusive() && next && o.exclusiveStates.includes(next)) {
         setNeedsExclusive(true);
-        if (o.onExclusive) o.onExclusive()
-      } else if (needsExclusive() && next && !o.exclusiveStates.includes(next)) {
+        if (o.onExclusive) o.onExclusive();
+      } else if (
+        needsExclusive() && next && !o.exclusiveStates.includes(next)
+      ) {
         setNeedsExclusive(false);
-        if (o.onNonExclusive) o.onNonExclusive()
+        if (o.onNonExclusive) o.onNonExclusive();
       }
       return dispatch(event, ...extraArgs);
     },

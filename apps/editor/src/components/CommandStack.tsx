@@ -41,6 +41,8 @@ function CommandStackRow(props: CommandStackRowProps) {
         {props.command.name} -{" "}
         {props.command.updatable ? "updatable" : "not updatable"} -{" "}
         {props.command.final ? "final" : "not final"}
+        <Show when={props.command.error}>
+        </Show>
       </div>
 
       <KCollapsible.Content class="pl-6">

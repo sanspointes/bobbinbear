@@ -1,6 +1,7 @@
 import { Canvas, SolixiState, useSolixi } from "@bearbroidery/solixi";
 import { AppContext, createAppStore } from "./store";
 import {
+  createRenderEffect,
   createSignal,
   ErrorBoundary,
   onMount,
@@ -18,7 +19,16 @@ import { Tree } from "./components/Tree";
 import { uuid } from "./utils/uuid";
 import { ErrorView } from "./components/Error";
 
+export const [appError, setAppError] = createSignal<Error>();
+
 const EditorView = () => {
+  // Report errors
+  createRenderEffect(() => {
+    if (appError()) {
+      throw new Error("An Async error occured: ", { cause: appError() });
+    }
+  });
+
   const { sceneStore, dispatch } = useContext(AppContext);
   const pixi = useSolixi();
 
@@ -60,10 +70,9 @@ export const Editor = () => {
 
   return (
     <ErrorBoundary
-      fallback={(err, reset) => (
+      fallback={(err) => (
         <ErrorView
           error={err}
-          reset={reset}
           stack={contextModel.sceneStore.undoStack}
         />
       )}

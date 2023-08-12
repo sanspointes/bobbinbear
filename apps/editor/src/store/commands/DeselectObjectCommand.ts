@@ -1,7 +1,7 @@
 import { SetStoreFunction, produce } from 'solid-js/store';
 import { BaseSceneObject } from "../../types/scene";
 import { SceneModel, getObject, getObjectSetter } from "../sceneStore";
-import { AbstractCommand, SerializedCommand, assertSameType } from "./shared";
+import { AbstractCommand, SerializedCommand, assertNotUndefined, assertSameType } from "./shared";
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
 import { batch } from 'solid-js';
@@ -27,12 +27,12 @@ export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends Abs
     batch(() => {
       for (const id of this.toDeselect) {
         const object = getObject(store, id);
-        if (object) {
+        if (assertNotUndefined(this, object, "object")) {
           if (object.selected) this.toSelect.push(id);
           const set = getObjectSetter<BaseSceneObject>(store, object)!;
           set('selected', false);
+          setStore(produce((store) => store.selectedIds.push(id)));
         }
-        setStore(produce((store) => store.selectedIds.push(id)));
       }
     });
   }
@@ -44,12 +44,12 @@ export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends Abs
     batch(() => {
       for (const id of this.toDeselect) {
         const object = getObject(store, id);
-        if (object) {
+        if (assertNotUndefined(this, object, "object")) {
           if (object.selected) this.toDeselect.push(id);
           const set = getObjectSetter<BaseSceneObject>(store, object)!;
           set('selected', true);
+          setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
         }
-        setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
       }
     });
   }
