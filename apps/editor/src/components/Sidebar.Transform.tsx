@@ -3,7 +3,7 @@ import { SceneObject } from "../types/scene"
 import { AccordionItem } from "./generics/Accordian"
 import { NumberInput } from "./generics/NumberInput"
 import { AppContext } from "../store"
-import { SetSceneObjectFieldCommand } from "../store/commands/object"
+import { SetSceneObjectFieldCommand } from "../store/commands"
 import { Point } from "@pixi/core"
 
 type SidebarTransformProps = {

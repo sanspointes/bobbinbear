@@ -1,13 +1,8 @@
-import {
-  Canvas,
-  PContainer,
-  SolixiState,
-  useSolixi,
-} from "@bearbroidery/solixi";
+import { Canvas, SolixiState, useSolixi } from "@bearbroidery/solixi";
 import { AppContext, createAppStore } from "./store";
 import {
-    ErrorBoundary,
   createSignal,
+  ErrorBoundary,
   onMount,
   useContext,
 } from "solid-js";
@@ -20,6 +15,8 @@ import { SelectBox } from "./sxi-components/SelectBox";
 import { preventDefault } from "@solid-primitives/event-listener";
 import { Sidebar } from "./components/Sidebar";
 import { Tree } from "./components/Tree";
+import { uuid } from "./utils/uuid";
+import { ErrorView } from "./components/Error";
 
 const EditorView = () => {
   const { sceneStore, dispatch } = useContext(AppContext);
@@ -31,12 +28,14 @@ const EditorView = () => {
     });
   });
 
+  const rootObject = sceneStore.objects.get(uuid("root"));
+
   return (
     <>
       <CursorTest />
       <SelectBox />
       <Viewport>
-        <SceneObjectChildren children={[sceneStore.root]} />
+        <SceneObjectChildren children={rootObject!.children} />
       </Viewport>
     </>
   );
@@ -55,29 +54,43 @@ export const Editor = () => {
     contextModel.dispatch("input:set-source", {
       keys: wrapperEl,
     });
-  })
+  });
 
   const onWheel = preventDefault(() => {});
 
   return (
-    <ErrorBoundary fallback={err => err}>
-      <div ref={wrapperEl} tabindex={0} class="flex flex-col items-stretch w-full h-full" onWheel={onWheel}>
+    <ErrorBoundary
+      fallback={(err, reset) => (
+        <ErrorView
+          error={err}
+          reset={reset}
+          stack={contextModel.sceneStore.undoStack}
+        />
+      )}
+    >
+      <div
+        ref={wrapperEl}
+        tabindex={0}
+        class="flex flex-col items-stretch w-full h-full"
+        onWheel={onWheel}
+      >
         <AppContext.Provider value={contextModel}>
           <Toolbar />
           <div
-            class="flex-grow flex"
+            class="flex flex-grow"
             classList={{
               "cursor-grab": toolStore.currentCursor === Cursor.Grab,
-              "cursor-grabbing":
-                toolStore.currentCursor === Cursor.Grabbing,
-              "cursor-pointer":
-                toolStore.currentCursor === Cursor.Point,
-              "cursor-crosshair": 
-                toolStore.currentCursor === Cursor.Cross,
+              "cursor-grabbing": toolStore.currentCursor === Cursor.Grabbing,
+              "cursor-pointer": toolStore.currentCursor === Cursor.Point,
+              "cursor-crosshair": toolStore.currentCursor === Cursor.Cross,
             }}
           >
             <Tree />
-            <Canvas devtools={true} onCreated={onCreated} app={{backgroundColor: 0xE1E1E1}}>
+            <Canvas
+              devtools={true}
+              onCreated={onCreated}
+              app={{ backgroundColor: 0xE1E1E1 }}
+            >
               <EditorView />
             </Canvas>
             <Sidebar />

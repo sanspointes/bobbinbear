@@ -7,12 +7,11 @@ import {
 } from "./shared";
 import { AllMessages, BaseStore, GeneralHandler, generateStore } from "..";
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
-import { CreateObjectCommand, MultiCommand } from "../commands";
-import { SceneObject } from "../../types/scene";
+import { BaseSceneObject, SceneObject } from "../../types/scene";
 import { GraphicSceneObject } from "../../types/scene";
 import { newUuid, uuid, Uuid } from "../../utils/uuid";
 import { createBoxGraphicsCommands } from "../../utils/graphics";
-import { SetSceneObjectFieldCommand } from "../commands/object";
+import { SetSceneObjectFieldCommand, CreateObjectCommand, MultiCommand } from "../commands";
 import { Point } from "@pixi/core";
 
 export const BoxEvents = {
@@ -58,8 +57,8 @@ export const createBoxToolStore = (
     },
   });
 
-  let createCommand: CreateObjectCommand | undefined;
-  let currentlyBuildingId: Uuid<SceneObject> | undefined;
+  let createCommand: CreateObjectCommand<GraphicSceneObject> | undefined;
+  let currentlyBuildingId: Uuid<GraphicSceneObject> | undefined;
 
   const transitions = [
     t(BoxStates.Default, BoxEvents.PointerDown, BoxStates.Down),
@@ -110,10 +109,11 @@ export const createBoxToolStore = (
 
         const cmd = new MultiCommand(
           createCommand,
-          // @ts-expect-error ; Issues with generic typing of GraphicSceneObject
           setShapeCommand,
           setPositionCommand,
         );
+        cmd.name = 'Creating Box';
+        cmd.final = false;
         dispatch("scene:do-command", cmd);
       },
     ),
@@ -162,6 +162,7 @@ export const createBoxToolStore = (
           setShapeCommand,
           setPositionCommand,
         );
+        cmd.name = 'Updating Box';
         cmd.final = false;
         dispatch("scene:do-command", cmd);
       },
@@ -209,6 +210,7 @@ export const createBoxToolStore = (
           setShapeCommand,
           setPositionCommand,
         );
+        cmd.name = 'Creating Box Finished';
         dispatch("scene:do-command", cmd);
 
         createCommand = undefined;

@@ -70,10 +70,8 @@ export const parentChildren = <
             }
           });
         } else if (attach instanceof Function) {
-          console.log("Attach function");
           const cleanup = attach(context, parent, child);
           onCleanup(() => {
-            console.log("Cleanup ");
             cleanup();
           });
         } else {
@@ -111,7 +109,6 @@ export const applyProps = <
   extraPropHandlers: ExtraPropsHandlers<TContext, TSource>,
 ) =>
   createRenderEffect(mapArray(() => Object.keys(props), (key) => {
-    console.log(`Starting to manage prop "${key}" for `, object.__sxi.type);
     /* We wrap it in an effect only if a prop is a getter or a function */
     const descriptors = Object.getOwnPropertyDescriptor(props, key);
     const isGetterField = !!descriptors?.get;
@@ -122,8 +119,9 @@ export const applyProps = <
     const applyProp = (value: unknown) => {
       const v = isEvent ? value : resolve(value);
 
-      if (extraPropHandlers[key]) {
-        extraPropHandlers[key](
+      const handler = extraPropHandlers[key];
+      if (handler) {
+        handler(
           object.__sxi.solixi,
           object.__sxi.parent?.object,
           object,

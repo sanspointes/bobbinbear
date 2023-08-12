@@ -15,7 +15,6 @@ export const Scene = () => {
   });
 
   const toggleVisibility = () => {
-    console.log('Toggling visibility')
     setVisible(!visible());
     setTimeout(toggleVisibility, 1000);
   }

@@ -1,5 +1,5 @@
 /** @jsxImportSource solid-js */
-import { render } from 'solid-js/web'
+import { ErrorBoundary, Show, render } from 'solid-js/web'
 import './styles.css';
 
 import { attachDevtoolsOverlay } from '@solid-devtools/overlay'

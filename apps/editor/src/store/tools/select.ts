@@ -1,22 +1,26 @@
 import { EventBoundary } from "@pixi/events";
 import { Accessor, createEffect } from "solid-js";
 import { AllMessages, BaseStore, GeneralHandler, generateStore } from "..";
-import { Cursor, ToolModel, ToolStoreMessage } from "../toolStore";
+import { Cursor, } from "../toolStore";
 import {
   createViewportStateMachine,
   ToolInputMessage,
   ToolInputs,
   ViewportEvents,
 } from "./shared";
-import { createExclusiveStateMachine, t } from "../../utils/fsm.ts";
+import { createExclusiveStateMachine, t } from "../../utils/fsm";
 import { SolixiState } from "@bearbroidery/solixi";
-import { metadata } from "../../utils/metadata.ts";
-import { Uuid } from "../../utils/uuid.ts";
-import { SceneObject } from "../../types/scene.ts";
-import { DeselectObjectsCommand, MoveObjectCommand, SelectObjectsCommand } from "../commands/object.ts";
-import { SceneModel } from "../sceneStore.tsx";
-import { InputModel } from "../inputStore.ts";
-import { MultiCommand } from "../commands/index.ts";
+import { metadata } from "../../utils/metadata";
+import { Uuid } from "../../utils/uuid";
+import { SceneObject } from "../../types/scene";
+import {
+  DeselectObjectsCommand,
+  MoveObjectCommand,
+  SelectObjectsCommand,
+} from "../commands";
+import { SceneModel } from "../sceneStore";
+import { InputModel } from "../inputStore";
+import { MultiCommand } from "../commands/index";
 import { Point } from "@pixi/core";
 
 export const SelectEvents = {
@@ -45,7 +49,7 @@ export type SelectToolMessage = {
   "input": ToolInputMessage;
 };
 export type SelectToolModel = {
-  state: Accessor<typeof SelectStates[keyof typeof SelectStates]>,
+  state: Accessor<typeof SelectStates[keyof typeof SelectStates]>;
 };
 
 export type SelectToolStore = BaseStore<SelectToolModel, SelectToolMessage>;
@@ -68,7 +72,7 @@ export const createSelectToolStore = (
   // Internal State
   let currHover: Uuid<SceneObject> | undefined;
   let offset = new Point();
-  let newPosition: Point|undefined;
+  let newPosition: Point | undefined;
 
   // Viewport FSM
   const {
@@ -104,43 +108,85 @@ export const createSelectToolStore = (
       SelectEvents.PointerDown,
       SelectStates.PointerDownOnElement,
       (id: Uuid<SceneObject>) => {
-        const deselectAllCmd = new DeselectObjectsCommand(...sceneModel.selectedIds);
+        const deselectAllCmd = new DeselectObjectsCommand(
+          ...sceneModel.selectedIds,
+        );
         const selectObjCmd = new SelectObjectsCommand(id);
         const cmd = new MultiCommand(deselectAllCmd, selectObjCmd);
+        cmd.name = `Select ${id}`;
         dispatch("scene:do-command", cmd);
       },
     ),
-    t(SelectStates.PointerDownOnEmpty, SelectEvents.PointerUp, SelectStates.Default, () => {
-      if (sceneModel.inspecting !== undefined) dispatch('scene:uninspect');
-      const deselectAllCmd = new DeselectObjectsCommand(...sceneModel.selectedIds);
-      dispatch('scene:do-command', deselectAllCmd);
-    }),
-    t(SelectStates.Default, SelectEvents.PointerDown, SelectStates.PointerDownOnEmpty),
-    t(SelectStates.PointerDownOnEmpty, SelectEvents.DragStart, SelectStates.Selecting, () => {
-    }),
-    t(SelectStates.Selecting, SelectEvents.DragEnd, SelectStates.Default, () => {
-    }),
-    t(SelectStates.PointerDownOnElement, SelectEvents.PointerUp, SelectStates.Hoverring),
-    t(SelectStates.PointerDownOnElement, SelectEvents.DoubleClick, SelectStates.PointerDownOnElement, () => {
-      if (!currHover) throw new Error('Attempted to inspect: Currently hovered element but no element hovered.');
-      dispatch('scene:inspect', currHover);
-    }),
-    t(SelectStates.PointerDownOnElement, SelectEvents.DragStart, SelectStates.Moving, () => {
-      const obj = sceneModel.selectedObjects[0];
-      inputModel.position
+    t(
+      SelectStates.PointerDownOnEmpty,
+      SelectEvents.PointerUp,
+      SelectStates.Default,
+      () => {
+        if (sceneModel.inspecting !== undefined) dispatch("scene:uninspect");
+        const deselectAllCmd = new DeselectObjectsCommand(
+          ...sceneModel.selectedIds,
+        );
+        dispatch("scene:do-command", deselectAllCmd);
+      },
+    ),
+    t(
+      SelectStates.Default,
+      SelectEvents.PointerDown,
+      SelectStates.PointerDownOnEmpty,
+    ),
+    t(
+      SelectStates.PointerDownOnEmpty,
+      SelectEvents.DragStart,
+      SelectStates.Selecting,
+      () => {
+      },
+    ),
+    t(
+      SelectStates.Selecting,
+      SelectEvents.DragEnd,
+      SelectStates.Default,
+      () => {
+      },
+    ),
+    t(
+      SelectStates.PointerDownOnElement,
+      SelectEvents.PointerUp,
+      SelectStates.Hoverring,
+    ),
+    t(
+      SelectStates.PointerDownOnElement,
+      SelectEvents.DoubleClick,
+      SelectStates.PointerDownOnElement,
+      () => {
+        if (!currHover) {
+          throw new Error(
+            "Attempted to inspect: Currently hovered element but no element hovered.",
+          );
+        }
+        dispatch("scene:inspect", currHover);
+      },
+    ),
+    t(
+      SelectStates.PointerDownOnElement,
+      SelectEvents.DragStart,
+      SelectStates.Moving,
+      () => {
+        const obj = sceneModel.selectedObjects[0];
+        inputModel.position;
 
-      const diffx = obj.position.x - inputModel.position.x;
-      const diffy = obj.position.y - inputModel.position.y;
-      offset.set(diffx, diffy);
+        const diffx = obj.position.x - inputModel.position.x;
+        const diffy = obj.position.y - inputModel.position.y;
+        offset.set(diffx, diffy);
 
-      newPosition = inputModel.position.clone();
-      newPosition.x += offset.x;
-      newPosition.y += offset.y;
+        newPosition = inputModel.position.clone();
+        newPosition.x += offset.x;
+        newPosition.y += offset.y;
 
-      const moveCommand = new MoveObjectCommand(obj.id, newPosition);
-      moveCommand.final = false;
-      dispatch('scene:do-command', moveCommand);
-    }),
+        const moveCommand = new MoveObjectCommand(obj.id, newPosition);
+        moveCommand.final = false;
+        dispatch("scene:do-command", moveCommand);
+      },
+    ),
     t(SelectStates.Moving, SelectEvents.DragMove, SelectStates.Moving, () => {
       const obj = sceneModel.selectedObjects[0];
       newPosition = inputModel.position.clone();
@@ -149,7 +195,7 @@ export const createSelectToolStore = (
 
       const moveCommand = new MoveObjectCommand(obj.id, newPosition);
       moveCommand.final = false;
-      dispatch('scene:do-command', moveCommand);
+      dispatch("scene:do-command", moveCommand);
     }),
     t(SelectStates.Moving, SelectEvents.DragEnd, SelectStates.Hoverring, () => {
       const obj = sceneModel.selectedObjects[0];
@@ -159,27 +205,32 @@ export const createSelectToolStore = (
 
       const moveCommand = new MoveObjectCommand(obj.id, newPosition);
       moveCommand.final = true;
-      dispatch('scene:do-command', moveCommand);
-    })
+      dispatch("scene:do-command", moveCommand);
+    }),
   ];
 
-  const { state, block: sBlock, unblock: sUnblock, can: sCan, dispatch: sDispatch } =
-    createExclusiveStateMachine(SelectStates.Default, transitions, {
-      exclusiveStates: [SelectStates.Selecting, SelectStates.Moving],
-      onExclusive: () => {
-        vpBlock();
-      },
-      onNonExclusive: () => {
-        vpUnblock();
-      },
-    });
+  const {
+    state,
+    block: sBlock,
+    unblock: sUnblock,
+    can: sCan,
+    dispatch: sDispatch,
+  } = createExclusiveStateMachine(SelectStates.Default, transitions, {
+    exclusiveStates: [SelectStates.Selecting, SelectStates.Moving],
+    onExclusive: () => {
+      vpBlock();
+    },
+    onNonExclusive: () => {
+      vpUnblock();
+    },
+  });
 
   sUnblock();
   vpUnblock();
 
   const model: SelectToolModel = {
     state: state,
-  }
+  };
 
   const result = generateStore<SelectToolModel, SelectToolMessage>(model, {
     "input": (_1, _2, msg) => {
@@ -223,9 +274,11 @@ export const createSelectToolStore = (
             }
           }
           break;
-        case "pointer1-doubleclick": 
+        case "pointer1-doubleclick":
           {
-            if (sCan(SelectEvents.DoubleClick)) sDispatch(SelectEvents.DoubleClick);
+            if (sCan(SelectEvents.DoubleClick)) {
+              sDispatch(SelectEvents.DoubleClick);
+            }
           }
           break;
         case "pointer1-up":
@@ -245,7 +298,7 @@ export const createSelectToolStore = (
           {
             if (sCan(SelectEvents.DragMove)) sDispatch(SelectEvents.DragMove);
           }
-        break;
+          break;
         case "pointer1-dragend":
           {
             if (sCan(SelectEvents.DragEnd)) sDispatch(SelectEvents.DragEnd);

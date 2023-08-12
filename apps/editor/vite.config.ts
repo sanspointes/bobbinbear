@@ -1,14 +1,10 @@
 import { defineConfig, type Plugin } from "vite";
 import solid from 'vite-plugin-solid'
-import dts from "vite-plugin-dts";
 import inspect from "vite-plugin-inspect";
 import solidDevtoolsPlugin from "solid-devtools/vite";
 
 export default defineConfig(({mode})  => {
   const plugins = [
-    dts({
-      insertTypesEntry: true,
-    }),
     inspect(),
     solid(),
   ];
@@ -20,7 +16,8 @@ export default defineConfig(({mode})  => {
     plugins,
     build: {
       emptyOutDir: true,
-      minify: true,
+      minify: false,
+      sourcemap: true,
     },
   }
 })

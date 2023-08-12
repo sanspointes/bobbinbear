@@ -9,18 +9,32 @@ import {
   SceneObject,
 } from "../types/scene";
 import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
-import { createEffect, createMemo, onMount, untrack, useContext } from "solid-js";
+import {
+  createEffect,
+  createMemo,
+  on,
+  onMount,
+  useContext,
+} from "solid-js";
 import { metadata } from "../utils/metadata";
 import { AppContext } from "../store";
-import { CreateObjectCommand, DeleteObjectCommand, MultiCommand } from "../store/commands";
+import {
+  CreateObjectCommand,
+  DeleteObjectCommand,
+  MultiCommand,
+} from "../store/commands";
 import { Point } from "@pixi/core";
 import { newUuid, uuid } from "../utils/uuid";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
-import { SetSceneObjectFieldCommand } from "../store/commands/object";
 
-const updateGraphics = (g: Graphics, shape: GraphicsNode[], fill: IFillStyleOptions, stroke: ILineStyleOptions) => {
+const updateGraphics = (
+  g: Graphics,
+  shape: GraphicsNode[],
+  fill: IFillStyleOptions,
+  stroke: ILineStyleOptions,
+) => {
   g.clear();
-  
+
   // Stack stores up to 2 previous control points.
   let stackIndex = 0;
   const stack: [GraphicsNode | undefined, GraphicsNode | undefined] = [
@@ -29,7 +43,7 @@ const updateGraphics = (g: Graphics, shape: GraphicsNode[], fill: IFillStyleOpti
   ];
 
   g.beginFill(fill.color, fill.alpha);
-  g.lineStyle(stroke)
+  g.lineStyle(stroke);
 
   for (const node of shape) {
     // Jump nodes jump to a new position
@@ -75,68 +89,25 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
     metadata.set(graphics, {
       type: props.type,
       id: props.id,
-    })
+    });
 
     useHoverSelectOutline(graphics, props);
-  })
-
-  const { sceneStore, dispatch } = useContext(AppContext);
-
-  createEffect(() => {
-    if (graphics) updateGraphics(graphics, props.shape, props.fill, props.stroke);
   });
+
+  const { sceneStore } = useContext(AppContext);
+
+  createEffect(
+    on([
+      () => props.shape,
+      () => props.fill,
+      () => props.stroke,
+    ], ([shape, fill, stroke]) => {
+      if (graphics) updateGraphics(graphics, shape, fill, stroke);
+    }),
+  );
 
   const isAppInspecting = createMemo(() => sceneStore.inspecting !== undefined);
   const isThisInspecting = createMemo(() => isAppInspecting() && sceneStore.inspecting === props.id);
-
-  let inspectingRootObject: GroupSceneObject|undefined;
-  createEffect(() => {
-    const inspecting = isThisInspecting()
-    untrack(() => {
-      if (inspecting && !inspectingRootObject) {
-        const inspectingRootObjectId = newUuid<SceneObject>();
-
-        const children: NodeSceneObject[] = props.shape.map((node, i) => ({
-          type: 'node',
-          node,
-          name: `Node ${i}`,
-          position: new Point(node.x, node.y),
-          id: newUuid(),
-          hovered: false,
-          selected: false,
-          visible: true,
-          locked: false,
-          shallowLocked: false,
-          parent: inspectingRootObjectId,
-          relatesTo: props.id,
-          children: [],
-        }));
-        inspectingRootObject = {
-          type: 'group',
-          name: `Nodes of ${props.name}`,
-          position: props.position.clone(),
-          id: inspectingRootObjectId,
-          hovered: false,
-          selected: false,
-          visible: true,
-          shallowLocked: true,
-          locked: false,
-          parent: uuid('root'),
-          children,
-        }
-        const setInspectingRoot = new SetSceneObjectFieldCommand<GraphicSceneObject>(props.id, 'inspectingRoot', inspectingRootObjectId);
-        const createNodeRootCommand = new CreateObjectCommand(inspectingRootObject)
-
-        // @ts-ignore-error; setInspectingRoot bad typing for non BaseSceneObjects
-        const cmd = new MultiCommand(setInspectingRoot, createNodeRootCommand);
-        dispatch('scene:do-command', cmd);
-      } else if (inspectingRootObject) {
-        const cmd = new DeleteObjectCommand(inspectingRootObject);
-        dispatch('scene:do-command', cmd);
-        inspectingRootObject = undefined
-      }
-    })
-  })
 
   return (
     <P.Graphics

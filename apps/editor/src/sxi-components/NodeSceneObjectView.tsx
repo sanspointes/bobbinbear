@@ -1,4 +1,4 @@
-import { createEffect, onMount } from "solid-js";
+import { onMount } from "solid-js";
 import { Sprite } from "@pixi/sprite";
 import { P } from "@bearbroidery/solixi";
 

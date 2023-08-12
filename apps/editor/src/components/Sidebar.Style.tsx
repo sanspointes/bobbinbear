@@ -1,12 +1,13 @@
 import { createMemo, JSX, Show, useContext } from "solid-js";
 import {
+    BaseSceneObject,
   CanvasSceneObject,
   GraphicSceneObject,
-  SceneObject,
+  HasFillSceneObject,
 } from "../types/scene";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
-import { SetSceneObjectFieldCommand } from "../store/commands/object";
+import { SetSceneObjectFieldCommand } from "../store/commands";
 import { ColorPicker } from "./generics/ColorPicker";
 import { IFillStyleOptions, ILineStyleOptions, LINE_CAP } from "@pixi/graphics";
 import { NumberInput } from "./generics/NumberInput";
@@ -38,7 +39,7 @@ export function SidebarStyle(props: SidebarStyleProps) {
 
   const updateFillStyle = (model: Partial<IFillStyleOptions>) => {
     const fill = { ...props.object.fill, ...model };
-    const cmd = new SetSceneObjectFieldCommand(props.object.id, "fill", fill);
+    const cmd = new SetSceneObjectFieldCommand<BaseSceneObject & HasFillSceneObject>(props.object.id, "fill", fill);
     dispatch("scene:do-command", cmd);
   };
 

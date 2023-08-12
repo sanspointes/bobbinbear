@@ -1,6 +1,6 @@
 import { Solixi, useFrame } from "@bearbroidery/solixi";
 import {
-    Clamp,
+  Clamp,
   Drag,
   IClampOptions,
   IViewportOptions,
@@ -8,7 +8,14 @@ import {
   Viewport as PixiViewport,
   Wheel,
 } from "pixi-viewport";
-import { createEffect, type JSX, useContext, untrack, onMount } from "solid-js";
+import {
+  createEffect,
+  type JSX,
+  on,
+  onMount,
+  untrack,
+  useContext,
+} from "solid-js";
 import { createMemo } from "solid-js";
 import { Cursor } from "../store/toolStore";
 import { AppContext } from "../store";
@@ -56,7 +63,7 @@ const PViewport = Solixi.wrapConstructable(PixiViewport, {
       };
     },
     clamp: (_1, _2, object, options: false | IClampOptions) => {
-      let clampPlugin: Clamp|undefined;
+      let clampPlugin: Clamp | undefined;
       if (options) {
         const clampPlugin = new Clamp(object, options);
         object.plugins.add("clamp", clampPlugin);
@@ -96,68 +103,68 @@ export const Viewport = (props: ViewportProps) => {
     const cursor = toolStore.currentCursor;
     return cursor !== Grab && cursor !== Grabbing;
   });
-  createEffect(() => {
-    const shouldPause = panPaused();
+  createEffect(on(panPaused, (panPaused) => {
     if (viewportEl) {
-      // @ts-expect-error ; dw bout it
-      window.vpEl = viewportEl;
-      if (shouldPause) {
-        viewportEl.plugins.plugins.drag?.pause();
+      if (panPaused) {
+        viewportEl.plugins.plugins["drag"]?.pause();
       } else {
-        viewportEl.plugins.plugins.drag?.resume();
+        viewportEl.plugins.plugins["drag"]?.resume();
       }
     }
-  })
+  }));
 
   // Update viewport store position each frame.
   useFrame(() => {
     untrack(() => {
       if (viewportEl !== undefined) {
         if (!viewportStore.position.equals(viewportEl.position)) {
-          dispatch('viewport:move-to', viewportEl.position)
+          dispatch("viewport:move-to", viewportEl.position);
         }
 
         const { left, right, top, bottom } = viewportEl;
-        if (left !== viewportStore.left || top !== viewportStore.top || right !== viewportStore.right || bottom !== viewportStore.bottom) {
-          dispatch('viewport:set-bounds', {
+        if (
+          left !== viewportStore.left || top !== viewportStore.top ||
+          right !== viewportStore.right || bottom !== viewportStore.bottom
+        ) {
+          dispatch("viewport:set-bounds", {
             left,
             right,
             top,
             bottom,
-          })
+          });
         }
       }
-    })
-  })
+    });
+  });
 
   onMount(() => {
     if (viewportEl) {
-      let downPosition: Point|undefined;
-      createEventListener(viewportEl, 'pointerdown', (event) => {
+      let downPosition: Point | undefined;
+      createEventListener(viewportEl, "pointerdown", (event) => {
         const ev = event as unknown as FederatedPointerEvent;
         downPosition = ev.global.clone();
-        dispatch('input:pointerdown', {
+        dispatch("input:pointerdown", {
           position: ev.global.clone(),
-        })
-      })
+        });
+      });
 
-      createEventListener(viewportEl, 'pointermove', (event) => {
+      createEventListener(viewportEl, "pointermove", (event) => {
         const ev = event as unknown as FederatedPointerEvent;
-        dispatch('input:pointermove', {
+        dispatch("input:pointermove", {
           downPosition: downPosition!,
           position: ev.global.clone(),
-        })
-      })
+        });
+      });
 
-      createEventListener(viewportEl, 'pointerup', (event) => {
+      createEventListener(viewportEl, "pointerup", (event) => {
         const ev = event as unknown as FederatedPointerEvent;
-        dispatch('input:pointerup', {
+        dispatch("input:pointerup", {
           downPosition: downPosition!,
           position: ev.global.clone(),
-        })
-      })
+        });
+      });
     }
-  })
+  });
 
   return (
     <PViewport

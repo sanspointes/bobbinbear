@@ -122,7 +122,7 @@ export const Canvas = (props: CanvasProps) => {
         overflow: 'hidden',
       }}
       {...divElementProps}>
-      <div ref={containerEl} style={{ position: 'absolute', width: '100%', height: '100%' }}>
+      <div ref={containerEl} style={{ position: 'absolute', top: '0', left: '0', width: '100%', height: '100%' }}>
         <canvas ref={canvasEl} style={{ display: 'block', width: '100%', height: '100%' }} />
       </div>
     </div>

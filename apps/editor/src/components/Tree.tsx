@@ -1,21 +1,21 @@
-import { For, Show, useContext } from "solid-js";
+import { Index, Show, useContext } from "solid-js";
 import { TbChevronDown, TbEye, TbEyeClosed } from "solid-icons/tb";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
 import { AllMessages, AppContext, GeneralHandler } from "../store";
-import { SceneObject } from "../types/scene";
+import { BaseSceneObject, SceneObject } from "../types/scene";
 import {
   DeselectObjectsCommand,
   SelectObjectsCommand,
   SetSceneObjectFieldCommand,
-} from "../store/commands/object";
+} from "../store/commands";
 import { Button } from "./generics/Button";
 import { SceneModel } from "../store/sceneStore";
 import { MultiCommand } from "../store/commands";
-import { Uuid } from "../utils/uuid";
+import { Uuid, uuid } from "../utils/uuid";
 
 const toggleVisibility = (
-  object: SceneObject,
+  object: BaseSceneObject,
   dispatch: GeneralHandler<AllMessages>,
 ) => {
   const newValue = !object.visible;
@@ -33,14 +33,16 @@ const selectObject = (
   );
   const selectThisCommand = new SelectObjectsCommand(objectId);
 
+  const cmd = new MultiCommand(deselectOthersCmd, selectThisCommand);
+  cmd.name = `Select ${objectId}`;
   dispatch(
     "scene:do-command",
-    new MultiCommand(deselectOthersCmd, selectThisCommand),
+    cmd,
   );
 };
 
 type TreeNodeProps = {
-  object: SceneObject;
+  object: BaseSceneObject;
   indent: number;
 };
 export function TreeNode(props: TreeNodeProps) {
@@ -78,9 +80,15 @@ export function TreeNode(props: TreeNodeProps) {
         </KCollapsible.Trigger>
       </div>
       <KCollapsible.Content>
-        <For each={props.object.children}>
-          {(child) => <TreeNode object={child} indent={props.indent + 1} />}
-        </For>
+        <Index each={props.object.children}>
+          {(child) => {
+            // eslint-disable-next-line solid/reactivity
+            const obj = sceneStore.objects.get(child());
+
+            if (!obj) return <span> Error getting {child()} </span>;
+            return <TreeNode object={obj} indent={props.indent + 1} />
+          }}
+        </Index>
       </KCollapsible.Content>
     </KCollapsible.Root>
   );
@@ -89,11 +97,19 @@ export function TreeNode(props: TreeNodeProps) {
 export function Tree() {
   const { sceneStore } = useContext(AppContext);
 
+  const root = sceneStore.objects.get(uuid('root'));
+
   return (
-    <div class="bg-yellow-200 w-[400px]">
-      <For each={sceneStore.root.children}>
-        {(child) => <TreeNode object={child} indent={0} />}
-      </For>
+    <div class="bg-yellow-200 w-[400px] h-full overflow-y-scroll">
+      <Index each={root!.children}>
+        {(child) => {
+          // eslint-disable-next-line solid/reactivity
+          const obj = sceneStore.objects.get(child());
+
+          if (!obj) return <span> Error getting {child()} </span>;
+          return <TreeNode object={obj} indent={0} />
+        }}
+      </Index>
     </div>
   );
 }

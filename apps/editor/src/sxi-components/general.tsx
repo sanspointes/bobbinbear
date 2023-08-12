@@ -1,9 +1,10 @@
-import { For, createEffect } from "solid-js";
-import { BaseSceneObject } from "../types/scene";
+import { Index, useContext } from "solid-js";
+import { BaseSceneObject, SceneObject } from "../types/scene";
 import { CanvasSceneObjectView } from "./CanvasSceneObject";
 import { GraphicSceneObjectView } from "./GraphicSceneObjectView";
 import { NodeSceneObjectView } from "./NodeSceneObjectView";
 import { GroupSceneObjectView } from "./GroupSceneObjectView";
+import { AppContext } from "../store";
 
 const SCENE_OBJECT_LOOKUP = {
   "canvas": CanvasSceneObjectView,
@@ -15,13 +16,17 @@ const SCENE_OBJECT_LOOKUP = {
 export const SceneObjectChildren = (
   props: Pick<BaseSceneObject, "children">,
 ) => {
+  const { sceneStore } = useContext(AppContext);
   return (
-    <For each={props.children}>
+    <Index each={props.children}>
       {(object, i) => {
-        console.log("SceneObjectChildren", object);
-        const Component = SCENE_OBJECT_LOOKUP[object.type];
-        return <Component {...object} order={i()} />;
+        // eslint-disable-next-line solid/reactivity
+        const o = sceneStore.objects.get(object()) as SceneObject;
+        if (!o) return null;
+        console.log("SceneObjectChildren", o);
+        const Component = SCENE_OBJECT_LOOKUP[o.type];
+        return <Component {...o} order={i} />;
       }}
-    </For>
+    </Index>
   );
 };

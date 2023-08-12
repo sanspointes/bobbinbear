@@ -11,13 +11,10 @@ import { type JSX,  Accessor, Context, } from "solid-js"
 export function withContext<T>(children: Accessor<JSX.Element | JSX.Element[]>, context: Context<T>, value: T) {
   let result: JSX.Element | JSX.Element[];
 
-  console.log('WITH CONTEXT: ')
-
   context.Provider({
     value,
     children: (() => {
       result = children()
-      console.log('withContext: children: ', result);
       return ''
     }) as any as JSX.Element,
   })

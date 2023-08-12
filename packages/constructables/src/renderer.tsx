@@ -42,13 +42,13 @@ export const createRoot = <
   context: Context<TContext>,
   contextValue: TContext
 ): SolixiRoot<TContext, SxiObject<TContext, TRootObject>> => {
-  console.log('CNST: Creating Root', context, contextValue);
+  console.debug('CNST: Creating Root', context, contextValue);
 
   const root: SolixiRoot<TContext, SxiObject<TContext, TRootObject>> = {
     rootObject: undefined,
     state: contextValue,
     render(props) {
-      console.log('CNST: Rendering root', context, contextValue);
+      console.debug('CNST: Rendering root', context, contextValue);
       const ro = resolve(rootObject) as InstanceType<TRootObject> & SxiObjectMetadata<TContext, TRootObject>;
       const instance = prepareObject(ro, contextValue, 'root', {}, { attach: null, extraProps: {}, defaultArgs: [] as unknown as ConstructorParameters<TRootObject> });
       this.rootObject = instance.object as SxiObject<TContext, TRootObject>;

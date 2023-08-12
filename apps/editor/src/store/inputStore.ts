@@ -1,7 +1,7 @@
 import { Point } from "@pixi/core";
 import { AllMessages, GeneralHandler, generateStore } from ".";
 import { produce } from "solid-js/store";
-import { createEffect } from "solid-js";
+import { createEffect, on } from "solid-js";
 import { pointDistance } from "../utils/point";
 import { ToolInputs } from "./tools/shared";
 import { createEventListener } from "@solid-primitives/event-listener";
@@ -219,15 +219,15 @@ export const createInputStore = (
   // Pointer events are handled by the Viewport.tsx class.
 
   // Bind key events on the key source
-  createEffect(() => {
-    if (store.store.keySource) {
-      createEventListener(store.store.keySource, "keydown", (e) => {
+  createEffect(on(() => store.store.keySource, (keySource) => {
+    if (keySource) {
+      createEventListener(keySource, "keydown", (e) => {
         store.handle("input:keydown", {
           key: e.key,
         }, dispatch);
       });
       createEventListener(
-        store.store.keySource,
+        keySource,
         "keyup",
         (e) =>
           store.handle("input:keyup", {
@@ -235,7 +235,7 @@ export const createInputStore = (
           }, dispatch),
       );
       createEventListener(
-        store.store.keySource,
+        keySource,
         "keypress",
         (e) =>
           store.handle("input:keypress", {
@@ -243,7 +243,7 @@ export const createInputStore = (
           }, dispatch),
       );
     }
-  });
+  }));
 
   return store;
 };

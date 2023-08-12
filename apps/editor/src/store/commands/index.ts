@@ -1,27 +1,45 @@
-import { AbstractCommand, SerializedCommand } from "./shared";
-import {
+import { AbstractCommand, SerializedCommand, assertSameField, assertSameType } from "./shared";
+import { SetStoreFunction } from "solid-js/store";
+import { BaseSceneObject } from "../../types/scene";
+import { SceneModel } from "../sceneStore";
+import { ChangeObjectOrderCommand } from "./ChangeObjectOrderCommand";
+import { CreateObjectCommand } from "./CreateObjectCommand";
+import { DeleteObjectCommand } from "./DeleteObjectCommand";
+import { DeselectObjectsCommand } from "./DeselectObjectCommand";
+import { MoveObjectCommand } from "./MoveObjectCommand";
+import { SelectObjectsCommand } from "./SelectObjectCommand";
+import { SetSceneObjectFieldCommand } from "./SetSceneObjectFieldCommand";
+import { UpdateGraphicsNodeCommand } from "./UpdateGraphicsNodeCommand";
+import { batch } from "solid-js";
+
+export {
+  ChangeObjectOrderCommand,
   CreateObjectCommand,
   DeleteObjectCommand,
+  DeselectObjectsCommand,
   MoveObjectCommand,
-  SceneCommands,
   SelectObjectsCommand,
   SetSceneObjectFieldCommand,
-} from "./object";
-import { SetStoreFunction } from "solid-js/store";
-import { SceneObject } from "../../types/scene";
-import { Uuid } from "../../utils/uuid";
-import { ObjectMapData, SceneModel } from "../sceneStore";
-import { UpdateGraphicsNodeCommand } from "./GraphicsNodesCommands";
+  UpdateGraphicsNodeCommand,
+};
 
-export { CreateObjectCommand, DeleteObjectCommand, MoveObjectCommand };
+type AtomicCommands<TObject extends BaseSceneObject = BaseSceneObject> =
+  | ChangeObjectOrderCommand<TObject>
+  | CreateObjectCommand<TObject>
+  | DeleteObjectCommand<TObject>
+  | DeselectObjectsCommand<TObject>
+  | MoveObjectCommand<TObject>
+  | SelectObjectsCommand<TObject>
+  | SetSceneObjectFieldCommand<TObject>
+  | UpdateGraphicsNodeCommand;
 
-export type AtomicCommands = SceneCommands;
-
-export type Command = MultiCommand | AtomicCommands;
+export type Command<TObject extends BaseSceneObject = BaseSceneObject> =
+  | MultiCommand<TObject>
+  | AtomicCommands<TObject>;
 export type CommandType = Command["type"];
 
 export type CommandPrototypeMap = Record<CommandType, AbstractCommand>;
-export const _commandPrototypeMap: Record<CommandType, AbstractCommand> = {
+export const _commandPrototypeMap: Record<CommandType, Command> = {
   "CreateObjectCommand": CreateObjectCommand.prototype,
   "DeleteObjectCommand": DeleteObjectCommand.prototype,
   "MoveObjectCommand": MoveObjectCommand.prototype,
@@ -30,12 +48,13 @@ export const _commandPrototypeMap: Record<CommandType, AbstractCommand> = {
   "UpdateGraphicsNodeCommand": UpdateGraphicsNodeCommand.prototype,
 };
 
-export class MultiCommand extends AbstractCommand {
+export class MultiCommand<TObject extends BaseSceneObject>
+  extends AbstractCommand {
   public updatable: boolean = true;
   name = "Multi Command";
   type = "MultiCommand";
-  commands: Command[];
-  constructor(...commands: Command[]) {
+  commands: Command<TObject>[];
+  constructor(...commands: Command<TObject>[]) {
     super();
 
     this.commands = commands;
@@ -44,29 +63,36 @@ export class MultiCommand extends AbstractCommand {
   perform(
     store: SceneModel,
     setStore: SetStoreFunction<SceneModel>,
-    objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   ): void {
-    for (const cmd of this.commands) {
-      cmd.perform(store, setStore, objMap);
-    }
+    batch(() => {
+      for (const cmd of this.commands) {
+        cmd.perform(store, setStore);
+      }
+    });
   }
 
   undo(
     store: SceneModel,
     setStore: SetStoreFunction<SceneModel>,
-    objMap: Map<Uuid<SceneObject>, ObjectMapData>,
   ): void {
-    for (var i = this.commands.length - 1; i >= 0; i--) {
-      const cmd = this.commands[i];
-      cmd.undo(store, setStore, objMap);
-    }
+    batch(() => {
+      for (let i = this.commands.length - 1; i >= 0; i--) {
+        const cmd = this.commands[i];
+        if (!cmd) {
+          throw new Error(
+            `MultiCommand: (undo) Cannot get command at the ${i}th index.`,
+          );
+        }
+        cmd.undo(store, setStore);
+      }
+    });
   }
 
-  fromObject<T extends string>(object: SerializedCommand<T>): void {
+  fromObject<T extends Command>(object: SerializedCommand<T>): void {
     let i = 0;
     for (const cmd of this.commands) {
       const cmdObject = object[i] as Record<string, unknown>;
-      cmd.fromObject(cmdObject as SerializedCommand<AtomicCommands['type']>);
+      cmd.fromObject(cmdObject as SerializedCommand<T>);
       i++;
     }
   }
@@ -81,13 +107,19 @@ export class MultiCommand extends AbstractCommand {
     }
   }
 
-  updateData(newer: MultiCommand): void {
-    if (this.commands.length !== newer.commands.length) 
-      throw new Error(`MultiCommand.updateData() Cant update MultiCommand as newer version has a different number of commands.  Expected ${this.commands.length}, found ${newer.commands.length}.`);
+  // @ts-expect-error ; Difficult typing
+  updateData(newer: Command<TObject>): void {
+    // @ts-expect-error ; Difficult typing
+    const n = assertSameType(this, newer) as MultiCommand<TObject>;
+    // @ts-expect-error ; Difficult typing
+    assertSameField(this, n, length);
     let i = 0;
     for (const cmd of this.commands) {
-      // @ts-ignore-error; Typescript pains.
-      if (cmd.updateData) cmd.updateData(newer.commands[i]);
+      const newerCmd = n.commands[i]!;
+      // @ts-expect-error ; Difficult typing
+      const n2 = assertSameType(cmd, newerCmd) as Command<TObject>;
+      // @ts-expect-error ; Difficult typing
+      if (cmd.updateData) cmd.updateData(n2);
       i += 1;
     }
   }

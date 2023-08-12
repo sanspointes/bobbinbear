@@ -12,6 +12,7 @@ import { MaybeAccessor, access } from "@solid-primitives/utils";
 /**
  * FSM Class definitions/implementations
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type Callback = ((...args: any[]) => Promise<void>) | ((...args: any[]) => void) | undefined;
 
 export interface ITransition<STATE, EVENT> {
@@ -130,12 +131,6 @@ export function tFromMulti<TState, TEvent>(
  * SOLIDJS PRIMITIVES
  */
 
-type CreateStateMachineOptions = {
-  trace?: boolean | {
-    tag: string;
-  };
-};
-
 type StateMachineResult<TState, TEvent> = {
   state: Accessor<TState>;
   can: (event: TEvent) => boolean;
@@ -146,7 +141,6 @@ type StateMachineResult<TState, TEvent> = {
 export function createStateMachine<TState, TEvent>(
   initialState: TState,
   transitions: MaybeAccessor<ITransition<TState, TEvent>[]>,
-  opts?: MaybeAccessor<CreateStateMachineOptions>,
 ): StateMachineResult<TState, TEvent> {
   const [state, setState] = createSignal(initialState);
   let machine: StateMachine<TState, TEvent>;
@@ -201,11 +195,7 @@ export function createExclusiveStateMachine<TState, TEvent>(
   opts: MaybeAccessor<CreateExclusiveStateMachineOptions<TState, TEvent>>,
 ): ExclusiveStateMachineResult<TState, TEvent> {
 
-  const { state, can, dispatch, peak, force } = createStateMachine(initialState, transitions, {
-    trace: {
-      tag: 'e',
-    }
-  });
+  const { state, can, dispatch, peak, force } = createStateMachine(initialState, transitions);
 
   const [needsExclusive, setNeedsExclusive] = createSignal(access(opts).exclusiveStates.includes(initialState));
 

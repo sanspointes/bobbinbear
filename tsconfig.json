@@ -1,12 +1,23 @@
 {
-  "include": ["./src"],
   "compilerOptions": {
-    "outDir": "./types",
-    "rootDir": "./src",
-    "target": "esnext",
+    "strict": true,
+    "target": "ESNext",
+    "module": "ESNext",
+    "lib": ["DOM", "DOM.Iterable", "ESNext"],
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "noPropertyAccessFromIndexSignature": true,
+    "noUncheckedIndexedAccess": true,
     "jsx": "preserve",
     "jsxImportSource": "solid-js",
-    "lib": ["dom", "esnext"]
+    "types": [],
+    "baseUrl": "."
   },
-  "exclude": ["dist", "build", "node_modules"]
+  "exclude": ["node_modules", "dist"]
 }
