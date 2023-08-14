@@ -1,5 +1,9 @@
 import { createSignal, Show, useContext } from "solid-js";
-import { TbChevronDown, TbEye, TbEyeClosed } from "solid-icons/tb";
+import {
+  TbChevronDown,
+  TbEye,
+  TbEyeClosed,
+} from "solid-icons/tb";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
 import { AllMessages, AppContext, GeneralHandler } from "../store";
@@ -16,7 +20,11 @@ import {
 } from "../store/commands";
 import { TextInput } from "./generics/TextInput";
 import { useClickOutside } from "../composables/useClickOutside";
-import { preventDefault, stopPropagation } from "@solid-primitives/event-listener";
+import {
+  stopPropagation,
+} from "@solid-primitives/event-listener";
+import { Select } from "./generics/Select";
+import { Resizable } from "./generics/Resizable";
 
 /**
  * Mutation Helpers
@@ -72,6 +80,36 @@ const childResolver = (sceneStore: SceneModel, node: BaseSceneObject) => {
   return children;
 };
 
+export function SidebarLeft() {
+  const [currentDocument, setCurrentDocument] = createSignal<
+    Uuid<BaseSceneObject>
+  >(uuid("Document 1"));
+
+  const options = ["Document 1", "Document 2"];
+
+  return (
+    <Resizable
+      handlePosition="right"
+      defaultWidth={200}
+      class="bg-orange-50"
+      minWidth={200}
+      maxWidth={400}
+    >
+      <div class="flex justify-between items-center border-b border-solid border-b-orange-300">
+        <Select
+          value={currentDocument()}
+          options={options}
+          onChange={(v) => setCurrentDocument(v)}
+          multiple={false}
+        >
+          {(option) => <span>{option}</span>}
+        </Select>
+      </div>
+      <SceneTree />
+    </Resizable>
+  );
+}
+
 export function SceneTree() {
   const { dispatch, sceneStore } = useContext(AppContext);
 
@@ -86,7 +124,7 @@ export function SceneTree() {
   });
 
   return (
-    <div class="overflow-y-scroll h-full text-orange-800 bg-orange-50 fill-orange-800 stroke-orange-50 w-[400px]">
+    <div class="overflow-y-scroll h-full text-orange-800 bg-orange-50 fill-orange-800 stroke-orange-50">
       <Tree
         root={root as BaseSceneObject}
         childResolver={(node) => childResolver(sceneStore, node)}
@@ -146,18 +184,19 @@ export function SceneTree() {
                   size="tiny"
                   link={true}
                   inverted={true}
-                  class="hidden group-hover:block ml-auto mr-2"
-                  onClick={stopPropagation(() => toggleVisibility(node, dispatch))}
+                  class="hidden mr-2 ml-auto group-hover:block"
+                  onClick={stopPropagation(() =>
+                    toggleVisibility(node, dispatch)
+                  )}
                 >
                   <Show when={node.visible} fallback={<TbEyeClosed />}>
                     <TbEye />
                   </Show>
                 </Button>
               </Show>
-
             </div>
             <Show when={node.children.length > 0}>
-              <KCollapsible.Content class="ml-4 border-y-orange-500 border-solid border-y">
+              <KCollapsible.Content class="ml-4 border-solid border-y-orange-300 border-y">
                 {children()}
               </KCollapsible.Content>
             </Show>

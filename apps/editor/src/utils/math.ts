@@ -12,3 +12,7 @@ export const unmapLinear = (amount: number, a: number, b: number) => {
 export const mapLinear = ( x: number, a1: number, a2: number, b1: number, b2: number ) => {
     return b1 + ( x - a1 ) * ( b2 - b1 ) / ( a2 - a1 );
 }
+
+export const clamp = (x: number, min: number, max: number) => {
+  return Math.max(min, Math.min(x, max));
+}

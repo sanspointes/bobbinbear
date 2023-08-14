@@ -22,7 +22,7 @@ import { SelectBox } from "./sxi-components/SelectBox";
 import { preventDefault } from "@solid-primitives/event-listener";
 import { Sidebar } from "./components/Sidebar";
 import { uuid } from "./utils/uuid";
-import { SceneTree } from "./components/SceneTree";
+import { SceneTree, SidebarLeft } from "./components/SceneTree";
 
 export const [appError, setAppError] = createSignal<Error>();
 
@@ -87,7 +87,7 @@ export const Editor = () => {
           >
             <DragDropProvider>
               <DragDropSensors>
-                <SceneTree />
+                <SidebarLeft />
               </DragDropSensors>
             </DragDropProvider>
             <Canvas
