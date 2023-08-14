@@ -21,6 +21,7 @@ const button = tv({
       true: 'bg-orange-100 hover:bg-orange-50 shadow shadow-orange-500',
     },
     size: {
+      tiny: 'p-1',
       small: 'p-2',
       medium: 'p-4',
       large: 'p-6',
@@ -54,7 +55,7 @@ const button = tv({
 
 export type ButtonProps = KButton.ButtonRootProps & {
   variant?: "default" | "secondary";
-  size?: "small" | "medium" | "large";
+  size?: "tiny" | "small" | "medium" | "large";
   link?: boolean;
   inverted?: boolean;
   highlighted?: boolean;

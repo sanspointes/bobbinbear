@@ -16,6 +16,7 @@ import {
 } from "../store/commands";
 import { TextInput } from "./generics/TextInput";
 import { useClickOutside } from "../composables/useClickOutside";
+import { preventDefault, stopPropagation } from "@solid-primitives/event-listener";
 
 /**
  * Mutation Helpers
@@ -77,14 +78,15 @@ export function SceneTree() {
   const root = sceneStore.objects.get(uuid("root"));
 
   const [currentlyRenaming, setCurrentlyRenaming] = createSignal<string>();
-  const [currentClickOutsideTarget, setCurrentClickOutsideTarget] = createSignal<HTMLElement>();
+  const [currentClickOutsideTarget, setCurrentClickOutsideTarget] =
+    createSignal<HTMLElement>();
   useClickOutside(currentClickOutsideTarget, () => {
     setCurrentlyRenaming(undefined);
     setCurrentClickOutsideTarget(undefined);
-  })
+  });
 
   return (
-    <div class="overflow-y-scroll h-full bg-orange-50 fill-orange-800 stroke-orange-50 text-orange-800 w-[400px]">
+    <div class="overflow-y-scroll h-full text-orange-800 bg-orange-50 fill-orange-800 stroke-orange-50 w-[400px]">
       <Tree
         root={root as BaseSceneObject}
         childResolver={(node) => childResolver(sceneStore, node)}
@@ -99,13 +101,12 @@ export function SceneTree() {
           />
         )}
         nodeTemplate={(node, children) => (
-          <KCollapsible.Root
-            classList={{
-              "bg-orange-400": node.selected,
-            }}
-          >
+          <KCollapsible.Root>
             <div
-              class="flex items-center w-full h-8"
+              class="flex items-center w-full h-8 group"
+              classList={{
+                "bg-orange-200": node.selected,
+              }}
               onClick={() => selectObject(node.id, sceneStore, dispatch)}
             >
               <KCollapsible.Trigger
@@ -113,7 +114,7 @@ export function SceneTree() {
                   "invisible pointer-events-none": node.children.length === 0,
                 }}
               >
-                <Button size="small" link={true} inverted={true}>
+                <Button size="tiny" link={true} inverted={true}>
                   <TbChevronDown class="ml-auto transition-transform transform kb-expanded:rotate-180" />
                 </Button>
               </KCollapsible.Trigger>
@@ -121,8 +122,9 @@ export function SceneTree() {
                 when={currentlyRenaming() !== node.id}
                 fallback={
                   <TextInput
-                    ref={el => setCurrentClickOutsideTarget(el)}
+                    ref={(el) => setCurrentClickOutsideTarget(el)}
                     autofocus
+                    class="w-full"
                     label={`Rename "${node.name}"`}
                     value={node.name}
                     onChange={(v) => setObjectName(node.id, v, dispatch, false)}
@@ -133,26 +135,29 @@ export function SceneTree() {
                   />
                 }
               >
-                <Button
-                  size="small"
-                  link={true}
-                  inverted={true}
-                  onClick={() => toggleVisibility(node, dispatch)}
-                >
-                  <Show when={node.visible} fallback={<TbEyeClosed />}>
-                    <TbEye />
-                  </Show>
-                </Button>
                 <span
                   class="ml-2 h-6 select-none"
                   onDblClick={() => setCurrentlyRenaming(node.id)}
                 >
                   {node.name}
                 </span>
+
+                <Button
+                  size="tiny"
+                  link={true}
+                  inverted={true}
+                  class="hidden group-hover:block ml-auto mr-2"
+                  onClick={stopPropagation(() => toggleVisibility(node, dispatch))}
+                >
+                  <Show when={node.visible} fallback={<TbEyeClosed />}>
+                    <TbEye />
+                  </Show>
+                </Button>
               </Show>
+
             </div>
             <Show when={node.children.length > 0}>
-              <KCollapsible.Content>
+              <KCollapsible.Content class="ml-4 border-y-orange-500 border-solid border-y">
                 {children()}
               </KCollapsible.Content>
             </Show>

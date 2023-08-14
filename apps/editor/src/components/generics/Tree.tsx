@@ -95,7 +95,7 @@ function TreeNode<T extends BaseDragDroppable>(props: TreeNodeProps<T>) {
     <div use:draggable={draggable}>
       {treeCtx.nodeTemplate(
         props.node,
-        () => treeCtx.childResolver(props.node),
+        () => <TreeChildren children={treeCtx.childResolver(props.node)} />,
       )}
     </div>
   );

@@ -14,6 +14,9 @@ import { SceneModel } from "../store/sceneStore";
 import { MultiCommand } from "../store/commands";
 import { Uuid, uuid } from "../utils/uuid";
 
+/**
+ * Helpers
+ */
 const toggleVisibility = (
   object: BaseSceneObject,
   dispatch: GeneralHandler<AllMessages>,
