@@ -1,17 +1,28 @@
-import { SetStoreFunction, produce } from 'solid-js/store';
+import { produce, SetStoreFunction } from "solid-js/store";
 import { BaseSceneObject } from "../../types/scene";
 import { SceneModel } from "../sceneStore";
-import { AbstractCommand, SerializedCommand, addObject, assertSameType, deleteObject } from "./shared";
-import { batch } from 'solid-js';
-import { arrayRemoveEl } from '../../utils/array';
-import { Command } from '.';
+import {
+  AbstractCommand,
+  addObject,
+  assertSameType,
+  deleteObject,
+  InsertPosition,
+  SerializedCommand,
+} from "./shared";
+import { batch } from "solid-js";
+import { arrayRemoveEl } from "../../utils/array";
+import { Command } from ".";
 
-export class CreateObjectCommand<TObject extends BaseSceneObject> extends AbstractCommand {
+export class CreateObjectCommand<TObject extends BaseSceneObject>
+  extends AbstractCommand {
   public updatable: boolean = false;
 
   name = "Create Object";
   type = "CreateObjectCommand" as const;
-  constructor(private object: TObject) {
+  constructor(
+    private object: TObject,
+    private insertPosition: InsertPosition = "last",
+  ) {
     super();
   }
 
@@ -19,7 +30,7 @@ export class CreateObjectCommand<TObject extends BaseSceneObject> extends Abstra
     store: SceneModel,
     setStore: SetStoreFunction<SceneModel>,
   ): void {
-    addObject(store, setStore, this.object);
+    addObject(store, setStore, this.object, this.insertPosition);
   }
   undo(
     store: SceneModel,
@@ -43,9 +54,11 @@ export class CreateObjectCommand<TObject extends BaseSceneObject> extends Abstra
   toObject(object: Record<string, unknown>): void {
     super.toObject(object);
     object["object"] = JSON.stringify(this.object);
+    object["insertPosition"] = this.insertPosition;
   }
   fromObject<T extends Command>(object: SerializedCommand<T>): void {
     this.object = JSON.parse(object["object"] as string) as TObject;
+    this.insertPosition = object["insertPosition"] as InsertPosition;
   }
 
   updateData(newer: Command): void {
@@ -53,4 +66,3 @@ export class CreateObjectCommand<TObject extends BaseSceneObject> extends Abstra
     this.object = n.object;
   }
 }
-

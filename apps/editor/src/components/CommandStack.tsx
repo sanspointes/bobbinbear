@@ -32,7 +32,7 @@ type CommandStackRowProps = {
 function CommandStackRow(props: CommandStackRowProps) {
   return (
     <KCollapsible.Root class="w-full">
-      <div class="flex gap-2 items-center p-2 pr-0 border-b border-yellow-500 border-solid">
+      <div class="flex gap-2 items-center p-2 pr-0 border-b border-orange-500 border-solid">
         <KCollapsible.Trigger>
           <Button size="small">
             <TbChevronDown class="ml-auto transition-transform transform kb-expanded:rotate-180" />
@@ -49,7 +49,7 @@ function CommandStackRow(props: CommandStackRowProps) {
         <Show
           when={props.command.type === "MultiCommand"}
           fallback={
-            <pre class="text-xs bg-yellow-200">{JSON.stringify(props.command, undefined, 2)}</pre>
+            <pre class="text-xs bg-orange-200">{JSON.stringify(props.command, undefined, 2)}</pre>
           }
         >
           <For each={(props.command as MultiCommand<BaseSceneObject>).commands}>

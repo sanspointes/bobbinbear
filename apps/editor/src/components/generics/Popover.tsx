@@ -22,12 +22,12 @@ export function Popover(props: PopoverProps) {
       </KPopover.Trigger>
       <KPopover.Portal>
         <KPopover.Content
-          class="overflow-hidden bg-yellow-300 rounded-md min-w-[300px]"
+          class="overflow-hidden bg-orange-300 rounded-md min-w-[300px]"
           classList={{
             [internalProps.class ?? ""]: !!internalProps.class,
           }}
         >
-          <div class="flex justify-between p-2 w-full border-b border-yellow-500 border-solid">
+          <div class="flex justify-between p-2 w-full border-b border-orange-500 border-solid">
             <KPopover.Title>{internalProps.title}</KPopover.Title>
             <KPopover.CloseButton>
               <TbX />

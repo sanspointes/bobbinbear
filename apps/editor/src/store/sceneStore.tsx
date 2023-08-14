@@ -235,5 +235,8 @@ export const createSceneStore = () => {
     },
   });
 
+  // @ts-expect-error Debug only inspection
+  window.sceneStore = result.store;
+
   return result;
 };

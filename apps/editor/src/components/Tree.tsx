@@ -1,4 +1,4 @@
-import { Index, Show, useContext } from "solid-js";
+import { For, Index, Show, useContext } from "solid-js";
 import { TbChevronDown, TbEye, TbEyeClosed } from "solid-icons/tb";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
@@ -51,17 +51,17 @@ export function TreeNode(props: TreeNodeProps) {
     <KCollapsible.Root
       style={{ "margin-left": `${props.indent * 20}px` }}
       classList={{
-        "bg-yellow-400": props.object.selected,
+        "bg-orange-400": props.object.selected,
       }}
     >
       <div
-        class="flex justify-between select-none hover:outline hover:outline-1 hover:outline-yellow-400"
+        class="flex justify-between select-none hover:outline hover:outline-1 hover:outline-orange-600"
         onClick={() => selectObject(props.object.id, sceneStore, dispatch)}
       >
         <div class="flex gap-2 items-center">
           <Button
             size="small"
-            class="bg-transparent bg-opacity-50 hover:bg-yellow-50"
+            class="bg-transparent bg-opacity-50 hover:bg-orange-50"
             onClick={() => toggleVisibility(props.object, dispatch)}
           >
             <Show when={props.object.visible} fallback={<TbEyeClosed />}>
@@ -80,15 +80,15 @@ export function TreeNode(props: TreeNodeProps) {
         </KCollapsible.Trigger>
       </div>
       <KCollapsible.Content>
-        <Index each={props.object.children}>
+        <For each={props.object.children}>
           {(child) => {
             // eslint-disable-next-line solid/reactivity
-            const obj = sceneStore.objects.get(child());
+            const obj = sceneStore.objects.get(child);
 
-            if (!obj) return <span> Error getting {child()} </span>;
+            if (!obj) return <span> Error getting {child} </span>;
             return <TreeNode object={obj} indent={props.indent + 1} />
           }}
-        </Index>
+        </For>
       </KCollapsible.Content>
     </KCollapsible.Root>
   );
@@ -100,16 +100,16 @@ export function Tree() {
   const root = sceneStore.objects.get(uuid('root'));
 
   return (
-    <div class="bg-yellow-200 w-[400px] h-full overflow-y-scroll">
-      <Index each={root!.children}>
+    <div class="bg-orange-500 w-[400px] h-full overflow-y-scroll">
+      <For each={root!.children}>
         {(child) => {
           // eslint-disable-next-line solid/reactivity
-          const obj = sceneStore.objects.get(child());
+          const obj = sceneStore.objects.get(child);
 
-          if (!obj) return <span> Error getting {child()} </span>;
+          if (!obj) return <span> Error getting {child} </span>;
           return <TreeNode object={obj} indent={0} />
         }}
-      </Index>
+      </For>
     </div>
   );
 }

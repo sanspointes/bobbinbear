@@ -25,7 +25,7 @@ export function AccordionItem(props: AccordionItemProps) {
   return (
     <KAccordion.Item
       {...itemProps}
-      class="border-t first-of-type:border-t-0 last-of-type:border-b border-yellow-500 border-solid"
+      class="border-t first-of-type:border-t-0 last-of-type:border-b border-orange-700 border-solid"
       classList={{
         [remainingProps.class ?? ""]: !!remainingProps.class,
       }}

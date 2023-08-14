@@ -4,27 +4,11 @@ import {
   GraphicNodeTypes,
   GraphicSceneObject,
   GraphicsNode,
-  GroupSceneObject,
-  NodeSceneObject,
-  SceneObject,
 } from "../types/scene";
 import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
-import {
-  createEffect,
-  createMemo,
-  on,
-  onMount,
-  useContext,
-} from "solid-js";
+import { createEffect, createMemo, on, onMount, useContext } from "solid-js";
 import { metadata } from "../utils/metadata";
 import { AppContext } from "../store";
-import {
-  CreateObjectCommand,
-  DeleteObjectCommand,
-  MultiCommand,
-} from "../store/commands";
-import { Point } from "@pixi/core";
-import { newUuid, uuid } from "../utils/uuid";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
 
 const updateGraphics = (
@@ -96,18 +80,16 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
 
   const { sceneStore } = useContext(AppContext);
 
-  createEffect(
-    on([
-      () => props.shape,
-      () => props.fill,
-      () => props.stroke,
-    ], ([shape, fill, stroke]) => {
-      if (graphics) updateGraphics(graphics, shape, fill, stroke);
-    }),
-  );
+  createEffect(() => {
+    if (graphics) {
+      updateGraphics(graphics, props.shape, props.fill, props.stroke);
+    }
+  });
 
   const isAppInspecting = createMemo(() => sceneStore.inspecting !== undefined);
-  const isThisInspecting = createMemo(() => isAppInspecting() && sceneStore.inspecting === props.id);
+  const isThisInspecting = createMemo(() =>
+    isAppInspecting() && sceneStore.inspecting === props.id
+  );
 
   return (
     <P.Graphics

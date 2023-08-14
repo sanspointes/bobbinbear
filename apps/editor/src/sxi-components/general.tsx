@@ -1,4 +1,4 @@
-import { Index, useContext } from "solid-js";
+import { For, Index, useContext } from "solid-js";
 import { BaseSceneObject, SceneObject } from "../types/scene";
 import { CanvasSceneObjectView } from "./CanvasSceneObject";
 import { GraphicSceneObjectView } from "./GraphicSceneObjectView";
@@ -18,15 +18,15 @@ export const SceneObjectChildren = (
 ) => {
   const { sceneStore } = useContext(AppContext);
   return (
-    <Index each={props.children}>
+    <For each={props.children}>
       {(object, i) => {
         // eslint-disable-next-line solid/reactivity
-        const o = sceneStore.objects.get(object()) as SceneObject;
+        const o = sceneStore.objects.get(object) as SceneObject;
         if (!o) return null;
         console.log("SceneObjectChildren", o);
         const Component = SCENE_OBJECT_LOOKUP[o.type];
-        return <Component {...o} order={i} />;
+        return <Component {...o} order={i()} />;
       }}
-    </Index>
+    </For>
   );
 };

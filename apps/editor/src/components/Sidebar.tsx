@@ -12,7 +12,7 @@ export function Sidebar () {
   const firstObject = createMemo(() => arrayFirst(sceneStore.selectedObjects));
 
   return (
-    <div class="p-4 bg-yellow-400 border-l border-yellow-500 border-solid w-[400px] box-border">
+    <div class="p-4 bg-orange-500 border-l border-orange-600 border-solid w-[400px] box-border">
       <div class="grid grid-cols-2 gap-4">
         <Accordion class="col-span-2" multiple collapsible defaultValue={['scene-object', 'transform', 'style']}>
           <Show when={firstObject()}>

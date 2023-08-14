@@ -59,14 +59,14 @@ export function Select<TOption>(props: SelectProps<TOption>) {
     // Typescript can't infer if this is single or multiple props
     <KSelect.Root
       {...remainingProps}
-      class="w-full"
+      class="w-full text-orange-900"
       classList={{
         [internalProps.class ?? ""]: props.class !== undefined,
       }}
       itemComponent={(props) => (
         <KSelect.Item
           item={props.item}
-          class="flex justify-between items-center py-2 px-4 w-full border-b border-yellow-500 border-solid last-of-type:border-b-0 hover:bg-yellow-100 cursor-pointer"
+          class="flex justify-between items-center py-2 px-4 w-full border-b border-orange-500 border-solid last-of-type:border-b-0 hover:bg-orange-100 cursor-pointer"
         >
           <KSelect.ItemLabel class="text-left">
             {internalProps.children(props.item.rawValue)}
@@ -78,18 +78,18 @@ export function Select<TOption>(props: SelectProps<TOption>) {
       )}
     >
       <KSelect.Trigger
-        class="flex overflow-hidden justify-between items-center py-2 px-4 w-full bg-yellow-50 rounded-md"
+        class="flex overflow-hidden justify-between items-center py-2 px-4 w-full bg-orange-50 rounded-md"
         aria-label="Fruit"
       >
         <KSelect.Value<TOption> class="w-full text-left">
           {(state) => internalProps.children(state.selectedOption())}
         </KSelect.Value>
-        <KSelect.Icon class="select__icon">
+        <KSelect.Icon class="select_icon">
         </KSelect.Icon>
       </KSelect.Trigger>
       <KSelect.Portal>
-        <KSelect.Content class="pt-2 -mt-4 w-full shadow-2xl shadow-yellow-500 rounded-b-md">
-          <KSelect.Listbox class="bg-yellow-200" />
+        <KSelect.Content class="pt-2 -mt-4 w-full shadow-2xl shadow-orange-500 rounded-b-md">
+          <KSelect.Listbox class="bg-orange-200" />
         </KSelect.Content>
       </KSelect.Portal>
     </KSelect.Root>

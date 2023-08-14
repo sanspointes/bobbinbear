@@ -18,7 +18,7 @@ export function Checkbox(props: CheckboxProps) {
       <KCheckbox.Input />
       <KCheckbox.Control class="bg-white rounded-md w-8 h-8 flex items-center justify-center">
         <KCheckbox.Indicator>
-          <TbCheck class="w-6 h-6" />
+          <TbCheck class="w-6 h-6 stroke-orange-800" />
         </KCheckbox.Indicator>
       </KCheckbox.Control>
       <KCheckbox.Label>{remainingProps.label}</KCheckbox.Label>

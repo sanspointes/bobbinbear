@@ -87,7 +87,7 @@ export const inspectGraphicsObject = (
   };
 
   const commands = [
-    new CreateObjectCommand(parent),
+    new CreateObjectCommand(parent, 'first'),
     ...nodes.map((so) =>
       new CreateObjectCommand(so)
     ),

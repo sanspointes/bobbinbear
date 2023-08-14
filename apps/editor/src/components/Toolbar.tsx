@@ -1,6 +1,6 @@
 import { useContext } from "solid-js";
 import { TbPointer } from "solid-icons/tb";
-import { CgSquare } from "solid-icons/cg";
+import { ImCheckboxUnchecked } from 'solid-icons/im'
 
 import * as helpers from "../store/helpers";
 import { Button } from "./generics/Button";
@@ -11,7 +11,7 @@ import { CommandStack } from "./CommandStack";
 export const Toolbar = () => {
   const app = useContext(AppContext);
   return (
-    <div class="flex justify-between p-2 bg-yellow-400 border-b border-yellow-500 border-solid">
+    <div class="flex justify-between p-2 bg-orange-500 border-b border-orange-700 border-solid">
       <div class="flex gap-2">
         <Button onClick={() => helpers.createCanvas(app.dispatch)}>
           New Canvas
@@ -21,14 +21,14 @@ export const Toolbar = () => {
           highlighted={app.toolStore.tool === Tool.Select}
           onClick={() => app.dispatch("tool:switch", Tool.Select)}
         >
-          <TbPointer />
+          <TbPointer class="stroke-orange-800 w-5 h-5" />
         </Button>
         <Button
           variant="default"
           highlighted={app.toolStore.tool === Tool.Box}
           onClick={() => app.dispatch("tool:switch", Tool.Box)}
         >
-          <CgSquare />
+          <ImCheckboxUnchecked class="fill-orange-800 w-4 h-4" />
         </Button>
       </div>
       <div class="flex gap-2">

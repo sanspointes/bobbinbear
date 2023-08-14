@@ -8,14 +8,14 @@ const button = tv({
   base: "rounded-md",
   variants: {
     variant: {
-      default: 'bg-yellow-200 hover:bg-yellow-100 text-yellow-800 font-bold',
-      secondary: 'bg-yellow-200 bg-opacity-0 border-yellow-600 border-solid border text-yellow-800 hover:bg-opacity-20'
+      default: 'bg-orange-200 hover:bg-orange-100 text-orange-800 font-bold',
+      secondary: 'bg-orange-200 bg-opacity-0 border-orange-600 border-solid border text-orange-800 hover:bg-opacity-20'
     },
     inverted: {
-      true: 'bg-yellow-50',
+      true: 'bg-orange-50',
     },
     highlighted: {
-      true: 'bg-yellow-100 hover:bg-yellow-50 shadow shadow-yellow-500',
+      true: 'bg-orange-100 hover:bg-orange-50 shadow shadow-orange-500',
     },
     size: {
       small: 'p-2',
@@ -27,12 +27,12 @@ const button = tv({
     {
       variant: 'default',
       inverted: true,
-      class: 'bg-yellow-800 hover:bg-yellow-700 text-yellow-200'
+      class: 'bg-orange-800 hover:bg-orange-700 text-orange-200'
     },
     {
       variant: 'secondary',
       inverted: true,
-      class: 'bg-transparent border-yellow-200 border-solid border text-yellow-200 bg-yellow-200',
+      class: 'bg-transparent border-orange-200 border-solid border text-orange-200 bg-orange-200',
     }
   ]
 });

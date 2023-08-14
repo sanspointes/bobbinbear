@@ -33,8 +33,8 @@ export function NumberInput(props: NumberInputProps) {
         [props.class ?? '']: props.class !== undefined
       }}
     >
-      <KTextField.Label>{remainingProps.label}</KTextField.Label>
-      <KTextField.Input type="number" class="bg-white rounded-md w-full p-2 box-border" />
+      <KTextField.Label class="text-orange-50">{remainingProps.label}</KTextField.Label>
+      <KTextField.Input type="number" class="bg-white rounded-md w-full p-2 box-border text-orange-900" />
     </KTextField.Root>
   );
 }

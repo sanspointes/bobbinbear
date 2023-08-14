@@ -11,6 +11,8 @@ import { Circle, ObservablePoint, Point, Texture } from "@pixi/core";
 import { metadata } from "../utils/metadata";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
 
+const NODE_Z_INDEX = -100;
+
 const NodeTypeImageMap: Record<GraphicNodeTypes, string> = {
   [GraphicNodeTypes.Jump]: NodePointSrc,
   [GraphicNodeTypes.Point]: NodePointSrc,
@@ -44,7 +46,7 @@ export function NodeSceneObjectView(props: NodeSceneObjectViewProps) {
       anchor={CENTER_ANCHOR}
       scale-x={0.1}
       scale-y={0.1}
-      zIndex={props.order}
+      zIndex={NODE_Z_INDEX + props.order}
       position={props.position}
       hitArea={HIT_AREA}
       texture={texture()}

@@ -1,12 +1,12 @@
 import { useContext } from "solid-js";
-import { SceneObject } from "../types/scene";
+import { BaseSceneObject } from "../types/scene";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
 import { SetSceneObjectFieldCommand } from "../store/commands";
 import { Checkbox } from "./generics/Checkbox";
 
 type SidebarSceneObjectProps = {
-  object: SceneObject;
+  object: BaseSceneObject;
 };
 export function SidebarSceneObject(props: SidebarSceneObjectProps) {
   const { dispatch } = useContext(AppContext);

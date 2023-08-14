@@ -72,7 +72,6 @@ export function SelectBox() {
       zIndex={-1000}
       ref={graphicsEl}
       position={[bounds().x, bounds().y]}
-    >
-    </P.Graphics>
+     />
   );
 }

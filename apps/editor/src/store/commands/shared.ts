@@ -85,6 +85,8 @@ export const traverse = <T extends BaseSceneObject>(
   }
 };
 
+
+export type InsertPosition = 'first' | 'last';
 /**
  * Adds object and children to store
  */
@@ -92,6 +94,7 @@ export const addObject = (
   store: SceneModel,
   _1: SetStoreFunction<SceneModel>,
   newObjectData: BaseSceneObject,
+  insertPosition: InsertPosition = 'last'
 ) => {
   const objMap = store.objects;
   if (objMap.has(newObjectData.id)) {
@@ -116,7 +119,11 @@ export const addObject = (
       const set = getObjectSetter(store, newObjectData.parent);
       if (set) {
         set(produce((parent) => {
-          parent.children.push(object.id);
+          if (insertPosition === 'first') {
+            parent.children.splice(0, 0, object.id);
+          } else if (insertPosition === 'last') {
+            parent.children.push(object.id);
+          }
         }));
       }
     }

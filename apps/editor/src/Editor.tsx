@@ -69,18 +69,10 @@ export const Editor = () => {
   const onWheel = preventDefault(() => {});
 
   return (
-    <ErrorBoundary
-      fallback={(err) => (
-        <ErrorView
-          error={err}
-          stack={contextModel.sceneStore.undoStack}
-        />
-      )}
-    >
       <div
         ref={wrapperEl}
         tabindex={0}
-        class="flex flex-col items-stretch w-full h-full"
+        class="flex flex-col items-stretch w-full h-full text-orange-50 fill-orange-50 stroke-orange-50"
         onWheel={onWheel}
       >
         <AppContext.Provider value={contextModel}>
@@ -106,6 +98,5 @@ export const Editor = () => {
           </div>
         </AppContext.Provider>
       </div>
-    </ErrorBoundary>
   );
 };
