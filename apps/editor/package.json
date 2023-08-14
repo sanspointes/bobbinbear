@@ -28,6 +28,7 @@
     "@solid-primitives/keyboard": "^1.2.3",
     "@solid-primitives/map": "^0.4.7",
     "@solid-primitives/utils": "^6.2.0",
+    "@thisbeyond/solid-dnd": "^0.7.4",
     "clsx": "^2.0.0",
     "pixi-viewport": "^5.0.1",
     "rerror": "^2.0.0",

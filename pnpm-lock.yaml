@@ -88,6 +88,9 @@ importers:
       '@solid-primitives/utils':
         specifier: ^6.2.0
         version: 6.2.0(solid-js@1.7.11)
+      '@thisbeyond/solid-dnd':
+        specifier: ^0.7.4
+        version: 0.7.4(solid-js@1.7.11)
       clsx:
         specifier: ^2.0.0
         version: 2.0.0
@@ -2810,6 +2813,14 @@ packages:
       lodash: 4.17.21
       redent: 3.0.0
     dev: true
+
+  /@thisbeyond/solid-dnd@0.7.4(solid-js@1.7.11):
+    resolution: {integrity: sha512-jgV9EtR3gAtVsILG8p1OAGrhHIgnK4W04YxpyLgJRCDKEFYQWuDrMdUe8F5Kc6pcVXlC4IMXr4cB8fS2Ut3/Ow==}
+    peerDependencies:
+      solid-js: ^1.5
+    dependencies:
+      solid-js: 1.7.11
+    dev: false
 
   /@tootallnate/once@2.0.0:
     resolution: {integrity: sha512-XCuKFP5PS55gnMVu3dty8KPatLqUoy/ZYzDzAGCQ8JNFCkLXzmI7vNHCR+XpbZaMWQK/vQubr7PkYq8g470J/A==}

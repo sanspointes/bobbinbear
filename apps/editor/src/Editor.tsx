@@ -7,6 +7,12 @@ import {
   onMount,
   useContext,
 } from "solid-js";
+
+
+import {
+  DragDropProvider,
+  DragDropSensors,
+} from "@thisbeyond/solid-dnd";
 import { Toolbar } from "./components/Toolbar";
 import { Cursor } from "./store/toolStore";
 import { SceneObjectChildren } from "./sxi-components/general";
@@ -15,9 +21,8 @@ import { CursorTest } from "./sxi-components/CursorTest";
 import { SelectBox } from "./sxi-components/SelectBox";
 import { preventDefault } from "@solid-primitives/event-listener";
 import { Sidebar } from "./components/Sidebar";
-import { Tree } from "./components/Tree";
 import { uuid } from "./utils/uuid";
-import { ErrorView } from "./components/Error";
+import { SceneTree } from "./components/SceneTree";
 
 export const [appError, setAppError] = createSignal<Error>();
 
@@ -79,15 +84,19 @@ export const Editor = () => {
           <Toolbar />
           <div
             class="flex flex-grow"
-            classList={{
-              "cursor-grab": toolStore.currentCursor === Cursor.Grab,
-              "cursor-grabbing": toolStore.currentCursor === Cursor.Grabbing,
-              "cursor-pointer": toolStore.currentCursor === Cursor.Point,
-              "cursor-crosshair": toolStore.currentCursor === Cursor.Cross,
-            }}
           >
-            <Tree />
+            <DragDropProvider>
+              <DragDropSensors>
+                <SceneTree />
+              </DragDropSensors>
+            </DragDropProvider>
             <Canvas
+              classList={{
+                "cursor-grab": toolStore.currentCursor === Cursor.Grab,
+                "cursor-grabbing": toolStore.currentCursor === Cursor.Grabbing,
+                "cursor-pointer": toolStore.currentCursor === Cursor.Point,
+                "cursor-crosshair": toolStore.currentCursor === Cursor.Cross,
+              }}
               devtools={true}
               onCreated={onCreated}
               app={{ backgroundColor: 0xE1E1E1 }}
