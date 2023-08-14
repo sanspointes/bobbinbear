@@ -31,7 +31,7 @@ export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends Abs
           if (object.selected) this.toSelect.push(id);
           const set = getObjectSetter<BaseSceneObject>(store, object)!;
           set('selected', false);
-          setStore(produce((store) => store.selectedIds.push(id)));
+          setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
         }
       }
     });

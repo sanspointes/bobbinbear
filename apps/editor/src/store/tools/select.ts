@@ -71,7 +71,7 @@ export const createSelectToolStore = (
   });
   // Internal State
   let currHover: Uuid<SceneObject> | undefined;
-  let offset = new Point();
+  const offset = new Point();
   let newPosition: Point | undefined;
 
   // Viewport FSM
@@ -122,11 +122,11 @@ export const createSelectToolStore = (
       SelectEvents.PointerUp,
       SelectStates.Default,
       () => {
-        if (sceneModel.inspecting !== undefined) dispatch("scene:uninspect");
         const deselectAllCmd = new DeselectObjectsCommand(
           ...sceneModel.selectedIds,
         );
         dispatch("scene:do-command", deselectAllCmd);
+        if (sceneModel.inspecting !== undefined) dispatch("scene:uninspect");
       },
     ),
     t(
