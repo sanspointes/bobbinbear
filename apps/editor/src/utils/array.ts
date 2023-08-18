@@ -16,6 +16,19 @@ export const arrayRemove = <T>(arr: T[], predicate: ArrayRemovePredicate<T>): bo
   return false;
 }
 
+export const arrayFindAfterIndex = <T>(arr: T[], startIndex: number, predicate: ArrayRemovePredicate<T>) => {
+  if (startIndex > arr.length) {
+    throw new Error(`arrayFindAfterIndex: Start index '${startIndex}' is greater than array length (${arr.length})`);
+  }
+  for (let i = startIndex; i < arr.length; i++) {
+    const v = arr[i]
+    if (predicate(v as T, i, arr)) {
+      return v;
+    }
+  }
+  return undefined;
+}
+
 export const arrayRemoveEl = <T>(arr: T[], el: T) => {
   return arrayRemove(arr, entry => entry === el);
 }

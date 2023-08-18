@@ -1,21 +1,23 @@
 import { SetStoreFunction, produce } from 'solid-js/store';
 import { SceneModel, getObjectSetter } from "../sceneStore";
-import { AbstractCommand, SerializedCommand } from "./shared";
+import { AbstractCommand, SerializedCommand, assertNotUndefined } from "./shared";
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
-import { BaseSceneObject } from '../../types/scene';
-import { arrayMoveElToIndex } from '../../utils/array';
+import { BaseSceneObject, SceneObject } from '../../types/scene';
+import { arrayMoveElToIndex, arrayRemoveEl } from '../../utils/array';
 
 
-export class ChangeObjectOrderCommand<TObject extends BaseSceneObject> extends AbstractCommand {
+export class ParentObjectCommand<TObject extends BaseSceneObject> extends AbstractCommand {
   public updatable: boolean = true;
   name = "Change Object Order";
   type = "ChangeObjectOrderCommand" as const;
 
+  oldParentId: Uuid<BaseSceneObject> | undefined;
   oldIndex: number | undefined;
 
   constructor(
     private objectId: Uuid<TObject>,
+    private newParentId: Uuid<BaseSceneObject>,
     private strategy: "first" | "last" | "offset" | "absolute",
     private index?: number,
   ) {
@@ -27,17 +29,12 @@ export class ChangeObjectOrderCommand<TObject extends BaseSceneObject> extends A
     _2: SetStoreFunction<SceneModel>,
   ): void {
     const object = store.objects.get(this.objectId);
-    if (!object) {
-      throw new Error(
-        `getObjectSiblings: Could not get object ${this.objectId} to change order of.`,
-      );
-    }
-    const parentobject = store.objects.get(object.parent);
-    if (!parentobject) {
-      throw new Error(
-        `getObjectSiblings: Could not get parent (${object.parent}) of object ${this.objectId} to change order of.`,
-      );
-    }
+    if (!assertNotUndefined(this, object, 'object')) return;
+    this.oldParentId = object.parent;
+
+    let parentobject = store.objects.get(object.parent);
+    if (!assertNotUndefined(this, parentobject, 'parentobject')) return;
+
     const siblings = parentobject.children;
     this.oldIndex = siblings.findIndex((id) => id === this.objectId);
     if (this.oldIndex < 0) {
@@ -46,16 +43,26 @@ export class ChangeObjectOrderCommand<TObject extends BaseSceneObject> extends A
       );
     }
 
+    // Unparent old parent if different
+    if (this.newParentId !== this.oldParentId) {
+      const setParent = store.objectSetters.get(parentobject);
+      if (assertNotUndefined(this, setParent, 'setParent')) {
+        setParent(produce(parent => arrayRemoveEl(parent.children, object.id)));
+      }
+      parentobject = store.objects.get(this.newParentId);
+    }
+    if (!assertNotUndefined(this, parentobject, 'parentobject (for new parent)')) return;
+
     let targetIndex: number | undefined;
     if (this.strategy === "absolute") {
-      if (!this.index) {
+      if (this.index === undefined) {
         throw new Error(
           `ChangeObjectOrderCommand: Move strategy is 'absolute' but no index provided for ${this.objectId}.`,
         );
       }
       targetIndex = this.index;
     } else if (this.strategy === "offset") {
-      if (!this.index) {
+      if (this.index === undefined) {
         throw new Error(
           `ChangeObjectOrderCommand: Move strategy is 'offset' but no offset provided for ${this.objectId}.`,
         );
@@ -87,13 +94,13 @@ export class ChangeObjectOrderCommand<TObject extends BaseSceneObject> extends A
     const object = store.objects.get(this.objectId);
     if (!object) {
       throw new Error(
-        `getObjectSiblings: Could not get object ${this.objectId} to change order of.`,
+        `ParentObjectCommand: Could not get object ${this.objectId} to change order of.`,
       );
     }
     const parentobject = store.objects.get(object.parent);
     if (!parentobject) {
       throw new Error(
-        `getObjectSiblings: Could not get parent (${object.parent}) of object ${this.objectId} to change order of.`,
+        `ParentObjectCommand: Could not get parent (${object.parent}) of object ${this.objectId} to change order of.`,
       );
     }
     const parentSetter = getObjectSetter(store, parentobject);

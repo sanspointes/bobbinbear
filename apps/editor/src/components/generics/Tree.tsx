@@ -6,12 +6,17 @@ import {
   Show,
   splitProps,
   useContext,
+  createSignal,
+  mergeProps,
+  Accessor,
 } from "solid-js";
 import {
   createDraggable,
   createDroppable,
   DragEventHandler,
   useDragDropContext,
+  Droppable,
+  Id as DndId,
 } from "@thisbeyond/solid-dnd";
 import { arrayLast } from "../../utils/array";
 
@@ -36,9 +41,11 @@ type BaseDragDroppable = {
  * Context shared down elements within tree
  */
 type TreeContextModel<T> = {
+  isDroppablePredicate: (node: T) => boolean,
   childResolver: (node: T) => T[];
   nodeTemplate: (node: T, children: () => JSX.Element) => JSX.Element;
   droppableTemplate: (active: boolean) => JSX.Element;
+  currentlyDragging: Accessor<DndId>,
 };
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -52,27 +59,40 @@ const TreeContext = createContext<TreeContextModel<any>>(
  */
 type TreeProps<T extends BaseDragDroppable> = {
   root: T;
+  isDroppablePredicate: (node: T) => boolean,
   childResolver: (node: T) => T[];
   nodeTemplate: (node: T, children: () => JSX.Element) => JSX.Element;
-  droppableTemplate: (before: T) => JSX.Element;
+  droppableTemplate: (active: boolean) => JSX.Element;
 
   onDragEnd?: DragEventHandler;
 };
 export function Tree<T extends BaseDragDroppable>(props: TreeProps<T>) {
-  const [, { onDragEnd }] = useDragDropContext()!;
+  const [, { onDragEnd, onDragStart }] = useDragDropContext()!;
+
+  const [currentlyDragging, setCurrentlyDragging] = createSignal<DndId>();
+  onDragStart((ev) => {
+    setCurrentlyDragging(ev.draggable.id);
+  })
+  onDragEnd(() => {
+    setCurrentlyDragging(undefined);
+  })
 
   // eslint-disable-next-line solid/reactivity
   if (props.onDragEnd) onDragEnd(props.onDragEnd);
 
   const [contextProps] = splitProps(props, [
+    "isDroppablePredicate",
     "droppableTemplate",
     "nodeTemplate",
     "childResolver",
   ]);
+  const contextData = mergeProps(contextProps, {
+    currentlyDragging,
+  })
 
   return (
     <TreeContext.Provider
-      value={contextProps}
+      value={contextData}
     >
       <TreeChildren children={props.childResolver(props.root)} />
     </TreeContext.Provider>
@@ -90,9 +110,12 @@ function TreeNode<T extends BaseDragDroppable>(props: TreeNodeProps<T>) {
 
   // eslint-disable-next-line solid/reactivity
   const draggable = createDraggable(props.node.id, props.node);
+  // eslint-disable-next-line solid/reactivity
+  const droppable = treeCtx.isDroppablePredicate(props.node) ? createDroppable(props.node.id, props.node) : (() => { return undefined }) as unknown as ReturnType<typeof createDroppable>;
+
 
   return (
-    <div use:draggable={draggable}>
+    <div use:draggable={draggable} use:droppable={treeCtx.currentlyDragging() !== props.node.id ? droppable : undefined}>
       {treeCtx.nodeTemplate(
         props.node,
         () => <TreeChildren children={treeCtx.childResolver(props.node)} />,
@@ -115,7 +138,7 @@ type TreeDropableProps<T extends BaseDragDroppable> = {
   after?: undefined;
   before: T;
 };
-function TreeDropable<T extends BaseDragDroppable>(
+function TreeDroppableInbetween<T extends BaseDragDroppable>(
   props: TreeDropableProps<T>,
 ) {
   const [state] = useDragDropContext()!;
@@ -152,13 +175,13 @@ function TreeChildren<T extends BaseDragDroppable>(
       <For each={props.children}>
         {(child) => (
           <>
-            <TreeDropable before={child} />
+            <TreeDroppableInbetween before={child} />
             <TreeNode node={child} />
           </>
         )}
       </For>
       <Show when={arrayLast(props.children)}>
-        {(last) => <TreeDropable after={last()} />}
+        {(last) => <TreeDroppableInbetween after={last()} />}
       </Show>
     </>
   );

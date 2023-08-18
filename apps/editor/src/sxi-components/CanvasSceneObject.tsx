@@ -23,6 +23,7 @@ export const CanvasSceneObjectView = (props: CanvasSceneObjectViewProps) => {
 
   return (
     <P.Mesh
+      visible={props.visible}
       name={props.name}
       ref={mesh}
       scale={props.size}

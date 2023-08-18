@@ -1,9 +1,9 @@
-import { For, Index, Show, useContext } from "solid-js";
+import { For, Show, useContext } from "solid-js";
 import { TbChevronDown, TbEye, TbEyeClosed } from "solid-icons/tb";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
 import { AllMessages, AppContext, GeneralHandler } from "../store";
-import { BaseSceneObject, SceneObject } from "../types/scene";
+import { BaseSceneObject } from "../types/scene";
 import {
   DeselectObjectsCommand,
   SelectObjectsCommand,
@@ -27,7 +27,7 @@ const toggleVisibility = (
 };
 
 const selectObject = (
-  objectId: Uuid<SceneObject>,
+  objectId: Uuid<BaseSceneObject>,
   sceneModel: SceneModel,
   dispatch: GeneralHandler<AllMessages>,
 ) => {

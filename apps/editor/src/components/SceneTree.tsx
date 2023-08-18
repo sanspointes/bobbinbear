@@ -1,15 +1,12 @@
 import { createSignal, Show, useContext } from "solid-js";
-import {
-  TbChevronDown,
-  TbEye,
-  TbEyeClosed,
-} from "solid-icons/tb";
+import { use } from "solid-js/web";
+import { TbChevronDown, TbEye, TbEyeClosed } from "solid-icons/tb";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
 import { AllMessages, AppContext, GeneralHandler } from "../store";
 import { Uuid, uuid } from "../utils/uuid";
 import { Tree } from "./generics/Tree";
-import { BaseSceneObject } from "../types/scene";
+import { BaseSceneObject, SceneObject } from "../types/scene";
 import { SceneModel } from "../store/sceneStore";
 import { Button } from "./generics/Button";
 import {
@@ -20,11 +17,11 @@ import {
 } from "../store/commands";
 import { TextInput } from "./generics/TextInput";
 import { useClickOutside } from "../composables/useClickOutside";
-import {
-  stopPropagation,
-} from "@solid-primitives/event-listener";
+import { stopPropagation } from "@solid-primitives/event-listener";
 import { Select } from "./generics/Select";
 import { Resizable } from "./generics/Resizable";
+import { useDragDropContext } from "@thisbeyond/solid-dnd";
+import { ParentObjectCommand } from "../store/commands/ParentObjectCommand";
 
 /**
  * Mutation Helpers
@@ -70,12 +67,12 @@ const setObjectName = (
 /**
  * Tree related helpers
  */
-const childResolver = (sceneStore: SceneModel, node: BaseSceneObject) => {
+const childResolver = (sceneStore: SceneModel, node: SceneObject) => {
   const children = node.children
     .map((id) => sceneStore.objects.get(id))
     // .filter(o => !o?.shallowLocked)
     .filter(
-      (o): o is BaseSceneObject => o !== undefined,
+      (o): o is SceneObject => o !== undefined,
     );
   return children;
 };
@@ -110,14 +107,75 @@ export function SidebarLeft() {
   );
 }
 
+const DROPPABLE_ID_REGEX = /(?:(?:(before|after)-)?)(cl-\d+)/;
+
 export function SceneTree() {
   const { dispatch, sceneStore } = useContext(AppContext);
+  const [state, { onDragEnd }] = useDragDropContext()!;
+
+  // Handle drag and drop to reparent / reorder
+  onDragEnd((event) => {
+    const draggableData = event.draggable.data as unknown as SceneObject;
+    const droppableData = event.droppable?.data as unknown as
+      | SceneObject
+      | undefined;
+    if (draggableData && event.droppable && droppableData) {
+      const droppableParent = sceneStore.objects.get(droppableData.parent);
+      if (!droppableParent) {
+        console.warn(
+          `SceneTree: Attempting to drag ${draggableData.id} to ${droppableData} but can't get parent data.`,
+        );
+        return;
+      }
+      const id = event.droppable.id as string;
+      if (id.startsWith("cl-")) {
+        // Re-parenting
+        const cmd = new ParentObjectCommand(draggableData.id, id as Uuid<BaseSceneObject>, "last");
+        dispatch("scene:do-command", cmd);
+      } else {
+        const result = DROPPABLE_ID_REGEX.exec(id);
+        if (!result || result.length !== 3) {
+          throw new Error(
+            `SceneTree: Could not parse id of droppable "${id}". Expected ${DROPPABLE_ID_REGEX}.`,
+          );
+        }
+        const [_, strategy, relatedId] = result as unknown as [
+          _: string,
+          strategy: "before" | "after",
+          relatedId: Uuid<SceneObject>,
+        ];
+
+        let newPosition = droppableParent.children.findIndex((uuid) => {
+          return relatedId === uuid;
+        });
+        console.log(droppableParent.children, newPosition);
+        if (newPosition === -1) {
+          throw new Error(
+            `SceneTree: Could not get new target position of droppable "${id}"(${relatedId}) out of "${droppableParent.children}".`,
+          );
+        }
+        console.log(id, strategy, relatedId, newPosition);
+        if (strategy === "before") {
+          newPosition = Math.max(0, newPosition - 1);
+        }
+
+        const cmd = new ParentObjectCommand(
+          draggableData.id,
+          droppableData.parent,
+          "absolute",
+          newPosition,
+        );
+        dispatch("scene:do-command", cmd);
+      }
+    }
+  });
 
   const root = sceneStore.objects.get(uuid("root"));
 
   const [currentlyRenaming, setCurrentlyRenaming] = createSignal<string>();
   const [currentClickOutsideTarget, setCurrentClickOutsideTarget] =
     createSignal<HTMLElement>();
+
   useClickOutside(currentClickOutsideTarget, () => {
     setCurrentlyRenaming(undefined);
     setCurrentClickOutsideTarget(undefined);
@@ -126,12 +184,13 @@ export function SceneTree() {
   return (
     <div class="overflow-y-scroll h-full text-orange-800 bg-orange-50 fill-orange-800 stroke-orange-50">
       <Tree
-        root={root as BaseSceneObject}
+        root={root as SceneObject}
         childResolver={(node) => childResolver(sceneStore, node)}
         onDragEnd={(e) => console.log(e)}
+        isDroppablePredicate={(n) => n.type === "canvas" || n.type === "group"}
         droppableTemplate={(active) => (
           <div
-            class="z-20 w-full h-2 bg-orange-200 bg-opacity-20 b-1"
+            class="z-20 w-full bg-orange-800 h-[1px] b-1"
             classList={{
               "invisible": !active,
               "visible": active,
@@ -177,7 +236,7 @@ export function SceneTree() {
                   class="ml-2 h-6 select-none"
                   onDblClick={() => setCurrentlyRenaming(node.id)}
                 >
-                  {node.name}
+                  {node.name} {node.id}
                 </span>
 
                 <Button

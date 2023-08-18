@@ -172,6 +172,10 @@ export const createSelectToolStore = (
       SelectStates.Moving,
       () => {
         const obj = sceneModel.selectedObjects[0];
+        if (!obj) {
+          console.warn(`SelectTool: DragStart can't move element.`)
+          return;
+        }
         inputModel.position;
 
         const diffx = obj.position.x - inputModel.position.x;
@@ -189,6 +193,10 @@ export const createSelectToolStore = (
     ),
     t(SelectStates.Moving, SelectEvents.DragMove, SelectStates.Moving, () => {
       const obj = sceneModel.selectedObjects[0];
+      if (!obj) {
+        console.warn(`SelectTool: DragMove can't move element.`)
+        return;
+      }
       newPosition = inputModel.position.clone();
       newPosition.x += offset.x;
       newPosition.y += offset.y;
@@ -199,6 +207,10 @@ export const createSelectToolStore = (
     }),
     t(SelectStates.Moving, SelectEvents.DragEnd, SelectStates.Hoverring, () => {
       const obj = sceneModel.selectedObjects[0];
+      if (!obj) {
+        console.warn(`SelectTool: DragEnd can't move element.`)
+        return;
+      }
       newPosition = inputModel.position.clone();
       newPosition.x += offset.x;
       newPosition.y += offset.y;

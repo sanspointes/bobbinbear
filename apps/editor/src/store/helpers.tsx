@@ -9,13 +9,18 @@ import {
 import {
   BaseSceneObject,
   CanvasSceneObject,
+  GraphicNodeTypes,
   GraphicSceneObject,
+  GraphicsNode,
   GroupSceneObject,
   HasInspectSceneObject,
   NodeSceneObject,
+  VirtualGraphicsNode,
 } from "../types/scene";
 import { AppDispatcher } from ".";
 import { getObject, SceneModel } from "./sceneStore";
+import { arrayFindAfterIndex } from "../utils/array";
+import { mapLinear } from "../utils/math";
 
 export const sceneObjectDefaults = <
   TObject extends BaseSceneObject = BaseSceneObject,
@@ -62,15 +67,44 @@ export const inspectGraphicsObject = (
   }
   const inspectingRootObjectId = newUuid<GroupSceneObject>();
 
-  const nodes: NodeSceneObject[] = object.shape.map((node) => ({
-    ...sceneObjectDefaults<NodeSceneObject>(),
-    type: "node",
-    node,
-    name: `${node.type} Node`,
-    position: new Point(node.x, node.y),
-    parent: inspectingRootObjectId,
-    relatesTo: object.id as Uuid<GraphicSceneObject>,
-  }));
+  const nodes: NodeSceneObject[] = object.shape.flatMap((node, i) => {
+    const returnValue: NodeSceneObject[] = [{
+      ...sceneObjectDefaults<NodeSceneObject>(),
+      type: "node",
+      node,
+      name: `${node.type} Node`,
+      position: new Point(node.x, node.y),
+      parent: inspectingRootObjectId,
+      relatesTo: object.id as Uuid<GraphicSceneObject>,
+    }];
+
+    const nextControl = arrayFindAfterIndex(object.shape, i + 1, (el => el.type === GraphicNodeTypes.Point));
+    if (nextControl) {
+      const midX = mapLinear(0.5, 0, 1, node.x, nextControl.x);
+      const midY = mapLinear(0.5, 0, 1, node.y, nextControl.y);
+
+      returnValue.push({
+        ...sceneObjectDefaults<NodeSceneObject>(),
+        node: {
+          id: newUuid<GraphicsNode>(),
+          type: GraphicNodeTypes.Point,
+          x: midX,
+          y: midY,
+          virtual: true,
+          after: node.id,
+        } as VirtualGraphicsNode,
+        type: 'node',
+        name: 'Virtual Node',
+        parent: inspectingRootObjectId,
+        relatesTo: object.id as Uuid<GraphicSceneObject>,
+      })
+
+    }
+
+
+
+    return returnValue;
+  });
 
   const parent: GroupSceneObject = {
     type: "group",
@@ -87,10 +121,8 @@ export const inspectGraphicsObject = (
   };
 
   const commands = [
-    new CreateObjectCommand(parent, 'first'),
-    ...nodes.map((so) =>
-      new CreateObjectCommand(so)
-    ),
+    new CreateObjectCommand(parent, "first"),
+    ...nodes.map((so) => new CreateObjectCommand(so)),
     new SetSceneObjectFieldCommand(
       object.id as Uuid<GraphicSceneObject>,
       "inspectingObject",
@@ -105,7 +137,7 @@ export const inspectGraphicsObject = (
 
   // @ts-expect-error; Needs better inheritance
   const cmd = new MultiCommand(...commands);
-  cmd.name = 'Inspect Graphics Object';
+  cmd.name = "Inspect Graphics Object";
   // @ts-expect-error; Needs better inheritance
   dispatch("scene:do-command", cmd);
 };

@@ -2,7 +2,7 @@ import { AbstractCommand, SerializedCommand, assertSameField, assertSameType } f
 import { SetStoreFunction } from "solid-js/store";
 import { BaseSceneObject } from "../../types/scene";
 import { SceneModel } from "../sceneStore";
-import { ChangeObjectOrderCommand } from "./ChangeObjectOrderCommand";
+import { ParentObjectCommand } from "./ParentObjectCommand";
 import { CreateObjectCommand } from "./CreateObjectCommand";
 import { DeleteObjectCommand } from "./DeleteObjectCommand";
 import { DeselectObjectsCommand } from "./DeselectObjectCommand";
@@ -13,7 +13,7 @@ import { UpdateGraphicsNodeCommand } from "./UpdateGraphicsNodeCommand";
 import { batch } from "solid-js";
 
 export {
-  ChangeObjectOrderCommand,
+  ParentObjectCommand as ChangeObjectOrderCommand,
   CreateObjectCommand,
   DeleteObjectCommand,
   DeselectObjectsCommand,
@@ -24,7 +24,7 @@ export {
 };
 
 type AtomicCommands<TObject extends BaseSceneObject = BaseSceneObject> =
-  | ChangeObjectOrderCommand<TObject>
+  | ParentObjectCommand<TObject>
   | CreateObjectCommand<TObject>
   | DeleteObjectCommand<TObject>
   | DeselectObjectsCommand<TObject>

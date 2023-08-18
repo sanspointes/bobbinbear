@@ -49,21 +49,26 @@ export enum GraphicNodeTypes {
   Point = 2,
 }
 
-export type BasicGraphicsNode = {
+type BaseGraphicsNode = {
   id: Uuid<GraphicsNode>;
-  type: GraphicNodeTypes.Jump | GraphicNodeTypes.Control;
   x: number;
   y: number;
-};
-export type CloseableGraphicsNode = {
-  id: Uuid<GraphicsNode>;
+}
+export type VirtualGraphicsNode = BaseGraphicsNode & {
+  virtual: true,
   type: GraphicNodeTypes.Point;
-  x: number;
-  y: number;
+  after: Uuid<GraphicsNode>;
+  close: never;
+}
+export type BasicGraphicsNode = BaseGraphicsNode & {
+  type: GraphicNodeTypes.Jump | GraphicNodeTypes.Control;
+};
+export type CloseableGraphicsNode = BaseGraphicsNode & {
+  type: GraphicNodeTypes.Point;
   close?: boolean;
 };
 
-export type GraphicsNode = BasicGraphicsNode | CloseableGraphicsNode;
+export type GraphicsNode = BasicGraphicsNode | CloseableGraphicsNode | VirtualGraphicsNode;
 
 export type GraphicSceneObject =
   & BaseSceneObject
