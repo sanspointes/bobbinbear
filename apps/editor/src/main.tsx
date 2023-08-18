@@ -1,12 +1,13 @@
 /** @jsxImportSource solid-js */
-import { ErrorBoundary, Show, render } from 'solid-js/web'
+import { ErrorBoundary } from 'solid-js';
+import { render } from 'solid-js/web';
 import './styles.css';
 
 import { attachDevtoolsOverlay } from '@solid-devtools/overlay'
 attachDevtoolsOverlay()
 
-import { Editor } from '../src';
-import { ErrorView } from '../src/components/ErrorView';
+import { Editor } from './Editor';
+import { ErrorView } from './components/ErrorView';
 
 const root = document.getElementById('root')
 
@@ -17,4 +18,4 @@ const App = () => {
     </ErrorBoundary>
   )
 }
-render(() => <Editor />, root!)
+render(() => <App />, root!)
