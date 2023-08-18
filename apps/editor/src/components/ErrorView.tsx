@@ -8,6 +8,7 @@ import { IoWarningOutline } from "solid-icons/io";
 import RError from "rerror";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
+
 type ErrorReasonProps = {
   error: Error;
 };

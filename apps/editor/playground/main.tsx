@@ -6,7 +6,7 @@ import { attachDevtoolsOverlay } from '@solid-devtools/overlay'
 attachDevtoolsOverlay()
 
 import { Editor } from '../src';
-import { ErrorView } from '../src/components/Error';
+import { ErrorView } from '../src/components/ErrorView';
 
 const root = document.getElementById('root')
 
