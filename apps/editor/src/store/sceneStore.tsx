@@ -9,12 +9,10 @@ import { generateStore } from ".";
 import { arrayLast } from "../utils/array";
 import {
   BaseSceneObject,
-  GraphicSceneObject,
   GroupSceneObject,
   HasInspectSceneObject,
   SceneObject,
 } from "../types/scene";
-import { inspectGraphicsObject, uninspectObject } from "./helpers";
 
 export const getObject = <T extends BaseSceneObject>(
   store: SceneModel,
@@ -25,14 +23,10 @@ export const getObject = <T extends BaseSceneObject>(
 };
 export const getObjectSetter = <T extends BaseSceneObject>(
   store: SceneModel,
-  uuid: Uuid<T> | T | undefined,
+  uuid: Uuid<T> | undefined,
 ): SetStoreFunction<T> | undefined => {
   if (uuid === undefined) return undefined;
-  const obj = (typeof (uuid) === "string" ? store.objects.get(uuid) : uuid) as
-    | T
-    | undefined;
-  if (!obj) return undefined;
-  const setter = store.objectSetters.get(obj);
+  const setter = store.objectSetters.get(uuid);
   if (!setter) return undefined;
   return setter as SetStoreFunction<T>;
 };
@@ -53,9 +47,6 @@ export type ObjectMapData<T extends SceneObject = SceneObject> = {
 export type SceneStoreMessages = {
   "scene:hover": Uuid<BaseSceneObject>;
   "scene:unhover": Uuid<BaseSceneObject>;
-  "scene:inspect": Uuid<BaseSceneObject>;
-  "scene:set-inspect-root": Uuid<BaseSceneObject>;
-  "scene:uninspect": void;
   "scene:do-command": Command;
   "scene:undo": void;
   "scene:redo": void;
@@ -72,7 +63,7 @@ export type SceneModel = {
   undoStack: Command[];
   redoStack: Command[];
   objects: Map<Uuid<BaseSceneObject>, BaseSceneObject>;
-  objectSetters: WeakMap<BaseSceneObject, SetStoreFunction<BaseSceneObject>>;
+  objectSetters: Map<Uuid<BaseSceneObject>, SetStoreFunction<BaseSceneObject>>;
   root: BaseSceneObject;
 };
 
@@ -97,20 +88,19 @@ export const createSceneStore = () => {
     inspectRoot: undefined,
     selectedIds: [],
     get selectedObjects() {
-      return this.selectedIds.map((id: Uuid<BaseSceneObject>) => {
+      return this.selectedIds.flatMap((id: Uuid<BaseSceneObject>) => {
         const obj = this.objects.get(id);
         if (!obj) {
-          throw new Error(
-            `sceneStore.selectedObjects could not get object for id ${id}.`,
-          );
+          console.warn(`sceneStore.selectedObjects could not get object for id ${id}.`);
+          return []
         }
-        return obj;
+        return [obj];
       });
     },
     undoStack: [],
     redoStack: [],
     objects: new Map([[uuid("root"), object]]),
-    objectSetters: new WeakMap([[object, set]]),
+    objectSetters: new Map([[uuid("root"), set]]),
     root: object,
   }, {
     "scene:hover": (store, _2, uuid) => {
@@ -120,42 +110,6 @@ export const createSceneStore = () => {
     "scene:unhover": (store, _2, uuid) => {
       const set = getObjectSetter(store, uuid);
       if (set) set("hovered", true);
-    },
-    "scene:inspect": (store, setStore, uuid, dispatch) => {
-      batch(() => {
-        const obj = getObject(store, uuid);
-
-        if (obj && isInspectable(obj)) {
-
-          // If graphics type, inspect graphics
-          const inspectableObject = obj as GraphicSceneObject;
-          if (inspectableObject.type === "graphic") {
-            inspectGraphicsObject(
-              dispatch!,
-              store,
-              obj.id as Uuid<GraphicSceneObject>,
-            );
-          } else {
-            throw new Error('scene:inspect: Unhandled inspect type.');
-          }
-
-          setStore(produce((store) => store.inspecting = uuid));
-        }
-      });
-    },
-    "scene:set-inspect-root": (_1, setStore, uuid) => {
-      setStore(produce((store) => store.inspectRoot = uuid));
-    },
-    "scene:uninspect": (store, setStore, _, dispatch) => {
-      batch(() => {
-        if (!store.inspecting) return;
-        const obj = getObject(store, store.inspecting);
-
-        if (obj && isInspectable(obj)) {
-          uninspectObject(dispatch!, store, obj.id as Uuid<BaseSceneObject & HasInspectSceneObject>)
-          setStore(produce((store) => store.inspecting = undefined));
-        }
-      });
     },
     "scene:do-command": (store, set, command) => {
       const lastCommand = arrayLast(store.undoStack);

@@ -1,15 +1,35 @@
 import { P } from "@bearbroidery/solixi";
 import { SceneObjectChildren } from "./general";
 import {
+  BaseSceneObject,
   GraphicNodeTypes,
   GraphicSceneObject,
   GraphicsNode,
+  NodeSceneObject,
+  VirtualSceneObject,
 } from "../types/scene";
+import { Point } from "@pixi/core";
 import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
-import { createEffect, createMemo, on, onMount, useContext } from "solid-js";
-import { metadata } from "../utils/metadata";
+import {
+  createEffect,
+  createMemo,
+  For,
+  onMount,
+  useContext,
+} from "solid-js";
 import { AppContext } from "../store";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
+import { Show } from "solid-js";
+import { sceneObjectDefaults } from "../store/helpers";
+import { arrayGetOffset } from "../utils/array";
+import { lerp } from "../utils/math";
+import { newUuid, Uuid } from "../utils/uuid";
+import { NodeSceneObjectView } from "./NodeSceneObjectView";
+import {
+  Command,
+  MutateSceneObjectArrayFieldCommand,
+} from "../store/commands";
+import { mapTemporarySceneObjects } from "../composables/useVirtualSceneObjects";
 
 const updateGraphics = (
   g: Graphics,
@@ -70,10 +90,6 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
   onMount(() => {
     if (!graphics) return;
     graphics.filters = [];
-    metadata.set(graphics, {
-      type: props.type,
-      id: props.id,
-    });
 
     useHoverSelectOutline(graphics, props);
   });
@@ -91,8 +107,62 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
     isAppInspecting() && sceneStore.inspecting === props.id
   );
 
+  const editableNodes = mapTemporarySceneObjects(() => isThisInspecting() ? props.shape : undefined, (node) => {
+    return {
+      ...sceneObjectDefaults<NodeSceneObject>(),
+      id: node.id as unknown as Uuid<NodeSceneObject>,
+      type: "node",
+      node,
+      name: `${node.type} Node`,
+      position: new Point(node.x, node.y),
+      relatesTo: props.id as Uuid<GraphicSceneObject>,
+    } as NodeSceneObject;
+  });
+
+  const virtualNodes = mapTemporarySceneObjects(() => isThisInspecting() ? props.shape : undefined, (node, i) => {
+    // const data = createMemo(() => {
+      const prev = arrayGetOffset(props.shape, i(), -1, true);
+      const midX = lerp(prev.x, node.x, 0.5);
+      const midY = lerp(prev.y, node.y, 0.5);
+      console.log(prev.x, midX, node.x);
+      console.log(prev.y, midY, node.y);
+      const id = newUuid<NodeSceneObject>();
+      const midNode: GraphicsNode = {
+        type: GraphicNodeTypes.Point,
+        x: midX,
+        y: midY,
+        id: id as unknown as Uuid<GraphicsNode>,
+      };
+
+      const midObject: NodeSceneObject & VirtualSceneObject = {
+        ...sceneObjectDefaults(),
+        id,
+        virtual: true,
+        virtualCreator: () => {
+          const cmd = new MutateSceneObjectArrayFieldCommand<GraphicSceneObject>(
+            props.id as Uuid<GraphicSceneObject>,
+            "shape",
+            i(),
+            0,
+            [midNode]
+          );
+          return cmd as Command<BaseSceneObject>;
+        },
+        position: new Point(midX, midY),
+        type: "node",
+        node: midNode,
+        name: `Virtual ${i()}`,
+        relatesTo: props.id as Uuid<GraphicSceneObject>,
+      };
+      return midObject;
+    // });
+    // return data;
+  });
+
   return (
     <P.Graphics
+      id={props.id}
+      soType={props.type}
       name={`${props.id} ${props.name}`}
       visible={props.visible}
       ref={graphics}
@@ -102,6 +172,26 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
       alpha={!isAppInspecting() || isThisInspecting() ? 1 : 0.5}
     >
       <SceneObjectChildren children={props.children} />
+      {/* Shows nodes to edit the shape */}
+      <Show when={editableNodes()}>
+        {(editableNodes) => (
+          <For each={editableNodes()}>
+            {(nodeSceneObject, i) => (
+              <NodeSceneObjectView {...nodeSceneObject()} order={i()} />
+            )}
+          </For>
+        )}
+      </Show>
+      {/* Shows virtual nodes that can be created to add nodes to shape */}
+      <Show when={virtualNodes()}>
+        {(virtualNodes) => (
+          <For each={virtualNodes()}>
+            {(nodeSceneObject) => (
+              <NodeSceneObjectView {...nodeSceneObject()} order={0} />
+            )}
+          </For>
+        )}
+      </Show>
     </P.Graphics>
   );
 };

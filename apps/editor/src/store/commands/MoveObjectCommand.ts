@@ -3,7 +3,7 @@ import { SetStoreFunction, produce } from 'solid-js/store';
 import { BaseSceneObject, GraphicSceneObject, NodeSceneObject } from "../../types/scene";
 import { SceneModel, getObject, getObjectSetter } from "../sceneStore";
 import { AbstractCommand, SerializedCommand, assertSameType } from "./shared";
-import { Command, CommandType } from '.';
+import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
 
 export class MoveObjectCommand<TObject extends BaseSceneObject> extends AbstractCommand {
@@ -38,7 +38,7 @@ export class MoveObjectCommand<TObject extends BaseSceneObject> extends Abstract
       if (!graphicObject) throw new Error('MoveObjectCommand: Attempting to graphic related to moved node but no graphic found.')
 
       const oldIndex = graphicObject.shape.findIndex(node => node.id === currentNode.id);
-      const setGraphics = getObjectSetter(store, graphicObject)!;
+      const setGraphics = getObjectSetter(store, nodeObject.relatesTo)!;
       setGraphics(produce(obj => {
         const graphic = obj as GraphicSceneObject;
 
@@ -51,7 +51,7 @@ export class MoveObjectCommand<TObject extends BaseSceneObject> extends Abstract
     }
 
     // Update node position 
-    const set = getObjectSetter(store, object)!;
+    const set = getObjectSetter(store, this.objectId)!;
     set(produce((object) => object.position = this.newPosition));
   }
 
@@ -71,7 +71,7 @@ export class MoveObjectCommand<TObject extends BaseSceneObject> extends Abstract
       );
     }
 
-    const set = getObjectSetter(store, object)!;
+    const set = getObjectSetter(store, this.objectId)!;
 
     set(produce((object) => object.position = this.oldPosition!));
   }

@@ -10,18 +10,19 @@ import {
 } from "./shared";
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
 import { SolixiState } from "@bearbroidery/solixi";
-import { metadata } from "../../utils/metadata";
 import { Uuid } from "../../utils/uuid";
-import { SceneObject } from "../../types/scene";
+import { BaseSceneObject, VirtualSceneObject } from "../../types/scene";
 import {
+    Command,
   DeselectObjectsCommand,
   MoveObjectCommand,
   SelectObjectsCommand,
 } from "../commands";
 import { SceneModel } from "../sceneStore";
 import { InputModel } from "../inputStore";
-import { MultiCommand } from "../commands/index";
 import { Point } from "@pixi/core";
+import { MultiCommand } from "../commands/shared";
+import { SetInspectingCommand } from "../commands/SetInspectingCommand";
 
 export const SelectEvents = {
   Hover: Symbol("s-Hover"),
@@ -70,7 +71,7 @@ export const createSelectToolStore = (
     }
   });
   // Internal State
-  let currHover: Uuid<SceneObject> | undefined;
+  let currHover: Uuid<BaseSceneObject> | undefined;
   const offset = new Point();
   let newPosition: Point | undefined;
 
@@ -107,12 +108,18 @@ export const createSelectToolStore = (
       SelectStates.Hoverring,
       SelectEvents.PointerDown,
       SelectStates.PointerDownOnElement,
-      (id: Uuid<SceneObject>) => {
-        const deselectAllCmd = new DeselectObjectsCommand(
+      (id: Uuid<BaseSceneObject>) => {
+        const cmds: Command[] = [];
+        const obj = sceneModel.objects.get(id) as BaseSceneObject & VirtualSceneObject;
+        if (obj && obj.virtual) {
+          const cmd = obj.virtualCreator();
+          cmds.push(cmd);
+        }
+        cmds.push(new DeselectObjectsCommand(
           ...sceneModel.selectedIds,
-        );
-        const selectObjCmd = new SelectObjectsCommand(id);
-        const cmd = new MultiCommand(deselectAllCmd, selectObjCmd);
+        ));
+        cmds.push(new SelectObjectsCommand(id));
+        const cmd = new MultiCommand(...cmds);
         cmd.name = `Select ${id}`;
         dispatch("scene:do-command", cmd);
       },
@@ -122,11 +129,18 @@ export const createSelectToolStore = (
       SelectEvents.PointerUp,
       SelectStates.Default,
       () => {
-        const deselectAllCmd = new DeselectObjectsCommand(
-          ...sceneModel.selectedIds,
-        );
-        dispatch("scene:do-command", deselectAllCmd);
-        if (sceneModel.inspecting !== undefined) dispatch("scene:uninspect");
+        const cmds: Command<BaseSceneObject>[] = [];
+
+        if (sceneModel.selectedIds.length > 0) {
+          const deselectAllCmd = new DeselectObjectsCommand(
+            ...sceneModel.selectedIds,
+          );
+          cmds.push(deselectAllCmd);
+        }
+        if (sceneModel.inspecting !== undefined) {
+          cmds.push(new SetInspectingCommand(undefined));
+        }
+        dispatch("scene:do-command", new MultiCommand(...cmds));
       },
     ),
     t(
@@ -163,7 +177,8 @@ export const createSelectToolStore = (
             "Attempted to inspect: Currently hovered element but no element hovered.",
           );
         }
-        dispatch("scene:inspect", currHover);
+        const cmd = new SetInspectingCommand(currHover);
+        dispatch("scene:do-command", cmd);
       },
     ),
     t(
@@ -252,26 +267,23 @@ export const createSelectToolStore = (
             if (boundary) {
               const data = msg.data as ToolInputs["pointer1-move"];
               const result = boundary.hitTest(data.position.x, data.position.y);
-              if (result) {
-                const data = metadata.get(result);
-                if (data) {
-                  if (currHover && data.id !== currHover) {
-                    if (sCan(SelectEvents.Unhover)) {
-                      sDispatch(SelectEvents.Unhover);
-                      dispatch("scene:unhover", currHover);
-                    }
+              if (result && result.id) {
+                if (currHover && result.id !== currHover) {
+                  if (sCan(SelectEvents.Unhover)) {
+                    sDispatch(SelectEvents.Unhover);
+                    dispatch("scene:unhover", currHover);
                   }
-                  if (sCan(SelectEvents.Hover)) {
-                    sDispatch(SelectEvents.Hover);
-                    dispatch("scene:hover", data.id);
-                    currHover = data.id;
-                  }
-                } else if (sCan(SelectEvents.Unhover)) {
-                  // console.log("Unhovering");
-                  sDispatch(SelectEvents.Unhover);
-                  if (currHover) dispatch("scene:unhover", currHover);
-                  currHover = undefined;
                 }
+                if (sCan(SelectEvents.Hover)) {
+                  sDispatch(SelectEvents.Hover);
+                  dispatch("scene:hover", result.id);
+                  currHover = result.id;
+                }
+              } else if (sCan(SelectEvents.Unhover)) {
+                // console.log("Unhovering");
+                sDispatch(SelectEvents.Unhover);
+                if (currHover) dispatch("scene:unhover", currHover);
+                currHover = undefined;
               }
             }
           }

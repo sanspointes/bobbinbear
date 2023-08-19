@@ -13,7 +13,7 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
   public updatable: boolean = true;
 
   name = "Update Graphics Node";
-  type = "UpdateGraphicsNode" as const;
+  type = "UpdateGraphicsNodeCommand" as const;
 
   oldData: GraphicsNode | undefined;
   constructor(
@@ -38,7 +38,7 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
         `UpdateGraphicsNodeCommand: Provided object is not a graphic.  Instead found ${object.type}.`,
       );
     }
-    const set = getObjectSetter(store, object)!;
+    const set = getObjectSetter(store, object.id)!;
 
     this.oldData = (object as GraphicSceneObject).shape[this.index];
     set(produce((object) => {
@@ -62,7 +62,7 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
         `UpdateGraphicsNodeCommand: Provided object is not a graphic.  Instead found ${object.type}.`,
       );
     }
-    const set = getObjectSetter(store, object)!;
+    const set = getObjectSetter(store, object.id)!;
 
     set(produce((object) => {
       const obj = object as GraphicSceneObject;

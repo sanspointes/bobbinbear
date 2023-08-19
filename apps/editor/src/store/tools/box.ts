@@ -7,12 +7,13 @@ import {
 } from "./shared";
 import { AllMessages, BaseStore, GeneralHandler, generateStore } from "..";
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
-import { BaseSceneObject, SceneObject } from "../../types/scene";
+import { SceneObject } from "../../types/scene";
 import { GraphicSceneObject } from "../../types/scene";
 import { newUuid, uuid, Uuid } from "../../utils/uuid";
 import { createBoxGraphicsCommands } from "../../utils/graphics";
-import { SetSceneObjectFieldCommand, CreateObjectCommand, MultiCommand } from "../commands";
+import { SetSceneObjectFieldCommand, CreateObjectCommand } from "../commands";
 import { Point } from "@pixi/core";
+import { MultiCommand } from "../commands/shared";
 
 export const BoxEvents = {
   PointerDown: Symbol("b-Pointerdown"),

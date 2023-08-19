@@ -1,5 +1,4 @@
 import { createSignal, Show, useContext } from "solid-js";
-import { use } from "solid-js/web";
 import { TbChevronDown, TbEye, TbEyeClosed } from "solid-icons/tb";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
@@ -11,7 +10,6 @@ import { SceneModel } from "../store/sceneStore";
 import { Button } from "./generics/Button";
 import {
   DeselectObjectsCommand,
-  MultiCommand,
   SelectObjectsCommand,
   SetSceneObjectFieldCommand,
 } from "../store/commands";
@@ -22,6 +20,7 @@ import { Select } from "./generics/Select";
 import { Resizable } from "./generics/Resizable";
 import { useDragDropContext } from "@thisbeyond/solid-dnd";
 import { ParentObjectCommand } from "../store/commands/ParentObjectCommand";
+import { MultiCommand } from "../store/commands/shared";
 
 /**
  * Mutation Helpers
@@ -182,7 +181,7 @@ export function SceneTree() {
   });
 
   return (
-    <div class="overflow-y-scroll h-full text-orange-800 bg-orange-50 fill-orange-800 stroke-orange-50">
+    <div class="overflow-y-scroll text-orange-800 bg-orange-50 fill-orange-800 stroke-orange-50">
       <Tree
         root={root as SceneObject}
         childResolver={(node) => childResolver(sceneStore, node)}
@@ -233,7 +232,7 @@ export function SceneTree() {
                 }
               >
                 <span
-                  class="ml-2 h-6 select-none"
+                  class="ml-2 h-6 select-none whitespace-nowrap overflow-hidden text-ellipsis"
                   onDblClick={() => setCurrentlyRenaming(node.id)}
                 >
                   {node.name} {node.id}

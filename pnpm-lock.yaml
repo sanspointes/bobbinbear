@@ -52,6 +52,9 @@ importers:
       '@pixi/events':
         specifier: ^7.2.4
         version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
+      '@pixi/filter-fxaa':
+        specifier: ^7.2.4
+        version: 7.2.4(@pixi/core@7.2.4)
       '@pixi/filter-outline':
         specifier: ^5.2.0
         version: 5.2.0(@pixi/core@7.2.4)
@@ -70,6 +73,9 @@ importers:
       '@pixi/sprite':
         specifier: ^7.2.4
         version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
+      '@pixi/text':
+        specifier: ^7.2.4
+        version: 7.2.4(@pixi/core@7.2.4)(@pixi/sprite@7.2.4)
       '@pixi/ticker':
         specifier: ^7.2.4
         version: 7.2.4
@@ -100,6 +106,9 @@ importers:
       rerror:
         specifier: ^2.0.0
         version: 2.0.0
+      ring-buffer-ts:
+        specifier: ^1.2.0
+        version: 1.2.0
       solid-icons:
         specifier: ^1.0.11
         version: 1.0.11(solid-js@1.7.11)
@@ -268,6 +277,9 @@ importers:
       '@pixi/sprite':
         specifier: ^7.2.4
         version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
+      '@pixi/text':
+        specifier: ^7.2.4
+        version: 7.2.4(@pixi/core@7.2.4)(@pixi/sprite@7.2.4)
       '@pixi/ticker':
         specifier: ^7.2.4
         version: 7.2.4
@@ -2172,6 +2184,14 @@ packages:
     resolution: {integrity: sha512-Mnqv9scbL1ARD3QFKfOWs2aSVJJfP1dL8g5UiqGImYO3rZbz/9QCzXOeMVIZ5n3iaRyKMNhFFr84/zUja2H7Dw==}
     dev: false
 
+  /@pixi/filter-fxaa@7.2.4(@pixi/core@7.2.4):
+    resolution: {integrity: sha512-qzKjdL+Ih18uGTJLg8tT/H+YCsTeGkw2uF7lyKnw/lxGLJQhLWIhM95M9qSNgxbXyW1vp7SbG81a9aAEz2HAhA==}
+    peerDependencies:
+      '@pixi/core': 7.2.4
+    dependencies:
+      '@pixi/core': 7.2.4
+    dev: false
+
   /@pixi/filter-outline@5.2.0(@pixi/core@7.2.4):
     resolution: {integrity: sha512-xKfAouhZNKl6A0RvxT5i+2/ean7r16dE/QswwIkbWvr2hhHlp4p9U6XsqdgUERCDxK+IZibMAumbWs4DGxOUeQ==}
     peerDependencies:
@@ -2248,6 +2268,16 @@ packages:
     dependencies:
       '@pixi/core': 7.2.4
       '@pixi/display': 7.2.4(@pixi/core@7.2.4)
+    dev: false
+
+  /@pixi/text@7.2.4(@pixi/core@7.2.4)(@pixi/sprite@7.2.4):
+    resolution: {integrity: sha512-DGu7ktpe+zHhqR2sG9NsJt4mgvSObv5EqXTtUxD4Z0li1gmqF7uktpLyn5I6vSg1TTEL4TECClRDClVDGiykWw==}
+    peerDependencies:
+      '@pixi/core': 7.2.4
+      '@pixi/sprite': 7.2.4
+    dependencies:
+      '@pixi/core': 7.2.4
+      '@pixi/sprite': 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
     dev: false
 
   /@pixi/ticker@7.2.4:
@@ -6272,6 +6302,10 @@ packages:
     dependencies:
       glob: 7.2.3
     dev: true
+
+  /ring-buffer-ts@1.2.0:
+    resolution: {integrity: sha512-dkGqA7YHZgXp1dWwcNIsmt+4EgHK1RmY9sp7eqHLLfTkhYhQQ4agAwqgED7hJakELMaXkBgZ5568vqaI3/wV6Q==}
+    dev: false
 
   /rollup-plugin-visualizer@5.9.2(rollup@3.26.3):
     resolution: {integrity: sha512-waHktD5mlWrYFrhOLbti4YgQCn1uR24nYsNuXxg7LkPH8KdTXVWR9DNY1WU0QqokyMixVXJS4J04HNrVTMP01A==}

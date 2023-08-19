@@ -1,5 +1,3 @@
-import { onMount, splitProps } from "solid-js";
-import { Sprite } from "@pixi/sprite";
 import { P } from "@bearbroidery/solixi";
 import { GroupSceneObject } from "../types/scene";
 import { SceneObjectChildren } from "./general";

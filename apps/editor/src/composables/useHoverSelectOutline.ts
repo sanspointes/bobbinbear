@@ -33,9 +33,9 @@ export const useHoverSelectOutline = (
       ref.filters!.push(HOVER_OUTLINE);
       state = State.Hover;
     } else {
-      if (state === State.Select) {
+      if (ref.filters?.includes(SELECT_OUTLINE)) {
         arrayRemoveEl(ref.filters!, SELECT_OUTLINE);
-      } else if (state === State.Hover) {
+      } else if (ref.filters?.includes(HOVER_OUTLINE)) {
         arrayRemoveEl(ref.filters!, HOVER_OUTLINE);
       }
       state = State.None;

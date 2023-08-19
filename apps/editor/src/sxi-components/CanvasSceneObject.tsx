@@ -3,7 +3,6 @@ import { SceneObjectChildren } from "./general";
 import { CanvasSceneObject } from "../types/scene";
 import { Mesh } from "@pixi/mesh";
 import { onMount } from "solid-js";
-import { metadata } from "../utils/metadata";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
 
 type CanvasSceneObjectViewProps = CanvasSceneObject & {
@@ -13,16 +12,13 @@ export const CanvasSceneObjectView = (props: CanvasSceneObjectViewProps) => {
   let mesh: Mesh | undefined;
   onMount(() => {
     if (!mesh) return;
-    mesh.filters = [];
-    metadata.set(mesh, {
-      type: props.type,
-      id: props.id,
-    });
     useHoverSelectOutline(mesh, props);
   });
 
   return (
     <P.Mesh
+      id={props.id}
+      soType={props.type}
       visible={props.visible}
       name={props.name}
       ref={mesh}

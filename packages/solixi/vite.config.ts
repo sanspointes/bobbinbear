@@ -44,6 +44,8 @@ export default defineConfig(({mode})  => {
           '@pixi/utils',
           '@pixi/graphics',
           '@pixi/events',
+          '@pixi/text',
+          '@pixi/sprite',
         ]
       },
     },

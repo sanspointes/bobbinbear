@@ -11,14 +11,16 @@ export class SelectObjectsCommand<TObject extends BaseSceneObject> extends Abstr
   public updatable: boolean = true;
 
   name = "Select Objects";
-  type = "SelectObjectsCommand" as const;
+  type = 'SelectObjectsCommand' as const;
 
   toSelect: Uuid<TObject>[] = [];
   toDeselect: Uuid<TObject>[] = [];
 
+
   constructor(...objectIds: Uuid<TObject>[]) {
     super();
     this.toSelect = objectIds;
+    this.name = `Select ${objectIds.join(', ')}`
   }
   perform(
     store: SceneModel,
@@ -30,7 +32,7 @@ export class SelectObjectsCommand<TObject extends BaseSceneObject> extends Abstr
         const object = getObject(store, id);
         if (assertNotUndefined(this, object, "object")) {
           if (object.selected) this.toDeselect.push(id);
-          const set = getObjectSetter<BaseSceneObject>(store, object)!;
+          const set = getObjectSetter<BaseSceneObject>(store, id)!;
           set('selected', true);
         }
         setStore(produce((store) => store.selectedIds.push(id)));
@@ -47,7 +49,7 @@ export class SelectObjectsCommand<TObject extends BaseSceneObject> extends Abstr
         this.toSelect = []
         const object = getObject(store, id);
         if (assertNotUndefined(this, object, "object")) {
-          const set = getObjectSetter<BaseSceneObject>(store, object)!;
+          const set = getObjectSetter<BaseSceneObject>(store, object.id)!;
           set('selected', true);
         }
           setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
@@ -55,8 +57,8 @@ export class SelectObjectsCommand<TObject extends BaseSceneObject> extends Abstr
     });
   }
 
-  fromObject<T extends Command>(object: SerializedCommand<T>): void {
-    this.toSelect = object['toSelect'] as Uuid<TObject>[];
+  fromObject(object: SerializedCommand<SelectObjectsCommand<TObject>>): void {
+    this.toSelect = object['toSelect'];
   }
 
   toObject(object: Record<string, unknown>): void {

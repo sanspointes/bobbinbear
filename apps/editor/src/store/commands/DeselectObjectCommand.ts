@@ -19,6 +19,7 @@ export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends Abs
   constructor(...objectIds: Uuid<TObject>[]) {
     super();
     this.toDeselect = objectIds;
+    this.name = `Deselect ${objectIds.join(', ')}`
   }
   perform(
     store: SceneModel,
@@ -29,7 +30,7 @@ export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends Abs
         const object = getObject(store, id);
         if (assertNotUndefined(this, object, "object")) {
           if (object.selected) this.toSelect.push(id);
-          const set = getObjectSetter<BaseSceneObject>(store, object)!;
+          const set = getObjectSetter<BaseSceneObject>(store, id)!;
           set('selected', false);
           setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
         }
@@ -46,7 +47,7 @@ export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends Abs
         const object = getObject(store, id);
         if (assertNotUndefined(this, object, "object")) {
           if (object.selected) this.toDeselect.push(id);
-          const set = getObjectSetter<BaseSceneObject>(store, object)!;
+          const set = getObjectSetter<BaseSceneObject>(store, id)!;
           set('selected', true);
           setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
         }

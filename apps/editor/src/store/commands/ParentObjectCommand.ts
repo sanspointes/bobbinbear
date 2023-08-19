@@ -3,14 +3,14 @@ import { SceneModel, getObjectSetter } from "../sceneStore";
 import { AbstractCommand, SerializedCommand, assertNotUndefined } from "./shared";
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
-import { BaseSceneObject, SceneObject } from '../../types/scene';
+import { BaseSceneObject } from '../../types/scene';
 import { arrayMoveElToIndex, arrayRemoveEl } from '../../utils/array';
 
 
 export class ParentObjectCommand<TObject extends BaseSceneObject> extends AbstractCommand {
   public updatable: boolean = true;
-  name = "Change Object Order";
-  type = "ChangeObjectOrderCommand" as const;
+  name = "Parent Object";
+  type = "ParentObjectCommand" as const;
 
   oldParentId: Uuid<BaseSceneObject> | undefined;
   oldIndex: number | undefined;
@@ -45,7 +45,7 @@ export class ParentObjectCommand<TObject extends BaseSceneObject> extends Abstra
 
     // Unparent old parent if different
     if (this.newParentId !== this.oldParentId) {
-      const setParent = store.objectSetters.get(parentobject);
+      const setParent = store.objectSetters.get(object.parent);
       if (assertNotUndefined(this, setParent, 'setParent')) {
         setParent(produce(parent => arrayRemoveEl(parent.children, object.id)));
       }
@@ -74,7 +74,7 @@ export class ParentObjectCommand<TObject extends BaseSceneObject> extends Abstra
       targetIndex = siblings.length - 1;
     }
 
-    const parentSetter = getObjectSetter(store, parentobject);
+    const parentSetter = getObjectSetter(store, parentobject.id);
 
     if (!parentSetter) throw new Error(`ChangeObjectOrderCommand: Could not get parent setter for ${parentobject.id}.`);
     parentSetter(produce((parent) => {
@@ -103,7 +103,7 @@ export class ParentObjectCommand<TObject extends BaseSceneObject> extends Abstra
         `ParentObjectCommand: Could not get parent (${object.parent}) of object ${this.objectId} to change order of.`,
       );
     }
-    const parentSetter = getObjectSetter(store, parentobject);
+    const parentSetter = getObjectSetter(store, parentobject.id);
 
     if (!parentSetter) throw new Error(`ChangeObjectOrderCommand: (undo) Could not get parent setter for ${parentobject.id}.`);
     parentSetter(produce((parent) => {

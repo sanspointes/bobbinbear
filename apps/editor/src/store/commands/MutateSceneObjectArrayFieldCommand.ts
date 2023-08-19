@@ -1,4 +1,4 @@
-import { SetStoreFunction } from "solid-js/store";
+import { produce, SetStoreFunction } from "solid-js/store";
 import { BaseSceneObject } from "../../types/scene";
 import { getObjectSetter, SceneModel } from "../sceneStore";
 import {
@@ -9,26 +9,30 @@ import {
 } from "./shared";
 import { Command } from ".";
 import { Uuid } from "../../utils/uuid";
+import { KeysWithType, PickOfType } from "../../types/utility";
 
 /**
  * Sets a single field on a scene object.
  */
-export class SetSceneObjectFieldCommand<
+export class MutateSceneObjectArrayFieldCommand<
   TObject extends BaseSceneObject = BaseSceneObject,
-  K extends keyof TObject = keyof TObject,
+  TObjectPicked extends PickOfType<TObject, Array<unknown>> = PickOfType<TObject, Array<unknown>>,
+  K extends KeysWithType<TObject, Array<unknown>> = KeysWithType<TObject, Array<unknown>>,
 > extends AbstractCommand {
   public updatable: boolean = true;
 
-  name = "Set Scene Object Field";
-  type = "SetSceneObjectFieldCommand" as const;
-  oldValue: TObject[K] | undefined = undefined;
+  name = "Mutate Scene Object Field";
+  type = "MutateSceneObjectArrayFieldCommand" as const;
+  oldValue: TObjectPicked[K] | undefined = undefined;
   constructor(
     private objectId: Uuid<TObject>,
     private field: K,
-    private value: TObject[K],
+    private index: number,
+    private toDelete: number,
+    private toInsert: TObjectPicked[K],
   ) {
     super();
-    this.name = `Set "${this.field.toString()}" to ${this.value} on ${this.objectId}`;
+    this.name = `Mutating array "${field.toString()}" on ${objectId}.  Index ${index}, deleting ${toDelete} and inserting ${toInsert.length}`;
   }
 
   perform(
@@ -48,9 +52,13 @@ export class SetSceneObjectFieldCommand<
         `SetSceneObjectFieldCommand: Can not get object setter for ${this.objectId}`,
       );
     }
-    this.oldValue = object[this.field as keyof TObject] as TObject[K];
-    // @ts-expect-error; Complicated typescript
-    set(this.field, this.value);
+    set(produce(obj => {
+      // @ts-expect-error; Complicated typescript
+      const field = obj[this.field] as Array<unknown>;
+      // @ts-expect-error; Complicated typescript
+      field.splice(this.index, this.toDelete, ...this.toInsert)
+    }));
+    // set(this.field, this.value);
   }
   undo(
     store: SceneModel,

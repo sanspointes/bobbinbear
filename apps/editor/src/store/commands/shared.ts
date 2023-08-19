@@ -1,17 +1,17 @@
 import { createStore, produce, SetStoreFunction } from "solid-js/store";
 import { getObjectSetter, SceneModel } from "../sceneStore";
-import { type Command, type CommandPrototypeMap, type CommandType } from ".";
-import { BaseSceneObject, SceneObject } from "../../types/scene";
+import { type Command, type CommandPrototypeMap } from ".";
+import { BaseSceneObject } from "../../types/scene";
 import { Uuid } from "../../utils/uuid";
 import { arrayRemove } from "../../utils/array";
-import { TbComet } from "solid-icons/tb";
+import { batch } from "solid-js";
 
 export type SerializedCommand<TCommand extends Command> = {
-  type: TCommand["type"];
+  type: TCommand[''];
   name: string;
   final: boolean;
   updatable: boolean;
-} & Record<string, unknown>;
+} & TCommand;
 
 export abstract class AbstractCommand {
   public final = true;
@@ -69,6 +69,78 @@ export abstract class AbstractCommand {
   }
 }
 
+export class MultiCommand<TObject extends BaseSceneObject>
+  extends AbstractCommand {
+  public updatable: boolean = true;
+  name = "Multi Command";
+  type: "MultiCommand" | string = "MultiCommand";
+  commands: Command<TObject>[];
+  constructor(...commands: Command<TObject>[]) {
+    super();
+
+    this.commands = commands;
+  }
+
+  perform(
+    store: SceneModel,
+    setStore: SetStoreFunction<SceneModel>,
+  ): void {
+    batch(() => {
+      for (const cmd of this.commands) {
+        cmd.perform(store, setStore);
+      }
+    });
+  }
+
+  undo(
+    store: SceneModel,
+    setStore: SetStoreFunction<SceneModel>,
+  ): void {
+    batch(() => {
+      for (let i = this.commands.length - 1; i >= 0; i--) {
+        const cmd = this.commands[i];
+        if (!cmd) {
+          throw new Error(
+            `MultiCommand: (undo) Cannot get command at the ${i}th index.`,
+          );
+        }
+        cmd.undo(store, setStore);
+      }
+    });
+  }
+
+  fromObject<T extends Command>(object: SerializedCommand<T>): void {
+    let i = 0;
+    for (const cmd of this.commands) {
+      const cmdObject = object[i] as Record<string, unknown>;
+      cmd.fromObject(cmdObject as SerializedCommand<T>);
+      i++;
+    }
+  }
+
+  toObject(object: Record<string, unknown>): void {
+    let i = 0;
+    for (const cmd of this.commands) {
+      const cmdObject: Record<string, unknown> = {};
+      cmd.toObject(cmdObject);
+      object[i] = cmdObject;
+      i++;
+    }
+  }
+
+  updateData(newer: Command<TObject>): void {
+    const n = assertSameType(this, newer) as MultiCommand<TObject>;
+    // assertSameField(this, newer, 'length');
+    let i = 0;
+    for (const cmd of this.commands) {
+      const newerCmd = n.commands[i]!;
+      const n2 = assertSameType(cmd, newerCmd) as Command<TObject>;
+      if (cmd.updateData) cmd.updateData(n2);
+      i += 1;
+    }
+  }
+}
+
 /** Helpers **/
 
 export const traverse = <T extends BaseSceneObject>(
@@ -110,7 +182,7 @@ export const addObject = (
     traverse(store, newObjectData, (obj) => {
       const [object, setObject] = createStore(obj);
       store.objects.set(object.id, object);
-      store.objectSetters.set(object, setObject);
+      store.objectSetters.set(object.id, setObject);
     });
 
     const object = store.objects.get(newObjectData.id);

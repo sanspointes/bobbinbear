@@ -1,3 +1,4 @@
+
 /**
  * Get the t value (0-1) of `amount` between `a` and `b`
  */
@@ -15,4 +16,8 @@ export const mapLinear = ( x: number, a1: number, a2: number, b1: number, b2: nu
 
 export const clamp = (x: number, min: number, max: number) => {
   return Math.max(min, Math.min(x, max));
+}
+
+export const lerp = (a: number, b: number, t: number) => {
+ return a * (1 - t) + b * t;
 }

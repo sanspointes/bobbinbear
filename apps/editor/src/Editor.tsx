@@ -22,7 +22,8 @@ import { SelectBox } from "./sxi-components/SelectBox";
 import { preventDefault } from "@solid-primitives/event-listener";
 import { Sidebar } from "./components/Sidebar";
 import { uuid } from "./utils/uuid";
-import { SceneTree, SidebarLeft } from "./components/SceneTree";
+import { SidebarLeft } from "./components/SceneTree";
+import { ErrorView } from "./components/ErrorView";
 
 export const [appError, setAppError] = createSignal<Error>();
 
@@ -80,32 +81,34 @@ export const Editor = () => {
         class="flex flex-col items-stretch w-full h-full text-orange-50 fill-orange-50 stroke-orange-50"
         onWheel={onWheel}
       >
-        <AppContext.Provider value={contextModel}>
-          <Toolbar />
-          <div
-            class="flex flex-grow"
-          >
-            <DragDropProvider>
-              <DragDropSensors>
-                <SidebarLeft />
-              </DragDropSensors>
-            </DragDropProvider>
-            <Canvas
-              classList={{
-                "cursor-grab": toolStore.currentCursor === Cursor.Grab,
-                "cursor-grabbing": toolStore.currentCursor === Cursor.Grabbing,
-                "cursor-pointer": toolStore.currentCursor === Cursor.Point,
-                "cursor-crosshair": toolStore.currentCursor === Cursor.Cross,
-              }}
-              devtools={true}
-              onCreated={onCreated}
-              app={{ backgroundColor: 0xE1E1E1 }}
+        <ErrorBoundary fallback={error => <ErrorView error={error} stack={contextModel.sceneStore.undoStack} />}>
+          <AppContext.Provider value={contextModel}>
+            <Toolbar />
+            <div
+              class="flex flex-grow"
             >
-              <EditorView />
-            </Canvas>
-            <Sidebar />
-          </div>
-        </AppContext.Provider>
+              <DragDropProvider>
+                <DragDropSensors>
+                  <SidebarLeft />
+                </DragDropSensors>
+              </DragDropProvider>
+              <Canvas
+                classList={{
+                  "cursor-grab": toolStore.currentCursor === Cursor.Grab,
+                  "cursor-grabbing": toolStore.currentCursor === Cursor.Grabbing,
+                  "cursor-pointer": toolStore.currentCursor === Cursor.Point,
+                  "cursor-crosshair": toolStore.currentCursor === Cursor.Cross,
+                }}
+                devtools={true}
+                onCreated={onCreated}
+                app={{ backgroundColor: 0xE1E1E1, resolution: window.devicePixelRatio }}
+              >
+                <EditorView />
+              </Canvas>
+              <Sidebar />
+            </div>
+          </AppContext.Provider>
+        </ErrorBoundary>
       </div>
   );
 };

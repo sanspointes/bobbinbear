@@ -16,7 +16,6 @@ import {
   Overwrite,
   SxiInstance,
   SxiObject,
-  WrapFieldsWithAccessor,
 } from "./types";
 
 export const INTERNAL_PROPS = ["children", "ref", "args"];
@@ -254,12 +253,10 @@ export type ClassProps<
   TSource extends Constructable,
   TExtraProps extends ExtraPropsHandlers<TContext, TSource>,
 > = Partial<
-  WrapFieldsWithAccessor<
-    Overwrite<
-      Pick<InstanceType<TSource>, NonFunctionKeys<InstanceType<TSource>>>, // Set all fields on instance type.
-      & ExtraPropsSignature<TContext, TExtraProps>
-      & ClassTypeReservedProps<TContext, TSource> // Overwride defaults with extra props + reserved props types.
-    >
+  Overwrite<
+    Pick<InstanceType<TSource>, NonFunctionKeys<InstanceType<TSource>>>, // Set all fields on instance type.
+    & ExtraPropsSignature<TContext, TExtraProps>
+    & ClassTypeReservedProps<TContext, TSource> // Overwride defaults with extra props + reserved props types.
   >
 >;
 

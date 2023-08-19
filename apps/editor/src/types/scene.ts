@@ -1,6 +1,7 @@
 import { Point } from "@pixi/core";
 import { Uuid } from "../utils/uuid";
 import { IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
+import { Command } from "../store/commands";
 
 export type BaseSceneObject = {
   /** Internal States */
@@ -27,6 +28,11 @@ export type BaseSceneObject = {
   /** Children ids */
   children: Uuid<BaseSceneObject>[];
 };
+
+export type VirtualSceneObject = {
+  virtual: true,
+  virtualCreator: () => Command,
+}
 
 export type HasFillSceneObject = {
   fill: IFillStyleOptions;
@@ -104,10 +110,10 @@ export type GroupSceneObject = BaseSceneObject & {
 };
 
 export type SceneObject =
-  | GraphicSceneObject
+  (GraphicSceneObject
   | CanvasSceneObject
   | NodeSceneObject
-  | GroupSceneObject;
+  | GroupSceneObject) & VirtualSceneObject;
 export type SceneObjectType = SceneObject["type"];
 
 export type SceneObjectPropsLookup = {

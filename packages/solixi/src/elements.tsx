@@ -23,7 +23,12 @@ import {
   HasScaleFragment,
   HasVisibilityFragment,
 } from "./prop-fragments";
+
+import {
+  Text as PixiText
+} from '@pixi/text'
 import { ClassProps } from "@bearbroidery/constructables";
+import { ExtraPropHandler } from "packages/constructables/dist/elements";
 
 export const temp = (a: number) => a + 1;
 
@@ -133,6 +138,39 @@ export const Sprite = Solixi.wrapConstructable(PixiSprite, {
   defaultArgs: (_ctx) =>
     [Texture.WHITE] as ConstructorParameters<typeof PixiSprite>,
   extraProps: SpriteExtraProps,
+});
+
+/**
+ * Text
+ */
+const updateTextHandler: ExtraPropHandler<SolixiState, typeof PixiText, string> = (_1, _2, object, value: string) => {
+  object.text = value;
+  object.updateText(true);
+}
+
+const TextExtraProps = {
+  ...HasNameFragment,
+  ...HasPositionFragment,
+  ...HasScaleFragment,
+  ...HasVisibilityFragment,
+  ...HasRotationFragment,
+  ...HasParentLayerFragment,
+  text: updateTextHandler,
+};
+export type TextProps = ClassProps<
+  SolixiState,
+  typeof PixiText,
+  typeof TextExtraProps
+>;
+new PixiText()
+export const Text = Solixi.wrapConstructable(PixiText, {
+  // @ts-expect-error ; Hard to type parent of attach function
+  attach: (_, b: PixiContainer, c) => {
+    b.addChild(c);
+    return () => b.removeChild(c);
+  },
+  defaultArgs: (_ctx) => [undefined, undefined, undefined] as [undefined, undefined, undefined],
+  extraProps: TextExtraProps,
 });
 
 export const PlaneGeometry = Solixi.wrapConstructable(PixiPlaneGeometry, {

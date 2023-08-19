@@ -1,4 +1,4 @@
-import { For, Index, useContext } from "solid-js";
+import { For, useContext } from "solid-js";
 import { BaseSceneObject, SceneObject } from "../types/scene";
 import { CanvasSceneObjectView } from "./CanvasSceneObject";
 import { GraphicSceneObjectView } from "./GraphicSceneObjectView";
