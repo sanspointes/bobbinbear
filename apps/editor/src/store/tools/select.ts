@@ -1,7 +1,7 @@
 import { EventBoundary } from "@pixi/events";
 import { Accessor, createEffect } from "solid-js";
 import { AllMessages, BaseStore, GeneralHandler, generateStore } from "..";
-import { Cursor, } from "../toolStore";
+import { Cursor } from "../toolStore";
 import {
   createViewportStateMachine,
   ToolInputMessage,
@@ -13,7 +13,7 @@ import { SolixiState } from "@bearbroidery/solixi";
 import { Uuid } from "../../utils/uuid";
 import { BaseSceneObject, VirtualSceneObject } from "../../types/scene";
 import {
-    Command,
+  Command,
   DeselectObjectsCommand,
   MoveObjectCommand,
   SelectObjectsCommand,
@@ -110,14 +110,18 @@ export const createSelectToolStore = (
       SelectStates.PointerDownOnElement,
       (id: Uuid<BaseSceneObject>) => {
         const cmds: Command[] = [];
-        const obj = sceneModel.objects.get(id) as BaseSceneObject & VirtualSceneObject;
+        const obj = sceneModel.objects.get(id) as
+          & BaseSceneObject
+          & VirtualSceneObject;
         if (obj && obj.virtual) {
           const cmd = obj.virtualCreator();
           cmds.push(cmd);
         }
-        cmds.push(new DeselectObjectsCommand(
-          ...sceneModel.selectedIds,
-        ));
+        cmds.push(
+          new DeselectObjectsCommand(
+            ...sceneModel.selectedIds,
+          ),
+        );
         cmds.push(new SelectObjectsCommand(id));
         const cmd = new MultiCommand(...cmds);
         cmd.name = `Select ${id}`;
@@ -140,7 +144,7 @@ export const createSelectToolStore = (
         if (sceneModel.inspecting !== undefined) {
           cmds.push(new SetInspectingCommand(undefined));
         }
-        dispatch("scene:do-command", new MultiCommand(...cmds));
+        if (cmds.length > 0) dispatch("scene:do-command", new MultiCommand(...cmds));
       },
     ),
     t(
@@ -188,7 +192,7 @@ export const createSelectToolStore = (
       () => {
         const obj = sceneModel.selectedObjects[0];
         if (!obj) {
-          console.warn(`SelectTool: DragStart can't move element.`)
+          console.warn(`SelectTool: DragStart can't move element.`);
           return;
         }
         inputModel.position;
@@ -209,7 +213,7 @@ export const createSelectToolStore = (
     t(SelectStates.Moving, SelectEvents.DragMove, SelectStates.Moving, () => {
       const obj = sceneModel.selectedObjects[0];
       if (!obj) {
-        console.warn(`SelectTool: DragMove can't move element.`)
+        console.warn(`SelectTool: DragMove can't move element.`);
         return;
       }
       newPosition = inputModel.position.clone();
@@ -223,7 +227,7 @@ export const createSelectToolStore = (
     t(SelectStates.Moving, SelectEvents.DragEnd, SelectStates.Hoverring, () => {
       const obj = sceneModel.selectedObjects[0];
       if (!obj) {
-        console.warn(`SelectTool: DragEnd can't move element.`)
+        console.warn(`SelectTool: DragEnd can't move element.`);
         return;
       }
       newPosition = inputModel.position.clone();
