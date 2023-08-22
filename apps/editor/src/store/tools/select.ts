@@ -11,7 +11,7 @@ import {
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
 import { SolixiState } from "@bearbroidery/solixi";
 import { Uuid } from "../../utils/uuid";
-import { BaseSceneObject, VirtualSceneObject } from "../../types/scene";
+import { BaseSceneObject, NodeSceneObject, VirtualSceneObject } from "../../types/scene";
 import {
   Command,
   DeselectObjectsCommand,
@@ -23,6 +23,8 @@ import { InputModel } from "../inputStore";
 import { Point } from "@pixi/core";
 import { MultiCommand } from "../commands/shared";
 import { SetInspectingCommand } from "../commands/SetInspectingCommand";
+import { SceneObject } from "../../types/scene";
+import { tryMakeGraphicsNodeACurve } from "../helpers";
 
 export const SelectEvents = {
   Hover: Symbol("s-Hover"),
@@ -144,7 +146,9 @@ export const createSelectToolStore = (
         if (sceneModel.inspecting !== undefined) {
           cmds.push(new SetInspectingCommand(undefined));
         }
-        if (cmds.length > 0) dispatch("scene:do-command", new MultiCommand(...cmds));
+        if (cmds.length > 0) {
+          dispatch("scene:do-command", new MultiCommand(...cmds));
+        }
       },
     ),
     t(
@@ -181,8 +185,15 @@ export const createSelectToolStore = (
             "Attempted to inspect: Currently hovered element but no element hovered.",
           );
         }
-        const cmd = new SetInspectingCommand(currHover);
-        dispatch("scene:do-command", cmd);
+        const obj = sceneModel.objects.get(currHover) as
+          | SceneObject
+          | undefined;
+        if (obj?.type === "node") {
+          tryMakeGraphicsNodeACurve(dispatch, sceneModel, obj.node.id);
+        } else {
+          const cmd = new SetInspectingCommand(currHover);
+          dispatch("scene:do-command", cmd);
+        }
       },
     ),
     t(

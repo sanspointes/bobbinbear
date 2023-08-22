@@ -87,6 +87,7 @@ export const createBoxToolStore = (
           shallowLocked: false,
           hovered: false,
           shape: currentShape,
+          close: true,
           inspecting: false,
           fill: {
             color: 0xcccccc,

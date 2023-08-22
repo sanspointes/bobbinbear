@@ -10,7 +10,7 @@ import {
 import { useTexture } from "../composables/useAsset";
 
 import NodePointSrc from "../assets/node_point.png";
-import NodeControlSrc from "../assets/node_point.png";
+import NodeControlSrc from "../assets/node_control.png";
 import { Circle, ObservablePoint, Point, Texture } from "@pixi/core";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
 
@@ -53,6 +53,8 @@ export function NodeSceneObjectView(props: NodeSceneObjectViewProps) {
       hitArea={HIT_AREA}
       texture={texture()}
       interactive={true}
-     />
+     >
+      { /*<P.Text text={`${props.node.type}:${props.id} ${props.order}`} scale={[5, 5]} /> */ }
+     </P.Sprite>
   );
 }

@@ -67,14 +67,10 @@ export type VirtualGraphicsNode = BaseGraphicsNode & {
   close: never;
 }
 export type BasicGraphicsNode = BaseGraphicsNode & {
-  type: GraphicNodeTypes.Jump | GraphicNodeTypes.Control;
-};
-export type CloseableGraphicsNode = BaseGraphicsNode & {
-  type: GraphicNodeTypes.Point;
-  close?: boolean;
+  type: GraphicNodeTypes.Jump | GraphicNodeTypes.Control | GraphicNodeTypes.Point;
 };
 
-export type GraphicsNode = BasicGraphicsNode | CloseableGraphicsNode | VirtualGraphicsNode;
+export type GraphicsNode = BasicGraphicsNode | VirtualGraphicsNode;
 
 export type GraphicSceneObject =
   & BaseSceneObject
@@ -84,6 +80,7 @@ export type GraphicSceneObject =
   & {
     type: "graphic";
     shape: GraphicsNode[];
+    close: boolean;
   };
 /**
  * NODE SCENE OBJECT

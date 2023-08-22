@@ -25,6 +25,5 @@ export const createBoxGraphicsCommands = (
     type: GraphicNodeTypes.Point,
     x: 0,
     y: height,
-    close: true,
   }];
 };

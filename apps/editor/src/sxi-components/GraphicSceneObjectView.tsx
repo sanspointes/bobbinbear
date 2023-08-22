@@ -10,32 +10,27 @@ import {
 } from "../types/scene";
 import { Point } from "@pixi/core";
 import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
-import {
-  createEffect,
-  createMemo,
-  For,
-  onMount,
-  useContext,
-} from "solid-js";
+import { createEffect, createMemo, For, onMount, useContext } from "solid-js";
 import { AppContext } from "../store";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
 import { Show } from "solid-js";
 import { sceneObjectDefaults } from "../store/helpers";
-import { arrayGetOffset } from "../utils/array";
+import { arrayIterPairs } from "../utils/array";
 import { lerp } from "../utils/math";
 import { newUuid, Uuid } from "../utils/uuid";
 import { NodeSceneObjectView } from "./NodeSceneObjectView";
-import {
-  Command,
-  MutateSceneObjectArrayFieldCommand,
-} from "../store/commands";
+import { Command, MutateSceneObjectArrayFieldCommand } from "../store/commands";
 import { mapTemporarySceneObjects } from "../composables/useVirtualSceneObjects";
 
+type ExtraOptions = {
+  close: boolean;
+}
 const updateGraphics = (
   g: Graphics,
   shape: GraphicsNode[],
   fill: IFillStyleOptions,
   stroke: ILineStyleOptions,
+  extra: ExtraOptions,
 ) => {
   g.clear();
 
@@ -69,16 +64,16 @@ const updateGraphics = (
       } else if (stackIndex === 1) {
         const c0 = stack[0]!;
         g.quadraticCurveTo(c0.x, c0.y, node.x, node.y);
-      } else if (stackIndex === 3) {
+      } else if (stackIndex === 2) {
         const c0 = stack[0]!;
         const c1 = stack[1]!;
         g.bezierCurveTo(c0.x, c0.y, c1.x, c1.y, node.x, node.y);
       }
 
-      if (node.close) g.closePath();
       stackIndex = 0;
     }
   }
+  if (extra.close) g.closePath();
   g.endFill();
 };
 
@@ -98,7 +93,7 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
 
   createEffect(() => {
     if (graphics) {
-      updateGraphics(graphics, props.shape, props.fill, props.stroke);
+      updateGraphics(graphics, props.shape, props.fill, props.stroke, { close: props.close });
     }
   });
 
@@ -107,21 +102,36 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
     isAppInspecting() && sceneStore.inspecting === props.id
   );
 
-  const editableNodes = mapTemporarySceneObjects(() => isThisInspecting() ? props.shape : undefined, (node) => {
-    return {
-      ...sceneObjectDefaults<NodeSceneObject>(),
-      id: node.id as unknown as Uuid<NodeSceneObject>,
-      type: "node",
-      node,
-      name: `${node.type} Node`,
-      position: new Point(node.x, node.y),
-      relatesTo: props.id as Uuid<GraphicSceneObject>,
-    } as NodeSceneObject;
+  const editableNodes = mapTemporarySceneObjects(
+    () => isThisInspecting() ? props.shape : undefined,
+    (node) => {
+      return {
+        ...sceneObjectDefaults<NodeSceneObject>(),
+        id: node.id as unknown as Uuid<NodeSceneObject>,
+        type: "node",
+        node,
+        name: `${node.type} Node`,
+        position: new Point(node.x, node.y),
+        relatesTo: props.id as Uuid<GraphicSceneObject>,
+      } as NodeSceneObject;
+    },
+  );
+
+  const pointNodePairs = createMemo(() => {
+    return isThisInspecting() ? [...arrayIterPairs(props.shape, true)] : undefined;
   });
 
-  const virtualNodes = mapTemporarySceneObjects(() => isThisInspecting() ? props.shape : undefined, (node, i) => {
-    // const data = createMemo(() => {
-      const prev = arrayGetOffset(props.shape, i(), -1, true);
+  createEffect(() => {
+    console.log(pointNodePairs());
+  })
+
+  const virtualNodes = mapTemporarySceneObjects(
+    () => pointNodePairs(),
+    ([prev, node], i) => {
+      if (
+        node.type === GraphicNodeTypes.Control ||
+        prev.type === GraphicNodeTypes.Control
+      ) return undefined;
       const midX = lerp(prev.x, node.x, 0.5);
       const midY = lerp(prev.y, node.y, 0.5);
       console.log(prev.x, midX, node.x);
@@ -139,12 +149,14 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
         id,
         virtual: true,
         virtualCreator: () => {
-          const cmd = new MutateSceneObjectArrayFieldCommand<GraphicSceneObject>(
+          const cmd = new MutateSceneObjectArrayFieldCommand<
+            GraphicSceneObject
+          >(
             props.id as Uuid<GraphicSceneObject>,
             "shape",
-            i(),
+            (i() + 1),
             0,
-            [midNode]
+            [midNode],
           );
           return cmd as Command<BaseSceneObject>;
         },
@@ -155,9 +167,10 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
         relatesTo: props.id as Uuid<GraphicSceneObject>,
       };
       return midObject;
-    // });
-    // return data;
-  });
+      // });
+      // return data;
+    },
+  );
 
   return (
     <P.Graphics
@@ -187,7 +200,9 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
         {(virtualNodes) => (
           <For each={virtualNodes()}>
             {(nodeSceneObject) => (
-              <NodeSceneObjectView {...nodeSceneObject()} order={0} />
+              <Show when={nodeSceneObject()}>
+                {(props) => <NodeSceneObjectView {...props()} order={0} />}
+              </Show>
             )}
           </For>
         )}

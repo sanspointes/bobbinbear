@@ -5,6 +5,7 @@ import {
   mapArray,
   on,
   onCleanup,
+  onMount,
   useContext,
 } from "solid-js";
 import { createStore } from "solid-js/store";
@@ -16,7 +17,8 @@ import { logger } from "../utils/logger";
 export const useTemporarySceneObjects = (
   tempObjs: Accessor<(BaseSceneObject | null)[]>,
 ) => {
-  const { sceneStore } = useContext(AppContext);
+  const ctx = useContext(AppContext)
+  const { sceneStore } = ctx;
   createRenderEffect(on(tempObjs, (tempObjs, prevTempObjs) => {
     if (prevTempObjs) {
       for (const vNode of prevTempObjs) {
@@ -43,12 +45,14 @@ export const useTemporarySceneObject = (
 ) => {
   const { sceneStore } = useContext(AppContext);
   const [store, set] = createStore(access(obj));
-  logger.debug(`useTemporarySceneObject: Unregistering ${store.id}`);
-  sceneStore.objects.set(store.id, store);
-  sceneStore.objectSetters.set(store.id, set);
+  logger.debug(`useTemporarySceneObject: Registering ${store.id}`);
+  onMount(() => {
+    sceneStore.objects.set(store.id, store);
+    sceneStore.objectSetters.set(store.id, set);
+  })
 
   onCleanup(() => {
-    logger.debug(`useTemporarySceneObject: Registering ${store.id}`);
+    logger.debug(`useTemporarySceneObject: Unregistering ${store.id}`);
     sceneStore.objects.delete(store.id);
     sceneStore.objectSetters.delete(store.id);
   });
@@ -65,7 +69,7 @@ export const mapTemporarySceneObjects = <T, TObject extends BaseSceneObject>(
       // @ts-expect-error ; Debug logging on expected
       logger.debug(`mapTemporarySceneObjects: Re-running memo for ${v?.id ? v.id : v}`);
       const sceneObject = mapFn(v, () => i());
-      useTemporarySceneObject(sceneObject);
+      if (sceneObject) useTemporarySceneObject(sceneObject);
       return sceneObject
     })
     return sceneObject;

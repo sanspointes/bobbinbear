@@ -54,6 +54,25 @@ export const arrayFirst = <T>(arr: T[]): T | undefined => {
   return arr[0];
 };
 
+/**
+ * Creates an iterable of the pairs of an array.  Optionally circular.
+ */
+export function* arrayIterPairs<T>(iterable: T[], circular: boolean) {
+  const iterator = iterable[Symbol.iterator]();
+  let a = iterator.next();
+  if (a.done) return;
+  let b = iterator.next();
+  while (!b.done) {
+    const toYield = [a.value, b.value] as [prev: T, curr: T];
+    yield toYield;
+    a = b;
+    b = iterator.next();
+  }
+  if (circular) {
+    yield [a.value, iterable[0] as T] as [prev: T, curr: T];
+  }
+}
+
 export function arrayGetOffset<T>(arr: T[], index: number, offset: number, ciruclar: true): T;
 export function arrayGetOffset<T>(
   arr: T[],

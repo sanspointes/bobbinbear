@@ -46,11 +46,11 @@ export const parentChildren = <
 
         /* <Show/> will return undefined if it's hidden */
         if (!child?.__sxi || !parent?.__sxi) {
-          console.warn(
-            "CNST: Attempting to attach child to parent but internal state not set. Ignoring...",
-            child,
-            parent,
-          );
+          // console.warn(
+          //   "CNST: Attempting to attach child to parent but internal state not set. Ignoring...",
+          //   child,
+          //   parent,
+          // );
           return;
         }
 
