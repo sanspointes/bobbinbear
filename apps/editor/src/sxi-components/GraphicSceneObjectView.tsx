@@ -1,7 +1,7 @@
 import { P } from "@bearbroidery/solixi";
 import { SceneObjectChildren } from "./general";
 import {
-  BaseSceneObject,
+  BasicGraphicsNode,
   GraphicNodeTypes,
   GraphicSceneObject,
   GraphicsNode,
@@ -10,21 +10,22 @@ import {
 } from "../types/scene";
 import { Point } from "@pixi/core";
 import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
-import { createEffect, createMemo, For, onMount, useContext } from "solid-js";
+import { createEffect, createMemo, createRenderEffect, createSignal, For, on, onMount, useContext } from "solid-js";
 import { AppContext } from "../store";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
 import { Show } from "solid-js";
 import { sceneObjectDefaults } from "../store/helpers";
-import { arrayIterPairs } from "../utils/array";
+import { arrayFirst, arrayIterCircularEndInclusive, arrayIterPairs } from "../utils/array";
 import { lerp } from "../utils/math";
 import { newUuid, Uuid } from "../utils/uuid";
 import { NodeSceneObjectView } from "./NodeSceneObjectView";
-import { Command, MutateSceneObjectArrayFieldCommand } from "../store/commands";
+import { MutateSceneObjectArrayFieldCommand } from "../store/commands";
 import { mapTemporarySceneObjects } from "../composables/useVirtualSceneObjects";
+import { Container } from "@pixi/display";
 
 type ExtraOptions = {
   close: boolean;
-}
+};
 const updateGraphics = (
   g: Graphics,
   shape: GraphicsNode[],
@@ -73,7 +74,20 @@ const updateGraphics = (
       stackIndex = 0;
     }
   }
-  if (extra.close) g.closePath();
+  if (extra.close) {
+    const node = arrayFirst(shape)!;
+    if (stackIndex === 0) {
+      g.lineTo(node.x, node.y);
+    } else if (stackIndex === 1) {
+      const c0 = stack[0]!;
+      g.quadraticCurveTo(c0.x, c0.y, node.x, node.y);
+    } else if (stackIndex === 2) {
+      const c0 = stack[0]!;
+      const c1 = stack[1]!;
+      g.bezierCurveTo(c0.x, c0.y, c1.x, c1.y, node.x, node.y);
+    }
+  }
+
   g.endFill();
 };
 
@@ -81,6 +95,7 @@ type GraphicSceneObjectViewProps = GraphicSceneObject & {
   order: number;
 };
 export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
+  let container: Container | undefined;
   let graphics: Graphics | undefined;
   onMount(() => {
     if (!graphics) return;
@@ -93,7 +108,9 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
 
   createEffect(() => {
     if (graphics) {
-      updateGraphics(graphics, props.shape, props.fill, props.stroke, { close: props.close });
+      updateGraphics(graphics, props.shape, props.fill, props.stroke, {
+        close: props.close,
+      });
     }
   });
 
@@ -118,12 +135,10 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
   );
 
   const pointNodePairs = createMemo(() => {
-    return isThisInspecting() ? [...arrayIterPairs(props.shape, true)] : undefined;
+    return isThisInspecting()
+      ? [...arrayIterPairs(props.shape, true)]
+      : undefined;
   });
-
-  createEffect(() => {
-    console.log(pointNodePairs());
-  })
 
   const virtualNodes = mapTemporarySceneObjects(
     () => pointNodePairs(),
@@ -134,8 +149,6 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
       ) return undefined;
       const midX = lerp(prev.x, node.x, 0.5);
       const midY = lerp(prev.y, node.y, 0.5);
-      console.log(prev.x, midX, node.x);
-      console.log(prev.y, midY, node.y);
       const id = newUuid<NodeSceneObject>();
       const midNode: GraphicsNode = {
         type: GraphicNodeTypes.Point,
@@ -154,11 +167,14 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
           >(
             props.id as Uuid<GraphicSceneObject>,
             "shape",
-            (i() + 1),
-            0,
-            [midNode],
+            i() + 1,
+            {
+              toDelete: 0,
+              toInsert: [midNode],
+              circularInsert: true,
+            }
           );
-          return cmd as Command<BaseSceneObject>;
+          return cmd;
         },
         position: new Point(midX, midY),
         type: "node",
@@ -172,19 +188,51 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
     },
   );
 
+  let overlayGraphics: Graphics | undefined;
+  createRenderEffect(() => {
+    if (isThisInspecting() && overlayGraphics) {
+      overlayGraphics.clear();
+      overlayGraphics.lineStyle(1, 0x000000, 1);
+
+      let needsLineNext = false;
+      let prev: GraphicsNode | undefined;
+      for (const node of arrayIterCircularEndInclusive(props.shape)) {
+      // for (const node of props.shape) {
+        const n = node as BasicGraphicsNode;
+        if ((n.ownsPrev || needsLineNext) && prev ) {
+          needsLineNext = false;
+          overlayGraphics.moveTo(n.x, n.y);
+          overlayGraphics.lineTo(prev.x, prev.y);
+        }
+        if (n.ownsNext) {
+          needsLineNext = true;
+        }
+        prev = node;
+      }
+    } 
+  });
+
   return (
-    <P.Graphics
+    <P.Container
       id={props.id}
-      soType={props.type}
-      name={`${props.id} ${props.name}`}
-      visible={props.visible}
-      ref={graphics}
+      ref={container}
       zIndex={sceneStore.inspecting === props.id ? 500 : props.order}
       position={props.position}
-      interactive={!isAppInspecting() || isThisInspecting()}
-      alpha={!isAppInspecting() || isThisInspecting() ? 1 : 0.5}
     >
+      <P.Graphics
+        id={props.id}
+        soType={props.type}
+        name={`${props.id} ${props.name}`}
+        visible={props.visible}
+        ref={graphics}
+        interactive={!isAppInspecting() || isThisInspecting()}
+        alpha={!isAppInspecting() || isThisInspecting() ? 1 : 0.5}
+       />
       <SceneObjectChildren children={props.children} />
+      <P.Graphics
+        ref={overlayGraphics}
+        visible={isThisInspecting()}
+      />
       {/* Shows nodes to edit the shape */}
       <Show when={editableNodes()}>
         {(editableNodes) => (
@@ -207,6 +255,6 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
           </For>
         )}
       </Show>
-    </P.Graphics>
+    </P.Container>
   );
 };

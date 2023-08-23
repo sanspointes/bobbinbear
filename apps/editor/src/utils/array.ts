@@ -19,25 +19,6 @@ export const arrayRemove = <T>(
   return false;
 };
 
-export const arrayFindAfterIndex = <T>(
-  arr: T[],
-  startIndex: number,
-  predicate: ArrayRemovePredicate<T>,
-) => {
-  if (startIndex > arr.length) {
-    throw new Error(
-      `arrayFindAfterIndex: Start index '${startIndex}' is greater than array length (${arr.length})`,
-    );
-  }
-  for (let i = startIndex; i < arr.length; i++) {
-    const v = arr[i];
-    if (predicate(v as T, i, arr)) {
-      return v;
-    }
-  }
-  return undefined;
-};
-
 export const arrayRemoveEl = <T>(arr: T[], el: T) => {
   return arrayRemove(arr, (entry) => entry === el);
 };
@@ -54,6 +35,74 @@ export const arrayFirst = <T>(arr: T[]): T | undefined => {
   return arr[0];
 };
 
+/**
+ * Creates a new iterator from an array that starts from an offset index
+ */
+export function* arrayOffsetIter<T>(
+  arr: T[],
+  startIndex: number,
+  direction = +1,
+): IterableIterator<T> {
+  let index = startIndex;
+  while (index < 0) {
+    index += arr.length;
+  }
+  index = index % arr.length;
+
+  const endIndex = direction > 0 ? arr.length : 0;
+
+  if (direction > 0) {
+    for (let i = index; i < endIndex; i += direction) {
+      yield arr[i] as T;
+    }
+  } else {
+    for (let i = index; i >= endIndex; i += direction) {
+      yield arr[i] as T;
+    }
+  }
+}
+
+/**
+ * Iterates over every element of the array including the first one twice (start and end)
+ */
+export function* arrayIterCircularEndInclusive<T>(arr: T[]) {
+  if (arr.length === 0) return;
+  for (const v of arr) {
+    yield v;
+  }
+  yield arrayFirst(arr) as T;
+}
+/**
+ * Creates a new iterator from an array that wraps around and starts at and stops before an offset index.
+ */
+export function* arrayOffsetIterCircular<T>(
+  arr: T[],
+  startIndex: number,
+  direction = +1,
+): IterableIterator<T> {
+  if (arr.length === 0) return;
+  // Wrap it to the bounds of 0-arr.length
+  let index = startIndex;
+  while (index < 0) {
+    index += arr.length;
+  }
+  index = index % arr.length;
+  const offset = index;
+
+  const maxIters = arr.length;
+  let actualIters = 0;
+  let iterOffset = 0;
+  while (actualIters < maxIters) {
+    let index = (offset + iterOffset) % arr.length;
+    while (index < 0) {
+      index += arr.length;
+    }
+    const v = arr[index];
+    yield v as T;
+    actualIters += 1;
+    iterOffset += direction;
+  }
+}
 /**
  * Creates an iterable of the pairs of an array.  Optionally circular.
  */
@@ -73,7 +122,12 @@ export function* arrayIterPairs<T>(iterable: T[], circular: boolean) {
   }
 }
 
-export function arrayGetOffset<T>(arr: T[], index: number, offset: number, ciruclar: true): T;
+export function arrayGetOffset<T>(
+  arr: T[],
+  index: number,
+  offset: number,
+  ciruclar: true,
+): T;
 export function arrayGetOffset<T>(
   arr: T[],
   index: number,
@@ -92,7 +146,7 @@ export function arrayGetOffset<T>(
     if (newIndex < 0 || newIndex >= arr.length) return undefined;
   }
   return arr[newIndex];
-};
+}
 
 export const arrayInsertAtIndex = <T>(arr: T[], el: T, index: number) => {
   arr.splice(index, 0, el);
@@ -109,3 +163,17 @@ export const arrayMoveElToIndex = <T>(
   }
   return success;
 };
+
+export const arrayInsertCircular = <T>(
+  arr: T[],
+  index: number,
+  ...values: T[]
+) => {
+  let idx = index;
+  if (idx >= arr.length + 1) idx = 0;
+  if (idx < 0) idx = arr.length;
+  while (idx < 0) {
+    idx += arr.length + 1;
+  }
+  arr.splice(idx, 0, ...values);
+}

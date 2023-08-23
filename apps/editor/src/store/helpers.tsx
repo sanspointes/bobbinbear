@@ -4,9 +4,11 @@ import {
   Command,
   CreateObjectCommand,
   MutateSceneObjectArrayFieldCommand,
+  SetSceneObjectFieldCommand,
 } from "./commands";
 import {
   BaseSceneObject,
+  BasicGraphicsNode,
   CanvasSceneObject,
   GraphicNodeTypes,
   GraphicSceneObject,
@@ -15,9 +17,10 @@ import {
 } from "../types/scene";
 import { AppDispatcher } from ".";
 import { SceneModel } from "./sceneStore";
-import { arrayGetOffset } from "../utils/array";
+import { arrayGetOffset, arrayOffsetIterCircular } from "../utils/array";
 import { MultiCommand } from "./commands/shared";
-import { lerp } from "../utils/math";
+import { addPoint, lerpPoint, subPoint } from "../utils/math";
+import { iterFind } from "../utils/iter";
 
 export const sceneObjectDefaults = <
   TObject extends BaseSceneObject = BaseSceneObject,
@@ -54,7 +57,7 @@ export const createCanvas = (
 export const tryMakeGraphicsNodeACurve = (
   dispatch: AppDispatcher,
   store: SceneModel,
-  nodeId: Uuid<GraphicsNode>,
+  nodeId: Uuid<NodeSceneObject & GraphicsNode>,
 ) => {
   const obj = store.objects.get(nodeId) as NodeSceneObject;
   if (!obj) {
@@ -75,70 +78,98 @@ export const tryMakeGraphicsNodeACurve = (
     );
     return false;
   }
+  const backIter = arrayOffsetIterCircular(graphics.shape, nodeIndex - 1, -1);
+  const prevPoint = iterFind(
+    backIter,
+    (el) => {
+      if (el === undefined) debugger;
+      return el.type === GraphicNodeTypes.Point;
+    },
+  );
   const before2 = arrayGetOffset(graphics.shape, nodeIndex, -2, true);
   const before1 = arrayGetOffset(graphics.shape, nodeIndex, -1, true);
+  const forwardIter = arrayOffsetIterCircular(graphics.shape, nodeIndex + 1);
+  const nextPoint = iterFind(
+    forwardIter,
+    (el) => {
+      if (el === undefined) debugger;
+      return el.type === GraphicNodeTypes.Point;
+    },
+  );
+
+  const cmds: Command<GraphicSceneObject>[] = [];
+
+  if (!prevPoint || !nextPoint) return;
+
   const after1 = arrayGetOffset(graphics.shape, nodeIndex, 1, true);
-  const after2 = arrayGetOffset(graphics.shape, nodeIndex, 1, true);
-
-  const cmds: Command[] = [];
-
-  const canInsertAfter = after1.type !== GraphicNodeTypes.Control &&
+  const after2 = arrayGetOffset(graphics.shape, nodeIndex, 2, true);
+  // Insert control nodes after node
+  const canInsertAfter = after1.type !== GraphicNodeTypes.Control ||
     after2.type !== GraphicNodeTypes.Control;
   if (canInsertAfter) {
+    const newPosition = new Point();
+    lerpPoint(prevPoint, nextPoint, 1.35, newPosition);
+    subPoint(newPosition, nextPoint, newPosition);
+    addPoint(obj.node, newPosition, newPosition);
+
     const id1 = newUuid<GraphicsNode>();
     const control1: GraphicsNode = {
       id: id1,
       type: GraphicNodeTypes.Control,
-      x: lerp(after2.x, after1.x, 1.25),
-      y: lerp(after2.y, after1.y, 1.25),
-    };
-    const id2 = newUuid<GraphicsNode>();
-    const control2: GraphicsNode = {
-      id: id2,
-      type: GraphicNodeTypes.Control,
-      x: lerp(after1.x, obj.node.x, 0.75),
-      y: lerp(after1.y, obj.node.y, 0.75),
+      x: newPosition.x,
+      y: newPosition.y,
     };
     cmds.push(
       new MutateSceneObjectArrayFieldCommand(
         obj.relatesTo,
-        "shape",
-        nodeIndex+1,
-        0,
-        [control2, control1],
+        'shape',
+        nodeIndex + 1,
+        {
+          toDelete: 0,
+          toInsert: [control1],
+          circularInsert: true,
+        }
       ),
     );
   }
 
-  const canInsertBefore = before1.type !== GraphicNodeTypes.Control &&
+  const canInsertBefore = before1.type !== GraphicNodeTypes.Control ||
     before2.type !== GraphicNodeTypes.Control;
   if (canInsertBefore) {
+    const newPosition = new Point();
+    lerpPoint(nextPoint, prevPoint, 1.35, newPosition);
+    subPoint(newPosition, prevPoint, newPosition);
+    addPoint(obj.node, newPosition, newPosition);
+
     const id1 = newUuid<GraphicsNode>();
     const control1: GraphicsNode = {
       id: id1,
       type: GraphicNodeTypes.Control,
-      x: lerp(before2.x, before1.x, 1.25),
-      y: lerp(before2.y, before1.y, 1.25),
-    };
-    const id2 = newUuid<GraphicsNode>();
-    const control2: GraphicsNode = {
-      id: id2,
-      type: GraphicNodeTypes.Control,
-      x: lerp(before1.x, obj.node.x, 0.75),
-      y: lerp(before1.y, obj.node.y, 0.75),
+      x: newPosition.x,
+      y: newPosition.y,
     };
     cmds.push(
       new MutateSceneObjectArrayFieldCommand(
         obj.relatesTo,
         "shape",
-        nodeIndex,
-        0,
-        [control1, control2],
+        nodeIndex === 0 ? -1 : nodeIndex,
+        {
+          toDelete: 0,
+          toInsert: [control1],
+          circularInsert: true,
+        }
       ),
     );
+  }
+
+  if (canInsertBefore || canInsertAfter) {
+    const updatedNodeData = {...obj.node} as BasicGraphicsNode;
+    if (canInsertBefore) updatedNodeData.ownsPrev = true;
+    if (canInsertAfter) updatedNodeData.ownsNext = true;
+    cmds.push(new SetSceneObjectFieldCommand(obj.id, 'node', updatedNodeData));
   }
 
   if (cmds.length) {
-    dispatch('scene:do-command', new MultiCommand(...cmds));
+    dispatch("scene:do-command", new MultiCommand(...cmds));
   }
 };

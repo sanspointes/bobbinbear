@@ -22,13 +22,34 @@ export const clamp = (x: number, min: number, max: number) => {
 export const lerp = (a: number, b: number, t: number) => {
  return a * (1 - t) + b * t;
 }
-export const lerpPointInplace = (a: Point, b: Point, t: number) => {
-  a.x = a.x * (1 - t) + b.x * t;
-  a.y = a.y * (1 - t) + b.y * t;
+
+/**
+ * Point / Vec2 Math
+ *
+ * MinimalPoint is the minimum type necessary for point maths.
+ */
+type MinimalPoint = {
+  x: number;
+  y: number;
 }
-export const lerpPoint = (a: Point, b: Point, t: number) => {
-  return new Point(
-    a.x * (1 - t) + b.x * t,
-    a.y * (1 - t) + b.y * t,
-  );
+export const lerpPoint = (a: MinimalPoint, b: MinimalPoint, t: number, out: MinimalPoint) => {
+  out.x = a.x * (1 - t) + b.x * t;
+  out.y = a.y * (1 - t) + b.y * t;
 }
+export const subPoint = (a: MinimalPoint, b: MinimalPoint, out: MinimalPoint) => {
+  out.x = a.x - b.x;
+  out.y = a.y - b.y;
+}
+export const mulPoint = (a: MinimalPoint, b: MinimalPoint, out: MinimalPoint) => {
+  out.x = a.x * b.x;
+  out.y = a.y * b.y;
+}
+export const divPoint = (a: MinimalPoint, b: MinimalPoint, out: MinimalPoint) => {
+  out.x = a.x / b.x;
+  out.y = a.y / b.y;
+}
+export const addPoint = (a: MinimalPoint, b: MinimalPoint, out: MinimalPoint) => {
+  out.x = a.x + b.x;
+  out.y = a.y + b.y;
+}
+

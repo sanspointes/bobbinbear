@@ -12,7 +12,6 @@ import { createStore } from "solid-js/store";
 import { BaseSceneObject } from "../types/scene";
 import { AppContext } from "../store";
 import { access, MaybeAccessor } from "@solid-primitives/utils";
-import { logger } from "../utils/logger";
 
 export const useTemporarySceneObjects = (
   tempObjs: Accessor<(BaseSceneObject | null)[]>,
@@ -45,14 +44,12 @@ export const useTemporarySceneObject = (
 ) => {
   const { sceneStore } = useContext(AppContext);
   const [store, set] = createStore(access(obj));
-  logger.debug(`useTemporarySceneObject: Registering ${store.id}`);
   onMount(() => {
     sceneStore.objects.set(store.id, store);
     sceneStore.objectSetters.set(store.id, set);
   })
 
   onCleanup(() => {
-    logger.debug(`useTemporarySceneObject: Unregistering ${store.id}`);
     sceneStore.objects.delete(store.id);
     sceneStore.objectSetters.delete(store.id);
   });
@@ -63,11 +60,7 @@ export const mapTemporarySceneObjects = <T, TObject extends BaseSceneObject>(
   mapFn: (v: T, i: Accessor<number>) => TObject,
 ) => {
   const v = mapArray(data, (v, i) => {
-    // @ts-expect-error ; Debug logging on expected
-    logger.debug(`mapTemporarySceneObjects: Creating memo for ${v?.id ? v.id : v}`);
     const sceneObject = createMemo(() => {
-      // @ts-expect-error ; Debug logging on expected
-      logger.debug(`mapTemporarySceneObjects: Re-running memo for ${v?.id ? v.id : v}`);
       const sceneObject = mapFn(v, () => i());
       if (sceneObject) useTemporarySceneObject(sceneObject);
       return sceneObject

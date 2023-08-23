@@ -31,7 +31,7 @@ export type BaseSceneObject = {
 
 export type VirtualSceneObject = {
   virtual: true,
-  virtualCreator: () => Command,
+  virtualCreator: <T extends BaseSceneObject>() => Command<T>,
 }
 
 export type HasFillSceneObject = {
@@ -43,7 +43,6 @@ export type HasStrokeSceneObject = {
 };
 export type HasInspectSceneObject = {
   inspecting: boolean;
-  inspectingObject: Uuid<BaseSceneObject>;
 };
 
 /**
@@ -68,6 +67,8 @@ export type VirtualGraphicsNode = BaseGraphicsNode & {
 }
 export type BasicGraphicsNode = BaseGraphicsNode & {
   type: GraphicNodeTypes.Jump | GraphicNodeTypes.Control | GraphicNodeTypes.Point;
+  ownsNext?: true;
+  ownsPrev?: true
 };
 
 export type GraphicsNode = BasicGraphicsNode | VirtualGraphicsNode;
@@ -78,6 +79,10 @@ export type GraphicSceneObject =
   & HasStrokeSceneObject
   & HasInspectSceneObject
   & {
+    /** Internal States */
+    /** Unique ID for each scene object */
+    id: Uuid<GraphicSceneObject>;
+
     type: "graphic";
     shape: GraphicsNode[];
     close: boolean;
@@ -86,15 +91,24 @@ export type GraphicSceneObject =
  * NODE SCENE OBJECT
  */
 export type NodeSceneObject = BaseSceneObject & {
+  /** Internal States */
+  /** Unique ID for each scene object */
+  id: Uuid<NodeSceneObject>;
   type: "node";
   node: GraphicsNode;
   /** The uuid this node object is bound to (i.e. makes up part of a GraphicSceneObject path) */
   relatesTo: Uuid<GraphicSceneObject>;
+
+  data: number[];
 };
 /**
  * CANVAS SCENE OBJECT
  */
 export type CanvasSceneObject = BaseSceneObject & HasFillSceneObject & {
+  /** Internal States */
+  /** Unique ID for each scene object */
+  id: Uuid<CanvasSceneObject>;
+
   type: "canvas";
   size: Point;
 };
@@ -103,6 +117,10 @@ export type CanvasSceneObject = BaseSceneObject & HasFillSceneObject & {
  * GROUP SCENE OBJECT
  */
 export type GroupSceneObject = BaseSceneObject & {
+  /** Internal States */
+  /** Unique ID for each scene object */
+  id: Uuid<CanvasSceneObject>;
+
   type: "group";
 };
 

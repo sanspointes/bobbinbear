@@ -1,13 +1,17 @@
-import { useContext } from "solid-js";
+import { createMemo, useContext } from "solid-js";
 import { SceneObject } from "../types/scene";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
 import { Cursor } from "../store/toolStore";
+import { arrayFirst } from "../utils/array";
+import { Show } from "solid-js";
 
 export function SidebarDebug() {
   const { toolStore, sceneStore } = useContext(AppContext);
 
   const { boxTool, selectTool } = toolStore;
+
+  const first = createMemo(() => arrayFirst(sceneStore.selectedObjects));
 
   return (
     <AccordionItem value="debug" header="Debug">
@@ -21,6 +25,9 @@ export function SidebarDebug() {
       <h3>Scene</h3>
       <p>Inspecting: {sceneStore.inspecting}</p>
       <p>Selected IDs: {sceneStore.selectedIds.join(",")}</p>
+      <Show when={first()}>
+        {first => <p>Selected: ({first().position.x},{first().position.y} </p>}
+      </Show>
     </AccordionItem>
   );
 }

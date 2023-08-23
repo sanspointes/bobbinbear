@@ -1,9 +1,11 @@
-import { onMount } from "solid-js";
+import { createEffect, on, onMount, useContext } from "solid-js";
+import { produce } from 'solid-js/store';
 import { Sprite } from "@pixi/sprite";
 import { P } from "@bearbroidery/solixi";
 
 import {
   GraphicNodeTypes,
+  GraphicSceneObject,
   NodeSceneObject,
   VirtualSceneObject,
 } from "../types/scene";
@@ -13,6 +15,8 @@ import NodePointSrc from "../assets/node_point.png";
 import NodeControlSrc from "../assets/node_control.png";
 import { Circle, ObservablePoint, Point, Texture } from "@pixi/core";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
+import { AppContext } from "../store";
+import { getObject, getObjectSetter } from "../store/sceneStore";
 
 const NODE_Z_INDEX = -100;
 
@@ -53,8 +57,8 @@ export function NodeSceneObjectView(props: NodeSceneObjectViewProps) {
       hitArea={HIT_AREA}
       texture={texture()}
       interactive={true}
-     >
-      { /*<P.Text text={`${props.node.type}:${props.id} ${props.order}`} scale={[5, 5]} /> */ }
-     </P.Sprite>
+    >
+      {/*<P.Text text={`${props.node.type}:${props.id} ${props.order}`} scale={[5, 5]} /> */}
+    </P.Sprite>
   );
 }

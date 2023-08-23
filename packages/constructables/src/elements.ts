@@ -240,10 +240,9 @@ type ExtraPropsSignature<
   [K in keyof T]: Parameters<T[K]>[3];
 };
 export type ClassTypeReservedProps<
-  TContext extends object,
   TSource extends Constructable,
 > = {
-  ref?: InstanceType<TSource> | SxiObject<TContext, TSource>;
+  ref?: InstanceType<TSource>;
   args?: ConstructorParameters<TSource>;
   children?: JSX.Element | null;
 };
@@ -256,7 +255,7 @@ export type ClassProps<
   Overwrite<
     Pick<InstanceType<TSource>, NonFunctionKeys<InstanceType<TSource>>>, // Set all fields on instance type.
     & ExtraPropsSignature<TContext, TExtraProps>
-    & ClassTypeReservedProps<TContext, TSource> // Overwride defaults with extra props + reserved props types.
+    & ClassTypeReservedProps<TSource> // Overwride defaults with extra props + reserved props types.
   >
 >;
 

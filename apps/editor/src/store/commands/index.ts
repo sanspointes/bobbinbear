@@ -23,7 +23,7 @@ export {
   MutateSceneObjectArrayFieldCommand,
 };
 
-type AtomicCommands<TObject extends BaseSceneObject = BaseSceneObject> =
+type AtomicCommands<TObject extends BaseSceneObject> =
   | ParentObjectCommand<TObject>
   | CreateObjectCommand<TObject>
   | DeleteObjectCommand<TObject>
@@ -35,15 +35,15 @@ type AtomicCommands<TObject extends BaseSceneObject = BaseSceneObject> =
   | MutateSceneObjectArrayFieldCommand
   | SetInspectingCommand;
 
-export type Command<TObject extends BaseSceneObject = BaseSceneObject> =
+export type Command<TObject extends BaseSceneObject> =
   | MultiCommand<TObject>
   | AtomicCommands<TObject>;
-export type CommandType = Command['type'];
+export type CommandType = Command<BaseSceneObject>['type'];
 
 export type CommandPrototypeMap = Record<CommandType, AbstractCommand>;
 
 
-export const _commandPrototypeMap: Record<CommandType, Command> = {
+export const _commandPrototypeMap: Record<CommandType, Command<BaseSceneObject>> = {
   "CreateObjectCommand": CreateObjectCommand.prototype,
   "DeleteObjectCommand": DeleteObjectCommand.prototype,
   "MoveObjectCommand": MoveObjectCommand.prototype,

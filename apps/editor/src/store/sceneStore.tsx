@@ -2,6 +2,7 @@
 import { createStore, produce, SetStoreFunction } from "solid-js/store";
 import { batch } from "solid-js";
 import { Point } from "@pixi/core";
+import { ReactiveMap } from "@solid-primitives/map";
 
 import { Uuid, uuid } from "../utils/uuid";
 import { Command } from "./commands";
@@ -62,7 +63,7 @@ export type SceneModel = {
   selectedObjects: BaseSceneObject[];
   undoStack: Command[];
   redoStack: Command[];
-  objects: Map<Uuid<BaseSceneObject>, BaseSceneObject>;
+  objects: ReactiveMap<Uuid<BaseSceneObject>, BaseSceneObject>;
   objectSetters: Map<Uuid<BaseSceneObject>, SetStoreFunction<BaseSceneObject>>;
   root: BaseSceneObject;
 };
@@ -87,19 +88,10 @@ export const createSceneStore = () => {
     inspecting: undefined,
     inspectRoot: undefined,
     selectedIds: [],
-    get selectedObjects() {
-      return this.selectedIds.flatMap((id: Uuid<BaseSceneObject>) => {
-        const obj = this.objects.get(id);
-        if (!obj) {
-          console.warn(`sceneStore.selectedObjects could not get object for id ${id}.`);
-          return []
-        }
-        return [obj];
-      });
-    },
+    selectedObjects: [],
     undoStack: [],
     redoStack: [],
-    objects: new Map([[uuid("root"), object]]),
+    objects: new ReactiveMap([[uuid("root"), object]]),
     objectSetters: new Map([[uuid("root"), set]]),
     root: object,
   }, {

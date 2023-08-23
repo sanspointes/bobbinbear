@@ -10,14 +10,28 @@ import {
 import { Command } from ".";
 import { Uuid } from "../../utils/uuid";
 import { KeysWithType, PickOfType } from "../../types/utility";
+import { arrayInsertCircular } from "../../utils/array";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type MutateSceneObjectArrayFieldCommandOptions<T extends any[]> = {
+  toDelete: number;
+  toInsert: T;
+  circularInsert?: boolean;
+};
 /**
  * Sets a single field on a scene object.
  */
 export class MutateSceneObjectArrayFieldCommand<
   TObject extends BaseSceneObject = BaseSceneObject,
-  TObjectPicked extends PickOfType<TObject, Array<unknown>> = PickOfType<TObject, Array<unknown>>,
-  K extends KeysWithType<TObject, Array<unknown>> = KeysWithType<TObject, Array<unknown>>,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  TObjectPicked extends PickOfType<TObject, any[]> = PickOfType<
+    TObject,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any[]
+  >,
+  K extends keyof TObjectPicked = keyof TObjectPicked,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  KV extends TObjectPicked[K] & any[] = TObjectPicked[K] & any[],
 > extends AbstractCommand {
   public updatable: boolean = true;
 
@@ -28,11 +42,11 @@ export class MutateSceneObjectArrayFieldCommand<
     private objectId: Uuid<TObject>,
     private field: K,
     private index: number,
-    private toDelete: number,
-    private toInsert: TObjectPicked[K],
+    private opts: MutateSceneObjectArrayFieldCommandOptions<KV>,
   ) {
     super();
-    this.name = `Mutating array "${field.toString()}" on ${objectId}.  Index ${index}, deleting ${toDelete} and inserting ${toInsert.length}`;
+    this.name =
+      `Mutating array "${field.toString()}" on ${objectId}.  Index ${index}, deleting ${opts.toDelete} and inserting ${opts.toInsert.length}`;
   }
 
   perform(
@@ -52,11 +66,15 @@ export class MutateSceneObjectArrayFieldCommand<
         `SetSceneObjectFieldCommand: Can not get object setter for ${this.objectId}`,
       );
     }
-    set(produce(obj => {
+    set(produce((obj) => {
       // @ts-expect-error; Complicated typescript
       const field = obj[this.field] as Array<unknown>;
-      // @ts-expect-error; Complicated typescript
-      field.splice(this.index, this.toDelete, ...this.toInsert)
+      if (this.opts.circularInsert) {
+        field.splice(this.index, this.opts.toDelete);
+        arrayInsertCircular(field, this.index, ...this.opts.toInsert);
+      } else {
+        field.splice(this.index, this.opts.toDelete, ...this.opts.toInsert);
+      }
     }));
     // set(this.field, this.value);
   }
@@ -77,6 +95,7 @@ export class MutateSceneObjectArrayFieldCommand<
         `SetSceneObjectFieldCommand: (undo) Can not get object setter for ${this.objectId}`,
       );
     }
+    // TODO: Implement
     // @ts-expect-error; Complicated typescript
     set(this.field, this.oldValue);
   }

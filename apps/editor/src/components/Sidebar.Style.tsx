@@ -1,7 +1,6 @@
 import { createMemo, JSX, Show, useContext } from "solid-js";
 import {
-    BaseSceneObject,
-  CanvasSceneObject,
+  BaseSceneObject,
   GraphicSceneObject,
   HasFillSceneObject,
 } from "../types/scene";
@@ -12,10 +11,7 @@ import { ColorPicker } from "./generics/ColorPicker";
 import { IFillStyleOptions, ILineStyleOptions, LINE_CAP } from "@pixi/graphics";
 import { NumberInput } from "./generics/NumberInput";
 import { Select } from "./generics/Select";
-
-type SidebarStyleProps = {
-  object: GraphicSceneObject | CanvasSceneObject;
-};
+import { Uuid } from "../utils/uuid";
 
 const LineCapText: Record<LINE_CAP, string> = {
   [LINE_CAP.BUTT]: "Butt",
@@ -34,12 +30,17 @@ const AlignmentValue: Record<Alignment, number> = {
   [Alignment.Outside]: 1,
 };
 
+type SidebarStyleProps = {
+  object: BaseSceneObject & HasFillSceneObject;
+};
 export function SidebarStyle(props: SidebarStyleProps) {
   const { dispatch } = useContext(AppContext);
 
   const updateFillStyle = (model: Partial<IFillStyleOptions>) => {
     const fill = { ...props.object.fill, ...model };
-    const cmd = new SetSceneObjectFieldCommand<BaseSceneObject & HasFillSceneObject>(props.object.id, "fill", fill);
+    const cmd = new SetSceneObjectFieldCommand<
+      BaseSceneObject & HasFillSceneObject
+    >(props.object.id as unknown as Uuid<BaseSceneObject & HasFillSceneObject>, "fill", fill);
     dispatch("scene:do-command", cmd);
   };
 

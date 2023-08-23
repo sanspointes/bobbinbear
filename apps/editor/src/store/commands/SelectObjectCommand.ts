@@ -5,7 +5,7 @@ import { AbstractCommand, SerializedCommand, assertNotUndefined, assertSameType 
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
 import { batch } from 'solid-js';
-import { arrayRemoveEl } from '../../utils/array';
+import { arrayRemove, arrayRemoveEl } from '../../utils/array';
 
 export class SelectObjectsCommand<TObject extends BaseSceneObject> extends AbstractCommand {
   public updatable: boolean = true;
@@ -35,7 +35,10 @@ export class SelectObjectsCommand<TObject extends BaseSceneObject> extends Abstr
           const set = getObjectSetter<BaseSceneObject>(store, id)!;
           set('selected', true);
         }
-        setStore(produce((store) => store.selectedIds.push(id)));
+        setStore(produce((store) => {
+          store.selectedIds.push(id)
+          if (object) store.selectedObjects.push(object);
+        }));
       }
     });
   }
@@ -52,7 +55,10 @@ export class SelectObjectsCommand<TObject extends BaseSceneObject> extends Abstr
           const set = getObjectSetter<BaseSceneObject>(store, object.id)!;
           set('selected', true);
         }
-          setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
+        setStore(produce((store) => {
+          arrayRemoveEl(store.selectedIds, id)
+          arrayRemove(store.selectedObjects, o => o.id === id)
+        }));
       }
     });
   }

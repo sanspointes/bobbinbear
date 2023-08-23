@@ -52,7 +52,9 @@ export class MoveObjectCommand<TObject extends BaseSceneObject> extends Abstract
 
     // Update node position 
     const set = getObjectSetter(store, this.objectId)!;
-    set(produce((object) => object.position = this.newPosition));
+    set(produce((object) => {
+      object.position = this.newPosition.clone();
+    }));
   }
 
   undo(
@@ -73,7 +75,7 @@ export class MoveObjectCommand<TObject extends BaseSceneObject> extends Abstract
 
     const set = getObjectSetter(store, this.objectId)!;
 
-    set(produce((object) => object.position = this.oldPosition!));
+    set(produce((object) => object.position = this.oldPosition!.clone()));
   }
 
   fromObject<T extends Command>(object: SerializedCommand<T>): void {

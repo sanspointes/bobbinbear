@@ -3,7 +3,7 @@ import { SceneObject } from "../types/scene"
 import { AccordionItem } from "./generics/Accordian"
 import { NumberInput } from "./generics/NumberInput"
 import { AppContext } from "../store"
-import { SetSceneObjectFieldCommand } from "../store/commands"
+import { MoveObjectCommand, SetSceneObjectFieldCommand } from "../store/commands"
 import { Point } from "@pixi/core"
 
 type SidebarTransformProps = {
@@ -16,7 +16,7 @@ export function SidebarTransform(props: SidebarTransformProps) {
     const obj = props.object;
     if (!obj) return;
     const newPosition = new Point(x, y);
-    const cmd = new SetSceneObjectFieldCommand(obj.id, 'position', newPosition);
+    const cmd = new MoveObjectCommand(obj.id, newPosition);
     dispatch('scene:do-command', cmd);
   }
 
