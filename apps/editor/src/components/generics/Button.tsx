@@ -5,7 +5,7 @@ import clsx from 'clsx';
 
 
 const button = tv({
-  base: "rounded-md",
+  base: "rounded-md flex items-center justify-center",
   variants: {
     variant: {
       default: 'bg-orange-200 hover:bg-orange-100 text-orange-800 font-bold',
@@ -23,8 +23,8 @@ const button = tv({
     size: {
       tiny: 'p-1',
       small: 'p-2',
-      medium: 'p-4',
-      large: 'p-6',
+      medium: 'p-3',
+      large: 'p-5',
     },
   },
   compoundVariants: [ 
