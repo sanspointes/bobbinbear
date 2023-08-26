@@ -1,4 +1,23 @@
-import { Point } from '@pixi/math';
+
+/**
+ * Treating the range as a circle 0 === maxValue, gets the distance from value to other.
+ */
+export const circularDifference = (
+  value: number,
+  other: number,
+  maxValue: number,
+) => {
+  const d0 = other - maxValue - value;
+  const d1 = other - value;
+  const d2 = other + maxValue - value;
+  const ad0 = Math.abs(d0);
+  const ad1 = Math.abs(d1);
+  const ad2 = Math.abs(d2);
+  console.log(ad0, ad1, ad2)
+  if (ad0 < ad1) return d0;
+  if (ad1 < ad2) return d1;
+  else return d2;
+};
 
 /**
  * Get the t value (0-1) of `amount` between `a` and `b`

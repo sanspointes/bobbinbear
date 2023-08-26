@@ -170,10 +170,33 @@ export const arrayInsertCircular = <T>(
   ...values: T[]
 ) => {
   let idx = index;
-  if (idx >= arr.length + 1) idx = 0;
-  if (idx < 0) idx = arr.length;
+  idx = idx % arr.length;
   while (idx < 0) {
     idx += arr.length + 1;
   }
   arr.splice(idx, 0, ...values);
+}
+
+export const arrayGetCircular = <T>(
+  arr: T[],
+  index: number,
+) => {
+  let idx = index;
+  idx = idx % arr.length;
+  while (idx < 0) {
+    idx += arr.length + 1;
+  }
+  return arr.at(idx);
+}
+export const arraySetCircular = <T>(
+  arr: T[],
+  index: number,
+  value: T,
+) => {
+  let idx = index;
+  idx = idx % arr.length;
+  while (idx < 0) {
+    idx += arr.length + 1;
+  }
+  return arr.splice(idx, 1, value);
 }

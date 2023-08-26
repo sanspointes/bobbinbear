@@ -1,10 +1,11 @@
 import { Point } from '@pixi/core';
 import { SetStoreFunction, produce } from 'solid-js/store';
-import { BaseSceneObject, GraphicSceneObject, NodeSceneObject } from "../../types/scene";
+import { BaseSceneObject, BasicGraphicsNode, GraphicNodeTypes, GraphicSceneObject, NodeSceneObject } from "../../types/scene";
 import { SceneModel, getObject, getObjectSetter } from "../sceneStore";
 import { AbstractCommand, SerializedCommand, assertSameType } from "./shared";
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
+import { arrayGetCircular, arraySetCircular } from '../../utils/array';
 
 export class MoveObjectCommand<TObject extends BaseSceneObject> extends AbstractCommand {
   public updatable: boolean = true;
@@ -37,10 +38,36 @@ export class MoveObjectCommand<TObject extends BaseSceneObject> extends Abstract
       const graphicObject = getObject(store, nodeObject.relatesTo);
       if (!graphicObject) throw new Error('MoveObjectCommand: Attempting to graphic related to moved node but no graphic found.')
 
+      const diffx = this.newPosition.x - currentNode.x;
+      const diffy = this.newPosition.y - currentNode.y;
+
       const oldIndex = graphicObject.shape.findIndex(node => node.id === currentNode.id);
       const setGraphics = getObjectSetter(store, nodeObject.relatesTo)!;
       setGraphics(produce(obj => {
         const graphic = obj as GraphicSceneObject;
+        
+        console.log('Curr node: ', currentNode);
+        if ((currentNode as BasicGraphicsNode).ownsPrev) {
+          const preNode = arrayGetCircular(graphicObject.shape, oldIndex - 1);
+          if (preNode?.type === GraphicNodeTypes.Control) {
+            arraySetCircular(graphic.shape, oldIndex - 1, {
+              ...preNode,
+              x: preNode.x + diffx,
+              y: preNode.y + diffy,
+            })
+          }
+        }
+
+        if ((currentNode as BasicGraphicsNode).ownsNext) {
+          const nextNode = arrayGetCircular(graphicObject.shape, oldIndex + 1);
+          if (nextNode?.type === GraphicNodeTypes.Control) {
+            arraySetCircular(graphic.shape, oldIndex + 1, {
+              ...nextNode,
+              x: nextNode.x + diffx,
+              y: nextNode.y + diffy,
+            })
+          }
+        }
 
         graphic.shape.splice(oldIndex, 1, {
           ...currentNode,
