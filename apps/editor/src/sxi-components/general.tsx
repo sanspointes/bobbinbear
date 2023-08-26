@@ -23,7 +23,6 @@ export const SceneObjectChildren = (
         // eslint-disable-next-line solid/reactivity
         const o = sceneStore.objects.get(object) as SceneObject;
         if (!o) return null;
-        console.log("SceneObjectChildren", o);
         const Component = SCENE_OBJECT_LOOKUP[o.type];
         return <Component {...o} order={i()} />;
       }}

@@ -11,7 +11,7 @@ import {
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
 import { SolixiState } from "@bearbroidery/solixi";
 import { Uuid } from "../../utils/uuid";
-import { BaseSceneObject, NodeSceneObject, VirtualSceneObject } from "../../types/scene";
+import { BaseSceneObject, VirtualSceneObject } from "../../types/scene";
 import {
   Command,
   DeselectObjectsCommand,

@@ -12,6 +12,7 @@ import { SolixiState } from "@bearbroidery/solixi";
 import { SceneModel } from "./sceneStore";
 import { InputModel } from "./inputStore";
 import { BoxToolModel, BoxToolStore, createBoxToolStore } from "./tools/box";
+import { createPenToolStore } from "./tools/pen";
 
 type SubToolStores = SelectToolStore | BoxToolStore;
 
@@ -19,6 +20,7 @@ export enum Tool {
   None = 'None',
   Select = 'Select',
   Box = 'Box',
+  Pen = 'Pen',
 }
 
 export enum Cursor {
@@ -27,12 +29,14 @@ export enum Cursor {
   Grabbing,
   Point,
   Cross,
+  Pen,
 }
 
 export const TOOL_TO_DEFAULT_CURSOR_MAP: Record<Tool, Cursor> = {
   [Tool.None]: Cursor.Default,
   [Tool.Select]: Cursor.Default,
   [Tool.Box]: Cursor.Cross,
+  [Tool.Pen]: Cursor.Pen,
 };
 
 export type ToolStoreMessage = {
@@ -64,6 +68,7 @@ export const createToolStore = (
     [Tool.None]: undefined,
     [Tool.Select]: createSelectToolStore(dispatch, solixi, inputModel, sceneModel),
     [Tool.Box]: createBoxToolStore(dispatch),
+    [Tool.Pen]: createPenToolStore(dispatch, solixi, inputModel, sceneModel),
   };
 
   const model: ToolModel = {

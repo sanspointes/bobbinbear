@@ -192,7 +192,6 @@ export const prepareObject = <
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   options: WrapConstructableOptions<TContext, TSource, TExtraProps>,
 ) => {
-  console.debug(`CNST: Preparing ${type}`);
   const object: InstanceType<TSource> & {
     __sxi?: SxiInstance<TContext, TSource>;
   } = target;

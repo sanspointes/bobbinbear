@@ -3,9 +3,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "dev:constructables": "turbo run --filter ./packages/constructables dev",
-    "dev:solixi": "turbo run --filter ./packages/solixi dev",
     "dev:editor": "turbo run --filter ./apps/editor dev",
+    "dev:packages": "turbo run --filter=\"./packages/*\" dev",
     "playground:constructables": "turbo run --filter ./packages/constructables playground",
     "playground:solixi": "turbo run --filter ./packages/solixi playground",
     "lint": "turbo run lint",
