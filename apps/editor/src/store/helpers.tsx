@@ -17,8 +17,14 @@ import {
 } from "../types/scene";
 import { AppDispatcher } from ".";
 import { SceneModel } from "./sceneStore";
-import { arrayGetOffset, arrayOffsetIterCircular } from "../utils/array";
-import { MultiCommand } from "./commands/shared";
+import {
+  arrayFindFromBackwardsCircular,
+  arrayFindFromCircular,
+  arrayGetCircular,
+  arrayGetOffset,
+  arrayOffsetIterCircular,
+} from "../utils/array";
+import { assertDefined, MultiCommand } from "./commands/shared";
 import { addPoint, lerpPoint, subPoint } from "../utils/math";
 import { iterFind } from "../utils/iter";
 
@@ -60,17 +66,10 @@ export const tryMakeGraphicsNodeACurve = (
   nodeId: Uuid<NodeSceneObject & GraphicsNode>,
 ) => {
   const obj = store.objects.get(nodeId) as NodeSceneObject;
-  if (!obj) {
-    console.warn(`tryMakeGraphicsNodeACurve: Can't get object ${nodeId}.`);
-    return false;
-  }
+  if (!assertDefined('tryMakeGraphicsNodeACurve', obj, 'NodeSceneObject')) return;
+  const node = obj.node as BasicGraphicsNode;
   const graphics = store.objects.get(obj.relatesTo) as GraphicSceneObject;
-  if (!graphics) {
-    console.warn(
-      `tryMakeGraphicsNodeACurve: Can't get related graphics object ${obj.relatesTo}.`,
-    );
-    return false;
-  }
+  if (!assertDefined('tryMakeGraphicsNodeACurve', graphics, 'Related graphics object')) return;
   const nodeIndex = graphics.shape.findIndex((n) => n.id === nodeId);
   if (nodeIndex === -1) {
     console.warn(
@@ -78,35 +77,20 @@ export const tryMakeGraphicsNodeACurve = (
     );
     return false;
   }
-  const backIter = arrayOffsetIterCircular(graphics.shape, nodeIndex - 1, -1);
-  const prevPoint = iterFind(
-    backIter,
-    (el) => {
-      if (el === undefined) debugger;
-      return el.type === GraphicNodeTypes.Point;
-    },
+  const prevPoint = arrayFindFromBackwardsCircular(
+    graphics.shape,
+    nodeIndex - 1,
+    (el) => el.type === GraphicNodeTypes.Point,
   );
-  const before2 = arrayGetOffset(graphics.shape, nodeIndex, -2, true);
-  const before1 = arrayGetOffset(graphics.shape, nodeIndex, -1, true);
-  const forwardIter = arrayOffsetIterCircular(graphics.shape, nodeIndex + 1);
-  const nextPoint = iterFind(
-    forwardIter,
-    (el) => {
-      if (el === undefined) debugger;
-      return el.type === GraphicNodeTypes.Point;
-    },
-  );
+  const nextPoint = arrayFindFromCircular(graphics.shape, nodeIndex + 1, (el) => el.type === GraphicNodeTypes.Point);
 
   const cmds: Command<GraphicSceneObject>[] = [];
 
   if (!prevPoint || !nextPoint) return;
 
-  const after1 = arrayGetOffset(graphics.shape, nodeIndex, 1, true);
-  const after2 = arrayGetOffset(graphics.shape, nodeIndex, 2, true);
+  const { ownsPrev, ownsNext } = node;
   // Insert control nodes after node
-  const canInsertAfter = after1.type !== GraphicNodeTypes.Control ||
-    after2.type !== GraphicNodeTypes.Control;
-  if (canInsertAfter) {
+  if (!ownsNext) {
     const newPosition = new Point();
     lerpPoint(prevPoint, nextPoint, 1.35, newPosition);
     subPoint(newPosition, nextPoint, newPosition);
@@ -122,20 +106,18 @@ export const tryMakeGraphicsNodeACurve = (
     cmds.push(
       new MutateSceneObjectArrayFieldCommand(
         obj.relatesTo,
-        'shape',
+        "shape",
         nodeIndex + 1,
         {
           toDelete: 0,
           toInsert: [control1],
           circularInsert: true,
-        }
+        },
       ),
     );
   }
 
-  const canInsertBefore = before1.type !== GraphicNodeTypes.Control ||
-    before2.type !== GraphicNodeTypes.Control;
-  if (canInsertBefore) {
+  if (!ownsPrev) {
     const newPosition = new Point();
     lerpPoint(nextPoint, prevPoint, 1.35, newPosition);
     subPoint(newPosition, prevPoint, newPosition);
@@ -157,16 +139,19 @@ export const tryMakeGraphicsNodeACurve = (
           toDelete: 0,
           toInsert: [control1],
           circularInsert: true,
-        }
+        },
       ),
     );
   }
 
-  if (canInsertBefore || canInsertAfter) {
-    const updatedNodeData = {...obj.node} as BasicGraphicsNode;
-    if (canInsertBefore) updatedNodeData.ownsPrev = true;
-    if (canInsertAfter) updatedNodeData.ownsNext = true;
-    cmds.push(new SetSceneObjectFieldCommand(obj.id, 'node', updatedNodeData));
+  if (!ownsPrev || !ownsNext) {
+    const updatedNodeData = { ...obj.node } as BasicGraphicsNode;
+    if (!ownsPrev) updatedNodeData.ownsPrev = true;
+    if (!ownsNext) updatedNodeData.ownsNext = true;
+    if (!ownsNext && !ownsPrev) {
+      updatedNodeData.isControlPaired = true;
+    }
+    cmds.push(new SetSceneObjectFieldCommand(obj.id, "node", updatedNodeData));
   }
 
   if (cmds.length) {

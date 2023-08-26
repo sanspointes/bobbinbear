@@ -1,6 +1,6 @@
 import { SetStoreFunction, produce } from 'solid-js/store';
 import { SceneModel, getObjectSetter } from "../sceneStore";
-import { AbstractCommand, SerializedCommand, assertNotUndefined } from "./shared";
+import { AbstractCommand, SerializedCommand, assertDefined } from "./shared";
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
 import { BaseSceneObject } from '../../types/scene';
@@ -29,11 +29,11 @@ export class ParentObjectCommand<TObject extends BaseSceneObject> extends Abstra
     _2: SetStoreFunction<SceneModel>,
   ): void {
     const object = store.objects.get(this.objectId);
-    if (!assertNotUndefined(this, object, 'object')) return;
+    if (!assertDefined(this, object, 'object')) return;
     this.oldParentId = object.parent;
 
     let parentobject = store.objects.get(object.parent);
-    if (!assertNotUndefined(this, parentobject, 'parentobject')) return;
+    if (!assertDefined(this, parentobject, 'parentobject')) return;
 
     const siblings = parentobject.children;
     this.oldIndex = siblings.findIndex((id) => id === this.objectId);
@@ -46,12 +46,12 @@ export class ParentObjectCommand<TObject extends BaseSceneObject> extends Abstra
     // Unparent old parent if different
     if (this.newParentId !== this.oldParentId) {
       const setParent = store.objectSetters.get(object.parent);
-      if (assertNotUndefined(this, setParent, 'setParent')) {
+      if (assertDefined(this, setParent, 'setParent')) {
         setParent(produce(parent => arrayRemoveEl(parent.children, object.id)));
       }
       parentobject = store.objects.get(this.newParentId);
     }
-    if (!assertNotUndefined(this, parentobject, 'parentobject (for new parent)')) return;
+    if (!assertDefined(this, parentobject, 'parentobject (for new parent)')) return;
 
     let targetIndex: number | undefined;
     if (this.strategy === "absolute") {

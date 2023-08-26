@@ -68,7 +68,8 @@ export type VirtualGraphicsNode = BaseGraphicsNode & {
 export type BasicGraphicsNode = BaseGraphicsNode & {
   type: GraphicNodeTypes.Jump | GraphicNodeTypes.Control | GraphicNodeTypes.Point;
   ownsNext?: true;
-  ownsPrev?: true
+  ownsPrev?: true;
+  isControlPaired?: true;
 };
 
 export type GraphicsNode = BasicGraphicsNode | VirtualGraphicsNode;

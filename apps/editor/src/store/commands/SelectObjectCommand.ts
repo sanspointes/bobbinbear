@@ -1,7 +1,7 @@
 import { SetStoreFunction, produce } from 'solid-js/store';
 import { BaseSceneObject } from "../../types/scene";
 import { SceneModel, getObject, getObjectSetter } from "../sceneStore";
-import { AbstractCommand, SerializedCommand, assertNotUndefined, assertSameType } from "./shared";
+import { AbstractCommand, SerializedCommand, assertDefined, assertSameType } from "./shared";
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
 import { batch } from 'solid-js';
@@ -30,7 +30,7 @@ export class SelectObjectsCommand<TObject extends BaseSceneObject> extends Abstr
       this.toDeselect = [];
       for (const id of this.toSelect) {
         const object = getObject(store, id);
-        if (assertNotUndefined(this, object, "object")) {
+        if (assertDefined(this, object, "object")) {
           if (object.selected) this.toDeselect.push(id);
           const set = getObjectSetter<BaseSceneObject>(store, id)!;
           set('selected', true);
@@ -51,7 +51,7 @@ export class SelectObjectsCommand<TObject extends BaseSceneObject> extends Abstr
       for (const id of this.toDeselect) {
         this.toSelect = []
         const object = getObject(store, id);
-        if (assertNotUndefined(this, object, "object")) {
+        if (assertDefined(this, object, "object")) {
           const set = getObjectSetter<BaseSceneObject>(store, object.id)!;
           set('selected', true);
         }

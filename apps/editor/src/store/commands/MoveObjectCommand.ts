@@ -1,6 +1,6 @@
 import { Point } from '@pixi/core';
 import { SetStoreFunction, produce } from 'solid-js/store';
-import { BaseSceneObject, BasicGraphicsNode, GraphicNodeTypes, GraphicSceneObject, NodeSceneObject } from "../../types/scene";
+import { BaseSceneObject, BasicGraphicsNode, GraphicNodeTypes, GraphicSceneObject, GraphicsNode, NodeSceneObject } from "../../types/scene";
 import { SceneModel, getObject, getObjectSetter } from "../sceneStore";
 import { AbstractCommand, SerializedCommand, assertSameType } from "./shared";
 import { Command } from '.';
@@ -38,42 +38,15 @@ export class MoveObjectCommand<TObject extends BaseSceneObject> extends Abstract
       const graphicObject = getObject(store, nodeObject.relatesTo);
       if (!graphicObject) throw new Error('MoveObjectCommand: Attempting to graphic related to moved node but no graphic found.')
 
-      const diffx = this.newPosition.x - currentNode.x;
-      const diffy = this.newPosition.y - currentNode.y;
-
-      const oldIndex = graphicObject.shape.findIndex(node => node.id === currentNode.id);
+      const index = graphicObject.shape.findIndex(node => node.id === currentNode.id);
       const setGraphics = getObjectSetter(store, nodeObject.relatesTo)!;
       setGraphics(produce(obj => {
         const graphic = obj as GraphicSceneObject;
-        
-        console.log('Curr node: ', currentNode);
-        if ((currentNode as BasicGraphicsNode).ownsPrev) {
-          const preNode = arrayGetCircular(graphicObject.shape, oldIndex - 1);
-          if (preNode?.type === GraphicNodeTypes.Control) {
-            arraySetCircular(graphic.shape, oldIndex - 1, {
-              ...preNode,
-              x: preNode.x + diffx,
-              y: preNode.y + diffy,
-            })
-          }
+        if (currentNode.type === GraphicNodeTypes.Point || currentNode.type === GraphicNodeTypes.Jump) {
+          MoveObjectCommand.handleMovePointNode(graphic, currentNode, index, this.newPosition);
+        } else if (currentNode.type === GraphicNodeTypes.Control) {
+          MoveObjectCommand.handleMoveControlNode(graphic, currentNode, index, this.newPosition)
         }
-
-        if ((currentNode as BasicGraphicsNode).ownsNext) {
-          const nextNode = arrayGetCircular(graphicObject.shape, oldIndex + 1);
-          if (nextNode?.type === GraphicNodeTypes.Control) {
-            arraySetCircular(graphic.shape, oldIndex + 1, {
-              ...nextNode,
-              x: nextNode.x + diffx,
-              y: nextNode.y + diffy,
-            })
-          }
-        }
-
-        graphic.shape.splice(oldIndex, 1, {
-          ...currentNode,
-          x: this.newPosition.x,
-          y: this.newPosition.y,
-        });
       }));
     }
 
@@ -103,6 +76,75 @@ export class MoveObjectCommand<TObject extends BaseSceneObject> extends Abstract
     const set = getObjectSetter(store, this.objectId)!;
 
     set(produce((object) => object.position = this.oldPosition!.clone()));
+  }
+
+  static handleMoveControlNode(graphicObject: GraphicSceneObject, node: BasicGraphicsNode, index: number, newPosition: Point) {
+    const diffx = newPosition.x - node.x;
+    const diffy = newPosition.y - node.y;
+
+    let lookForward = false;
+    let owningNode: BasicGraphicsNode | undefined;
+    const nextNode = arrayGetCircular<BasicGraphicsNode>(graphicObject.shape, index + 1);
+    if (nextNode?.ownsPrev) {
+      owningNode = nextNode;
+      lookForward = true;
+    } else {
+      owningNode = arrayGetCircular<BasicGraphicsNode>(graphicObject.shape, index - 1);
+    }
+    const needsMoveControlNode = owningNode?.isControlPaired;
+
+    if (needsMoveControlNode) {
+      const otherIndex = lookForward ? index + 2 : index - 2;
+      const otherNode = arrayGetCircular(graphicObject.shape, otherIndex);
+      if (otherNode?.type === GraphicNodeTypes.Control) {
+        arraySetCircular(graphicObject.shape, otherIndex, {
+          ...otherNode,
+          x: otherNode.x - diffx,
+          y: otherNode.y - diffy,
+        });
+      } else {
+        console.warn(`MoveObject: Attempted to move other control node but not found ${index} + ${lookForward ? 2 : -2}.`)
+      }
+    }
+
+    graphicObject.shape.splice(index, 1, {
+      ...node,
+      x: newPosition.x,
+      y: newPosition.y,
+    });
+  }
+
+  static handleMovePointNode(graphicObject: GraphicSceneObject, node: BasicGraphicsNode, index: number, newPosition: Point) {
+    const diffx = newPosition.x - node.x;
+    const diffy = newPosition.y - node.y;
+
+    if ((node as BasicGraphicsNode).ownsPrev) {
+      const preNode = arrayGetCircular(graphicObject.shape, index - 1);
+      if (preNode?.type === GraphicNodeTypes.Control) {
+        arraySetCircular(graphicObject.shape, index - 1, {
+          ...preNode,
+          x: preNode.x + diffx,
+          y: preNode.y + diffy,
+        })
+      }
+    }
+
+    if ((node as BasicGraphicsNode).ownsNext) {
+      const nextNode = arrayGetCircular(graphicObject.shape, index + 1);
+      if (nextNode?.type === GraphicNodeTypes.Control) {
+        arraySetCircular(graphicObject.shape, index + 1, {
+          ...nextNode,
+          x: nextNode.x + diffx,
+          y: nextNode.y + diffy,
+        })
+      }
+    }
+
+    graphicObject.shape.splice(index, 1, {
+      ...node,
+      x: newPosition.x,
+      y: newPosition.y,
+    });
   }
 
   fromObject<T extends Command>(object: SerializedCommand<T>): void {

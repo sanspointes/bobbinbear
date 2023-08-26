@@ -200,3 +200,30 @@ export const arraySetCircular = <T>(
   }
   return arr.splice(idx, 1, value);
 }
+
+export const arrayFindFromCircular = <T>(
+  arr: T[],
+  index: number,
+  predicate: (value: T) => boolean,
+) => {
+  const iter = arrayOffsetIterCircular(arr, index);
+  for (const val of iter) {
+    if (predicate(val)) {
+      return val;
+    }
+  }
+  return undefined;
+}
+export const arrayFindFromBackwardsCircular = <T>(
+  arr: T[],
+  index: number,
+  predicate: (value: T) => boolean,
+) => {
+  const iter = arrayOffsetIterCircular(arr, index, -1);
+  for (const val of iter) {
+    if (predicate(val)) {
+      return val;
+    }
+  }
+  return undefined;
+}

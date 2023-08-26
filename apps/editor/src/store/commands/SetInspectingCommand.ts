@@ -2,7 +2,7 @@ import { produce, SetStoreFunction } from "solid-js/store";
 import { BaseSceneObject } from "../../types/scene";
 import { Uuid } from "../../utils/uuid";
 import { SceneModel } from "../sceneStore";
-import { AbstractCommand, assertNotUndefined, assertSameType, SerializedCommand } from "./shared";
+import { AbstractCommand, assertDefined, assertSameType, SerializedCommand } from "./shared";
 import { Command } from ".";
 
 export class SetInspectingCommand extends AbstractCommand {
@@ -19,7 +19,7 @@ export class SetInspectingCommand extends AbstractCommand {
   perform(store: SceneModel, set: SetStoreFunction<SceneModel>) {
     if (this.objectId) {
       const obj = store.objects.get(this.objectId);
-      if (!assertNotUndefined(this, obj, "object to inspect")) return;
+      if (!assertDefined(this, obj, "object to inspect")) return;
     }
     if (!this.oldValue) this.oldValue = store.inspecting;
     set(produce((obj) => {
@@ -30,7 +30,7 @@ export class SetInspectingCommand extends AbstractCommand {
   undo(store: SceneModel, set: SetStoreFunction<SceneModel>) {
     if (this.objectId) {
       const obj = store.objects.get(this.objectId);
-      if (!assertNotUndefined(this, obj, "object to inspect")) return;
+      if (!assertDefined(this, obj, "object to inspect")) return;
     }
     set(produce((scene) => {
       scene.inspecting = this.oldValue;

@@ -230,6 +230,8 @@ export const deleteObject = (
   return false;
 };
 
+
+type AssertionInfo = string | { type: string };
 export const assertSameType = <
   TObject1 extends Command,
   TObject2 extends Command,
@@ -254,15 +256,15 @@ export const assertSameField = <TCommand extends Command>(
   }
 };
 
-export const assertNotUndefined = <TCommand extends Command, TValue>(
-  self: TCommand | string,
+export const assertDefined = <TValue>(
+  self: AssertionInfo,
   value: TValue | undefined,
   valueName: string,
 ): value is TValue => {
   if (value !== undefined) return true;
   throw new Error(
     `${
-      typeof (self) === "string" ? self : self.name
+      typeof (self) === "string" ? self : self.type
     }: Failed checking that "${valueName}" variable was not undefined.`,
   );
 };
