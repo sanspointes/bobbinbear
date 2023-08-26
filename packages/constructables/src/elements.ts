@@ -30,7 +30,7 @@ export const parentChildren = <
 >(
   context: TContext,
   getObject: Accessor<SxiObject<TContext, TSource>>,
-  props: ClassTypeReservedProps<TContext, TSource>,
+  props: ClassTypeReservedProps<TSource>,
 ) => {
   const childNodes = children(() => {
     const result = resolve(props.children);
