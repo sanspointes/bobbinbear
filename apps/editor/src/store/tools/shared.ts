@@ -5,20 +5,27 @@ import { Cursor, ToolHandler } from "../toolStore";
 export type ToolInputs = {
   "pointer1-down": {
     position: Point;
+    screenPosition: Point;
   };
   "pointer1-move": {
-    downPosition: Point;
     position: Point;
+    downPosition?: Point;
+    screenPosition: Point;
+    screenDownPosition?: Point;
   };
   "pointer1-up": {
     downPosition: Point;
     position: Point;
+    screenPosition: Point;
+    screenDownPosition: Point;
   };
   "pointer1-click": {
     position: Point;
+    screenPosition: Point;
   };
   "pointer1-doubleclick": {
     position: Point;
+    screenPosition: Point;
   };
   "pointer1-dragstart": {
     downPosition: Point;
@@ -27,10 +34,14 @@ export type ToolInputs = {
   "pointer1-dragmove": {
     downPosition: Point;
     position: Point;
+    screenDownPosition: Point;
+    screenPosition: Point;
   };
   "pointer1-dragend": {
     downPosition: Point;
     position: Point;
+    screenDownPosition: Point;
+    screenPosition: Point;
   };
   "keypress": {
     key: string;

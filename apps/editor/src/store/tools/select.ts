@@ -281,7 +281,7 @@ export const createSelectToolStore = (
           {
             if (boundary) {
               const data = msg.data as ToolInputs["pointer1-move"];
-              const result = boundary.hitTest(data.position.x, data.position.y);
+              const result = boundary.hitTest(data.screenPosition.x, data.screenPosition.y);
               if (sCan(SelectEvents.Unhover) && (!result || result.id !== currHover)) {
                 sDispatch(SelectEvents.Unhover);
                 if (currHover) dispatch("scene:unhover", currHover);
