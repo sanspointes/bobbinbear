@@ -101,7 +101,7 @@ export const createSceneStore = () => {
     },
     "scene:unhover": (store, _2, uuid) => {
       const set = getObjectSetter(store, uuid);
-      if (set) set("hovered", true);
+      if (set) set("hovered", false);
     },
     "scene:do-command": (store, set, command) => {
       const lastCommand = arrayLast(store.undoStack);

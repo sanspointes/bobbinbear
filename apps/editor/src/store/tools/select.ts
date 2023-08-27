@@ -282,23 +282,16 @@ export const createSelectToolStore = (
             if (boundary) {
               const data = msg.data as ToolInputs["pointer1-move"];
               const result = boundary.hitTest(data.position.x, data.position.y);
-              if (result && result.id) {
-                if (currHover && result.id !== currHover) {
-                  if (sCan(SelectEvents.Unhover)) {
-                    sDispatch(SelectEvents.Unhover);
-                    dispatch("scene:unhover", currHover);
-                  }
-                }
-                if (sCan(SelectEvents.Hover)) {
-                  sDispatch(SelectEvents.Hover);
-                  dispatch("scene:hover", result.id);
-                  currHover = result.id;
-                }
-              } else if (sCan(SelectEvents.Unhover)) {
-                // console.log("Unhovering");
+              if (sCan(SelectEvents.Unhover) && (!result || result.id !== currHover)) {
                 sDispatch(SelectEvents.Unhover);
                 if (currHover) dispatch("scene:unhover", currHover);
                 currHover = undefined;
+              }
+
+              if (result && result.id && sCan(SelectEvents.Hover)) {
+                sDispatch(SelectEvents.Hover);
+                dispatch("scene:hover", result.id);
+                currHover = result.id;
               }
             }
           }
@@ -347,7 +340,6 @@ export const createSelectToolStore = (
           {
             const data = msg.data as ToolInputs["keydown"];
             if (data.key === " " && vpCan(ViewportEvents.SpaceDown)) {
-              console.log("dispatch space down");
               vpDispatch(ViewportEvents.SpaceDown);
             }
           }
@@ -355,19 +347,16 @@ export const createSelectToolStore = (
         case "keyup": {
           const data = msg.data as ToolInputs["keyup"];
           if (data.key === " " && vpCan(ViewportEvents.SpaceUp)) {
-            console.log("dispatch space up");
             vpDispatch(ViewportEvents.SpaceUp);
           }
         }
       }
     },
     "activate": (_1, _2) => {
-      console.log("Select tool activated");
       vpUnblock();
       sUnblock();
     },
     "deactivate": (_1, _2) => {
-      console.log("Select tool deactivated");
       vpBlock();
       sBlock();
     },
