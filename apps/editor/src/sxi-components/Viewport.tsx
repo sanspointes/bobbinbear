@@ -23,6 +23,7 @@ import { Container, DisplayObjectEvents } from "@pixi/display";
 import { createEventListener } from "@solid-primitives/event-listener";
 import { FederatedPointerEvent } from "@pixi/events";
 import { Point } from "@pixi/core";
+import { mapLinear } from "../utils/math";
 
 const PViewport = Solixi.wrapConstructable(PixiViewport, {
   // @ts-expect-error; Parent must be constainer.
@@ -139,28 +140,53 @@ export const Viewport = (props: ViewportProps) => {
 
   onMount(() => {
     if (viewportEl) {
+      let downScreenPosition: Point | undefined;
       let downPosition: Point | undefined;
       createEventListener(viewportEl, "pointerdown", (event) => {
         const ev = event as unknown as FederatedPointerEvent;
-        downPosition = ev.global.clone();
+
+        const { left, right, top, bottom, screenWidth, screenHeight } = viewportEl!;
+        const x = mapLinear(ev.global.x, 0, screenWidth, left, right);
+        const y = mapLinear(ev.global.y, 0, screenHeight, top, bottom);
+        const position = new Point(x, y);
+
+        downScreenPosition = ev.global.clone();
+        downPosition = position.clone();
         dispatch("input:pointerdown", {
-          position: ev.global.clone(),
+          screenPosition: ev.global.clone(),
+          position,
         });
       });
 
       createEventListener(viewportEl, "pointermove", (event) => {
         const ev = event as unknown as FederatedPointerEvent;
+
+        const { left, right, top, bottom, screenWidth, screenHeight } = viewportEl!;
+        const x = mapLinear(ev.global.x, 0, screenWidth, left, right);
+        const y = mapLinear(ev.global.y, 0, screenHeight, top, bottom);
+
+        const position = new Point(x, y);
         dispatch("input:pointermove", {
-          downPosition: downPosition!,
-          position: ev.global.clone(),
+          downScreenPosition,
+          downPosition,
+          screenPosition: ev.global.clone(),
+          position,
         });
       });
 
       createEventListener(viewportEl, "pointerup", (event) => {
         const ev = event as unknown as FederatedPointerEvent;
+
+        const { left, right, top, bottom, screenWidth, screenHeight } = viewportEl!;
+        const x = mapLinear(ev.global.x, 0, screenWidth, left, right);
+        const y = mapLinear(ev.global.y, 0, screenHeight, top, bottom);
+
+        const position = new Point(x, y);
         dispatch("input:pointerup", {
-          downPosition: downPosition!,
-          position: ev.global.clone(),
+          downScreenPosition,
+          downPosition,
+          screenPosition: ev.global.clone(),
+          position,
         });
       });
     }

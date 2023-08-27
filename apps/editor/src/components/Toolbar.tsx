@@ -10,7 +10,7 @@ import { CommandStack } from "./CommandStack";
 import { MainMenu } from "./MainMenu";
 
 export const Toolbar = () => {
-  const {toolStore, dispatch} = useContext(AppContext);
+  const {toolStore, sceneStore, dispatch} = useContext(AppContext);
   return (
     <div class="flex justify-between p-2 bg-orange-500 border-b border-orange-700 border-solid">
       <div class="flex items-center gap-2">

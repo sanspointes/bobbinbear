@@ -72,7 +72,6 @@ export const createBoxToolStore = (
         currentlyBuildingId = newUuid();
         const currentShape = createBoxGraphicsCommands(0, 0);
 
-        console.log("Creating box");
         createCommand = new CreateObjectCommand({
           type: "graphic",
           name: "Box",
@@ -309,7 +308,6 @@ export const createBoxToolStore = (
           {
             const data = msg.data as ToolInputs["keydown"];
             if (data.key === " " && vpCan(ViewportEvents.SpaceDown)) {
-              console.log("dispatch space down");
               vpDispatch(ViewportEvents.SpaceDown);
             }
           }
@@ -317,19 +315,16 @@ export const createBoxToolStore = (
         case "keyup": {
           const data = msg.data as ToolInputs["keyup"];
           if (data.key === " " && vpCan(ViewportEvents.SpaceUp)) {
-            console.log("dispatch space up");
             vpDispatch(ViewportEvents.SpaceUp);
           }
         }
       }
     },
     "activate": (_1, _2) => {
-      console.log("Select tool activated");
       vpUnblock();
       bUnblock();
     },
     "deactivate": (_1, _2) => {
-      console.log("Select tool deactivated");
       vpBlock();
       bBlock();
     },

@@ -12,14 +12,19 @@ export type InputMessages = {
     keys?: HTMLElement;
   };
   "input:pointerdown": {
+    screenPosition: Point;
     position: Point;
   };
   "input:pointermove": {
+    screenPosition: Point;
     position: Point;
+    screenDownPosition: Point;
     downPosition: Point;
   };
   "input:pointerup": {
+    screenPosition: Point;
     position: Point;
+    screenDownPosition: Point;
     downPosition: Point;
   };
   "input:keydown": {
@@ -45,8 +50,11 @@ export type InputModel = {
   keySource: HTMLElement | undefined;
   isDragging: boolean;
   keys: Set<string>;
+
   position: Point;
+  screenPosition: Point;
   downPosition?: Point;
+  screenDownPosition?: Point;
 };
 
 const makeToolInputResponse = <
@@ -87,8 +95,10 @@ export const createInputStore = (
     keySource: undefined,
     isDragging: false,
     keys: new Set(),
+    screenPosition: new Point(),
     position: new Point(),
     downPosition: undefined,
+    screenDownPosition: undefined,
   }, {
     "input:set-source": (_, set, message) => {
       set(produce((store) => {
@@ -102,17 +112,24 @@ export const createInputStore = (
     },
 
     "input:pointerdown": (_, set, message, respond) => {
-      set(produce((store) => store.downPosition = message.position));
+      set(produce((store) => {
+        store.downPosition = message.position;
+        store.screenDownPosition = message.screenPosition;
+      }));
       respond!(
         "tool:input",
         makeToolInputResponse("pointer1-down", {
+          screenPosition: message.screenPosition,
           position: message.position,
         }),
       );
     },
 
     "input:pointermove": (store, set, message, respond) => {
-      set(produce((store) => store.position = message.position));
+      set(produce((store) => {
+        store.position = message.position;
+        store.screenPosition = message.screenPosition;
+      }));
 
       const dragDistance = store.downPosition &&
         pointDistance(store.downPosition, message.position);
@@ -120,7 +137,9 @@ export const createInputStore = (
         respond!(
           "tool:input",
           makeToolInputResponse("pointer1-dragmove", {
+            screenPosition: message.screenPosition,
             position: message.position,
+            screenDownPosition: message.screenDownPosition,
             downPosition: store.downPosition as Point,
           }),
         );
@@ -129,7 +148,9 @@ export const createInputStore = (
         respond!(
           "tool:input",
           makeToolInputResponse("pointer1-dragstart", {
+            screenPosition: message.screenPosition,
             position: message.position,
+            screenDownPosition: message.screenDownPosition,
             downPosition: store.downPosition as Point,
           }),
         );
@@ -137,7 +158,9 @@ export const createInputStore = (
         respond!(
           "tool:input",
           makeToolInputResponse("pointer1-move", {
+            screenPosition: message.screenPosition,
             position: message.position,
+            screenDownPosition: message.screenDownPosition,
             downPosition: store.downPosition as Point,
           }),
         );
@@ -149,7 +172,9 @@ export const createInputStore = (
         respond!(
           "tool:input",
           makeToolInputResponse("pointer1-dragend", {
+            screenPosition: message.screenPosition,
             position: message.position,
+            screenDownPosition: message.screenDownPosition,
             downPosition: store.downPosition as Point,
           }),
         );
@@ -159,6 +184,7 @@ export const createInputStore = (
           respond!(
             "tool:input",
             makeToolInputResponse("pointer1-doubleclick", {
+              screenPosition: message.screenPosition,
               position: message.position,
             }),
           );
@@ -167,6 +193,7 @@ export const createInputStore = (
           respond!(
             "tool:input",
             makeToolInputResponse("pointer1-click", {
+              screenPosition: message.screenPosition,
               position: message.position,
             }),
           );
@@ -179,7 +206,10 @@ export const createInputStore = (
           downPosition: store.downPosition as Point,
         }),
       );
-      set(produce((store) => store.downPosition = undefined));
+      set(produce((store) => {
+        store.downPosition = undefined
+        store.screenDownPosition = undefined;
+      }));
     },
 
     "input:keypress": (_1, _2, message, respond) => {
