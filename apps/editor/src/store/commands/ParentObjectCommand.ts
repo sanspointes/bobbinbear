@@ -3,21 +3,21 @@ import { SceneModel, getObjectSetter } from "../sceneStore";
 import { AbstractCommand, SerializedCommand, assertDefined } from "./shared";
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
-import { BaseSceneObject } from '../../types/scene';
+import { EmbBase } from '../../types/scene';
 import { arrayMoveElToIndex, arrayRemoveEl } from '../../utils/array';
 
 
-export class ParentObjectCommand<TObject extends BaseSceneObject> extends AbstractCommand {
+export class ParentObjectCommand<TObject extends EmbBase> extends AbstractCommand {
   public updatable: boolean = true;
   name = "Parent Object";
   type = "ParentObjectCommand" as const;
 
-  oldParentId: Uuid<BaseSceneObject> | undefined;
+  oldParentId: Uuid<EmbBase> | undefined;
   oldIndex: number | undefined;
 
   constructor(
     private objectId: Uuid<TObject>,
-    private newParentId: Uuid<BaseSceneObject>,
+    private newParentId: Uuid<EmbBase>,
     private strategy: "first" | "last" | "offset" | "absolute",
     private index?: number,
   ) {

@@ -1,5 +1,5 @@
 import { Container } from "@pixi/display";
-import { BaseSceneObject } from "../types/scene";
+import { EmbBase } from "../types/scene";
 import { createEffect } from "solid-js";
 import { OutlineFilter } from "@pixi/filter-outline";
 import { arrayRemoveEl } from "../utils/array";
@@ -15,7 +15,7 @@ enum State {
 
 export const useHoverSelectOutline = (
   ref: Container,
-  props: BaseSceneObject,
+  props: EmbBase,
 ) => {
   let state: State;
   if (!ref.filters) ref.filters = [];

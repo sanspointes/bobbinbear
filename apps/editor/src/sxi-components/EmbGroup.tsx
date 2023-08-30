@@ -1,12 +1,12 @@
 import { P } from "@bearbroidery/solixi";
-import { GroupSceneObject } from "../types/scene";
+import { EmbGroup as EmbGroup } from "../types/scene";
 import { SceneObjectChildren } from "./general";
 
-type GroupSceneObjectViewProps = GroupSceneObject & {
+type EmbGroupProps = EmbGroup & {
   order: number;
 };
 
-export function GroupSceneObjectView(props: GroupSceneObjectViewProps) {
+export function EmbGroupView(props: EmbGroupProps) {
   return (
     <P.Container
       name={`${props.name}-${props.id}`}

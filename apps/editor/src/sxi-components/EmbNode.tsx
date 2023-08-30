@@ -1,13 +1,11 @@
-import { createEffect, on, onMount, useContext } from "solid-js";
-import { produce } from 'solid-js/store';
+import { onMount } from "solid-js";
 import { Sprite } from "@pixi/sprite";
 import { P } from "@bearbroidery/solixi";
 
 import {
-  GraphicNodeTypes,
-  GraphicSceneObject,
-  NodeSceneObject,
-  VirtualSceneObject,
+  EmbNodeType,
+  EmbNode as EmbNode,
+  EmbHasVirtual,
 } from "../types/scene";
 import { useTexture } from "../composables/useAsset";
 
@@ -15,24 +13,23 @@ import NodePointSrc from "../assets/node_point.png";
 import NodeControlSrc from "../assets/node_control.png";
 import { Circle, ObservablePoint, Point, Texture } from "@pixi/core";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
-import { AppContext } from "../store";
-import { getObject, getObjectSetter } from "../store/sceneStore";
 
 const NODE_Z_INDEX = -100;
 
-const NodeTypeImageMap: Record<GraphicNodeTypes, string> = {
-  [GraphicNodeTypes.Jump]: NodePointSrc,
-  [GraphicNodeTypes.Point]: NodePointSrc,
-  [GraphicNodeTypes.Control]: NodeControlSrc,
+const NodeTypeImageMap: Record<EmbNodeType, string> = {
+  [EmbNodeType.Jump]: NodePointSrc,
+  [EmbNodeType.Point]: NodePointSrc,
+  [EmbNodeType.Control]: NodeControlSrc,
 };
 
-type NodeSceneObjectViewProps = NodeSceneObject & {
-  order: number;
-} & Partial<VirtualSceneObject>;
 const CENTER_ANCHOR = new Point(0.5, 0.5) as unknown as ObservablePoint;
 const HIT_AREA = new Circle(0, 0, 128);
 
-export function NodeSceneObjectView(props: NodeSceneObjectViewProps) {
+type EmbNodeProps = EmbNode & {
+  order: number;
+} & Partial<EmbHasVirtual>;
+
+export function EmbNodeView(props: EmbNodeProps) {
   const [texture] = useTexture({
     src: NodeTypeImageMap[props.node.type],
     fallback: Texture.EMPTY,

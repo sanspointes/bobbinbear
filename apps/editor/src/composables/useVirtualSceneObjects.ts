@@ -9,12 +9,12 @@ import {
   useContext,
 } from "solid-js";
 import { createStore } from "solid-js/store";
-import { BaseSceneObject } from "../types/scene";
+import { EmbBase } from "../types/scene";
 import { AppContext } from "../store";
 import { access, MaybeAccessor } from "@solid-primitives/utils";
 
 export const useTemporarySceneObjects = (
-  tempObjs: Accessor<(BaseSceneObject | null)[]>,
+  tempObjs: Accessor<(EmbBase | null)[]>,
 ) => {
   const ctx = useContext(AppContext)
   const { sceneStore } = ctx;
@@ -40,7 +40,7 @@ export const useTemporarySceneObjects = (
 };
 
 export const useTemporarySceneObject = (
-  obj: MaybeAccessor<(BaseSceneObject)>,
+  obj: MaybeAccessor<(EmbBase)>,
 ) => {
   const { sceneStore } = useContext(AppContext);
   const [store, set] = createStore(access(obj));
@@ -55,7 +55,7 @@ export const useTemporarySceneObject = (
   });
 };
 
-export const mapTemporarySceneObjects = <T, TObject extends BaseSceneObject>(
+export const mapTemporarySceneObjects = <T, TObject extends EmbBase>(
   data: Accessor<false | readonly T[] | null | undefined>,
   mapFn: (v: T, i: Accessor<number>) => TObject,
 ) => {

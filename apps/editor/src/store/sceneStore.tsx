@@ -9,20 +9,20 @@ import { Command } from "./commands";
 import { generateStore } from ".";
 import { arrayLast } from "../utils/array";
 import {
-  BaseSceneObject,
-  GroupSceneObject,
-  HasInspectSceneObject,
-  SceneObject,
+  EmbBase,
+  EmbGroup,
+  EmbHasInspecting,
+  EmbObject,
 } from "../types/scene";
 
-export const getObject = <T extends BaseSceneObject>(
+export const getObject = <T extends EmbBase>(
   store: SceneModel,
   uuid: Uuid<T>|undefined,
 ): T | undefined => {
   if ((uuid) === undefined) return undefined;
   return store.objects.get(uuid) as T | undefined;
 };
-export const getObjectSetter = <T extends BaseSceneObject>(
+export const getObjectSetter = <T extends EmbBase>(
   store: SceneModel,
   uuid: Uuid<T> | undefined,
 ): SetStoreFunction<T> | undefined => {
@@ -32,22 +32,22 @@ export const getObjectSetter = <T extends BaseSceneObject>(
   return setter as SetStoreFunction<T>;
 };
 
-export const isInspectable = <T extends BaseSceneObject>(obj: T): obj is T & HasInspectSceneObject => {
-  const o = obj as unknown as T & HasInspectSceneObject;
+export const isInspectable = <T extends EmbBase>(obj: T): obj is T & EmbHasInspecting => {
+  const o = obj as unknown as T & EmbHasInspecting;
   if (o.inspecting !== undefined) return true;
   return false;
 }
 /**
  * Keep a flat reference to every object on the scene and its setter function
  */
-export type ObjectMapData<T extends SceneObject = SceneObject> = {
+export type ObjectMapData<T extends EmbObject = EmbObject> = {
   object: T;
   set: SetStoreFunction<T>;
 };
 
 export type SceneStoreMessages = {
-  "scene:hover": Uuid<BaseSceneObject>;
-  "scene:unhover": Uuid<BaseSceneObject>;
+  "scene:hover": Uuid<EmbBase>;
+  "scene:unhover": Uuid<EmbBase>;
   "scene:do-command": Command;
   "scene:undo": void;
   "scene:redo": void;
@@ -55,29 +55,29 @@ export type SceneStoreMessages = {
 
 export type SceneModel = {
   /** UUID of object that we're currently inspecting */
-  inspecting: Uuid<BaseSceneObject> | undefined;
+  inspecting: Uuid<EmbBase> | undefined;
   /** UUID of inspect root object, used for storing temporary parts of the document i.e. nodes */
-  inspectRoot: Uuid<BaseSceneObject> | undefined;
+  inspectRoot: Uuid<EmbBase> | undefined;
   /* List of selected ids */
-  selectedIds: Uuid<BaseSceneObject>[];
-  selectedObjects: BaseSceneObject[];
+  selectedIds: Uuid<EmbBase>[];
+  selectedObjects: EmbBase[];
   undoStack: Command[];
   redoStack: Command[];
-  objects: ReactiveMap<Uuid<BaseSceneObject>, BaseSceneObject>;
-  objectSetters: Map<Uuid<BaseSceneObject>, SetStoreFunction<BaseSceneObject>>;
-  root: BaseSceneObject;
+  objects: ReactiveMap<Uuid<EmbBase>, EmbBase>;
+  objectSetters: Map<Uuid<EmbBase>, SetStoreFunction<EmbBase>>;
+  root: EmbBase;
 };
 
 export const createSceneStore = () => {
   // Set the root object, this can't be edited
-  const [object, set] = createStore<GroupSceneObject>({
+  const [object, set] = createStore<EmbGroup>({
     type: "group",
     hovered: false,
     id: uuid("root"),
     name: "Root",
     locked: false,
     shallowLocked: true,
-    parent: undefined as unknown as Uuid<SceneObject>,
+    parent: undefined as unknown as Uuid<EmbObject>,
     visible: true,
     children: [],
     position: new Point(0, 0),

@@ -1,8 +1,8 @@
 import { produce, SetStoreFunction } from "solid-js/store";
 import {
-  GraphicSceneObject,
-  GraphicsNode,
-  SceneObject,
+  EmbVector,
+  VectorNode,
+  EmbObject,
 } from "../../types/scene";
 import { Uuid } from "../../utils/uuid";
 import { getObject, getObjectSetter, SceneModel } from "../sceneStore";
@@ -15,11 +15,11 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
   name = "Update Graphics Node";
   type = "UpdateGraphicsNodeCommand" as const;
 
-  oldData: GraphicsNode | undefined;
+  oldData: VectorNode | undefined;
   constructor(
-    public objectId: Uuid<GraphicSceneObject>,
+    public objectId: Uuid<EmbVector>,
     public index: number,
-    public node: GraphicsNode,
+    public node: VectorNode,
   ) {
     super();
   }
@@ -40,9 +40,9 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
     }
     const set = getObjectSetter(store, object.id)!;
 
-    this.oldData = (object as GraphicSceneObject).shape[this.index];
+    this.oldData = (object as EmbVector).shape[this.index];
     set(produce((object) => {
-      const obj = object as GraphicSceneObject;
+      const obj = object as EmbVector;
       obj.shape.splice(this.index, 1, this.node);
     }));
   }
@@ -51,7 +51,7 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
     store: SceneModel,
     _setStore: SetStoreFunction<SceneModel>,
   ): void {
-    const object = store.objects.get(this.objectId) as GraphicSceneObject | undefined;
+    const object = store.objects.get(this.objectId) as EmbVector | undefined;
 
     if (!object) {
       throw new Error(
@@ -65,21 +65,21 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
     const set = getObjectSetter(store, object.id)!;
 
     set(produce((object) => {
-      const obj = object as GraphicSceneObject;
+      const obj = object as EmbVector;
       obj.shape.splice(this.index, 1, this.node);
     }));
   }
 
   fromObject<T extends Command>(object: SerializedCommand<T>): void {
-    this.objectId = object["objectId"] as Uuid<GraphicSceneObject>;
+    this.objectId = object["objectId"] as Uuid<EmbVector>;
     this.index = object["index"] as number;
-    this.node = object["node"] as GraphicsNode;
+    this.node = object["node"] as VectorNode;
   }
 
   toObject(object: Record<string, unknown>): void {
-    object["objectId"] = this.objectId as Uuid<SceneObject>;
+    object["objectId"] = this.objectId as Uuid<EmbObject>;
     object["index"] = this.index as number;
-    object["node"] = this.node as GraphicsNode;
+    object["node"] = this.node as VectorNode;
   }
 
   updateData(newer: Command): void {

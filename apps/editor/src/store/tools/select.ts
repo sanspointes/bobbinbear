@@ -11,7 +11,7 @@ import {
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
 import { SolixiState } from "@bearbroidery/solixi";
 import { Uuid } from "../../utils/uuid";
-import { BaseSceneObject, VirtualSceneObject } from "../../types/scene";
+import { EmbBase, EmbHasVirtual } from "../../types/scene";
 import {
   Command,
   DeselectObjectsCommand,
@@ -23,7 +23,7 @@ import { InputModel } from "../inputStore";
 import { Point } from "@pixi/core";
 import { MultiCommand } from "../commands/shared";
 import { SetInspectingCommand } from "../commands/SetInspectingCommand";
-import { SceneObject } from "../../types/scene";
+import { EmbObject } from "../../types/scene";
 import { tryMakeGraphicsNodeACurve } from "../helpers";
 
 export const SelectEvents = {
@@ -73,7 +73,7 @@ export const createSelectToolStore = (
     }
   });
   // Internal State
-  let currHover: Uuid<BaseSceneObject> | undefined;
+  let currHover: Uuid<EmbBase> | undefined;
   const offset = new Point();
   let newPosition: Point | undefined;
 
@@ -110,11 +110,11 @@ export const createSelectToolStore = (
       SelectStates.Hoverring,
       SelectEvents.PointerDown,
       SelectStates.PointerDownOnElement,
-      (id: Uuid<BaseSceneObject>) => {
+      (id: Uuid<EmbBase>) => {
         const cmds: Command[] = [];
         const obj = sceneModel.objects.get(id) as
-          & BaseSceneObject
-          & VirtualSceneObject;
+          & EmbBase
+          & EmbHasVirtual;
         if (obj && obj.virtual) {
           const cmd = obj.virtualCreator();
           cmds.push(cmd);
@@ -135,7 +135,7 @@ export const createSelectToolStore = (
       SelectEvents.PointerUp,
       SelectStates.Default,
       () => {
-        const cmds: Command<BaseSceneObject>[] = [];
+        const cmds: Command<EmbBase>[] = [];
 
         if (sceneModel.selectedIds.length > 0) {
           const deselectAllCmd = new DeselectObjectsCommand(
@@ -186,7 +186,7 @@ export const createSelectToolStore = (
           );
         }
         const obj = sceneModel.objects.get(currHover) as
-          | SceneObject
+          | EmbObject
           | undefined;
         if (obj?.type === "node") {
           tryMakeGraphicsNodeACurve(dispatch, sceneModel, obj.node.id);

@@ -6,7 +6,7 @@ import clsx from 'clsx';
 import { Command, MultiCommand } from "../store/commands";
 import { Popover } from "./generics/Popover";
 import { Button } from "./generics/Button";
-import { BaseSceneObject } from "../types/scene";
+import { EmbBase } from "../types/scene";
 
 export type CommandStackProps = {
   stack: Command[];
@@ -52,7 +52,7 @@ function CommandStackRow(props: CommandStackRowProps) {
             <pre class="text-xs bg-orange-200">{JSON.stringify(props.command, undefined, 2)}</pre>
           }
         >
-          <For each={(props.command as MultiCommand<BaseSceneObject>).commands}>
+          <For each={(props.command as MultiCommand<EmbBase>).commands}>
             {(command) => <CommandStackRow command={command} />}
           </For>
         </Show>

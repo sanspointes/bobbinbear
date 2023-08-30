@@ -1,8 +1,8 @@
 import { createMemo, JSX, Show, useContext } from "solid-js";
 import {
-  BaseSceneObject,
-  GraphicSceneObject,
-  HasFillSceneObject,
+  EmbBase,
+  EmbVector,
+  EmbHasFill,
 } from "../types/scene";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
@@ -31,7 +31,7 @@ const AlignmentValue: Record<Alignment, number> = {
 };
 
 type SidebarStyleProps = {
-  object: BaseSceneObject & HasFillSceneObject;
+  object: EmbBase & EmbHasFill;
 };
 export function SidebarStyle(props: SidebarStyleProps) {
   const { dispatch } = useContext(AppContext);
@@ -39,13 +39,13 @@ export function SidebarStyle(props: SidebarStyleProps) {
   const updateFillStyle = (model: Partial<IFillStyleOptions>) => {
     const fill = { ...props.object.fill, ...model };
     const cmd = new SetSceneObjectFieldCommand<
-      BaseSceneObject & HasFillSceneObject
-    >(props.object.id as unknown as Uuid<BaseSceneObject & HasFillSceneObject>, "fill", fill);
+      EmbBase & EmbHasFill
+    >(props.object.id as unknown as Uuid<EmbBase & EmbHasFill>, "fill", fill);
     dispatch("scene:do-command", cmd);
   };
 
   const updateStrokeStyle = (model: Partial<ILineStyleOptions>) => {
-    const preStroke = (props.object as GraphicSceneObject).stroke;
+    const preStroke = (props.object as EmbVector).stroke;
     if (!preStroke) {
       throw new Error(
         "SidebarStyle: Can't update style on scene object without stroke field",
@@ -68,7 +68,7 @@ export function SidebarStyle(props: SidebarStyleProps) {
   };
 
   const alignmentAsEnum = createMemo<Alignment | undefined>(() => {
-    const stroke = (props.object as GraphicSceneObject).stroke;
+    const stroke = (props.object as EmbVector).stroke;
     if (!stroke?.alignment) return undefined;
     if (stroke.alignment < 0.25) return Alignment.Inside;
     if (stroke.alignment > 0.75) return Alignment.Outside;
@@ -91,7 +91,7 @@ export function SidebarStyle(props: SidebarStyleProps) {
           />
         )}
       </Show>
-      <Show when={(props.object as GraphicSceneObject).stroke}>
+      <Show when={(props.object as EmbVector).stroke}>
         {(stroke) => (
           <>
             <ColorPicker

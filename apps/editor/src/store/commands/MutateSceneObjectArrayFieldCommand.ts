@@ -1,5 +1,5 @@
 import { produce, SetStoreFunction } from "solid-js/store";
-import { BaseSceneObject } from "../../types/scene";
+import { EmbBase } from "../../types/scene";
 import { getObjectSetter, SceneModel } from "../sceneStore";
 import {
   AbstractCommand,
@@ -22,7 +22,7 @@ type MutateSceneObjectArrayFieldCommandOptions<T extends any[]> = {
  * Sets a single field on a scene object.
  */
 export class MutateSceneObjectArrayFieldCommand<
-  TObject extends BaseSceneObject = BaseSceneObject,
+  TObject extends EmbBase = EmbBase,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   TObjectPicked extends PickOfType<TObject, any[]> = PickOfType<
     TObject,

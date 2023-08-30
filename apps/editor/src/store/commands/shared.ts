@@ -1,7 +1,7 @@
 import { createStore, produce, SetStoreFunction } from "solid-js/store";
 import { getObjectSetter, SceneModel } from "../sceneStore";
 import { type Command, type CommandPrototypeMap } from ".";
-import { BaseSceneObject } from "../../types/scene";
+import { EmbBase } from "../../types/scene";
 import { Uuid } from "../../utils/uuid";
 import { arrayRemove } from "../../utils/array";
 import { batch } from "solid-js";
@@ -69,7 +69,7 @@ export abstract class AbstractCommand {
   }
 }
 
-export class MultiCommand<TObject extends BaseSceneObject>
+export class MultiCommand<TObject extends EmbBase>
   extends AbstractCommand {
   public updatable: boolean = true;
   name = "Multi Command";
@@ -143,7 +143,7 @@ export class MultiCommand<TObject extends BaseSceneObject>
 
 /** Helpers **/
 
-export const traverse = <T extends BaseSceneObject>(
+export const traverse = <T extends EmbBase>(
   store: SceneModel,
   obj: T,
   handler: (obj: T) => void,
@@ -165,7 +165,7 @@ export type InsertPosition = 'first' | 'last';
 export const addObject = (
   store: SceneModel,
   _1: SetStoreFunction<SceneModel>,
-  newObjectData: BaseSceneObject,
+  newObjectData: EmbBase,
   insertPosition: InsertPosition = 'last'
 ) => {
   const objMap = store.objects;
@@ -208,7 +208,7 @@ export const addObject = (
 export const deleteObject = (
   store: SceneModel,
   _1: SetStoreFunction<SceneModel>,
-  id: Uuid<BaseSceneObject>,
+  id: Uuid<EmbBase>,
 ): boolean => {
   const obj = store.objects.get(id);
   if (!obj) return false;

@@ -1,5 +1,5 @@
 import { SetStoreFunction, produce } from 'solid-js/store';
-import { BaseSceneObject } from "../../types/scene";
+import { EmbBase } from "../../types/scene";
 import { SceneModel, getObject } from "../sceneStore";
 import { AbstractCommand, SerializedCommand, addObject, deleteObject } from "./shared";
 import { batch } from 'solid-js';
@@ -7,7 +7,7 @@ import { arrayRemoveEl } from '../../utils/array';
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
 
-export class DeleteObjectCommand<TObject extends BaseSceneObject> extends AbstractCommand {
+export class DeleteObjectCommand<TObject extends EmbBase> extends AbstractCommand {
   public updatable: boolean = false;
 
   name = "Delete Object";

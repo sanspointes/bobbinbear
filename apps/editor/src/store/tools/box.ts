@@ -7,8 +7,8 @@ import {
 } from "./shared";
 import { AllMessages, BaseStore, GeneralHandler, generateStore } from "..";
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
-import { SceneObject } from "../../types/scene";
-import { GraphicSceneObject } from "../../types/scene";
+import { EmbObject } from "../../types/scene";
+import { EmbVector } from "../../types/scene";
 import { newUuid, uuid, Uuid } from "../../utils/uuid";
 import { createBoxGraphicsCommands } from "../../utils/graphics";
 import { SetSceneObjectFieldCommand, CreateObjectCommand } from "../commands";
@@ -58,8 +58,8 @@ export const createBoxToolStore = (
     },
   });
 
-  let createCommand: CreateObjectCommand<GraphicSceneObject> | undefined;
-  let currentlyBuildingId: Uuid<GraphicSceneObject> | undefined;
+  let createCommand: CreateObjectCommand<EmbVector> | undefined;
+  let currentlyBuildingId: Uuid<EmbVector> | undefined;
 
   const transitions = [
     t(BoxStates.Default, BoxEvents.PointerDown, BoxStates.Down),
@@ -68,7 +68,7 @@ export const createBoxToolStore = (
       BoxStates.Down,
       BoxEvents.DragStart,
       BoxStates.Building,
-      (e: ToolInputs["pointer1-dragstart"], parent?: SceneObject) => {
+      (e: ToolInputs["pointer1-dragstart"], parent?: EmbObject) => {
         currentlyBuildingId = newUuid();
         const currentShape = createBoxGraphicsCommands(0, 0);
 
@@ -100,11 +100,11 @@ export const createBoxToolStore = (
         });
 
         const setShapeCommand = new SetSceneObjectFieldCommand<
-          GraphicSceneObject
+          EmbVector
         >(currentlyBuildingId, "shape", currentShape);
         setShapeCommand.final = false;
         const setPositionCommand = new SetSceneObjectFieldCommand<
-          GraphicSceneObject
+          EmbVector
         >(currentlyBuildingId, "position", e.position);
         setPositionCommand.final = false;
 
@@ -147,13 +147,13 @@ export const createBoxToolStore = (
         );
 
         const setShapeCommand = new SetSceneObjectFieldCommand<
-          GraphicSceneObject,
-          keyof GraphicSceneObject
+          EmbVector,
+          keyof EmbVector
         >(currentlyBuildingId, "shape", currentShape);
         setShapeCommand.final = false;
         const setPositionCommand = new SetSceneObjectFieldCommand<
-          GraphicSceneObject,
-          keyof GraphicSceneObject
+          EmbVector,
+          keyof EmbVector
         >(currentlyBuildingId, "position", position);
         setPositionCommand.final = false;
 
@@ -197,12 +197,12 @@ export const createBoxToolStore = (
         );
 
         const setShapeCommand = new SetSceneObjectFieldCommand<
-          GraphicSceneObject,
-          keyof GraphicSceneObject
+          EmbVector,
+          keyof EmbVector
         >(currentlyBuildingId, "shape", currentShape);
         const setPositionCommand = new SetSceneObjectFieldCommand<
-          GraphicSceneObject,
-          keyof GraphicSceneObject
+          EmbVector,
+          keyof EmbVector
         >(currentlyBuildingId, "position", position);
 
         const cmd = new MultiCommand(

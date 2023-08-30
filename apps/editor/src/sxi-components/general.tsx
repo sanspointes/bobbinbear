@@ -1,27 +1,27 @@
 import { For, useContext } from "solid-js";
-import { BaseSceneObject, SceneObject } from "../types/scene";
-import { CanvasSceneObjectView } from "./CanvasSceneObject";
-import { GraphicSceneObjectView } from "./GraphicSceneObjectView";
-import { NodeSceneObjectView } from "./NodeSceneObjectView";
-import { GroupSceneObjectView } from "./GroupSceneObjectView";
+import { EmbBase, EmbObject } from "../types/scene";
+import { EmbCanvasView } from "./EmbCanvas";
+import { EmbVectorView } from "./EmbVector";
+import { EmbNodeView } from "./EmbNode";
+import { EmbGroupView } from "./EmbGroup";
 import { AppContext } from "../store";
 
 const SCENE_OBJECT_LOOKUP = {
-  "canvas": CanvasSceneObjectView,
-  "graphic": GraphicSceneObjectView,
-  "node": NodeSceneObjectView,
-  "group": GroupSceneObjectView,
+  "canvas": EmbCanvasView,
+  "graphic": EmbVectorView,
+  "node": EmbNodeView,
+  "group": EmbGroupView,
 };
 
 export const SceneObjectChildren = (
-  props: Pick<BaseSceneObject, "children">,
+  props: Pick<EmbBase, "children">,
 ) => {
   const { sceneStore } = useContext(AppContext);
   return (
     <For each={props.children}>
       {(object, i) => {
         // eslint-disable-next-line solid/reactivity
-        const o = sceneStore.objects.get(object) as SceneObject;
+        const o = sceneStore.objects.get(object) as EmbObject;
         if (!o) return null;
         const Component = SCENE_OBJECT_LOOKUP[o.type];
         return <Component {...o} order={i()} />;

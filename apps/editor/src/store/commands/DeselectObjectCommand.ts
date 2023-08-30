@@ -1,5 +1,5 @@
 import { SetStoreFunction, produce } from 'solid-js/store';
-import { BaseSceneObject } from "../../types/scene";
+import { EmbBase } from "../../types/scene";
 import { SceneModel, getObject, getObjectSetter } from "../sceneStore";
 import { AbstractCommand, SerializedCommand, assertDefined, assertSameType } from "./shared";
 import { Command } from '.';
@@ -7,7 +7,7 @@ import { Uuid } from '../../utils/uuid';
 import { batch } from 'solid-js';
 import { arrayRemove, arrayRemoveEl } from '../../utils/array';
 
-export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends AbstractCommand {
+export class DeselectObjectsCommand<TObject extends EmbBase> extends AbstractCommand {
   public updatable: boolean = true;
 
   name = "Deselect Objects";
@@ -30,7 +30,7 @@ export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends Abs
         const object = getObject(store, id);
         if (assertDefined(this, object, "object")) {
           if (object.selected) this.toSelect.push(id);
-          const set = getObjectSetter<BaseSceneObject>(store, id)!;
+          const set = getObjectSetter<EmbBase>(store, id)!;
           set('selected', false);
           setStore(produce((store) => arrayRemoveEl(store.selectedIds, id)));
           setStore(produce((store) => {
@@ -51,7 +51,7 @@ export class DeselectObjectsCommand<TObject extends BaseSceneObject> extends Abs
         const object = getObject(store, id);
         if (assertDefined(this, object, "object")) {
           if (object.selected) this.toDeselect.push(id);
-          const set = getObjectSetter<BaseSceneObject>(store, id)!;
+          const set = getObjectSetter<EmbBase>(store, id)!;
           set('selected', true);
           setStore(produce((store) => {
             store.selectedIds.push(id);

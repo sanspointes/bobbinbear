@@ -1,5 +1,5 @@
 import { useContext } from "solid-js"
-import { SceneObject } from "../types/scene"
+import { EmbObject } from "../types/scene"
 import { AccordionItem } from "./generics/Accordian"
 import { NumberInput } from "./generics/NumberInput"
 import { AppContext } from "../store"
@@ -7,7 +7,7 @@ import { MoveObjectCommand, SetSceneObjectFieldCommand } from "../store/commands
 import { Point } from "@pixi/core"
 
 type SidebarTransformProps = {
-  object: SceneObject,
+  object: EmbObject,
 }
 export function SidebarTransform(props: SidebarTransformProps) {
   const { dispatch } = useContext(AppContext);

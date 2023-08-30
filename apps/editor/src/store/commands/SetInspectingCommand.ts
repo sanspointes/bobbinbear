@@ -1,5 +1,5 @@
 import { produce, SetStoreFunction } from "solid-js/store";
-import { BaseSceneObject } from "../../types/scene";
+import { EmbBase } from "../../types/scene";
 import { Uuid } from "../../utils/uuid";
 import { SceneModel } from "../sceneStore";
 import { AbstractCommand, assertDefined, assertSameType, SerializedCommand } from "./shared";
@@ -10,8 +10,8 @@ export class SetInspectingCommand extends AbstractCommand {
   public name: string;
   public type: string = "InspectObjectCommand" as const;
 
-  private oldValue: Uuid<BaseSceneObject> | undefined = undefined;
-  constructor(private objectId: Uuid<BaseSceneObject> | undefined) {
+  private oldValue: Uuid<EmbBase> | undefined = undefined;
+  constructor(private objectId: Uuid<EmbBase> | undefined) {
     super();
     this.name = `Inspect ${objectId}`;
   }

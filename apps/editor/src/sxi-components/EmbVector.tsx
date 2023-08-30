@@ -1,12 +1,12 @@
 import { P } from "@bearbroidery/solixi";
 import { SceneObjectChildren } from "./general";
 import {
-  BasicGraphicsNode,
-  GraphicNodeTypes,
-  GraphicSceneObject,
-  GraphicsNode,
-  NodeSceneObject,
-  VirtualSceneObject,
+  RealNode,
+  EmbNodeType,
+  EmbVector as EmbVector,
+  VectorNode,
+  EmbNode,
+  EmbHasVirtual,
 } from "../types/scene";
 import { Point } from "@pixi/core";
 import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
@@ -18,7 +18,7 @@ import { sceneObjectDefaults } from "../store/helpers";
 import { arrayFirst, arrayIterCircularEndInclusive, arrayIterPairs } from "../utils/array";
 import { lerp } from "../utils/math";
 import { newUuid, Uuid } from "../utils/uuid";
-import { NodeSceneObjectView } from "./NodeSceneObjectView";
+import { EmbNodeView } from "./EmbNode";
 import { MutateSceneObjectArrayFieldCommand } from "../store/commands";
 import { mapTemporarySceneObjects } from "../composables/useVirtualSceneObjects";
 import { Container } from "@pixi/display";
@@ -28,7 +28,7 @@ type ExtraOptions = {
 };
 const updateGraphics = (
   g: Graphics,
-  shape: GraphicsNode[],
+  shape: VectorNode[],
   fill: IFillStyleOptions,
   stroke: ILineStyleOptions,
   extra: ExtraOptions,
@@ -37,7 +37,7 @@ const updateGraphics = (
 
   // Stack stores up to 2 previous control points.
   let stackIndex = 0;
-  const stack: [GraphicsNode | undefined, GraphicsNode | undefined] = [
+  const stack: [VectorNode | undefined, VectorNode | undefined] = [
     undefined,
     undefined,
   ];
@@ -47,10 +47,10 @@ const updateGraphics = (
 
   for (const node of shape) {
     // Jump nodes jump to a new position
-    if (node.type === GraphicNodeTypes.Jump) {
+    if (node.type === EmbNodeType.Jump) {
       g.moveTo(node.x, node.y);
       // Control points are stored to be used for curves
-    } else if (node.type === GraphicNodeTypes.Control) {
+    } else if (node.type === EmbNodeType.Control) {
       if (stackIndex >= stack.length) {
         throw new Error(
           "updateGraphics: Received more than 2 control nodes in a row.",
@@ -59,7 +59,7 @@ const updateGraphics = (
       stack[stackIndex] = node;
       stackIndex += 1;
       // When a Point is found either straight line or curve to it.
-    } else if (node.type === GraphicNodeTypes.Point) {
+    } else if (node.type === EmbNodeType.Point) {
       if (stackIndex === 0) {
         g.lineTo(node.x, node.y);
       } else if (stackIndex === 1) {
@@ -91,10 +91,10 @@ const updateGraphics = (
   g.endFill();
 };
 
-type GraphicSceneObjectViewProps = GraphicSceneObject & {
+type EmbVectorProps = EmbVector & {
   order: number;
 };
-export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
+export const EmbVectorView = (props: EmbVectorProps) => {
   let container: Container | undefined;
   let graphics: Graphics | undefined;
   onMount(() => {
@@ -123,14 +123,14 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
     () => isThisInspecting() ? props.shape : undefined,
     (node) => {
       return {
-        ...sceneObjectDefaults<NodeSceneObject>(),
-        id: node.id as unknown as Uuid<NodeSceneObject>,
+        ...sceneObjectDefaults<EmbNode>(),
+        id: node.id as unknown as Uuid<EmbNode>,
         type: "node",
         node,
         name: `${node.type} Node`,
         position: new Point(node.x, node.y),
-        relatesTo: props.id as Uuid<GraphicSceneObject>,
-      } as NodeSceneObject;
+        relatesTo: props.id as Uuid<EmbVector>,
+      } as EmbNode;
     },
   );
 
@@ -144,28 +144,28 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
     () => pointNodePairs(),
     ([prev, node], i) => {
       if (
-        node.type === GraphicNodeTypes.Control ||
-        prev.type === GraphicNodeTypes.Control
+        node.type === EmbNodeType.Control ||
+        prev.type === EmbNodeType.Control
       ) return undefined;
       const midX = lerp(prev.x, node.x, 0.5);
       const midY = lerp(prev.y, node.y, 0.5);
-      const id = newUuid<NodeSceneObject>();
-      const midNode: GraphicsNode = {
-        type: GraphicNodeTypes.Point,
+      const id = newUuid<EmbNode>();
+      const midNode: VectorNode = {
+        type: EmbNodeType.Point,
         x: midX,
         y: midY,
-        id: id as unknown as Uuid<GraphicsNode>,
+        id: id as unknown as Uuid<VectorNode>,
       };
 
-      const midObject: NodeSceneObject & VirtualSceneObject = {
+      const midObject: EmbNode & EmbHasVirtual = {
         ...sceneObjectDefaults(),
         id,
         virtual: true,
         virtualCreator: () => {
           const cmd = new MutateSceneObjectArrayFieldCommand<
-            GraphicSceneObject
+            EmbVector
           >(
-            props.id as Uuid<GraphicSceneObject>,
+            props.id as Uuid<EmbVector>,
             "shape",
             i() + 1,
             {
@@ -180,7 +180,7 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
         type: "node",
         node: midNode,
         name: `Virtual ${i()}`,
-        relatesTo: props.id as Uuid<GraphicSceneObject>,
+        relatesTo: props.id as Uuid<EmbVector>,
       };
       return midObject;
       // });
@@ -195,10 +195,10 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
       overlayGraphics.lineStyle(1, 0x000000, 1);
 
       let needsLineNext = false;
-      let prev: GraphicsNode | undefined;
+      let prev: VectorNode | undefined;
       for (const node of arrayIterCircularEndInclusive(props.shape)) {
       // for (const node of props.shape) {
-        const n = node as BasicGraphicsNode;
+        const n = node as RealNode;
         if ((n.ownsPrev || needsLineNext) && prev ) {
           needsLineNext = false;
           overlayGraphics.moveTo(n.x, n.y);
@@ -238,7 +238,7 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
         {(editableNodes) => (
           <For each={editableNodes()}>
             {(nodeSceneObject, i) => (
-              <NodeSceneObjectView {...nodeSceneObject()} order={i()} />
+              <EmbNodeView {...nodeSceneObject()} order={i()} />
             )}
           </For>
         )}
@@ -249,7 +249,7 @@ export const GraphicSceneObjectView = (props: GraphicSceneObjectViewProps) => {
           <For each={virtualNodes()}>
             {(nodeSceneObject) => (
               <Show when={nodeSceneObject()}>
-                {(props) => <NodeSceneObjectView {...props()} order={0} />}
+                {(props) => <EmbNodeView {...props()} order={0} />}
               </Show>
             )}
           </For>

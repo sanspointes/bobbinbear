@@ -1,5 +1,5 @@
 import { produce, SetStoreFunction } from "solid-js/store";
-import { BaseSceneObject } from "../../types/scene";
+import { EmbBase } from "../../types/scene";
 import { SceneModel } from "../sceneStore";
 import {
   AbstractCommand,
@@ -13,7 +13,7 @@ import { batch } from "solid-js";
 import { arrayRemoveEl } from "../../utils/array";
 import { Command } from ".";
 
-export class CreateObjectCommand<TObject extends BaseSceneObject>
+export class CreateObjectCommand<TObject extends EmbBase>
   extends AbstractCommand {
   public updatable: boolean = false;
 

@@ -5,7 +5,7 @@ import { Collapsible as KCollapsible } from "@kobalte/core";
 import { AllMessages, AppContext, GeneralHandler } from "../store";
 import { Uuid, uuid } from "../utils/uuid";
 import { Tree } from "./generics/Tree";
-import { BaseSceneObject, SceneObject } from "../types/scene";
+import { EmbBase, EmbObject } from "../types/scene";
 import { SceneModel } from "../store/sceneStore";
 import { Button } from "./generics/Button";
 import {
@@ -26,7 +26,7 @@ import { MultiCommand } from "../store/commands/shared";
  * Mutation Helpers
  */
 const toggleVisibility = (
-  object: BaseSceneObject,
+  object: EmbBase,
   dispatch: GeneralHandler<AllMessages>,
 ) => {
   const newValue = !object.visible;
@@ -35,7 +35,7 @@ const toggleVisibility = (
 };
 
 const selectObject = (
-  objectId: Uuid<BaseSceneObject>,
+  objectId: Uuid<EmbBase>,
   sceneModel: SceneModel,
   dispatch: GeneralHandler<AllMessages>,
 ) => {
@@ -53,7 +53,7 @@ const selectObject = (
 };
 
 const setObjectName = (
-  objectId: Uuid<BaseSceneObject>,
+  objectId: Uuid<EmbBase>,
   name: string,
   dispatch: GeneralHandler<AllMessages>,
   final?: boolean,
@@ -66,19 +66,19 @@ const setObjectName = (
 /**
  * Tree related helpers
  */
-const childResolver = (sceneStore: SceneModel, node: SceneObject) => {
+const childResolver = (sceneStore: SceneModel, node: EmbObject) => {
   const children = node.children
     .map((id) => sceneStore.objects.get(id))
     // .filter(o => !o?.shallowLocked)
     .filter(
-      (o): o is SceneObject => o !== undefined,
+      (o): o is EmbObject => o !== undefined,
     );
   return children;
 };
 
 export function SidebarLeft() {
   const [currentDocument, setCurrentDocument] = createSignal<
-    Uuid<BaseSceneObject>
+    Uuid<EmbBase>
   >(uuid("Document 1"));
 
   const options = ["Document 1", "Document 2"];
@@ -114,9 +114,9 @@ export function SceneTree() {
 
   // Handle drag and drop to reparent / reorder
   onDragEnd((event) => {
-    const draggableData = event.draggable.data as unknown as SceneObject;
+    const draggableData = event.draggable.data as unknown as EmbObject;
     const droppableData = event.droppable?.data as unknown as
-      | SceneObject
+      | EmbObject
       | undefined;
     if (draggableData && event.droppable && droppableData) {
       const droppableParent = sceneStore.objects.get(droppableData.parent);
@@ -129,7 +129,7 @@ export function SceneTree() {
       const id = event.droppable.id as string;
       if (id.startsWith("cl-")) {
         // Re-parenting
-        const cmd = new ParentObjectCommand(draggableData.id, id as Uuid<BaseSceneObject>, "last");
+        const cmd = new ParentObjectCommand(draggableData.id, id as Uuid<EmbBase>, "last");
         dispatch("scene:do-command", cmd);
       } else {
         const result = DROPPABLE_ID_REGEX.exec(id);
@@ -141,7 +141,7 @@ export function SceneTree() {
         const [_, strategy, relatedId] = result as unknown as [
           _: string,
           strategy: "before" | "after",
-          relatedId: Uuid<SceneObject>,
+          relatedId: Uuid<EmbObject>,
         ];
 
         let newPosition = droppableParent.children.findIndex((uuid) => {
@@ -183,7 +183,7 @@ export function SceneTree() {
   return (
     <div class="overflow-y-scroll text-orange-800 bg-orange-50 fill-orange-800 stroke-orange-50">
       <Tree
-        root={root as SceneObject}
+        root={root as EmbObject}
         childResolver={(node) => childResolver(sceneStore, node)}
         onDragEnd={(e) => console.log(e)}
         isDroppablePredicate={(n) => n.type === "canvas" || n.type === "group"}

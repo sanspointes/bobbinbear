@@ -1,14 +1,14 @@
 import { P } from "@bearbroidery/solixi";
 import { SceneObjectChildren } from "./general";
-import { CanvasSceneObject } from "../types/scene";
+import { EmbCanvas as EmbCanvas } from "../types/scene";
 import { Mesh } from "@pixi/mesh";
 import { onMount } from "solid-js";
 import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
 
-type CanvasSceneObjectViewProps = CanvasSceneObject & {
+type EmbCanvasProps = EmbCanvas & {
   order: number;
 };
-export const CanvasSceneObjectView = (props: CanvasSceneObjectViewProps) => {
+export const EmbCanvasView = (props: EmbCanvasProps) => {
   let mesh: Mesh | undefined;
   onMount(() => {
     if (!mesh) return;

@@ -1,28 +1,28 @@
-import { GraphicNodeTypes, GraphicsNode } from "../types/scene";
+import { EmbNodeType, VectorNode } from "../types/scene";
 import { newUuid } from "./uuid";
 
 export const createBoxGraphicsCommands = (
   width: number,
   height: number,
-): GraphicsNode[] => {
+): VectorNode[] => {
   return [{
-    id: newUuid<GraphicsNode>(),
-    type: GraphicNodeTypes.Jump,
+    id: newUuid<VectorNode>(),
+    type: EmbNodeType.Jump,
     x: 0,
     y: 0,
   }, {
-    id: newUuid<GraphicsNode>(),
-    type: GraphicNodeTypes.Point,
+    id: newUuid<VectorNode>(),
+    type: EmbNodeType.Point,
     x: width,
     y: 0,
   }, {
-    id: newUuid<GraphicsNode>(),
-    type: GraphicNodeTypes.Point,
+    id: newUuid<VectorNode>(),
+    type: EmbNodeType.Point,
     x: width,
     y: height,
   }, {
-    id: newUuid<GraphicsNode>(),
-    type: GraphicNodeTypes.Point,
+    id: newUuid<VectorNode>(),
+    type: EmbNodeType.Point,
     x: 0,
     y: height,
   }];

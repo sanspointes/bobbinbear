@@ -7,13 +7,13 @@ import {
   SetSceneObjectFieldCommand,
 } from "./commands";
 import {
-  BaseSceneObject,
-  BasicGraphicsNode,
-  CanvasSceneObject,
-  GraphicNodeTypes,
-  GraphicSceneObject,
-  GraphicsNode,
-  NodeSceneObject,
+  EmbBase,
+  RealNode,
+  EmbCanvas,
+  EmbNodeType,
+  EmbVector,
+  VectorNode,
+  EmbNode,
 } from "../types/scene";
 import { AppDispatcher } from ".";
 import { SceneModel } from "./sceneStore";
@@ -29,8 +29,8 @@ import { addPoint, lerpPoint, subPoint } from "../utils/math";
 import { iterFind } from "../utils/iter";
 
 export const sceneObjectDefaults = <
-  TObject extends BaseSceneObject = BaseSceneObject,
->(): Omit<BaseSceneObject, "name"> => ({
+  TObject extends EmbBase = EmbBase,
+>(): Omit<EmbBase, "name"> => ({
   id: newUuid<TObject>(),
   visible: true,
   children: [],
@@ -48,7 +48,7 @@ export const createCanvas = (
   name?: string,
   size = new Point(512, 512),
 ) => {
-  const canvas: CanvasSceneObject = {
+  const canvas: EmbCanvas = {
     ...sceneObjectDefaults(),
     type: "canvas",
     name: name ?? "Canvas",
@@ -63,12 +63,12 @@ export const createCanvas = (
 export const tryMakeGraphicsNodeACurve = (
   dispatch: AppDispatcher,
   store: SceneModel,
-  nodeId: Uuid<NodeSceneObject & GraphicsNode>,
+  nodeId: Uuid<EmbNode & VectorNode>,
 ) => {
-  const obj = store.objects.get(nodeId) as NodeSceneObject;
+  const obj = store.objects.get(nodeId) as EmbNode;
   if (!assertDefined('tryMakeGraphicsNodeACurve', obj, 'NodeSceneObject')) return;
-  const node = obj.node as BasicGraphicsNode;
-  const graphics = store.objects.get(obj.relatesTo) as GraphicSceneObject;
+  const node = obj.node as RealNode;
+  const graphics = store.objects.get(obj.relatesTo) as EmbVector;
   if (!assertDefined('tryMakeGraphicsNodeACurve', graphics, 'Related graphics object')) return;
   const nodeIndex = graphics.shape.findIndex((n) => n.id === nodeId);
   if (nodeIndex === -1) {
@@ -80,11 +80,11 @@ export const tryMakeGraphicsNodeACurve = (
   const prevPoint = arrayFindFromBackwardsCircular(
     graphics.shape,
     nodeIndex - 1,
-    (el) => el.type === GraphicNodeTypes.Point,
+    (el) => el.type === EmbNodeType.Point,
   );
-  const nextPoint = arrayFindFromCircular(graphics.shape, nodeIndex + 1, (el) => el.type === GraphicNodeTypes.Point);
+  const nextPoint = arrayFindFromCircular(graphics.shape, nodeIndex + 1, (el) => el.type === EmbNodeType.Point);
 
-  const cmds: Command<GraphicSceneObject>[] = [];
+  const cmds: Command<EmbVector>[] = [];
 
   if (!prevPoint || !nextPoint) return;
 
@@ -96,10 +96,10 @@ export const tryMakeGraphicsNodeACurve = (
     subPoint(newPosition, nextPoint, newPosition);
     addPoint(obj.node, newPosition, newPosition);
 
-    const id1 = newUuid<GraphicsNode>();
-    const control1: GraphicsNode = {
+    const id1 = newUuid<VectorNode>();
+    const control1: VectorNode = {
       id: id1,
-      type: GraphicNodeTypes.Control,
+      type: EmbNodeType.Control,
       x: newPosition.x,
       y: newPosition.y,
     };
@@ -123,10 +123,10 @@ export const tryMakeGraphicsNodeACurve = (
     subPoint(newPosition, prevPoint, newPosition);
     addPoint(obj.node, newPosition, newPosition);
 
-    const id1 = newUuid<GraphicsNode>();
-    const control1: GraphicsNode = {
+    const id1 = newUuid<VectorNode>();
+    const control1: VectorNode = {
       id: id1,
-      type: GraphicNodeTypes.Control,
+      type: EmbNodeType.Control,
       x: newPosition.x,
       y: newPosition.y,
     };
@@ -145,7 +145,7 @@ export const tryMakeGraphicsNodeACurve = (
   }
 
   if (!ownsPrev || !ownsNext) {
-    const updatedNodeData = { ...obj.node } as BasicGraphicsNode;
+    const updatedNodeData = { ...obj.node } as RealNode;
     if (!ownsPrev) updatedNodeData.ownsPrev = true;
     if (!ownsNext) updatedNodeData.ownsNext = true;
     if (!ownsNext && !ownsPrev) {

@@ -1,5 +1,5 @@
 import { createMemo, useContext } from "solid-js";
-import { SceneObject } from "../types/scene";
+import { EmbObject } from "../types/scene";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
 import { Cursor } from "../store/toolStore";

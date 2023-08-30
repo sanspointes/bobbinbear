@@ -11,7 +11,7 @@ import {
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
 import { SolixiState } from "@bearbroidery/solixi";
 import { Uuid } from "../../utils/uuid";
-import { BaseSceneObject, VirtualSceneObject } from "../../types/scene";
+import { EmbBase, EmbHasVirtual } from "../../types/scene";
 import {
   Command,
   DeselectObjectsCommand,
@@ -22,7 +22,7 @@ import { InputModel } from "../inputStore";
 import { Point } from "@pixi/core";
 import { MultiCommand } from "../commands/shared";
 import { SetInspectingCommand } from "../commands/SetInspectingCommand";
-import { SceneObject } from "../../types/scene";
+import { EmbObject } from "../../types/scene";
 import { tryMakeGraphicsNodeACurve } from "../helpers";
 
 export const PenEvents = {
@@ -72,7 +72,7 @@ export const createPenToolStore = (
     }
   });
   // Internal State
-  let currHover: Uuid<BaseSceneObject> | undefined;
+  let currHover: Uuid<EmbBase> | undefined;
   const offset = new Point();
   let newPosition: Point | undefined;
 
@@ -109,11 +109,11 @@ export const createPenToolStore = (
       PenStates.Hoverring,
       PenEvents.PointerDown,
       PenStates.PointerDownOnElement,
-      (id: Uuid<BaseSceneObject>) => {
+      (id: Uuid<EmbBase>) => {
         // const cmds: Command[] = [];
         const obj = sceneModel.objects.get(id) as
-          & BaseSceneObject
-          & VirtualSceneObject;
+          & EmbBase
+          & EmbHasVirtual;
         console.log(obj);
         // if (obj && obj.virtual) {
         //   const cmd = obj.virtualCreator();

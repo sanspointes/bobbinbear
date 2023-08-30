@@ -3,7 +3,7 @@ import { TbChevronDown, TbEye, TbEyeClosed } from "solid-icons/tb";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
 import { AllMessages, AppContext, GeneralHandler } from "../store";
-import { BaseSceneObject } from "../types/scene";
+import { EmbBase } from "../types/scene";
 import {
   DeselectObjectsCommand,
   SelectObjectsCommand,
@@ -18,7 +18,7 @@ import { Uuid, uuid } from "../utils/uuid";
  * Helpers
  */
 const toggleVisibility = (
-  object: BaseSceneObject,
+  object: EmbBase,
   dispatch: GeneralHandler<AllMessages>,
 ) => {
   const newValue = !object.visible;
@@ -27,7 +27,7 @@ const toggleVisibility = (
 };
 
 const selectObject = (
-  objectId: Uuid<BaseSceneObject>,
+  objectId: Uuid<EmbBase>,
   sceneModel: SceneModel,
   dispatch: GeneralHandler<AllMessages>,
 ) => {
@@ -45,7 +45,7 @@ const selectObject = (
 };
 
 type TreeNodeProps = {
-  object: BaseSceneObject;
+  object: EmbBase;
   indent: number;
 };
 export function TreeNode(props: TreeNodeProps) {
