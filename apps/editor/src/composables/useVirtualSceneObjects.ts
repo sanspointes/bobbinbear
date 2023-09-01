@@ -9,14 +9,14 @@ import {
   useContext,
 } from "solid-js";
 import { createStore } from "solid-js/store";
-import { EmbBase } from "../types/scene";
+import { EmbBase } from "../emb-objects/shared";
 import { AppContext } from "../store";
 import { access, MaybeAccessor } from "@solid-primitives/utils";
 
 export const useTemporarySceneObjects = (
   tempObjs: Accessor<(EmbBase | null)[]>,
 ) => {
-  const ctx = useContext(AppContext)
+  const ctx = useContext(AppContext);
   const { sceneStore } = ctx;
   createRenderEffect(on(tempObjs, (tempObjs, prevTempObjs) => {
     if (prevTempObjs) {
@@ -47,7 +47,7 @@ export const useTemporarySceneObject = (
   onMount(() => {
     sceneStore.objects.set(store.id, store);
     sceneStore.objectSetters.set(store.id, set);
-  })
+  });
 
   onCleanup(() => {
     sceneStore.objects.delete(store.id);
@@ -61,10 +61,10 @@ export const mapTemporarySceneObjects = <T, TObject extends EmbBase>(
 ) => {
   const v = mapArray(data, (v, i) => {
     const sceneObject = createMemo(() => {
-      const sceneObject = mapFn(v, () => i());
+      const sceneObject = mapFn(v, i);
       if (sceneObject) useTemporarySceneObject(sceneObject);
-      return sceneObject
-    })
+      return sceneObject;
+    });
     return sceneObject;
   });
   return v;

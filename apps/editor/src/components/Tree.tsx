@@ -3,7 +3,7 @@ import { TbChevronDown, TbEye, TbEyeClosed } from "solid-icons/tb";
 import { Collapsible as KCollapsible } from "@kobalte/core";
 
 import { AllMessages, AppContext, GeneralHandler } from "../store";
-import { EmbBase } from "../types/scene";
+import { EmbBase } from "../emb-objects/shared";
 import {
   DeselectObjectsCommand,
   SelectObjectsCommand,

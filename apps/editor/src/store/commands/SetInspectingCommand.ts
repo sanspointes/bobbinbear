@@ -1,5 +1,5 @@
 import { produce, SetStoreFunction } from "solid-js/store";
-import { EmbBase } from "../../types/scene";
+import { EmbBase } from "../../emb-objects/shared";
 import { Uuid } from "../../utils/uuid";
 import { SceneModel } from "../sceneStore";
 import { AbstractCommand, assertDefined, assertSameType, SerializedCommand } from "./shared";

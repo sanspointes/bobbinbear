@@ -3,16 +3,15 @@ import { Sprite } from "@pixi/sprite";
 import { P } from "@bearbroidery/solixi";
 
 import {
-  EmbNodeType,
-  EmbNode as EmbNode,
   EmbHasVirtual,
-} from "../types/scene";
-import { useTexture } from "../composables/useAsset";
+} from "../shared";
+import { useTexture } from "../../composables/useAsset";
 
-import NodePointSrc from "../assets/node_point.png";
-import NodeControlSrc from "../assets/node_control.png";
+import NodePointSrc from "../../assets/node_point.png";
+import NodeControlSrc from "../../assets/node_control.png";
 import { Circle, ObservablePoint, Point, Texture } from "@pixi/core";
-import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
+import { useHoverSelectOutline } from "../../composables/useHoverSelectOutline";
+import { EmbNode, EmbNodeType } from "./shared";
 
 const NODE_Z_INDEX = -100;
 

@@ -10,10 +10,9 @@ import { generateStore } from ".";
 import { arrayLast } from "../utils/array";
 import {
   EmbBase,
-  EmbGroup,
   EmbHasInspecting,
-  EmbObject,
-} from "../types/scene";
+} from "../emb-objects/shared";
+import { EmbGroup, EmbObject } from "../emb-objects";
 
 export const getObject = <T extends EmbBase>(
   store: SceneModel,
@@ -48,7 +47,7 @@ export type ObjectMapData<T extends EmbObject = EmbObject> = {
 export type SceneStoreMessages = {
   "scene:hover": Uuid<EmbBase>;
   "scene:unhover": Uuid<EmbBase>;
-  "scene:do-command": Command;
+  "scene:do-command": Command<EmbBase>;
   "scene:undo": void;
   "scene:redo": void;
 };
@@ -82,9 +81,9 @@ export const createSceneStore = () => {
     children: [],
     position: new Point(0, 0),
     selected: false,
-  });
+  }) as [object: EmbBase, set: SetStoreFunction<EmbBase>];
 
-  const result = generateStore<SceneModel, SceneStoreMessages>({
+  const model: SceneModel = {
     inspecting: undefined,
     inspectRoot: undefined,
     selectedIds: [],
@@ -94,7 +93,9 @@ export const createSceneStore = () => {
     objects: new ReactiveMap([[uuid("root"), object]]),
     objectSetters: new Map([[uuid("root"), set]]),
     root: object,
-  }, {
+  };
+
+  const result = generateStore<SceneModel, SceneStoreMessages>(model, {
     "scene:hover": (store, _2, uuid) => {
       const set = getObjectSetter(store, uuid);
       if (set) set("hovered", true);

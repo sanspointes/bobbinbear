@@ -1,9 +1,9 @@
 import { P } from "@bearbroidery/solixi";
-import { SceneObjectChildren } from "./general";
-import { EmbCanvas as EmbCanvas } from "../types/scene";
 import { Mesh } from "@pixi/mesh";
 import { onMount } from "solid-js";
-import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
+import { useHoverSelectOutline } from "../../composables/useHoverSelectOutline";
+import { EmbCanvas } from ".";
+import { SceneObjectChildren } from "..";
 
 type EmbCanvasProps = EmbCanvas & {
   order: number;

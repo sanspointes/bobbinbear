@@ -3,7 +3,7 @@ import { SceneModel, getObjectSetter } from "../sceneStore";
 import { AbstractCommand, SerializedCommand, assertDefined } from "./shared";
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
-import { EmbBase } from '../../types/scene';
+import { EmbBase } from '../../emb-objects/shared';
 import { arrayMoveElToIndex, arrayRemoveEl } from '../../utils/array';
 
 

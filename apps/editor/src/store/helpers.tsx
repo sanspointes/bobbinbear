@@ -6,27 +6,17 @@ import {
   MutateSceneObjectArrayFieldCommand,
   SetSceneObjectFieldCommand,
 } from "./commands";
-import {
-  EmbBase,
-  RealNode,
-  EmbCanvas,
-  EmbNodeType,
-  EmbVector,
-  VectorNode,
-  EmbNode,
-} from "../types/scene";
+import { EmbBase } from "../emb-objects/shared";
 import { AppDispatcher } from ".";
 import { SceneModel } from "./sceneStore";
 import {
   arrayFindFromBackwardsCircular,
   arrayFindFromCircular,
-  arrayGetCircular,
-  arrayGetOffset,
-  arrayOffsetIterCircular,
 } from "../utils/array";
 import { assertDefined, MultiCommand } from "./commands/shared";
 import { addPoint, lerpPoint, subPoint } from "../utils/math";
-import { iterFind } from "../utils/iter";
+import { EmbCanvas, EmbNode, EmbNodeType, EmbVector, isNodePointVirtual, VectorNode } from "../emb-objects";
+import { isEmbNode } from "../emb-objects/utils";
 
 export const sceneObjectDefaults = <
   TObject extends EmbBase = EmbBase,
@@ -63,13 +53,25 @@ export const createCanvas = (
 export const tryMakeGraphicsNodeACurve = (
   dispatch: AppDispatcher,
   store: SceneModel,
-  nodeId: Uuid<EmbNode & VectorNode>,
+  nodeId: Uuid<EmbNode>,
 ) => {
-  const obj = store.objects.get(nodeId) as EmbNode;
-  if (!assertDefined('tryMakeGraphicsNodeACurve', obj, 'NodeSceneObject')) return;
-  const node = obj.node as RealNode;
+  const obj = store.objects.get(nodeId);
+  if (!assertDefined("tryMakeGraphicsNodeACurve", obj, "NodeSceneObject")) {
+    return;
+  }
+  if (!isEmbNode(obj)) return;
+  const node = obj.node; 
+
+  if (!isNodePointVirtual(node)) return;
+
   const graphics = store.objects.get(obj.relatesTo) as EmbVector;
-  if (!assertDefined('tryMakeGraphicsNodeACurve', graphics, 'Related graphics object')) return;
+  if (
+    !assertDefined(
+      "tryMakeGraphicsNodeACurve",
+      graphics,
+      "Related graphics object",
+    )
+  ) return;
   const nodeIndex = graphics.shape.findIndex((n) => n.id === nodeId);
   if (nodeIndex === -1) {
     console.warn(
@@ -82,7 +84,11 @@ export const tryMakeGraphicsNodeACurve = (
     nodeIndex - 1,
     (el) => el.type === EmbNodeType.Point,
   );
-  const nextPoint = arrayFindFromCircular(graphics.shape, nodeIndex + 1, (el) => el.type === EmbNodeType.Point);
+  const nextPoint = arrayFindFromCircular(
+    graphics.shape,
+    nodeIndex + 1,
+    (el) => el.type === EmbNodeType.Point,
+  );
 
   const cmds: Command<EmbVector>[] = [];
 

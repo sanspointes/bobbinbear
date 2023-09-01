@@ -11,7 +11,7 @@ import {
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
 import { SolixiState } from "@bearbroidery/solixi";
 import { Uuid } from "../../utils/uuid";
-import { EmbBase, EmbHasVirtual } from "../../types/scene";
+import { EmbBase, EmbHasVirtual } from "../../emb-objects/shared";
 import {
   Command,
   DeselectObjectsCommand,
@@ -22,7 +22,7 @@ import { InputModel } from "../inputStore";
 import { Point } from "@pixi/core";
 import { MultiCommand } from "../commands/shared";
 import { SetInspectingCommand } from "../commands/SetInspectingCommand";
-import { EmbObject } from "../../types/scene";
+import { EmbObject } from "../../emb-objects/shared";
 import { tryMakeGraphicsNodeACurve } from "../helpers";
 
 export const PenEvents = {

@@ -1,5 +1,5 @@
 import { Uuid } from "../utils/uuid";
-import { EmbBase, EmbObjectType } from "./scene";
+import { EmbBase, EmbObjectType } from "../emb-objects/shared";
 
 declare module '@pixi/display' {
   export interface DisplayObject {

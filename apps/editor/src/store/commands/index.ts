@@ -1,12 +1,12 @@
 import { AbstractCommand, MultiCommand } from "./shared";
-import { EmbBase } from "../../types/scene";
+import { EmbBase } from "../../emb-objects/shared";
 import { ParentObjectCommand } from "./ParentObjectCommand";
 import { CreateObjectCommand } from "./CreateObjectCommand";
 import { DeleteObjectCommand } from "./DeleteObjectCommand";
 import { DeselectObjectsCommand } from "./DeselectObjectCommand";
 import { MoveObjectCommand } from "./MoveObjectCommand";
 import { SelectObjectsCommand } from "./SelectObjectCommand";
-import { SetSceneObjectFieldCommand } from "./SetSceneObjectFieldCommand";
+import { SetEmbObjectFieldCommand } from "./SetSceneObjectFieldCommand";
 import { MutateSceneObjectArrayFieldCommand } from "./MutateSceneObjectArrayFieldCommand";
 import { UpdateGraphicsNodeCommand } from "./UpdateGraphicsNodeCommand";
 import { SetInspectingCommand } from "./SetInspectingCommand";
@@ -18,7 +18,7 @@ export {
   DeselectObjectsCommand,
   MoveObjectCommand,
   SelectObjectsCommand,
-  SetSceneObjectFieldCommand,
+  SetEmbObjectFieldCommand as SetSceneObjectFieldCommand,
   UpdateGraphicsNodeCommand,
   MutateSceneObjectArrayFieldCommand,
 };
@@ -30,12 +30,12 @@ type AtomicCommands<TObject extends EmbBase> =
   | DeselectObjectsCommand<TObject>
   | MoveObjectCommand<TObject>
   | SelectObjectsCommand<TObject>
-  | SetSceneObjectFieldCommand<TObject>
+  | SetEmbObjectFieldCommand<TObject>
   | UpdateGraphicsNodeCommand
   | MutateSceneObjectArrayFieldCommand
   | SetInspectingCommand;
 
-export type Command<TObject extends EmbBase> =
+export type Command<TObject extends EmbBase = EmbBase> =
   | MultiCommand<TObject>
   | AtomicCommands<TObject>;
 export type CommandType = Command<EmbBase>['type'];
@@ -48,7 +48,7 @@ export const _commandPrototypeMap: Record<CommandType, Command<EmbBase>> = {
   "DeleteObjectCommand": DeleteObjectCommand.prototype,
   "MoveObjectCommand": MoveObjectCommand.prototype,
   "SelectObjectsCommand": SelectObjectsCommand.prototype,
-  "SetSceneObjectFieldCommand": SetSceneObjectFieldCommand.prototype,
+  "SetSceneObjectFieldCommand": SetEmbObjectFieldCommand.prototype,
   "UpdateGraphicsNodeCommand": UpdateGraphicsNodeCommand.prototype,
   "MultiCommand": MultiCommand.prototype,
   "DeselectObjectsCommand": DeselectObjectsCommand.prototype,

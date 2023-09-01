@@ -1,5 +1,5 @@
 import { produce, SetStoreFunction } from "solid-js/store";
-import { EmbBase } from "../../types/scene";
+import { EmbBase } from "../../emb-objects/shared";
 import { getObjectSetter, SceneModel } from "../sceneStore";
 import {
   AbstractCommand,
@@ -9,7 +9,7 @@ import {
 } from "./shared";
 import { Command } from ".";
 import { Uuid } from "../../utils/uuid";
-import { KeysWithType, PickOfType } from "../../types/utility";
+import { PickOfType } from "../../types/utility";
 import { arrayInsertCircular } from "../../utils/array";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

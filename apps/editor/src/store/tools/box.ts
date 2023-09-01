@@ -7,8 +7,8 @@ import {
 } from "./shared";
 import { AllMessages, BaseStore, GeneralHandler, generateStore } from "..";
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
-import { EmbObject } from "../../types/scene";
-import { EmbVector } from "../../types/scene";
+import { EmbObject } from "../../emb-objects/shared";
+import { EmbVector } from "../../emb-objects/shared";
 import { newUuid, uuid, Uuid } from "../../utils/uuid";
 import { createBoxGraphicsCommands } from "../../utils/graphics";
 import { SetSceneObjectFieldCommand, CreateObjectCommand } from "../commands";

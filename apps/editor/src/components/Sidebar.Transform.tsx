@@ -1,5 +1,5 @@
 import { useContext } from "solid-js"
-import { EmbObject } from "../types/scene"
+import { EmbObject } from "../emb-objects/shared"
 import { AccordionItem } from "./generics/Accordian"
 import { NumberInput } from "./generics/NumberInput"
 import { AppContext } from "../store"

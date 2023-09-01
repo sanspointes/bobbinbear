@@ -1,13 +1,23 @@
-import { Point } from '@pixi/core';
-import { SetStoreFunction, produce } from 'solid-js/store';
-import { EmbBase, RealNode, EmbNodeType, EmbVector, VectorNode, EmbNode } from "../../types/scene";
-import { SceneModel, getObject, getObjectSetter } from "../sceneStore";
-import { AbstractCommand, SerializedCommand, assertSameType } from "./shared";
-import { Command } from '.';
-import { Uuid } from '../../utils/uuid';
-import { arrayGetCircular, arraySetCircular } from '../../utils/array';
+import { Point } from "@pixi/core";
+import { produce, SetStoreFunction } from "solid-js/store";
+import { EmbBase } from "../../emb-objects/shared";
+import { getObject, getObjectSetter, SceneModel } from "../sceneStore";
+import { AbstractCommand, assertSameType, SerializedCommand } from "./shared";
+import { Command } from ".";
+import { Uuid } from "../../utils/uuid";
+import { arrayGetCircular, arraySetCircular } from "../../utils/array";
+import {
+  EmbNode,
+  EmbNodeType,
+  EmbVector,
+  isNodePoint,
+  NodePoint,
+  VectorNode,
+} from "../../emb-objects";
+import { isEmbNode } from "../../emb-objects/utils";
 
-export class MoveObjectCommand<TObject extends EmbBase> extends AbstractCommand {
+export class MoveObjectCommand<TObject extends EmbBase>
+  extends AbstractCommand {
   public updatable: boolean = true;
 
   name = "Move Object";
@@ -33,24 +43,43 @@ export class MoveObjectCommand<TObject extends EmbBase> extends AbstractCommand 
 
     // If moving a node, update the mesh of the graphic.
     const nodeObject = object as unknown as EmbNode;
-    if (nodeObject.type === 'node' && nodeObject.relatesTo) {
+    if (isEmbNode(object)) {
       const currentNode = nodeObject.node;
       const graphicObject = getObject(store, nodeObject.relatesTo);
-      if (!graphicObject) throw new Error('MoveObjectCommand: Attempting to graphic related to moved node but no graphic found.')
+      if (!graphicObject) {
+        throw new Error(
+          "MoveObjectCommand: Attempting to graphic related to moved node but no graphic found.",
+        );
+      }
 
-      const index = graphicObject.shape.findIndex(node => node.id === currentNode.id);
+      const index = graphicObject.shape.findIndex((node) =>
+        node.id === currentNode.id
+      );
       const setGraphics = getObjectSetter(store, nodeObject.relatesTo)!;
-      setGraphics(produce(obj => {
+      setGraphics(produce((obj) => {
         const graphic = obj as EmbVector;
-        if (currentNode.type === EmbNodeType.Point || currentNode.type === EmbNodeType.Jump) {
-          MoveObjectCommand.handleMovePointNode(graphic, currentNode, index, this.newPosition);
+        if (
+          currentNode.type === EmbNodeType.Point ||
+          currentNode.type === EmbNodeType.Jump
+        ) {
+          MoveObjectCommand.handleMovePointNode(
+            graphic,
+            currentNode,
+            index,
+            this.newPosition,
+          );
         } else if (currentNode.type === EmbNodeType.Control) {
-          MoveObjectCommand.handleMoveControlNode(graphic, currentNode, index, this.newPosition)
+          MoveObjectCommand.handleMoveControlNode(
+            graphic,
+            currentNode,
+            index,
+            this.newPosition,
+          );
         }
       }));
     }
 
-    // Update node position 
+    // Update node position
     const set = getObjectSetter(store, this.objectId)!;
     set(produce((object) => {
       object.position = this.newPosition.clone();
@@ -78,18 +107,29 @@ export class MoveObjectCommand<TObject extends EmbBase> extends AbstractCommand 
     set(produce((object) => object.position = this.oldPosition!.clone()));
   }
 
-  static handleMoveControlNode(graphicObject: EmbVector, node: RealNode, index: number, newPosition: Point) {
+  static handleMoveControlNode(
+    graphicObject: EmbVector,
+    node: NodePoint,
+    index: number,
+    newPosition: Point,
+  ) {
     const diffx = newPosition.x - node.x;
     const diffy = newPosition.y - node.y;
 
     let lookForward = false;
-    let owningNode: RealNode | undefined;
-    const nextNode = arrayGetCircular<RealNode>(graphicObject.shape, index + 1);
-    if (nextNode?.ownsPrev) {
+    let owningNode: NodePoint | undefined;
+    const nextNode = arrayGetCircular<VectorNode>(
+      graphicObject.shape,
+      index + 1,
+    );
+    if (nextNode && isNodePoint(nextNode) && nextNode.ownsPrev) {
       owningNode = nextNode;
       lookForward = true;
     } else {
-      owningNode = arrayGetCircular<RealNode>(graphicObject.shape, index - 1);
+      owningNode = arrayGetCircular<VectorNode>(
+        graphicObject.shape,
+        index - 1,
+      ) as NodePoint;
     }
     const needsMoveControlNode = owningNode?.isControlPaired;
 
@@ -103,7 +143,11 @@ export class MoveObjectCommand<TObject extends EmbBase> extends AbstractCommand 
           y: otherNode.y - diffy,
         });
       } else {
-        console.warn(`MoveObject: Attempted to move other control node but not found ${index} + ${lookForward ? 2 : -2}.`)
+        console.warn(
+          `MoveObject: Attempted to move other control node but not found ${index} + ${
+            lookForward ? 2 : -2
+          }.`,
+        );
       }
     }
 
@@ -114,29 +158,34 @@ export class MoveObjectCommand<TObject extends EmbBase> extends AbstractCommand 
     });
   }
 
-  static handleMovePointNode(graphicObject: EmbVector, node: RealNode, index: number, newPosition: Point) {
+  static handleMovePointNode(
+    graphicObject: EmbVector,
+    node: NodePoint,
+    index: number,
+    newPosition: Point,
+  ) {
     const diffx = newPosition.x - node.x;
     const diffy = newPosition.y - node.y;
 
-    if ((node as RealNode).ownsPrev) {
+    if (node.ownsPrev) {
       const preNode = arrayGetCircular(graphicObject.shape, index - 1);
       if (preNode?.type === EmbNodeType.Control) {
         arraySetCircular(graphicObject.shape, index - 1, {
           ...preNode,
           x: preNode.x + diffx,
           y: preNode.y + diffy,
-        })
+        });
       }
     }
 
-    if ((node as RealNode).ownsNext) {
+    if (node.ownsNext) {
       const nextNode = arrayGetCircular(graphicObject.shape, index + 1);
       if (nextNode?.type === EmbNodeType.Control) {
         arraySetCircular(graphicObject.shape, index + 1, {
           ...nextNode,
           x: nextNode.x + diffx,
           y: nextNode.y + diffy,
-        })
+        });
       }
     }
 
@@ -148,13 +197,13 @@ export class MoveObjectCommand<TObject extends EmbBase> extends AbstractCommand 
   }
 
   fromObject<T extends Command>(object: SerializedCommand<T>): void {
-    this.objectId = object['objectId'] as Uuid<TObject>;
-    this.oldPosition = object['oldPosition'] as Point | undefined;
+    this.objectId = object["objectId"] as Uuid<TObject>;
+    this.oldPosition = object["oldPosition"] as Point | undefined;
   }
 
   toObject(object: Record<string, unknown>): void {
-    object['objectId'] = this.objectId;
-    object['oldPosition'] = this.oldPosition;
+    object["objectId"] = this.objectId;
+    object["oldPosition"] = this.oldPosition;
   }
 
   updateData(newer: Command): void {

@@ -1,5 +1,5 @@
 import { SetStoreFunction } from "solid-js/store";
-import { EmbBase } from "../../types/scene";
+import { EmbBase } from "../../emb-objects/shared";
 import { getObjectSetter, SceneModel } from "../sceneStore";
 import {
   AbstractCommand,
@@ -13,7 +13,7 @@ import { Uuid } from "../../utils/uuid";
 /**
  * Sets a single field on a scene object.
  */
-export class SetSceneObjectFieldCommand<
+export class SetEmbObjectFieldCommand<
   TObject extends EmbBase = EmbBase,
   K extends keyof TObject = keyof TObject,
 > extends AbstractCommand {

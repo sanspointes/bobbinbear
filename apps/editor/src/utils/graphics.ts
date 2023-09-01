@@ -1,4 +1,4 @@
-import { EmbNodeType, VectorNode } from "../types/scene";
+import { EmbNode, EmbNodeType, VectorNode } from "../emb-objects";
 import { newUuid } from "./uuid";
 
 export const createBoxGraphicsCommands = (
@@ -6,22 +6,22 @@ export const createBoxGraphicsCommands = (
   height: number,
 ): VectorNode[] => {
   return [{
-    id: newUuid<VectorNode>(),
+    id: newUuid<EmbNode>(),
     type: EmbNodeType.Jump,
     x: 0,
     y: 0,
   }, {
-    id: newUuid<VectorNode>(),
+    id: newUuid<EmbNode>(),
     type: EmbNodeType.Point,
     x: width,
     y: 0,
   }, {
-    id: newUuid<VectorNode>(),
+    id: newUuid<EmbNode>(),
     type: EmbNodeType.Point,
     x: width,
     y: height,
   }, {
-    id: newUuid<VectorNode>(),
+    id: newUuid<EmbNode>(),
     type: EmbNodeType.Point,
     x: 0,
     y: height,

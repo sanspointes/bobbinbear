@@ -3,7 +3,7 @@ import {
   EmbVector,
   VectorNode,
   EmbObject,
-} from "../../types/scene";
+} from "../../emb-objects/shared";
 import { Uuid } from "../../utils/uuid";
 import { getObject, getObjectSetter, SceneModel } from "../sceneStore";
 import { AbstractCommand, assertSameField, assertSameType, SerializedCommand } from "./shared";

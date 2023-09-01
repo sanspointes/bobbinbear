@@ -6,7 +6,7 @@ import clsx from 'clsx';
 import { Command, MultiCommand } from "../store/commands";
 import { Popover } from "./generics/Popover";
 import { Button } from "./generics/Button";
-import { EmbBase } from "../types/scene";
+import { EmbBase } from "../emb-objects/shared";
 
 export type CommandStackProps = {
   stack: Command[];

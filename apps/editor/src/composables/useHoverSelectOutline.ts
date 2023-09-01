@@ -1,5 +1,5 @@
 import { Container } from "@pixi/display";
-import { EmbBase } from "../types/scene";
+import { EmbBase } from "../emb-objects/shared";
 import { createEffect } from "solid-js";
 import { OutlineFilter } from "@pixi/filter-outline";
 import { arrayRemoveEl } from "../utils/array";

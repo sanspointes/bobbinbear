@@ -1,27 +1,33 @@
 import { P } from "@bearbroidery/solixi";
-import { SceneObjectChildren } from "./general";
-import {
-  RealNode,
-  EmbNodeType,
-  EmbVector as EmbVector,
-  VectorNode,
-  EmbNode,
-  EmbHasVirtual,
-} from "../types/scene";
 import { Point } from "@pixi/core";
-import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
-import { createEffect, createMemo, createRenderEffect, createSignal, For, on, onMount, useContext } from "solid-js";
-import { AppContext } from "../store";
-import { useHoverSelectOutline } from "../composables/useHoverSelectOutline";
-import { Show } from "solid-js";
-import { sceneObjectDefaults } from "../store/helpers";
-import { arrayFirst, arrayIterCircularEndInclusive, arrayIterPairs } from "../utils/array";
-import { lerp } from "../utils/math";
-import { newUuid, Uuid } from "../utils/uuid";
-import { EmbNodeView } from "./EmbNode";
-import { MutateSceneObjectArrayFieldCommand } from "../store/commands";
-import { mapTemporarySceneObjects } from "../composables/useVirtualSceneObjects";
 import { Container } from "@pixi/display";
+import { Graphics, IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
+import {
+  For,
+  Show,
+  createEffect,
+  createMemo,
+  createRenderEffect,
+  onMount,
+  useContext,
+} from "solid-js";
+import { EmbVector } from ".";
+import { useHoverSelectOutline } from "../../composables/useHoverSelectOutline";
+import { mapTemporarySceneObjects } from "../../composables/useVirtualSceneObjects";
+import { AppContext } from "../../store";
+import { MutateSceneObjectArrayFieldCommand } from "../../store/commands";
+import { sceneObjectDefaults } from "../../store/helpers";
+import {
+  arrayFirst,
+  arrayIterCircularEndInclusive,
+  arrayIterPairs,
+} from "../../utils/array";
+import { lerp } from "../../utils/math";
+import { Uuid, newUuid } from "../../utils/uuid";
+import { EmbNode, EmbNodeType, VectorNode, isNodePoint } from "../node";
+import { EmbNodeView } from "../node/EmbNode";
+import { EmbHasVirtual } from "../shared";
+import { SceneObjectChildren } from "..";
 
 type ExtraOptions = {
   close: boolean;
@@ -154,7 +160,7 @@ export const EmbVectorView = (props: EmbVectorProps) => {
         type: EmbNodeType.Point,
         x: midX,
         y: midY,
-        id: id as unknown as Uuid<VectorNode>,
+        id,
       };
 
       const midObject: EmbNode & EmbHasVirtual = {
@@ -172,7 +178,7 @@ export const EmbVectorView = (props: EmbVectorProps) => {
               toDelete: 0,
               toInsert: [midNode],
               circularInsert: true,
-            }
+            },
           );
           return cmd;
         },
@@ -197,19 +203,21 @@ export const EmbVectorView = (props: EmbVectorProps) => {
       let needsLineNext = false;
       let prev: VectorNode | undefined;
       for (const node of arrayIterCircularEndInclusive(props.shape)) {
-      // for (const node of props.shape) {
-        const n = node as RealNode;
-        if ((n.ownsPrev || needsLineNext) && prev ) {
+        if (!isNodePoint(node)) continue;
+
+        if ((node.ownsPrev || needsLineNext) && prev) {
           needsLineNext = false;
-          overlayGraphics.moveTo(n.x, n.y);
+          overlayGraphics.moveTo(node.x, node.y);
           overlayGraphics.lineTo(prev.x, prev.y);
         }
-        if (n.ownsNext) {
+
+        if (node.ownsNext) {
           needsLineNext = true;
         }
+
         prev = node;
       }
-    } 
+    }
   });
 
   return (
@@ -227,7 +235,7 @@ export const EmbVectorView = (props: EmbVectorProps) => {
         ref={graphics}
         interactive={!isAppInspecting() || isThisInspecting()}
         alpha={!isAppInspecting() || isThisInspecting() ? 1 : 0.5}
-       />
+      />
       <SceneObjectChildren children={props.children} />
       <P.Graphics
         ref={overlayGraphics}

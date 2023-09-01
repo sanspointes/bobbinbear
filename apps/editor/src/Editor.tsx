@@ -1,29 +1,32 @@
 import { Canvas, SolixiState, useSolixi } from "@bearbroidery/solixi";
-import { AppContext, createAppStore } from "./store";
 import {
+  ErrorBoundary,
   createRenderEffect,
   createSignal,
-  ErrorBoundary,
   onMount,
   useContext,
 } from "solid-js";
 
-
+import { preventDefault } from "@solid-primitives/event-listener";
 import {
   DragDropProvider,
   DragDropSensors,
 } from "@thisbeyond/solid-dnd";
-import { Toolbar } from "./components/Toolbar";
+
+import { AppContext, createAppStore } from "./store";
 import { Cursor } from "./store/toolStore";
-import { SceneObjectChildren } from "./sxi-components/general";
-import { Viewport } from "./sxi-components/Viewport";
+
+import { ErrorView } from "./components/ErrorView";
+import { SidebarLeft } from "./components/SceneTree";
+import { Sidebar } from "./components/Sidebar";
+import { Toolbar } from "./components/Toolbar";
+
+import { SceneObjectChildren } from "./emb-objects";
 import { CursorTest } from "./sxi-components/CursorTest";
 import { SelectBox } from "./sxi-components/SelectBox";
-import { preventDefault } from "@solid-primitives/event-listener";
-import { Sidebar } from "./components/Sidebar";
+import { Viewport } from "./sxi-components/Viewport";
+
 import { uuid } from "./utils/uuid";
-import { SidebarLeft } from "./components/SceneTree";
-import { ErrorView } from "./components/ErrorView";
 
 export const [appError, setAppError] = createSignal<Error>();
 

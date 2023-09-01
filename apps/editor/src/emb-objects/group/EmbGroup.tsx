@@ -1,6 +1,6 @@
 import { P } from "@bearbroidery/solixi";
-import { EmbGroup as EmbGroup } from "../types/scene";
-import { SceneObjectChildren } from "./general";
+import { EmbGroup } from ".";
+import { SceneObjectChildren } from "..";
 
 type EmbGroupProps = EmbGroup & {
   order: number;

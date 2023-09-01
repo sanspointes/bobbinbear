@@ -3,7 +3,7 @@ import {
   EmbBase,
   EmbVector,
   EmbHasFill,
-} from "../types/scene";
+} from "../emb-objects/shared";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
 import { SetSceneObjectFieldCommand } from "../store/commands";

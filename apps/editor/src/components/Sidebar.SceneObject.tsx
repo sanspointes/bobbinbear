@@ -1,5 +1,5 @@
 import { useContext } from "solid-js";
-import { EmbBase } from "../types/scene";
+import { EmbBase } from "../emb-objects/shared";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
 import { SetSceneObjectFieldCommand } from "../store/commands";

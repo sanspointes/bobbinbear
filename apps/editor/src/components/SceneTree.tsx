@@ -5,7 +5,7 @@ import { Collapsible as KCollapsible } from "@kobalte/core";
 import { AllMessages, AppContext, GeneralHandler } from "../store";
 import { Uuid, uuid } from "../utils/uuid";
 import { Tree } from "./generics/Tree";
-import { EmbBase, EmbObject } from "../types/scene";
+import { EmbBase, EmbObject } from "../emb-objects/shared";
 import { SceneModel } from "../store/sceneStore";
 import { Button } from "./generics/Button";
 import {

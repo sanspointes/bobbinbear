@@ -1,18 +1,44 @@
 import { createStore, produce, SetStoreFunction } from "solid-js/store";
 import { getObjectSetter, SceneModel } from "../sceneStore";
 import { type Command, type CommandPrototypeMap } from ".";
-import { EmbBase } from "../../types/scene";
+import { EmbBase } from "../../emb-objects/shared";
 import { Uuid } from "../../utils/uuid";
 import { arrayRemove } from "../../utils/array";
 import { batch } from "solid-js";
 
 export type SerializedCommand<TCommand extends Command> = {
-  type: TCommand[''];
+  type: TCommand["type"];
   name: string;
   final: boolean;
   updatable: boolean;
 } & TCommand;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SideEffectExecuter<T extends any[]> = (
+  store: SceneModel,
+  setStore: SetStoreFunction<SceneModel>,
+  ...args: T
+) => void;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export class SideEffectsManager<T extends any[]> {
+  private sideEffects: SideEffectExecuter<T>[] = [];
+
+  public register(executor: SideEffectExecuter<T>) {
+    this.sideEffects.push(executor);
+  }
+
+  public execute(store: SceneModel, set: SetStoreFunction<SceneModel>, ...args: T) {
+    for (let i = 0; i < this.sideEffects.length; i++) {
+      const effect = this.sideEffects[i]!;
+      effect(store, set, ...args);
+    }
+  }
+}
+
+/**
+ * Base class of all commands.
+ */
 export abstract class AbstractCommand {
   public final = true;
   public abstract updatable: boolean;
@@ -25,6 +51,10 @@ export abstract class AbstractCommand {
   constructor() {
   }
 
+  /*
+   * Side effects.  Allows components to hook into and extend behaviour of commands. 
+   * To be run in each command execution / undo.
+   */
   abstract perform(
     store: SceneModel,
     setStore: SetStoreFunction<SceneModel>,
@@ -69,8 +99,7 @@ export abstract class AbstractCommand {
   }
 }
 
-export class MultiCommand<TObject extends EmbBase>
-  extends AbstractCommand {
+export class MultiCommand<TObject extends EmbBase> extends AbstractCommand {
   public updatable: boolean = true;
   name = "Multi Command";
   type: "MultiCommand" | string = "MultiCommand";
@@ -157,8 +186,7 @@ export const traverse = <T extends EmbBase>(
   }
 };
 
-
-export type InsertPosition = 'first' | 'last';
+export type InsertPosition = "first" | "last";
 /**
  * Adds object and children to store
  */
@@ -166,7 +194,7 @@ export const addObject = (
   store: SceneModel,
   _1: SetStoreFunction<SceneModel>,
   newObjectData: EmbBase,
-  insertPosition: InsertPosition = 'last'
+  insertPosition: InsertPosition = "last",
 ) => {
   const objMap = store.objects;
   if (objMap.has(newObjectData.id)) {
@@ -191,9 +219,9 @@ export const addObject = (
       const set = getObjectSetter(store, newObjectData.parent);
       if (set) {
         set(produce((parent) => {
-          if (insertPosition === 'first') {
+          if (insertPosition === "first") {
             parent.children.splice(0, 0, object.id);
-          } else if (insertPosition === 'last') {
+          } else if (insertPosition === "last") {
             parent.children.push(object.id);
           }
         }));
@@ -230,7 +258,6 @@ export const deleteObject = (
   return false;
 };
 
-
 type AssertionInfo = string | { type: string };
 export const assertSameType = <
   TObject1 extends Command,
@@ -264,7 +291,7 @@ export const assertDefined = <TValue>(
   if (value !== undefined) return true;
   throw new Error(
     `${
-      typeof (self) === "string" ? self : self.type
+      typeof self === "string" ? self : self.type
     }: Failed checking that "${valueName}" variable was not undefined.`,
   );
 };
