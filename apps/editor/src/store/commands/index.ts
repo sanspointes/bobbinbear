@@ -1,5 +1,5 @@
 import { AbstractCommand, MultiCommand } from "./shared";
-import { EmbBase } from "../../emb-objects/shared";
+import { EmbBase, EmbState } from "../../emb-objects/shared";
 import { ParentObjectCommand } from "./ParentObjectCommand";
 import { CreateObjectCommand } from "./CreateObjectCommand";
 import { DeleteObjectCommand } from "./DeleteObjectCommand";
@@ -35,15 +35,15 @@ type AtomicCommands<TObject extends EmbBase> =
   | MutateSceneObjectArrayFieldCommand
   | SetInspectingCommand;
 
-export type Command<TObject extends EmbBase = EmbBase> =
+export type Command<TObject extends EmbBase & EmbState = EmbBase & EmbState> =
   | MultiCommand<TObject>
   | AtomicCommands<TObject>;
-export type CommandType = Command<EmbBase>['type'];
+export type CommandType = Command['type'];
 
 export type CommandPrototypeMap = Record<CommandType, AbstractCommand>;
 
 
-export const _commandPrototypeMap: Record<CommandType, Command<EmbBase>> = {
+export const _commandPrototypeMap: Record<CommandType, Command> = {
   "CreateObjectCommand": CreateObjectCommand.prototype,
   "DeleteObjectCommand": DeleteObjectCommand.prototype,
   "MoveObjectCommand": MoveObjectCommand.prototype,

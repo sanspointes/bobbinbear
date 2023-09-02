@@ -7,13 +7,12 @@ import {
 } from "./shared";
 import { AllMessages, BaseStore, GeneralHandler, generateStore } from "..";
 import { createExclusiveStateMachine, t } from "../../utils/fsm";
-import { EmbObject } from "../../emb-objects/shared";
-import { EmbVector } from "../../emb-objects/shared";
 import { newUuid, uuid, Uuid } from "../../utils/uuid";
 import { createBoxGraphicsCommands } from "../../utils/graphics";
 import { SetSceneObjectFieldCommand, CreateObjectCommand } from "../commands";
 import { Point } from "@pixi/core";
 import { MultiCommand } from "../commands/shared";
+import { EmbObject, EmbVector } from "../../emb-objects";
 
 export const BoxEvents = {
   PointerDown: Symbol("b-Pointerdown"),
@@ -85,7 +84,7 @@ export const createBoxToolStore = (
           inspectingRoot: undefined,
           shallowLocked: false,
           hovered: false,
-          shape: currentShape,
+          segments: currentShape,
           close: true,
           inspecting: false,
           fill: {
@@ -101,7 +100,7 @@ export const createBoxToolStore = (
 
         const setShapeCommand = new SetSceneObjectFieldCommand<
           EmbVector
-        >(currentlyBuildingId, "shape", currentShape);
+        >(currentlyBuildingId, "segments", currentShape);
         setShapeCommand.final = false;
         const setPositionCommand = new SetSceneObjectFieldCommand<
           EmbVector
@@ -149,7 +148,7 @@ export const createBoxToolStore = (
         const setShapeCommand = new SetSceneObjectFieldCommand<
           EmbVector,
           keyof EmbVector
-        >(currentlyBuildingId, "shape", currentShape);
+        >(currentlyBuildingId, "segments", currentShape);
         setShapeCommand.final = false;
         const setPositionCommand = new SetSceneObjectFieldCommand<
           EmbVector,
@@ -199,7 +198,7 @@ export const createBoxToolStore = (
         const setShapeCommand = new SetSceneObjectFieldCommand<
           EmbVector,
           keyof EmbVector
-        >(currentlyBuildingId, "shape", currentShape);
+        >(currentlyBuildingId, "segments", currentShape);
         const setPositionCommand = new SetSceneObjectFieldCommand<
           EmbVector,
           keyof EmbVector
@@ -207,7 +206,6 @@ export const createBoxToolStore = (
 
         const cmd = new MultiCommand(
           createCommand,
-          // @ts-expect-error ; Issues with generic typing of GraphicSceneObject
           setShapeCommand,
           setPositionCommand,
         );

@@ -1,29 +1,56 @@
-import { EmbNode, EmbNodeType, VectorNode } from "../emb-objects";
+import { VectorNode, VectorNodeType } from "../emb-objects";
+import { VectorSegment, VectorSegmentType } from "../emb-objects/vec-seg";
 import { newUuid } from "./uuid";
 
 export const createBoxGraphicsCommands = (
   width: number,
   height: number,
-): VectorNode[] => {
+): VectorSegment[] => {
+  const { Point } = VectorNodeType;
+  const topleft: VectorNode = {
+    id: newUuid(),
+    type: Point,
+    x: 0,
+    y: 0,
+  };
+  const topRight: VectorNode = {
+    id: newUuid(),
+    type: Point,
+    x: width,
+    y: 0,
+  };
+  const bottomRight: VectorNode = {
+    id: newUuid(),
+    type: Point,
+    x: width,
+    y: height,
+  };
+  const bottomLeft: VectorNode = {
+    id: newUuid(),
+    type: Point,
+    x: 0,
+    y: height,
+  };
+
   return [{
-    id: newUuid<EmbNode>(),
-    type: EmbNodeType.Jump,
-    x: 0,
-    y: 0,
+    id: newUuid(),
+    type: VectorSegmentType.LineTo,
+    from: topleft,
+    to: topRight,
   }, {
-    id: newUuid<EmbNode>(),
-    type: EmbNodeType.Point,
-    x: width,
-    y: 0,
+    id: newUuid(),
+    type: VectorSegmentType.LineTo,
+    from: topRight,
+    to: bottomRight,
   }, {
-    id: newUuid<EmbNode>(),
-    type: EmbNodeType.Point,
-    x: width,
-    y: height,
+    id: newUuid(),
+    type: VectorSegmentType.LineTo,
+    from: bottomRight,
+    to: bottomLeft,
   }, {
-    id: newUuid<EmbNode>(),
-    type: EmbNodeType.Point,
-    x: 0,
-    y: height,
+    id: newUuid(),
+    type: VectorSegmentType.LineTo,
+    from: bottomLeft,
+    to: topleft,
   }];
 };

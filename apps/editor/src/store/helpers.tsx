@@ -6,7 +6,7 @@ import {
   MutateSceneObjectArrayFieldCommand,
   SetSceneObjectFieldCommand,
 } from "./commands";
-import { EmbBase } from "../emb-objects/shared";
+import { EmbState } from "../emb-objects/shared";
 import { AppDispatcher } from ".";
 import { SceneModel } from "./sceneStore";
 import {
@@ -15,31 +15,21 @@ import {
 } from "../utils/array";
 import { assertDefined, MultiCommand } from "./commands/shared";
 import { addPoint, lerpPoint, subPoint } from "../utils/math";
-import { EmbCanvas, EmbNode, EmbNodeType, EmbVector, isNodePointVirtual, VectorNode } from "../emb-objects";
+import { EmbCanvas, EmbNode, VectorNodeType, EmbVector, isNodePointVirtual, VectorNode } from "../emb-objects";
 import { isEmbNode } from "../emb-objects/utils";
-
-export const sceneObjectDefaults = <
-  TObject extends EmbBase = EmbBase,
->(): Omit<EmbBase, "name"> => ({
-  id: newUuid<TObject>(),
-  visible: true,
-  children: [],
-  parent: uuid("root"),
-
-  locked: false,
-  shallowLocked: false,
-  selected: false,
-  position: new Point(),
-  hovered: false,
-});
+import { EMB_STATE_DEFAULTS } from "../emb-objects/shared";
 
 export const createCanvas = (
   dispatch: AppDispatcher,
   name?: string,
   size = new Point(512, 512),
 ) => {
-  const canvas: EmbCanvas = {
-    ...sceneObjectDefaults(),
+  const canvas: EmbCanvas & EmbState = {
+    id: newUuid<EmbCanvas>(),
+    children: [],
+    parent: uuid("root"),
+    position: new Point(),
+    ...EMB_STATE_DEFAULTS,
     type: "canvas",
     name: name ?? "Canvas",
     size,
@@ -82,12 +72,12 @@ export const tryMakeGraphicsNodeACurve = (
   const prevPoint = arrayFindFromBackwardsCircular(
     graphics.shape,
     nodeIndex - 1,
-    (el) => el.type === EmbNodeType.Point,
+    (el) => el.type === VectorNodeType.Point,
   );
   const nextPoint = arrayFindFromCircular(
     graphics.shape,
     nodeIndex + 1,
-    (el) => el.type === EmbNodeType.Point,
+    (el) => el.type === VectorNodeType.Point,
   );
 
   const cmds: Command<EmbVector>[] = [];
@@ -105,7 +95,7 @@ export const tryMakeGraphicsNodeACurve = (
     const id1 = newUuid<VectorNode>();
     const control1: VectorNode = {
       id: id1,
-      type: EmbNodeType.Control,
+      type: VectorNodeType.Control,
       x: newPosition.x,
       y: newPosition.y,
     };
@@ -132,7 +122,7 @@ export const tryMakeGraphicsNodeACurve = (
     const id1 = newUuid<VectorNode>();
     const control1: VectorNode = {
       id: id1,
-      type: EmbNodeType.Control,
+      type: VectorNodeType.Control,
       x: newPosition.x,
       y: newPosition.y,
     };

@@ -2,10 +2,9 @@ import { Uuid } from "../../utils/uuid";
 import { EmbBase } from "../shared";
 import { EmbVector } from "../vector";
 
-export enum EmbNodeType {
-  Jump = 0,
-  Control = 1,
-  Point = 2,
+export enum VectorNodeType {
+  Control = 0,
+  Point = 1,
 }
 
 type NodeBase = {
@@ -14,28 +13,23 @@ type NodeBase = {
 };
 export type NodePoint = NodeBase & {
   id: Uuid<EmbNode>;
-  type: EmbNodeType.Point;
-  ownsNext?: true;
-  ownsPrev?: true;
-  isControlPaired?: true;
+  type: VectorNodeType.Point;
 };
 export type NodePointVirtual = NodeBase & {
   id: Uuid<EmbNode>;
-  virtual: true;
-  type: EmbNodeType.Point;
-  after: Uuid<VectorNode>;
-  close: never;
+  type: VectorNodeType.Point;
+  virtual: true
 };
 export type NodeControl = NodeBase & {
   id: Uuid<EmbNode>;
-  type: EmbNodeType.Control;
-};
-export type NodeJump = NodeBase & {
-  id: Uuid<EmbNode>;
-  type: EmbNodeType.Jump;
+  type: VectorNodeType.Control;
 };
 
-export type VectorNode = NodePoint | NodePointVirtual | NodeControl | NodeJump;
+export type NodeVirtual = NodeBase & {
+  virtual: true;
+}
+
+export type VectorNode = NodePoint | NodePointVirtual | NodeControl;
 /**
  * NODE SCENE OBJECT
  */
@@ -51,18 +45,15 @@ export type EmbNode = EmbBase & {
   data: number[];
 };
 
-export const isNodeJump = (node: VectorNode): node is NodeJump => {
-  return node.type === EmbNodeType.Jump;
-};
 export const isNodePoint = (node: VectorNode): node is NodePoint => {
-  return node.type === EmbNodeType.Point;
+  return node.type === VectorNodeType.Point;
 };
 export const isNodePointVirtual = (
   node: VectorNode,
 ): node is NodePointVirtual => {
-  return node.type === EmbNodeType.Point && (node as NodePointVirtual).virtual;
+  return node.type === VectorNodeType.Point && (node as NodePointVirtual).virtual;
 };
 export const isNodeControl = (node: VectorNode): node is NodeControl => {
-  return node.type === EmbNodeType.Control;
+  return node.type === VectorNodeType.Control;
 };
 

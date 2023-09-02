@@ -2,7 +2,7 @@ import { useContext, For } from 'solid-js';
 import { EmbCanvas, EmbCanvasView } from './canvas';
 import { EmbGroup, EmbGroupView } from './group';
 import { EmbNode, EmbNodeView } from './node';
-import { EmbBase, EmbHasVirtual } from './shared';
+import { EmbBase, EmbHasVirtual, EmbState } from './shared';
 import { EmbVector, EmbVectorView } from './vector';
 import { AppContext } from '../store';
 
@@ -43,7 +43,7 @@ export const SceneObjectChildren = (
     <For each={props.children}>
       {(object, i) => {
         // eslint-disable-next-line solid/reactivity
-        const o = sceneStore.objects.get(object) as EmbObject;
+        const o = sceneStore.objects.get(object) as EmbObject & EmbState;
         if (!o) return null;
         const Component = SCENE_OBJECT_LOOKUP[o.type];
         return <Component {...o} order={i()} />;

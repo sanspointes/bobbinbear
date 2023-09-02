@@ -11,17 +11,18 @@ import { arrayLast } from "../utils/array";
 import {
   EmbBase,
   EmbHasInspecting,
+  EmbState,
 } from "../emb-objects/shared";
 import { EmbGroup, EmbObject } from "../emb-objects";
 
-export const getObject = <T extends EmbBase>(
+export const getObject = <T extends EmbBase & EmbState>(
   store: SceneModel,
   uuid: Uuid<T>|undefined,
 ): T | undefined => {
   if ((uuid) === undefined) return undefined;
   return store.objects.get(uuid) as T | undefined;
 };
-export const getObjectSetter = <T extends EmbBase>(
+export const getObjectSetter = <T extends EmbBase & EmbState>(
   store: SceneModel,
   uuid: Uuid<T> | undefined,
 ): SetStoreFunction<T> | undefined => {
@@ -45,9 +46,9 @@ export type ObjectMapData<T extends EmbObject = EmbObject> = {
 };
 
 export type SceneStoreMessages = {
-  "scene:hover": Uuid<EmbBase>;
-  "scene:unhover": Uuid<EmbBase>;
-  "scene:do-command": Command<EmbBase>;
+  "scene:hover": Uuid<EmbBase & EmbState>;
+  "scene:unhover": Uuid<EmbBase & EmbState>;
+  "scene:do-command": Command<EmbBase & EmbState>;
   "scene:undo": void;
   "scene:redo": void;
 };
@@ -62,14 +63,14 @@ export type SceneModel = {
   selectedObjects: EmbBase[];
   undoStack: Command[];
   redoStack: Command[];
-  objects: ReactiveMap<Uuid<EmbBase>, EmbBase>;
-  objectSetters: Map<Uuid<EmbBase>, SetStoreFunction<EmbBase>>;
+  objects: ReactiveMap<Uuid<EmbBase>, EmbBase & EmbState>;
+  objectSetters: Map<Uuid<EmbBase>, SetStoreFunction<EmbBase & EmbState>>;
   root: EmbBase;
 };
 
 export const createSceneStore = () => {
   // Set the root object, this can't be edited
-  const [object, set] = createStore<EmbGroup>({
+  const [object, set] = createStore<EmbGroup & EmbState>({
     type: "group",
     hovered: false,
     id: uuid("root"),
@@ -81,7 +82,7 @@ export const createSceneStore = () => {
     children: [],
     position: new Point(0, 0),
     selected: false,
-  }) as [object: EmbBase, set: SetStoreFunction<EmbBase>];
+  }) as [object: EmbBase & EmbState, set: SetStoreFunction<EmbBase & EmbState>];
 
   const model: SceneModel = {
     inspecting: undefined,

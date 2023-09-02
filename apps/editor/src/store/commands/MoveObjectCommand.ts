@@ -8,7 +8,7 @@ import { Uuid } from "../../utils/uuid";
 import { arrayGetCircular, arraySetCircular } from "../../utils/array";
 import {
   EmbNode,
-  EmbNodeType,
+  VectorNodeType,
   EmbVector,
   isNodePoint,
   NodePoint,
@@ -59,8 +59,8 @@ export class MoveObjectCommand<TObject extends EmbBase>
       setGraphics(produce((obj) => {
         const graphic = obj as EmbVector;
         if (
-          currentNode.type === EmbNodeType.Point ||
-          currentNode.type === EmbNodeType.Jump
+          currentNode.type === VectorNodeType.Point ||
+          currentNode.type === VectorNodeType.Jump
         ) {
           MoveObjectCommand.handleMovePointNode(
             graphic,
@@ -68,7 +68,7 @@ export class MoveObjectCommand<TObject extends EmbBase>
             index,
             this.newPosition,
           );
-        } else if (currentNode.type === EmbNodeType.Control) {
+        } else if (currentNode.type === VectorNodeType.Control) {
           MoveObjectCommand.handleMoveControlNode(
             graphic,
             currentNode,
@@ -136,7 +136,7 @@ export class MoveObjectCommand<TObject extends EmbBase>
     if (needsMoveControlNode) {
       const otherIndex = lookForward ? index + 2 : index - 2;
       const otherNode = arrayGetCircular(graphicObject.shape, otherIndex);
-      if (otherNode?.type === EmbNodeType.Control) {
+      if (otherNode?.type === VectorNodeType.Control) {
         arraySetCircular(graphicObject.shape, otherIndex, {
           ...otherNode,
           x: otherNode.x - diffx,
@@ -169,7 +169,7 @@ export class MoveObjectCommand<TObject extends EmbBase>
 
     if (node.ownsPrev) {
       const preNode = arrayGetCircular(graphicObject.shape, index - 1);
-      if (preNode?.type === EmbNodeType.Control) {
+      if (preNode?.type === VectorNodeType.Control) {
         arraySetCircular(graphicObject.shape, index - 1, {
           ...preNode,
           x: preNode.x + diffx,
@@ -180,7 +180,7 @@ export class MoveObjectCommand<TObject extends EmbBase>
 
     if (node.ownsNext) {
       const nextNode = arrayGetCircular(graphicObject.shape, index + 1);
-      if (nextNode?.type === EmbNodeType.Control) {
+      if (nextNode?.type === VectorNodeType.Control) {
         arraySetCircular(graphicObject.shape, index + 1, {
           ...nextNode,
           x: nextNode.x + diffx,

@@ -1,11 +1,11 @@
 import { Uuid } from "../../utils/uuid";
-import { VectorNode } from "../node";
 import {
   EmbBase,
   EmbHasFill,
   EmbHasInspecting,
   EmbHasStroke,
 } from "../shared";
+import { VectorSegment } from "../vec-seg";
 
 export * from "./EmbVector";
 
@@ -20,6 +20,6 @@ export type EmbVector =
     id: Uuid<EmbVector>;
 
     type: "graphic";
-    shape: VectorNode[];
+    segments: VectorSegment[];
     close: boolean;
   };

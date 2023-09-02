@@ -11,14 +11,13 @@ import NodePointSrc from "../../assets/node_point.png";
 import NodeControlSrc from "../../assets/node_control.png";
 import { Circle, ObservablePoint, Point, Texture } from "@pixi/core";
 import { useHoverSelectOutline } from "../../composables/useHoverSelectOutline";
-import { EmbNode, EmbNodeType } from "./shared";
+import { EmbNode, VectorNodeType } from "./shared";
 
 const NODE_Z_INDEX = -100;
 
-const NodeTypeImageMap: Record<EmbNodeType, string> = {
-  [EmbNodeType.Jump]: NodePointSrc,
-  [EmbNodeType.Point]: NodePointSrc,
-  [EmbNodeType.Control]: NodeControlSrc,
+const NodeTypeImageMap: Record<VectorNodeType, string> = {
+  [VectorNodeType.Point]: NodePointSrc,
+  [VectorNodeType.Control]: NodeControlSrc,
 };
 
 const CENTER_ANCHOR = new Point(0.5, 0.5) as unknown as ObservablePoint;
