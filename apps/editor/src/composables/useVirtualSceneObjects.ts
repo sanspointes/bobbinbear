@@ -3,7 +3,6 @@ import {
   createMemo,
   mapArray,
   onCleanup,
-  onMount,
   useContext,
 } from "solid-js";
 import { createStore } from "solid-js/store";
@@ -14,10 +13,9 @@ import { EMB_STATE_DEFAULTS } from "../emb-objects/shared";
 
 export const useTemporarySceneObject = <TObject extends EmbBase>(
   obj: MaybeAccessor<(TObject & Partial<EmbState>)>,
-): TObject['id'] => {
+): TObject & EmbState => {
   const { sceneStore } = useContext(AppContext);
-  const [store, set] = createStore<TObject & Partial<EmbState>>({ ...EMB_STATE_DEFAULTS ,...access(obj) });
-  // @ts-expect-error; Disregard
+  const [store, set] = createStore<TObject & EmbState>({ ...EMB_STATE_DEFAULTS ,...access(obj) });
   sceneStore.objects.set(store.id, store);
   // @ts-expect-error; Disregard
   sceneStore.objectSetters.set(store.id, set);
@@ -26,7 +24,7 @@ export const useTemporarySceneObject = <TObject extends EmbBase>(
     sceneStore.objects.delete(store.id);
     sceneStore.objectSetters.delete(store.id);
   });
-  return store.id;
+  return store;
 };
 
 export const mapTemporarySceneObjects = <T, TObject extends EmbBase & Partial<EmbState>>(

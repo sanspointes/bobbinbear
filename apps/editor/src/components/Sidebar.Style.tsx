@@ -1,9 +1,4 @@
 import { createMemo, JSX, Show, useContext } from "solid-js";
-import {
-  EmbBase,
-  EmbVector,
-  EmbHasFill,
-} from "../emb-objects/shared";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
 import { SetSceneObjectFieldCommand } from "../store/commands";
@@ -12,6 +7,7 @@ import { IFillStyleOptions, ILineStyleOptions, LINE_CAP } from "@pixi/graphics";
 import { NumberInput } from "./generics/NumberInput";
 import { Select } from "./generics/Select";
 import { Uuid } from "../utils/uuid";
+import { EmbBase, EmbHasFill, EmbVector } from "../emb-objects";
 
 const LineCapText: Record<LINE_CAP, string> = {
   [LINE_CAP.BUTT]: "Butt",
@@ -45,7 +41,7 @@ export function SidebarStyle(props: SidebarStyleProps) {
   };
 
   const updateStrokeStyle = (model: Partial<ILineStyleOptions>) => {
-    const preStroke = (props.object as EmbVector).stroke;
+    const preStroke = (props.object as EmbVector).line;
     if (!preStroke) {
       throw new Error(
         "SidebarStyle: Can't update style on scene object without stroke field",
@@ -68,7 +64,7 @@ export function SidebarStyle(props: SidebarStyleProps) {
   };
 
   const alignmentAsEnum = createMemo<Alignment | undefined>(() => {
-    const stroke = (props.object as EmbVector).stroke;
+    const stroke = (props.object as EmbVector).line;
     if (!stroke?.alignment) return undefined;
     if (stroke.alignment < 0.25) return Alignment.Inside;
     if (stroke.alignment > 0.75) return Alignment.Outside;

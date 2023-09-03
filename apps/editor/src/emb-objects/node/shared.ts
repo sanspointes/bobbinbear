@@ -1,6 +1,6 @@
 import { Uuid } from "../../utils/uuid";
-import { EmbBase } from "../shared";
-import { EmbVector } from "../vector";
+import { EmbBase, EmbState } from "../shared";
+import { EmbVecSeg } from "../vec-seg";
 
 export enum VectorNodeType {
   Control = 0,
@@ -40,9 +40,7 @@ export type EmbNode = EmbBase & {
   type: "node";
   node: VectorNode;
   /** The uuid this node object is bound to (i.e. makes up part of a GraphicSceneObject path) */
-  relatesTo: Uuid<EmbVector>;
-
-  data: number[];
+  relatesTo: Uuid<EmbVecSeg & EmbState>;
 };
 
 export const isNodePoint = (node: VectorNode): node is NodePoint => {

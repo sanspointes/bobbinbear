@@ -1,14 +1,13 @@
 import { produce, SetStoreFunction } from "solid-js/store";
-import {
-  EmbVector,
-  VectorNode,
-  EmbObject,
-} from "../../emb-objects/shared";
 import { Uuid } from "../../utils/uuid";
 import { getObject, getObjectSetter, SceneModel } from "../sceneStore";
 import { AbstractCommand, assertSameField, assertSameType, SerializedCommand } from "./shared";
 import { Command } from ".";
+import { EmbState, EmbVector, VectorNode } from "../../emb-objects";
 
+/**
+ * @deorecated Moving away from state as node segments.
+ */
 export class UpdateGraphicsNodeCommand extends AbstractCommand {
   public updatable: boolean = true;
 
@@ -17,7 +16,7 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
 
   oldData: VectorNode | undefined;
   constructor(
-    public objectId: Uuid<EmbVector>,
+    public objectId: Uuid<EmbVector & EmbState>,
     public index: number,
     public node: VectorNode,
   ) {
@@ -33,9 +32,9 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
       throw new Error(
         `UpdateGraphicsNodeCommand: Provided object id (${this.objectId}) is not found.`,
       );
-    } else if (object.type !== "graphic") {
+    } else if (object.type !== "vector") {
       throw new Error(
-        `UpdateGraphicsNodeCommand: Provided object is not a graphic.  Instead found ${object.type}.`,
+        `UpdateGraphicsNodeCommand: Provided object is not a vector.  Instead found ${object.type}.`,
       );
     }
     const set = getObjectSetter(store, object.id)!;
@@ -57,9 +56,9 @@ export class UpdateGraphicsNodeCommand extends AbstractCommand {
       throw new Error(
         `UpdateGraphicsNodeCommand: Provided object id (${this.objectId}) is not found.`,
       );
-    } else if (object.type !== "graphic") {
+    } else if (object.type !== "vector") {
       throw new Error(
-        `UpdateGraphicsNodeCommand: Provided object is not a graphic.  Instead found ${object.type}.`,
+        `UpdateGraphicsNodeCommand: Provided object is not a vector.  Instead found ${object.type}.`,
       );
     }
     const set = getObjectSetter(store, object.id)!;

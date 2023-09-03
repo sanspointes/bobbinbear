@@ -3,7 +3,7 @@ import {
   EmbBase,
   EmbHasFill,
   EmbHasInspecting,
-  EmbHasStroke,
+  EmbHasLine,
 } from "../shared";
 import { VectorSegment } from "../vec-seg";
 
@@ -12,14 +12,14 @@ export * from "./EmbVector";
 export type EmbVector =
   & EmbBase
   & EmbHasFill
-  & EmbHasStroke
+  & EmbHasLine
   & EmbHasInspecting
   & {
     /** Internal States */
     /** Unique ID for each scene object */
     id: Uuid<EmbVector>;
 
-    type: "graphic";
+    type: "vector";
     segments: VectorSegment[];
     close: boolean;
   };

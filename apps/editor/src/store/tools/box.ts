@@ -12,7 +12,7 @@ import { createBoxGraphicsCommands } from "../../utils/graphics";
 import { SetSceneObjectFieldCommand, CreateObjectCommand } from "../commands";
 import { Point } from "@pixi/core";
 import { MultiCommand } from "../commands/shared";
-import { EmbObject, EmbVector } from "../../emb-objects";
+import { EmbObject, EmbState, EmbVector } from "../../emb-objects";
 
 export const BoxEvents = {
   PointerDown: Symbol("b-Pointerdown"),
@@ -57,8 +57,8 @@ export const createBoxToolStore = (
     },
   });
 
-  let createCommand: CreateObjectCommand<EmbVector> | undefined;
-  let currentlyBuildingId: Uuid<EmbVector> | undefined;
+  let createCommand: CreateObjectCommand<EmbVector & EmbState> | undefined;
+  let currentlyBuildingId: Uuid<EmbVector & EmbState> | undefined;
 
   const transitions = [
     t(BoxStates.Default, BoxEvents.PointerDown, BoxStates.Down),
@@ -72,7 +72,7 @@ export const createBoxToolStore = (
         const currentShape = createBoxGraphicsCommands(0, 0);
 
         createCommand = new CreateObjectCommand({
-          type: "graphic",
+          type: "vector",
           name: "Box",
           visible: true,
           position: e.position,
@@ -91,7 +91,7 @@ export const createBoxToolStore = (
             color: 0xcccccc,
             alpha: 1,
           },
-          stroke: {
+          line: {
             width: 1,
             color: 0x000000,
             alpha: 1,
