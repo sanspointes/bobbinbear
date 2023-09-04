@@ -44,6 +44,7 @@ const updateGraphics = (
         const { c0, c1, to } = segment;
         g.bezierCurveTo(c0.x, c0.y, c1.x, c1.y, to.x, to.y);
     }
+    g.finishPoly();
     g.geometry.updateBatches();
 };
 
@@ -97,7 +98,6 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
             const indexBuffer = geometry.getIndex();
             indexBuffer.data = new Float32Array(graphics.geometry.indices);
             indexBuffer.update();
-            console.log(geometry);
         }
     });
 
@@ -191,7 +191,7 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
                 name={`${props.id} ${props.name}`}
                 visible={props.visible}
                 interactive={props.inspecting}
-                alpha={1}
+                alpha={0}
                 onpointerover={e => console.log(e)}
             />
             <P.Graphics
