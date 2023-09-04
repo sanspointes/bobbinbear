@@ -1,7 +1,7 @@
 import { P } from "@bearbroidery/solixi";
 import { Point, Texture } from "@pixi/core";
 import { Container } from "@pixi/display";
-import { Graphics, ILineStyleOptions } from "@pixi/graphics";
+import { FillStyle, Graphics, GraphicsGeometry, ILineStyleOptions, LineStyle } from "@pixi/graphics";
 import { MeshGeometry, MeshMaterial } from "@pixi/mesh";
 import {
     createEffect,
@@ -13,14 +13,13 @@ import {
 import { AppContext } from "../../store";
 import { EmbState } from "../shared";
 import {
+    BezierToVectorSegment,
     EmbVecSeg,
-    isBezierVecSeg,
-    isLineVecSeg,
-    isQuadraticVecSeg,
     VectorSegment,
 } from "./shared";
 import { useTemporarySceneObject } from "../../composables/useVirtualSceneObjects";
 import { EmbNode, EmbNodeView } from "../node";
+import { SegmentUtils } from ".";
 
 const updateGraphics = (
     g: Graphics,
@@ -30,20 +29,21 @@ const updateGraphics = (
     g.clear();
 
     g.lineStyle(stroke);
-    const { x, y } = segment.from;
-    g.moveTo(x, y);
+    if (segment.prev) {
+        const { x, y } = segment.prev.to;
+        g.moveTo(x, y);
+    }
 
-    if (isLineVecSeg(segment)) {
+    if (SegmentUtils.isLine(segment)) {
         const { to } = segment;
         g.lineTo(to.x, to.y);
-    } else if (isQuadraticVecSeg(segment)) {
+    } else if (SegmentUtils.isQuadratic(segment)) {
         const { c0, to } = segment;
         g.quadraticCurveTo(c0.x, c0.y, to.x, to.y);
-    } else if (isBezierVecSeg(segment)) {
+    } else if (SegmentUtils.isBezier(segment)) {
         const { c0, c1, to } = segment;
         g.bezierCurveTo(c0.x, c0.y, c1.x, c1.y, to.x, to.y);
     }
-    g.closePath();
     g.geometry.updateBatches();
 };
 
@@ -58,6 +58,10 @@ const HOVER_LINE_STYLE: ILineStyleOptions = {
 const SELECT_LINE_STYLE: ILineStyleOptions = {
     color: 0x41A3E9,
     width: 2,
+};
+const HANDLE_LINE_STLE: ILineStyleOptions = {
+    color: 0x000000,
+    width: 1,
 };
 
 type EmbVecSegProps = EmbVecSeg & EmbState & {
@@ -93,6 +97,7 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
             const indexBuffer = geometry.getIndex();
             indexBuffer.data = new Float32Array(graphics.geometry.indices);
             indexBuffer.update();
+            console.log(geometry);
         }
     });
 
@@ -120,15 +125,62 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
                 relatesTo: props.id,
             };
             const model = useTemporarySceneObject(nodeData);
-            console.log("end node model ", model);
             return model;
         }
     });
 
+    const c0NodeModel = createMemo(() => {
+        const seg = props.segment as VectorSegment & Partial<BezierToVectorSegment>;
+        if (props.inspecting && seg.c0) {
+            const { c0 } = seg;
+            const nodeData: EmbNode = {
+                node: c0,
+                type: "node",
+                id: c0.id,
+                position: new Point(c0.x, c0.y),
+                parent: props.id,
+                children: [],
+                relatesTo: props.id,
+            };
+            const model = useTemporarySceneObject(nodeData);
+            return model;
+        }
+    });
+
+    const c1NodeModel = createMemo(() => {
+        const seg = props.segment as VectorSegment & Partial<BezierToVectorSegment>;
+        if (props.inspecting && seg.c1) {
+            const { c1 } = props.segment;
+            const nodeData: EmbNode = {
+                node: c1,
+                type: "node",
+                id: c1.id,
+                position: new Point(c1.x, c1.y),
+                parent: props.id,
+                children: [],
+                relatesTo: props.id,
+            };
+            const model = useTemporarySceneObject(nodeData);
+            return model;
+        }
+    });
+
+    let lineGraphic: Graphics | undefined;
+    createEffect(() => {
+        if (props.inspecting && lineGraphic) {
+            lineGraphic.clear();
+            const polygon = SegmentUtils.generateControlPolygon(props.segment);
+            if (polygon) {
+                lineGraphic.lineStyle( HANDLE_LINE_STLE );
+                lineGraphic.drawShape(polygon,);
+            }
+        }
+    })
+
     return (
         <P.Container
-            id={props.id}
             ref={container}
+            name={`${props.id} Container`}
             zIndex={sceneStore.inspecting === props.id ? 500 : props.order}
             position={props.position}
         >
@@ -139,7 +191,8 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
                 name={`${props.id} ${props.name}`}
                 visible={props.visible}
                 interactive={props.inspecting}
-                alpha={0}
+                alpha={1}
+                onpointerover={e => console.log(e)}
             />
             <P.Graphics
                 ref={highlightGraphics}
@@ -147,6 +200,15 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
             />
             <Show when={endNodeModel()}>
                 {(props) => <EmbNodeView {...props()} order={0} />}
+            </Show>
+            <Show when={c0NodeModel()}>
+                {(props) => <EmbNodeView {...props()} order={0} />}
+            </Show>
+            <Show when={c1NodeModel()}>
+                {(props) => <EmbNodeView {...props()} order={0} />}
+            </Show>
+            <Show when={props.inspecting}>
+                <P.Graphics ref={lineGraphic} />
             </Show>
         </P.Container>
     );

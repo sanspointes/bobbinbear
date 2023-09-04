@@ -1,4 +1,5 @@
-import { Uuid } from "../../utils/uuid";
+import { arrayFirst, arrayLast } from "../../utils/array";
+import { newUuid, Uuid } from "../../utils/uuid";
 import { VectorNode } from "../node";
 import { EmbBase, EmbHasLine, EmbState } from "../shared";
 import { EmbVector } from "../vector";
@@ -10,61 +11,43 @@ export enum VectorSegmentType {
     BezierTo,
 }
 
-export type MoveToVectorSegment = {
+type BaseVectorSegment = {
     id: Uuid<EmbVecSeg>;
+    to: VectorNode;
+    prev?: VectorSegment;
+};
+export type MoveToVectorSegment = BaseVectorSegment & {
     type: VectorSegmentType.MoveTo;
-    from: VectorNode;
-    to: VectorNode;
 };
-export type LineToVectorSegment = {
-    id: Uuid<EmbVecSeg>;
+export type LineToVectorSegment = BaseVectorSegment & {
     type: VectorSegmentType.LineTo;
-    from: VectorNode;
-    to: VectorNode;
 };
-export type QuadraticToVectorSegment = {
-    id: Uuid<EmbVecSeg>;
+export type QuadraticToVectorSegment = BaseVectorSegment & {
     type: VectorSegmentType.QuadraticTo;
-    from: VectorNode;
     c0: VectorNode;
-    to: VectorNode;
 };
-export type BezierToVectorSegment = {
-    id: Uuid<EmbVecSeg>;
+export type BezierToVectorSegment = BaseVectorSegment & {
     type: VectorSegmentType.BezierTo;
-    from: VectorNode;
     c0: VectorNode;
     c1: VectorNode;
-    to: VectorNode;
 };
-
-export function isMoveVecSeg(vecseg: VectorSegment): vecseg is MoveToVectorSegment {
-    return (vecseg.type === VectorSegmentType.MoveTo);
-}
-export function isLineVecSeg(vecseg: VectorSegment): vecseg is LineToVectorSegment {
-    return (vecseg.type === VectorSegmentType.LineTo);
-}
-export function isQuadraticVecSeg(vecseg: VectorSegment): vecseg is QuadraticToVectorSegment {
-    return (vecseg.type === VectorSegmentType.QuadraticTo);
-}
-export function isBezierVecSeg(vecseg: VectorSegment): vecseg is BezierToVectorSegment {
-    return (vecseg.type === VectorSegmentType.BezierTo);
-}
 
 /**
  * Checks if a vector segment contains a given node
  */
-export function segmentHasNode(vecseg: VectorSegment, node: VectorNode): 'to' | 'c0' | 'c1' | false {
-    const seg = vecseg as BezierToVectorSegment;
-    if (seg.to.id === node.id ) return 'to';
-    if (seg.c0.id === node.id ) return 'c0';
-    if (seg.c1.id === node.id ) return 'c1';
-    return false;
-}
+export type VectorSegment =
+    | MoveToVectorSegment
+    | LineToVectorSegment
+    | QuadraticToVectorSegment
+    | BezierToVectorSegment;
 
-export type VectorSegment = {
-    id: Uuid<EmbVecSeg>;
-} & (MoveToVectorSegment | LineToVectorSegment | QuadraticToVectorSegment | BezierToVectorSegment);
+export type AnyVectorSegment =
+    & BaseVectorSegment
+    & { type: VectorSegment['type'] }
+    & Partial<Omit<LineToVectorSegment, 'type'>>
+    & Partial<Omit<MoveToVectorSegment, 'type'>>
+    & Partial<Omit<QuadraticToVectorSegment, 'type'>>
+    & Partial<Omit<BezierToVectorSegment, 'type'>>;
 
 export type EmbVecSeg = EmbBase & EmbHasLine & {
     id: Uuid<EmbVecSeg & EmbBase>;
@@ -72,3 +55,64 @@ export type EmbVecSeg = EmbBase & EmbHasLine & {
     segment: VectorSegment;
     relatesTo: Uuid<EmbVector & EmbState>;
 };
+
+export class VectorSegmentArrayBuilder {
+    private prev?: VectorSegment;
+    private segments: VectorSegment[] = [];
+
+    push(seg: VectorSegment) {
+        this.segments.push(seg);
+        this.prev = seg;
+    }
+
+    moveTo(to: VectorNode) {
+        const seg: MoveToVectorSegment = {
+            id: newUuid<EmbVecSeg>(),
+            type: VectorSegmentType.MoveTo,
+            to,
+            prev: this.prev,
+        };
+        this.push(seg);
+    }
+    lineTo(to: VectorNode) {
+        const seg: LineToVectorSegment = {
+            id: newUuid<EmbVecSeg>(),
+            type: VectorSegmentType.LineTo,
+            to,
+            prev: this.prev,
+        };
+        this.push(seg);
+    }
+    quadTo(c0: VectorNode, to: VectorNode) {
+        const seg: QuadraticToVectorSegment = {
+            id: newUuid<EmbVecSeg>(),
+            type: VectorSegmentType.QuadraticTo,
+            c0,
+            to,
+            prev: this.prev,
+        };
+        this.push(seg);
+    }
+    bezierTo(c0: VectorNode, c1: VectorNode, to: VectorNode) {
+        const seg: BezierToVectorSegment = {
+            id: newUuid<EmbVecSeg>(),
+            type: VectorSegmentType.BezierTo,
+            c0,
+            c1,
+            to,
+            prev: this.prev,
+        };
+        this.push(seg);
+    }
+
+    build() {
+        return this.segments;
+    }
+
+    buildAsClosed() {
+        const first = arrayFirst(this.segments)!;
+        const last = arrayLast(this.segments)!;
+        first.prev = last;
+        return this.build();
+    }
+}

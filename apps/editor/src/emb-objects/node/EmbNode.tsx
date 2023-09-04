@@ -19,7 +19,6 @@ const NodeTypeImageMap: Record<VectorNodeType, string> = {
 };
 
 const CENTER_ANCHOR = new Point(0.5, 0.5) as unknown as ObservablePoint;
-const HIT_AREA = new Circle(0, 0, 128);
 
 type EmbNodeProps = EmbNode & EmbState & {
     order: number;
@@ -47,7 +46,6 @@ export function EmbNodeView(props: EmbNodeProps) {
             alpha={props.virtual ? 0.5 : 1}
             zIndex={NODE_Z_INDEX + props.order}
             position={props.position}
-            hitArea={HIT_AREA}
             texture={texture()}
             interactive={true}
         >

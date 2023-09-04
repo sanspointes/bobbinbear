@@ -1,4 +1,4 @@
-import { Uuid } from "../../utils/uuid";
+import { Uuid, newUuid } from "../../utils/uuid";
 import { EmbBase, EmbState } from "../shared";
 import { EmbVecSeg } from "../vec-seg";
 
@@ -55,3 +55,21 @@ export const isNodeControl = (node: VectorNode): node is NodeControl => {
   return node.type === VectorNodeType.Control;
 };
 
+export const NodeUtils = {
+    newControl(x: number, y: number): NodeControl {
+        return ({
+            id: newUuid(),
+            type: VectorNodeType.Control,
+            x,
+            y,
+        })
+    },
+    newPoint(x: number, y: number): NodePoint {
+        return ({
+            id: newUuid(),
+            type: VectorNodeType.Point,
+            x,
+            y,
+        })
+    },
+}

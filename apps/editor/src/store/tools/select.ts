@@ -345,6 +345,16 @@ export const createSelectToolStore = (
                         if (sCan(SelectEvents.DragEnd)) sDispatch(SelectEvents.DragEnd);
                     }
                     break;
+                case "pointer3-down":
+                    {
+                        if (vpCan(ViewportEvents.PanButtonDown)) vpDispatch(ViewportEvents.PanButtonDown);
+                    }
+                    break;
+                case "pointer3-up":
+                    {
+                        if (vpCan(ViewportEvents.PanButtonUp)) vpDispatch(ViewportEvents.PanButtonUp);
+                    }
+                    break;
                 case "keydown":
                     {
                         const data = msg.data as ToolInputs["keydown"];

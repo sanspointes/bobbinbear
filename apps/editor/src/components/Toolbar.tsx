@@ -1,6 +1,7 @@
 import { useContext } from "solid-js";
 import { TbPointer } from "solid-icons/tb";
 import { ImCheckboxUnchecked } from 'solid-icons/im'
+import { FiCircle } from 'solid-icons/fi'
 import { BiRegularPen } from 'solid-icons/bi'
 
 import { Button } from "./generics/Button";
@@ -26,6 +27,17 @@ export const Toolbar = () => {
           onClick={() => dispatch("tool:switch", Tool.Select)}
         >
           <TbPointer class="stroke-orange-800 w-[22px] h-[22px]" />
+        </Button>
+        <Button
+          variant="default"
+          class="w-12 h-12 outline-2"
+          classList={{
+            'outline outline-2 outline-orange-700': toolStore.tool === Tool.Ellipse,
+          }}
+          highlighted={toolStore.tool === Tool.Ellipse}
+          onClick={() => dispatch("tool:switch", Tool.Ellipse)}
+        >
+          <FiCircle class="fill-orange-800 w-4 h-4" />
         </Button>
         <Button
           variant="default"

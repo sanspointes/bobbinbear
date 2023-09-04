@@ -49,34 +49,7 @@ export class MoveObjectCommand<TObject extends EmbBase & EmbState>
 
         // If moving a node, update the mesh of the graphic.
         if (isEmbNode(object)) {
-            const currentNode = object.node;
-            // const embSegment = getObject(store, object.relatesTo);
-            // if (!embSegment || !isEmbVecSeg(embSegment)) {
-            //     throw new Error(
-            //         "MoveObjectCommand: Attempting to graphic related to moved node but no graphic found.",
-            //     );
-            // }
-            // const embVector = getObject(store, embSegment.relatesTo);
-            // if (!embVector || !isEmbVector(embVector)) {
-            //     throw new Error(
-            //         "MoveObjectCommand: Attempting to graphic related to moved node but no graphic found.",
-            //     );
-            // }
-            // const containsKey = segmentHasNode(embSegment.segment, currentNode);
-            // if (!containsKey) {
-            //     throw new Error(
-            //         'MoveObjectCommand: Attempting to move graphics node but segment doesnt contain the node it references.'
-            //     )
-            // }
-            //
-            // const setSegment = getObjectSetter(store, embSegment.id)!;
-            const setNode = getObjectSetter(store, currentNode.id as unknown as EmbNode & EmbState);
-            // if (!setNode) {
-            //     throw new Error(
-            //         `MoveObjectCommand: No node setter function for ${currentNode.id}.`
-            //     )
-            // }
-            MoveObjectCommand.handleMoveNode(setNode, this.newPosition);
+            MoveObjectCommand.handleMoveNode(store, object, this.newPosition);
         }
 
         // Update node position
@@ -107,100 +80,19 @@ export class MoveObjectCommand<TObject extends EmbBase & EmbState>
         set(produce((object) => object.position = this.oldPosition!.clone()));
     }
 
+    /**
+     * Special logic for moving a node object
+     */
     static handleMoveNode(
-        nodeSetter: SetStoreFunction<EmbNode & EmbState>,
+        store: SceneModel,
+        object: EmbNode,
         newPosition: Point,
     ) {
-        nodeSetter('node', 'x', newPosition.x);
-        nodeSetter('node', 'y', newPosition.y);
+        const setNode = getObjectSetter(store, object.id);
+        if (!setNode) throw new Error(`MoveObjectCommand.handleMoveNode:  Cannot get setter for ${object.id}.`);
+        setNode('node', 'x', newPosition.x);
+        setNode('node', 'y', newPosition.y);
     }
-    // static handleMoveControlNode(
-    //     graphicObject: EmbVector,
-    //     node: NodePoint,
-    //     index: number,
-    //     newPosition: Point,
-    // ) {
-    //     const diffx = newPosition.x - node.x;
-    //     const diffy = newPosition.y - node.y;
-    //
-    //     let lookForward = false;
-    //     let owningNode: NodePoint | undefined;
-    //     const nextNode = arrayGetCircular<VectorNode>(
-    //         graphicObject.shape,
-    //         index + 1,
-    //     );
-    //     if (nextNode && isNodePoint(nextNode) && nextNode.ownsPrev) {
-    //         owningNode = nextNode;
-    //         lookForward = true;
-    //     } else {
-    //         owningNode = arrayGetCircular<VectorNode>(
-    //             graphicObject.shape,
-    //             index - 1,
-    //         ) as NodePoint;
-    //     }
-    //     const needsMoveControlNode = owningNode?.isControlPaired;
-    //
-    //     if (needsMoveControlNode) {
-    //         const otherIndex = lookForward ? index + 2 : index - 2;
-    //         const otherNode = arrayGetCircular(graphicObject.shape, otherIndex);
-    //         if (otherNode?.type === VectorNodeType.Control) {
-    //             arraySetCircular(graphicObject.shape, otherIndex, {
-    //                 ...otherNode,
-    //                 x: otherNode.x - diffx,
-    //                 y: otherNode.y - diffy,
-    //             });
-    //         } else {
-    //             console.warn(
-    //                 `MoveObject: Attempted to move other control node but not found ${index} + ${lookForward ? 2 : -2
-    //                 }.`,
-    //             );
-    //         }
-    //     }
-    //
-    //     graphicObject.shape.splice(index, 1, {
-    //         ...node,
-    //         x: newPosition.x,
-    //         y: newPosition.y,
-    //     });
-    // }
-    //
-    // static handleMovePointNode(
-    //     graphicObject: EmbVector,
-    //     node: NodePoint,
-    //     index: number,
-    //     newPosition: Point,
-    // ) {
-    //     const diffx = newPosition.x - node.x;
-    //     const diffy = newPosition.y - node.y;
-    //
-    //     if (node.ownsPrev) {
-    //         const preNode = arrayGetCircular(graphicObject.shape, index - 1);
-    //         if (preNode?.type === VectorNodeType.Control) {
-    //             arraySetCircular(graphicObject.shape, index - 1, {
-    //                 ...preNode,
-    //                 x: preNode.x + diffx,
-    //                 y: preNode.y + diffy,
-    //             });
-    //         }
-    //     }
-    //
-    //     if (node.ownsNext) {
-    //         const nextNode = arrayGetCircular(graphicObject.shape, index + 1);
-    //         if (nextNode?.type === VectorNodeType.Control) {
-    //             arraySetCircular(graphicObject.shape, index + 1, {
-    //                 ...nextNode,
-    //                 x: nextNode.x + diffx,
-    //                 y: nextNode.y + diffy,
-    //             });
-    //         }
-    //     }
-    //
-    //     graphicObject.shape.splice(index, 1, {
-    //         ...node,
-    //         x: newPosition.x,
-    //         y: newPosition.y,
-    //     });
-    // }
 
     fromObject<T extends Command>(object: SerializedCommand<T>): void {
         this.objectId = object["objectId"] as Uuid<TObject>;

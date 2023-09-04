@@ -11,8 +11,9 @@ import { Accessor } from "solid-js";
 import { SolixiState } from "@bearbroidery/solixi";
 import { SceneModel } from "./sceneStore";
 import { InputModel } from "./inputStore";
-import { BoxToolModel, BoxToolStore, createBoxToolStore } from "./tools/box";
+import { BoxToolModel, BoxToolStore, createBoxToolStore } from "./tools/shape-box";
 import { createPenToolStore } from "./tools/pen";
+import { createEllipseToolStore } from "./tools/shape-ellipse";
 
 type SubToolStores = SelectToolStore | BoxToolStore;
 
@@ -20,6 +21,7 @@ export enum Tool {
   None = 'None',
   Select = 'Select',
   Box = 'Box',
+  Ellipse = 'Ellipse',
   Pen = 'Pen',
 }
 
@@ -36,6 +38,7 @@ export const TOOL_TO_DEFAULT_CURSOR_MAP: Record<Tool, Cursor> = {
   [Tool.None]: Cursor.Default,
   [Tool.Select]: Cursor.Default,
   [Tool.Box]: Cursor.Cross,
+  [Tool.Ellipse]: Cursor.Cross,
   [Tool.Pen]: Cursor.Pen,
 };
 
@@ -68,6 +71,7 @@ export const createToolStore = (
     [Tool.None]: undefined,
     [Tool.Select]: createSelectToolStore(dispatch, solixi, inputModel, sceneModel),
     [Tool.Box]: createBoxToolStore(dispatch),
+    [Tool.Ellipse]: createEllipseToolStore(dispatch),
     [Tool.Pen]: createPenToolStore(dispatch, solixi, inputModel, sceneModel),
   };
 
