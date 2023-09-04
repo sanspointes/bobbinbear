@@ -198,6 +198,10 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
                 ref={highlightGraphics}
                 visible={props.hovered || props.selected}
             />
+            <Show when={props.inspecting}>
+                <P.Graphics ref={lineGraphic} />
+            </Show>
+
             <Show when={endNodeModel()}>
                 {(props) => <EmbNodeView {...props()} order={0} />}
             </Show>
@@ -206,9 +210,6 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
             </Show>
             <Show when={c1NodeModel()}>
                 {(props) => <EmbNodeView {...props()} order={0} />}
-            </Show>
-            <Show when={props.inspecting}>
-                <P.Graphics ref={lineGraphic} />
             </Show>
         </P.Container>
     );
