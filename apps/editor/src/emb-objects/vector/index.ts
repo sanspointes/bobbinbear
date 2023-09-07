@@ -5,7 +5,7 @@ import {
   EmbHasInspecting,
   EmbHasLine,
 } from "../shared";
-import { VectorSegment } from "../vec-seg";
+import { VectorShape } from "../vec-seg";
 
 export * from "./EmbVector";
 
@@ -20,6 +20,6 @@ export type EmbVector =
     id: Uuid<EmbVector>;
 
     type: "vector";
-    segments: VectorSegment[];
+    shape: VectorShape;
     close: boolean;
   };

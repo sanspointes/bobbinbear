@@ -7,7 +7,7 @@ import { EmbVector } from ".";
 import { mapTemporarySceneObjects } from "../../composables/useVirtualSceneObjects";
 import { AppContext } from "../../store";
 import { EmbState, SceneObjectChildren } from "..";
-import { updateGraphicsWithSegments } from "./utils";
+import { drawVectorShapeToGraphic } from "./utils";
 import { EmbVecSeg } from "../vec-seg";
 import { EmbVecSegView } from "../vec-seg/EmbVecSeg";
 
@@ -19,7 +19,7 @@ export const EmbVectorView = (props: EmbVectorProps) => {
     let graphics: Graphics | undefined;
     createEffect(() => {
         if (graphics) {
-            updateGraphicsWithSegments(graphics, props.segments, props.fill, props.line);
+            drawVectorShapeToGraphic(graphics, props.shape, props.fill, props.line);
         }
     });
     onMount(() => {
@@ -35,7 +35,7 @@ export const EmbVectorView = (props: EmbVectorProps) => {
 
     const embSegments = mapTemporarySceneObjects(
         // eslint-disable-next-line solid/reactivity
-        () => props.segments,
+        () => props.shape,
         // eslint-disable-next-line solid/reactivity
         (seg) => {
             const model: EmbVecSeg & Partial<EmbState> = {

@@ -1,6 +1,7 @@
+import { Point } from '@pixi/core'
 import { arrayFirst, arrayLast } from "../../utils/array";
 import { newUuid, Uuid } from "../../utils/uuid";
-import { VectorNode } from "../node";
+import { NodePoint, VectorNode } from "../node";
 import { EmbBase, EmbHasLine, EmbState } from "../shared";
 import { EmbVector } from "../vector";
 
@@ -56,13 +57,21 @@ export type EmbVecSeg = EmbBase & EmbHasLine & {
     relatesTo: Uuid<EmbVector & EmbState>;
 };
 
-export class VectorSegmentArrayBuilder {
-    private prev?: VectorSegment;
-    private segments: VectorSegment[] = [];
+export class VectorShape extends Array<VectorSegment> {
+    public startPoint = new Point(0, 0);
+    constructor(...segments: VectorSegment[]) {
+        super(segments.length);
+        super.push(...segments);
+    }
 
+    setStart(p: NodePoint) {
+        this.startPoint.copyFrom(p);
+    }
+
+    prev?: VectorSegment;
     push(seg: VectorSegment) {
-        this.segments.push(seg);
         this.prev = seg;
+        return super.push(seg);
     }
 
     moveTo(to: VectorNode) {
@@ -105,14 +114,13 @@ export class VectorSegmentArrayBuilder {
         this.push(seg);
     }
 
-    build() {
-        return this.segments;
+    close() {
+        const first = arrayFirst(this)!;
+        const last = arrayLast(this)!;
+        first.prev = last;
     }
 
-    buildAsClosed() {
-        const first = arrayFirst(this.segments)!;
-        const last = arrayLast(this.segments)!;
-        first.prev = last;
-        return this.build();
+    static fromArray(array: Array<VectorSegment>) {
+        return new VectorShape(...array);
     }
 }

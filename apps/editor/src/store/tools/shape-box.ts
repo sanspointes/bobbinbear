@@ -100,7 +100,7 @@ export const createBoxToolStore = (
 
         const setShapeCommand = new SetSceneObjectFieldCommand<
           EmbVector
-        >(currentlyBuildingId, "segments", currentShape);
+        >(currentlyBuildingId, "shape", currentShape);
         setShapeCommand.final = false;
         const setPositionCommand = new SetSceneObjectFieldCommand<
           EmbVector
@@ -148,7 +148,7 @@ export const createBoxToolStore = (
         const setShapeCommand = new SetSceneObjectFieldCommand<
           EmbVector,
           keyof EmbVector
-        >(currentlyBuildingId, "segments", currentShape);
+        >(currentlyBuildingId, "shape", currentShape);
         setShapeCommand.final = false;
         const setPositionCommand = new SetSceneObjectFieldCommand<
           EmbVector,
@@ -198,7 +198,7 @@ export const createBoxToolStore = (
         const setShapeCommand = new SetSceneObjectFieldCommand<
           EmbVector,
           keyof EmbVector
-        >(currentlyBuildingId, "segments", currentShape);
+        >(currentlyBuildingId, "shape", currentShape);
         const setPositionCommand = new SetSceneObjectFieldCommand<
           EmbVector,
           keyof EmbVector

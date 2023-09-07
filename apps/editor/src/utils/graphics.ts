@@ -1,14 +1,13 @@
 import { NodeUtils, VectorNode, VectorNodeType } from "../emb-objects";
 import {
-    VectorSegment,
-    VectorSegmentArrayBuilder,
+    VectorShape,
 } from "../emb-objects/vec-seg";
 import { newUuid } from "./uuid";
 
 export const createBoxGraphicsCommands = (
     width: number,
     height: number,
-): VectorSegment[] => {
+): VectorShape => {
     const { Point } = VectorNodeType;
     const topleft: VectorNode = {
         id: newUuid(),
@@ -35,20 +34,20 @@ export const createBoxGraphicsCommands = (
         y: height,
     };
 
-    const builder = new VectorSegmentArrayBuilder();
-    builder.lineTo(topRight);
-    builder.lineTo(bottomRight);
-    builder.lineTo(bottomLeft);
-    builder.lineTo(topleft);
+    const shape = new VectorShape();
+    shape.lineTo(topRight);
+    shape.lineTo(bottomRight);
+    shape.lineTo(bottomLeft);
+    shape.lineTo(topleft);
 
-    return builder.buildAsClosed();
+    return shape;
 };
 
 const ELLIPSE_RATIO = 0.22;
 export const createEllipseGraphicsCommands = (
     width: number,
     height: number,
-): VectorSegment[] => {
+): VectorShape => {
     const tl = NodeUtils.newControl(width * ELLIPSE_RATIO, 0);
     const t = NodeUtils.newPoint(width / 2, 0);
     const tr = NodeUtils.newControl(width - width * ELLIPSE_RATIO, 0);
@@ -65,13 +64,14 @@ export const createEllipseGraphicsCommands = (
     const l = NodeUtils.newPoint(0, height / 2);
     const lb = NodeUtils.newControl(0, height - height * ELLIPSE_RATIO);
 
-    const builder = new VectorSegmentArrayBuilder();
+    const shape = new VectorShape();
 
-    builder.moveTo(t);
-    builder.bezierTo(tr, rt, r);
-    builder.bezierTo(rb, br, b);
-    builder.bezierTo(bl, lb, l);
-    builder.bezierTo(lt, tl, t);
+    shape.setStart(t);
+    shape.bezierTo(tr, rt, r);
+    shape.bezierTo(rb, br, b);
+    shape.bezierTo(bl, lb, l);
+    shape.bezierTo(lt, tl, t);
+    shape.close();
 
-    return builder.buildAsClosed();
+    return shape;
 };

@@ -2,23 +2,25 @@ import { Graphics, ILineStyleOptions } from "@pixi/graphics";
 import { IFillStyleOptions } from "@pixi/graphics";
 import {
     SegmentUtils,
-    VectorSegment,
+    VectorShape,
 } from "../vec-seg";
 
-export const updateGraphicsWithSegments = (
+export const drawVectorShapeToGraphic = (
     g: Graphics,
-    segments: VectorSegment[],
+    shape: VectorShape,
     fill: IFillStyleOptions,
     line: ILineStyleOptions,
 ) => {
     g.clear();
-    if (segments.length <= 1) return;
+    if (shape.length <= 1) return;
 
     g.beginFill(fill.color, fill.alpha);
     g.lineStyle(line);
 
-    for (let i = 0; i < segments.length; i++) {
-        const seg = segments[i]!;
+    g.moveTo(shape.startPoint.x, shape.startPoint.y);
+
+    for (let i = 0; i < shape.length; i++) {
+        const seg = shape[i]!;
         const { to } = seg;
         if (SegmentUtils.isMove(seg)) {
             g.moveTo(to.x, to.y);
