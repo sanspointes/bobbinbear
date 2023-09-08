@@ -1,13 +1,14 @@
-import { createMemo, JSX, Show, useContext } from "solid-js";
+import { createMemo, Show, useContext } from "solid-js";
 import { AccordionItem } from "./generics/Accordian";
 import { AppContext } from "../store";
 import { SetSceneObjectFieldCommand } from "../store/commands";
 import { ColorPicker } from "./generics/ColorPicker";
-import { IFillStyleOptions, ILineStyleOptions, LINE_CAP } from "@pixi/graphics";
+import { ILineStyleOptions, LINE_CAP } from "@pixi/graphics";
 import { NumberInput } from "./generics/NumberInput";
 import { Select } from "./generics/Select";
 import { Uuid } from "../utils/uuid";
-import { EmbBase, EmbHasFill, EmbVector } from "../emb-objects";
+import { EmbBase, EmbHasFill, EmbVector, FillOptions, LineOptions } from "../emb-objects";
+import { HslColor } from "../utils/color";
 
 const LineCapText: Record<LINE_CAP, string> = {
   [LINE_CAP.BUTT]: "Butt",
@@ -32,7 +33,7 @@ type SidebarStyleProps = {
 export function SidebarStyle(props: SidebarStyleProps) {
   const { dispatch } = useContext(AppContext);
 
-  const updateFillStyle = (model: Partial<IFillStyleOptions>) => {
+  const updateFillStyle = (model: Partial<FillOptions>) => {
     const fill = { ...props.object.fill, ...model };
     const cmd = new SetSceneObjectFieldCommand<
       EmbBase & EmbHasFill
@@ -40,7 +41,7 @@ export function SidebarStyle(props: SidebarStyleProps) {
     dispatch("scene:do-command", cmd);
   };
 
-  const updateStrokeStyle = (model: Partial<ILineStyleOptions>) => {
+  const updateStrokeStyle = (model: Partial<LineOptions>) => {
     const preStroke = (props.object as EmbVector).line;
     if (!preStroke) {
       throw new Error(
@@ -48,16 +49,17 @@ export function SidebarStyle(props: SidebarStyleProps) {
       );
     }
     const stroke = { ...preStroke, ...model };
+    console.log(model, stroke);
     const cmd = new SetSceneObjectFieldCommand(
       props.object.id,
       // @ts-expect-error ; SetSceneObjectFieldCommand not typed to GraphicSceneObject
-      "stroke",
+      "line",
       stroke,
     );
     dispatch("scene:do-command", cmd);
   };
 
-  const onFillColorChange = (color: number | undefined) => {
+  const onFillColorChange = (color: HslColor) => {
     updateFillStyle({
       color,
     });
@@ -78,32 +80,34 @@ export function SidebarStyle(props: SidebarStyleProps) {
       innerClass="grid grid-cols-2 gap-4"
     >
       <Show when={props.object.fill}>
-        {(fill) => (
+        {(fillStyle) => (
           <ColorPicker
             class="col-span-2"
             label="Fill"
-            colorValue={fill().color}
+            color={fillStyle().color}
             onChange={onFillColorChange}
           />
         )}
       </Show>
-      <Show when={(props.object as EmbVector).stroke}>
-        {(stroke) => (
+      <Show when={(props.object as EmbVector).line}>
+        {(lineStyle) => (
           <>
             <ColorPicker
               label="Stroke"
-              colorValue={stroke().color}
+              class="col-span-2"
+              color={lineStyle().color}
               onChange={(v) => updateStrokeStyle({ color: v })}
             />
             <NumberInput
               label="Width"
-              value={stroke().width ?? 1}
+              class="col-span-2"
+              value={lineStyle().width ?? 1}
               onChange={(v) => updateStrokeStyle({ width: v })}
             />
             <Select<LINE_CAP>
               class="col-span-2"
               multiple={false}
-              value={stroke().cap}
+              value={lineStyle().cap}
               options={[LINE_CAP.BUTT, LINE_CAP.ROUND, LINE_CAP.SQUARE]}
               onChange={(v) => updateStrokeStyle({ cap: v })}
             >

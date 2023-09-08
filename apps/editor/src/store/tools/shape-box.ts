@@ -13,6 +13,7 @@ import { SetSceneObjectFieldCommand, CreateObjectCommand } from "../commands";
 import { Point } from "@pixi/core";
 import { MultiCommand } from "../commands/shared";
 import { EmbObject, EmbState, EmbVector } from "../../emb-objects";
+import { hslFromRgb } from "../../utils/color";
 
 export const BoxEvents = {
   PointerDown: Symbol("b-Pointerdown"),
@@ -88,12 +89,12 @@ export const createBoxToolStore = (
           close: true,
           inspecting: false,
           fill: {
-            color: 0xcccccc,
+              color: hslFromRgb({ r: 200, g: 200, b: 200 }),
             alpha: 1,
           },
           line: {
             width: 1,
-            color: 0x000000,
+              color: hslFromRgb({ r: 0, g: 0, b: 0 }),
             alpha: 1,
           },
         });

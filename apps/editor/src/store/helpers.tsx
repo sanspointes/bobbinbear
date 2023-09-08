@@ -18,6 +18,7 @@ import { addPoint, lerpPoint, subPoint } from "../utils/math";
 import { EmbCanvas, EmbNode, VectorNodeType, EmbVector, isNodePointVirtual, VectorNode } from "../emb-objects";
 import { isEmbNode } from "../emb-objects/utils";
 import { EMB_STATE_DEFAULTS } from "../emb-objects/shared";
+import { hslFromRgb } from "../utils/color";
 
 export const createCanvas = (
   dispatch: AppDispatcher,
@@ -34,7 +35,7 @@ export const createCanvas = (
     name: name ?? "Canvas",
     size,
     fill: {
-      color: 0xffffff,
+      color: hslFromRgb({ r: 255, g: 255, b: 255 }),
     },
   };
   dispatch("scene:do-command", new CreateObjectCommand(canvas));

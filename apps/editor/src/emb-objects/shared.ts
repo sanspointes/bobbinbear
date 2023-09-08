@@ -2,6 +2,7 @@ import { Point } from "@pixi/core";
 import { Uuid } from "../utils/uuid";
 import { IFillStyleOptions, ILineStyleOptions } from "@pixi/graphics";
 import { Command } from "../store/commands";
+import { HslColor } from "../utils/color";
 
 export type EmbState = {
     /** Internal locking used for blocking the user from interacting with this element (but not children) */
@@ -53,12 +54,14 @@ export type EmbHasVirtual = {
     virtualCreator: () => Command;
 };
 
+export type FillOptions = Omit<IFillStyleOptions , 'color'> & { color: HslColor };
 export type EmbHasFill = {
-    fill: IFillStyleOptions;
+    fill: FillOptions;
 };
 
+export type LineOptions = Omit<ILineStyleOptions , 'color'> & { color: HslColor };
 export type EmbHasLine = {
-    line: ILineStyleOptions;
+    line: LineOptions;
 };
 export type EmbHasInspecting = {
     inspecting: boolean;
