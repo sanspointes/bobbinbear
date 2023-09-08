@@ -29,14 +29,14 @@ export function ColorPicker(props: ColorPickerProps) {
             <span class="text-orange-50">{props.label}</span>
             <Popover
                 trigger={
-                    <div class='w-8 h-8 rounded-md hover:outline outline-white outline-2' style={{
+                    <div class='w-8 h-8 rounded-md outline-white outline-2 hover:outline' style={{
                         "background-color": hslToCssString(props.color),
                     }}/>
                 }
                 title="Color"
             >
-                    <SVSwatch class="w-full aspect-square" color={hsv()} onChange={handleNewColor}/>
-                    <HueSwatch class="w-full h-8" color={hsv()} onChange={handleNewColor}/>
+                <SVSwatch class="w-full aspect-square" color={hsv()} onChange={handleNewColor}/>
+                <HueSwatch class="w-full h-8" color={hsv()} onChange={handleNewColor}/>
             </Popover>
         </div>
     );

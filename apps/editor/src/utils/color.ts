@@ -57,7 +57,7 @@ export const hslFromRgb = ({r, g, b}: RgbColor): HslColor => {
     h: 60 * h < 0 ? 60 * h + 360 : 60 * h,
     s: 100 * (s ? (l <= 0.5 ? s / (2 * l - s) : s / (2 - (2 * l - s))) : 0),
     l: (100 * (2 * l - s)) / 2,
-};
+    };
 }
 
 export const hslToCssString = ({h, s, l}: HslColor): string => `hsl(${h}, ${s}%, ${l}%)`;

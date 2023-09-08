@@ -1,7 +1,7 @@
-import { IPoint, Point } from '@pixi/core'
+import { Point } from '@pixi/core'
 import { arrayFirst, arrayLast } from "../../utils/array";
 import { newUuid, Uuid } from "../../utils/uuid";
-import { NodePoint, VectorNode } from "../node";
+import { VectorNode } from "../node";
 import { EmbBase, EmbHasLine, EmbState } from "../shared";
 import { EmbVector } from "../vector";
 

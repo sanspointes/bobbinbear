@@ -39,6 +39,7 @@ export const createBoxGraphicsCommands = (
     shape.lineTo(bottomRight);
     shape.lineTo(bottomLeft);
     shape.lineTo(topleft);
+    shape.close();
 
     return shape;
 };
