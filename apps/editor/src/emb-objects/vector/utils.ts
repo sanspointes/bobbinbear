@@ -17,7 +17,9 @@ export const drawVectorShapeToGraphic = (
     g.beginFill(fill.color, fill.alpha);
     g.lineStyle(line);
 
-    g.moveTo(shape.startPoint.x, shape.startPoint.y);
+    const start = shape.getStartNode();
+    if (start) g.moveTo(start.x, start.y);
+    console.log(start);
 
     for (let i = 0; i < shape.length; i++) {
         const seg = shape[i]!;

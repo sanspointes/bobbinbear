@@ -66,7 +66,6 @@ export const createEllipseGraphicsCommands = (
 
     const shape = new VectorShape();
 
-    shape.setStart(t);
     shape.bezierTo(tr, rt, r);
     shape.bezierTo(rb, br, b);
     shape.bezierTo(bl, lb, l);

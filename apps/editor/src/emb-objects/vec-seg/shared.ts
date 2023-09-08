@@ -1,4 +1,4 @@
-import { Point } from '@pixi/core'
+import { IPoint, Point } from '@pixi/core'
 import { arrayFirst, arrayLast } from "../../utils/array";
 import { newUuid, Uuid } from "../../utils/uuid";
 import { NodePoint, VectorNode } from "../node";
@@ -64,9 +64,13 @@ export class VectorShape extends Array<VectorSegment> {
         super.push(...segments);
     }
 
-    setStart(p: NodePoint) {
-        this.startPoint.copyFrom(p);
-    }
+    getStartNode(): { x: number, y: number } | undefined {
+        const first = arrayFirst(this);
+        if (!first) return undefined;
+        if (first.prev) {
+            return first.prev.to;
+        }
+     }
 
     prev?: VectorSegment;
     push(seg: VectorSegment) {
@@ -120,7 +124,7 @@ export class VectorShape extends Array<VectorSegment> {
         first.prev = last;
     }
 
-    static fromArray(array: Array<VectorSegment>) {
-        return new VectorShape(...array);
+    static fromJSON(array: Array<VectorSegment>) {
+        throw new Error('STUB: VectorShape.fromJSON() Not implemented.')
     }
 }
