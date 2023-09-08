@@ -7,10 +7,10 @@ const PRETTIER_CONFIG = {
 module.exports = {
     env: {
         browser: true,
-        es2021: true,
+        es2024: true,
     },
     parser: '@typescript-eslint/parser',
-    plugins: ['@typescript-eslint', 'solid'],
+    plugins: ['@typescript-eslint', 'solid', 'unicorn'],
     extends: [
         'eslint:recommended',
         'plugin:@typescript-eslint/recommended',
