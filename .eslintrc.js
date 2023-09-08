@@ -1,20 +1,32 @@
+const PRETTIER_CONFIG = {
+    endOfLine: 'auto',
+    singleQuote: true,
+    tabWidth: 4,
+};
+
 module.exports = {
     env: {
         browser: true,
-        es2021: true
+        es2021: true,
     },
-    parser: "@typescript-eslint/parser",
-    plugins: ["solid"],
-    extends: ["eslint:recommended", "plugin:@typescript-eslint/recommended", "plugin:solid/typescript"],
-    parserOptions: {
-        ecmaVersion: "latest",
-        sourceType: "module"
-    },
-    plugins: [
-        "@typescript-eslint"
+    parser: '@typescript-eslint/parser',
+    plugins: ['@typescript-eslint', 'solid'],
+    extends: [
+        'eslint:recommended',
+        'plugin:@typescript-eslint/recommended',
+        'plugin:solid/typescript',
+        'plugin:prettier/recommended',
     ],
+    parserOptions: {
+        ecmaVersion: 'latest',
+        sourceType: 'module',
+    },
     root: true,
     rules: {
-      "@typescript-eslint/no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }]
-    }
-}
+        '@typescript-eslint/no-unused-vars': [
+            'warn',
+            { argsIgnorePattern: '^_' },
+        ],
+        'prettier/prettier': ['warn', PRETTIER_CONFIG],
+    },
+};
