@@ -23,6 +23,11 @@ const round = (
     return Math.round(base * number) / base;
 };
 
+const format = (number: number) => {
+    const hex = number.toString(16);
+    return hex.length < 2 ? '0' + hex : hex;
+};
+
 export const hsvFromHsl = ({ h, s, l }: HslColor): HsvColor => {
     s *= (l < 50 ? l : 100 - l) / 100;
 
@@ -72,4 +77,48 @@ export const hslToCssString = ({ h, s, l }: HslColor): string =>
 export const hsvToCssString = (color: HsvColor): string => {
     const { h, s, l } = hslFromHsv(color);
     return `hsl(${h}, ${s}, ${l})`;
+};
+
+export const rgbFromHsv = ({ h, s, v }: HsvColor): RgbColor => {
+    h = (h / 360) * 6;
+    s = s / 100;
+    v = v / 100;
+
+    const hh = Math.floor(h),
+        b = v * (1 - s),
+        c = v * (1 - (h - hh) * s),
+        d = v * (1 - (1 - h + hh) * s),
+        module = hh % 6;
+
+    return {
+        r: round([v, c, b, b, d, v][module]! * 255),
+        g: round([d, v, v, c, b, b][module]! * 255),
+        b: round([b, b, d, v, v, c][module]! * 255),
+    };
+};
+
+export const hexFromRgb = ({ r, g, b }: RgbColor): string => {
+    return '#' + format(r) + format(g) + format(b);
+};
+
+export const hexFromHsv = (color: HsvColor) => hexFromRgb(rgbFromHsv(color));
+
+export const hsvFromRgb = ({ r, g, b }: RgbColor): HsvColor => {
+    const max = Math.max(r, g, b);
+    const delta = max - Math.min(r, g, b);
+
+    // prettier-ignore
+    const hh = delta
+    ? max === r
+      ? (g - b) / delta
+      : max === g
+        ? 2 + (b - r) / delta
+        : 4 + (r - g) / delta
+    : 0;
+
+    return {
+        h: round(60 * (hh < 0 ? hh + 6 : hh)),
+        s: round(max ? (delta / max) * 100 : 0),
+        v: round((max / 255) * 100),
+    };
 };

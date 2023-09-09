@@ -1,5 +1,4 @@
-import { Graphics, ILineStyleOptions } from '@pixi/graphics';
-import { IFillStyleOptions } from '@pixi/graphics';
+import { Graphics, ILineStyleOptions, IFillStyleOptions } from '@pixi/graphics';
 import { SegmentUtils, VectorShape } from '../vec-seg';
 
 export const drawVectorShapeToGraphic = (
@@ -16,7 +15,6 @@ export const drawVectorShapeToGraphic = (
 
     const start = shape.getStartNode();
     if (start) g.moveTo(start.x, start.y);
-    console.log(start);
 
     for (let i = 0; i < shape.length; i++) {
         const seg = shape[i]!;

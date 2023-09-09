@@ -3,7 +3,7 @@ import { onMount, splitProps } from 'solid-js';
 
 export type TextInputProps = KTextField.TextFieldRootProps & {
     label: string;
-    hideLabel?: string;
+    hideLabel?: boolean;
     autofocus?: boolean;
 };
 export function TextInput(props: TextInputProps) {
@@ -27,7 +27,7 @@ export function TextInput(props: TextInputProps) {
         >
             <KTextField.Label
                 class="text-orange-50"
-                classList={{ 'sr-only': !remainingProps.hideLabel }}
+                classList={{ 'sr-only': remainingProps.hideLabel }}
             >
                 {remainingProps.label}
             </KTextField.Label>

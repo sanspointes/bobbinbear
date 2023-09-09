@@ -7,12 +7,17 @@ const PRETTIER_CONFIG = {
 module.exports = {
     env: {
         browser: true,
-        es2023: true,
+    },
+    settings: {
+        'import/resolver': {
+            typescript: true,
+        },
     },
     parser: '@typescript-eslint/parser',
-    plugins: ['@typescript-eslint', 'solid', 'unicorn'],
+    plugins: ['@typescript-eslint', 'solid', 'unicorn', 'import'],
     extends: [
         'eslint:recommended',
+        'plugin:import/recommended',
         'plugin:@typescript-eslint/recommended',
         'plugin:solid/typescript',
         'plugin:prettier/recommended',

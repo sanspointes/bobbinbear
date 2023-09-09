@@ -1,4 +1,4 @@
-import { createEffect, createMemo } from 'solid-js';
+import { createEffect, createMemo, useContext } from 'solid-js';
 import { Popover } from '../Popover';
 import clsx from 'clsx';
 import { SVSwatch } from './SVSwatch';
@@ -10,6 +10,8 @@ import {
     hslToCssString,
     hsvFromHsl,
 } from '../../../utils/color';
+import { ColorInput } from './ColorInput';
+import { AppContext } from '@/store';
 
 export type ColorPickerProps = {
     class?: string;
@@ -20,9 +22,7 @@ export type ColorPickerProps = {
 export function ColorPicker(props: ColorPickerProps) {
     const hsv = createMemo(() => hsvFromHsl(props.color));
 
-    createEffect(() => {
-        console.log(hsv());
-    });
+    const { settingsStore, dispatch } = useContext(AppContext);
 
     const handleNewColor = (hsv: HsvColor) => {
         const hsl = hslFromHsv(hsv);
@@ -42,6 +42,7 @@ export function ColorPicker(props: ColorPickerProps) {
                     />
                 }
                 title="Color"
+                class="w-[250px]"
             >
                 <SVSwatch
                     class="w-full aspect-square"
@@ -50,6 +51,14 @@ export function ColorPicker(props: ColorPickerProps) {
                 />
                 <HueSwatch
                     class="w-full h-8"
+                    color={hsv()}
+                    onChange={handleNewColor}
+                />
+                <ColorInput
+                    strategy={settingsStore.colorInputStrategy}
+                    onStrategyChange={(v) =>
+                        dispatch('settings:set-color-input-strategy', v)
+                    }
                     color={hsv()}
                     onChange={handleNewColor}
                 />

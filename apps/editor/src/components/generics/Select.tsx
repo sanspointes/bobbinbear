@@ -57,7 +57,7 @@ export function Select<TOption>(props: SelectProps<TOption>) {
         // Typescript can't infer if this is single or multiple props
         <KSelect.Root
             {...remainingProps}
-            class="w-full text-orange-900"
+            class="text-orange-900"
             classList={{
                 [internalProps.class ?? '']: props.class !== undefined,
             }}
