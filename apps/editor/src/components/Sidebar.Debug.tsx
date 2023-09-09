@@ -1,10 +1,9 @@
-import { createMemo, useContext, For } from 'solid-js';
+import { createMemo, useContext, For, Show } from 'solid-js';
 import { EmbObject } from '../emb-objects/shared';
 import { AccordionItem } from './generics/Accordian';
 import { AppContext } from '../store';
 import { Cursor } from '../store/toolStore';
 import { arrayFirst } from '../utils/array';
-import { Show } from 'solid-js';
 
 export function SidebarDebug() {
     const { toolStore, sceneStore } = useContext(AppContext);

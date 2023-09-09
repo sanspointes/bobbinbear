@@ -6,7 +6,7 @@ import {
     MutateSceneObjectArrayFieldCommand,
     SetSceneObjectFieldCommand,
 } from './commands';
-import { EmbState } from '../emb-objects/shared';
+import { EmbState, EMB_STATE_DEFAULTS } from '../emb-objects/shared';
 import { AppDispatcher } from '.';
 import { SceneModel } from './sceneStore';
 import {
@@ -24,7 +24,6 @@ import {
     VectorNode,
 } from '../emb-objects';
 import { isEmbNode } from '../emb-objects/utils';
-import { EMB_STATE_DEFAULTS } from '../emb-objects/shared';
 import { hslFromRgb } from '../utils/color';
 
 export const createCanvas = (

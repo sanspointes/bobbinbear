@@ -1,7 +1,6 @@
 import { splitProps } from 'solid-js';
 import { Accordion as KAccordion } from '@kobalte/core';
-import { TbChevronRight } from 'solid-icons/tb';
-import { TbChevronDown } from 'solid-icons/tb';
+import { TbChevronRight, TbChevronDown } from 'solid-icons/tb';
 
 type AccordionProps = KAccordion.AccordionRootProps;
 export function Accordion(props: AccordionProps) {

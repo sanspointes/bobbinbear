@@ -6,10 +6,9 @@ import {
     useContext,
 } from 'solid-js';
 import { createStore } from 'solid-js/store';
-import { EmbBase, EmbState } from '../emb-objects/shared';
+import { EmbBase, EmbState, EMB_STATE_DEFAULTS } from '../emb-objects/shared';
 import { AppContext } from '../store';
 import { access, MaybeAccessor } from '@solid-primitives/utils';
-import { EMB_STATE_DEFAULTS } from '../emb-objects/shared';
 
 export const useTemporarySceneObject = <TObject extends EmbBase>(
     obj: MaybeAccessor<TObject & Partial<EmbState>>,

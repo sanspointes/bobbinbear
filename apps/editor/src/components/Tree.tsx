@@ -8,10 +8,10 @@ import {
     DeselectObjectsCommand,
     SelectObjectsCommand,
     SetSceneObjectFieldCommand,
+    MultiCommand,
 } from '../store/commands';
 import { Button } from './generics/Button';
 import { SceneModel } from '../store/sceneStore';
-import { MultiCommand } from '../store/commands';
 import { Uuid, uuid } from '../utils/uuid';
 
 /**
