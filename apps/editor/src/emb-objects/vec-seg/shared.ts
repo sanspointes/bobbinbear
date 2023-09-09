@@ -1,9 +1,9 @@
-import { Point } from '@pixi/core'
-import { arrayFirst, arrayLast } from "../../utils/array";
-import { newUuid, Uuid } from "../../utils/uuid";
-import { VectorNode } from "../node";
-import { EmbBase, EmbHasLine, EmbState } from "../shared";
-import { EmbVector } from "../vector";
+import { Point } from '@pixi/core';
+import { arrayFirst, arrayLast } from '../../utils/array';
+import { newUuid, Uuid } from '../../utils/uuid';
+import { VectorNode } from '../node';
+import { EmbBase, EmbHasLine, EmbState } from '../shared';
+import { EmbVector } from '../vector';
 
 export enum VectorSegmentType {
     MoveTo,
@@ -42,20 +42,20 @@ export type VectorSegment =
     | QuadraticToVectorSegment
     | BezierToVectorSegment;
 
-export type AnyVectorSegment =
-    & BaseVectorSegment
-    & { type: VectorSegment['type'] }
-    & Partial<Omit<LineToVectorSegment, 'type'>>
-    & Partial<Omit<MoveToVectorSegment, 'type'>>
-    & Partial<Omit<QuadraticToVectorSegment, 'type'>>
-    & Partial<Omit<BezierToVectorSegment, 'type'>>;
+export type AnyVectorSegment = BaseVectorSegment & {
+    type: VectorSegment['type'];
+} & Partial<Omit<LineToVectorSegment, 'type'>> &
+    Partial<Omit<MoveToVectorSegment, 'type'>> &
+    Partial<Omit<QuadraticToVectorSegment, 'type'>> &
+    Partial<Omit<BezierToVectorSegment, 'type'>>;
 
-export type EmbVecSeg = EmbBase & EmbHasLine & {
-    id: Uuid<EmbVecSeg & EmbBase>;
-    type: "vec-seg";
-    segment: VectorSegment;
-    relatesTo: Uuid<EmbVector & EmbState>;
-};
+export type EmbVecSeg = EmbBase &
+    EmbHasLine & {
+        id: Uuid<EmbVecSeg & EmbBase>;
+        type: 'vec-seg';
+        segment: VectorSegment;
+        relatesTo: Uuid<EmbVector & EmbState>;
+    };
 
 export class VectorShape extends Array<VectorSegment> {
     public startPoint = new Point(0, 0);
@@ -64,13 +64,13 @@ export class VectorShape extends Array<VectorSegment> {
         super.push(...segments);
     }
 
-    getStartNode(): { x: number, y: number } | undefined {
+    getStartNode(): { x: number; y: number } | undefined {
         const first = arrayFirst(this);
         if (!first) return undefined;
         if (first.prev) {
             return first.prev.to;
         }
-     }
+    }
 
     prev?: VectorSegment;
     push(seg: VectorSegment) {
@@ -125,6 +125,6 @@ export class VectorShape extends Array<VectorSegment> {
     }
 
     static fromJSON(array: Array<VectorSegment>) {
-        throw new Error('STUB: VectorShape.fromJSON() Not implemented.')
+        throw new Error('STUB: VectorShape.fromJSON() Not implemented.');
     }
 }

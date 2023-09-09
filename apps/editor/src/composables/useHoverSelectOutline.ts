@@ -1,11 +1,11 @@
-import { Container } from "@pixi/display";
-import { EmbBase, EmbState } from "../emb-objects/shared";
-import { createEffect } from "solid-js";
-import { OutlineFilter } from "@pixi/filter-outline";
-import { arrayRemoveEl } from "../utils/array";
+import { Container } from '@pixi/display';
+import { EmbBase, EmbState } from '../emb-objects/shared';
+import { createEffect } from 'solid-js';
+import { OutlineFilter } from '@pixi/filter-outline';
+import { arrayRemoveEl } from '../utils/array';
 
-const HOVER_OUTLINE = new OutlineFilter(1, 0x41A3E9, 1.0);
-const SELECT_OUTLINE = new OutlineFilter(2, 0x0A8CE9, 1.0);
+const HOVER_OUTLINE = new OutlineFilter(1, 0x41a3e9, 1.0);
+const SELECT_OUTLINE = new OutlineFilter(2, 0x0a8ce9, 1.0);
 
 enum State {
     None,

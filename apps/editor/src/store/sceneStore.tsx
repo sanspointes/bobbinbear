@@ -1,21 +1,26 @@
 /* eslint-disable solid/reactivity */
-import { createStore, produce, SetStoreFunction } from "solid-js/store";
-import { batch } from "solid-js";
-import { Point } from "@pixi/core";
-import { ReactiveMap } from "@solid-primitives/map";
+import { createStore, produce, SetStoreFunction } from 'solid-js/store';
+import { batch } from 'solid-js';
+import { Point } from '@pixi/core';
+import { ReactiveMap } from '@solid-primitives/map';
 
-import { Uuid, uuid } from "../utils/uuid";
-import { Command } from "./commands";
-import { generateStore } from ".";
-import { arrayLast } from "../utils/array";
-import { EMB_STATE_DEFAULTS, EmbBase, EmbHasInspecting, EmbState } from "../emb-objects/shared";
-import { EmbGroup, EmbObject } from "../emb-objects";
+import { Uuid, uuid } from '../utils/uuid';
+import { Command } from './commands';
+import { generateStore } from '.';
+import { arrayLast } from '../utils/array';
+import {
+    EMB_STATE_DEFAULTS,
+    EmbBase,
+    EmbHasInspecting,
+    EmbState,
+} from '../emb-objects/shared';
+import { EmbGroup, EmbObject } from '../emb-objects';
 
 export const getObject = <T extends EmbBase & EmbState>(
     store: SceneModel,
     uuid: Uuid<T> | undefined,
 ): T | undefined => {
-    if ((uuid) === undefined) return undefined;
+    if (uuid === undefined) return undefined;
     return store.objects.get(uuid) as T | undefined;
 };
 export const getObjectSetter = <T extends EmbBase & EmbState>(
@@ -44,11 +49,11 @@ export type ObjectMapData<T extends EmbObject = EmbObject> = {
 };
 
 export type SceneStoreMessages = {
-    "scene:hover": Uuid<EmbBase & EmbState>;
-    "scene:unhover": Uuid<EmbBase & EmbState>;
-    "scene:do-command": Command<EmbBase & EmbState>;
-    "scene:undo": void;
-    "scene:redo": void;
+    'scene:hover': Uuid<EmbBase & EmbState>;
+    'scene:unhover': Uuid<EmbBase & EmbState>;
+    'scene:do-command': Command<EmbBase & EmbState>;
+    'scene:undo': void;
+    'scene:redo': void;
 };
 
 export type SceneModel = {
@@ -70,14 +75,17 @@ export const createSceneStore = () => {
     // Set the root object, this can't be edited
     const [object, set] = createStore<EmbGroup & EmbState>({
         ...EMB_STATE_DEFAULTS,
-        type: "group",
-        id: uuid("root"),
-        name: "Root",
+        type: 'group',
+        id: uuid('root'),
+        name: 'Root',
         parent: undefined as unknown as Uuid<EmbObject>,
         children: [],
         position: new Point(0, 0),
         shallowLocked: true,
-    }) as [object: EmbBase & EmbState, set: SetStoreFunction<EmbBase & EmbState>];
+    }) as [
+        object: EmbBase & EmbState,
+        set: SetStoreFunction<EmbBase & EmbState>,
+    ];
 
     const model: SceneModel = {
         inspecting: undefined,
@@ -86,21 +94,21 @@ export const createSceneStore = () => {
         selectedObjects: [],
         undoStack: [],
         redoStack: [],
-        objects: new ReactiveMap([[uuid("root"), object]]),
-        objectSetters: new Map([[uuid("root"), set]]),
+        objects: new ReactiveMap([[uuid('root'), object]]),
+        objectSetters: new Map([[uuid('root'), set]]),
         root: object,
     };
 
     const result = generateStore<SceneModel, SceneStoreMessages>(model, {
-        "scene:hover": (store, _2, uuid) => {
+        'scene:hover': (store, _2, uuid) => {
             const set = getObjectSetter(store, uuid);
-            if (set) set("hovered", true);
+            if (set) set('hovered', true);
         },
-        "scene:unhover": (store, _2, uuid) => {
+        'scene:unhover': (store, _2, uuid) => {
             const set = getObjectSetter(store, uuid);
-            if (set) set("hovered", false);
+            if (set) set('hovered', false);
         },
-        "scene:do-command": (store, set, command) => {
+        'scene:do-command': (store, set, command) => {
             const lastCommand = arrayLast(store.undoStack);
             if (lastCommand) {
                 const sameType = lastCommand.type === command.type;
@@ -110,7 +118,7 @@ export const createSceneStore = () => {
                 // Error if not an update of previous or a new command entirely
                 if (!needsPush && !needsUpdate) {
                     throw new Error(
-                        "perform-command: Invalid lastCommand/command.  Maybe you forgot to finalize the previous command?",
+                        'perform-command: Invalid lastCommand/command.  Maybe you forgot to finalize the previous command?',
                     );
                 }
 
@@ -132,47 +140,59 @@ export const createSceneStore = () => {
 
                 // Push undo stack, clear redo stack
                 if (needsPush) {
-                    set(produce((store) => {
-                        store.undoStack.push(command);
-                        store.redoStack = [];
-                    }));
+                    set(
+                        produce((store) => {
+                            store.undoStack.push(command);
+                            store.redoStack = [];
+                        }),
+                    );
                 }
             } else {
                 command.perform(store, set);
 
-                set(produce((store) => {
-                    store.undoStack.push(command);
-                    store.redoStack = [];
-                }));
+                set(
+                    produce((store) => {
+                        store.undoStack.push(command);
+                        store.redoStack = [];
+                    }),
+                );
             }
         },
-        "scene:undo": (store, set) => {
+        'scene:undo': (store, set) => {
             batch(() => {
                 let command: Command | undefined;
-                set(produce((store) => {
-                    command = store.undoStack.pop();
-                }));
+                set(
+                    produce((store) => {
+                        command = store.undoStack.pop();
+                    }),
+                );
                 if (command) {
                     command.undo(store, set);
 
-                    set(produce((store) => {
-                        store.redoStack.push(command!);
-                    }));
+                    set(
+                        produce((store) => {
+                            store.redoStack.push(command!);
+                        }),
+                    );
                 }
             });
         },
-        "scene:redo": (store, set) => {
+        'scene:redo': (store, set) => {
             batch(() => {
                 let command: Command | undefined;
-                set(produce((store) => {
-                    command = store.redoStack.pop();
-                }));
+                set(
+                    produce((store) => {
+                        command = store.redoStack.pop();
+                    }),
+                );
                 if (command) {
                     command.perform(store, set);
 
-                    set(produce((store) => {
-                        store.undoStack.push(command!);
-                    }));
+                    set(
+                        produce((store) => {
+                            store.undoStack.push(command!);
+                        }),
+                    );
                 }
             });
         },

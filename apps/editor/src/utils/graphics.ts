@@ -1,8 +1,6 @@
-import { NodeUtils, VectorNode, VectorNodeType } from "../emb-objects";
-import {
-    VectorShape,
-} from "../emb-objects/vec-seg";
-import { newUuid } from "./uuid";
+import { NodeUtils, VectorNode, VectorNodeType } from '../emb-objects';
+import { VectorShape } from '../emb-objects/vec-seg';
+import { newUuid } from './uuid';
 
 export const createBoxGraphicsCommands = (
     width: number,

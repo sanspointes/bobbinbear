@@ -1,33 +1,40 @@
-import { createMemo, useContext } from "solid-js";
-import { EmbObject } from "../emb-objects/shared";
-import { AccordionItem } from "./generics/Accordian";
-import { AppContext } from "../store";
-import { Cursor } from "../store/toolStore";
-import { arrayFirst } from "../utils/array";
-import { Show } from "solid-js";
+import { createMemo, useContext, For } from 'solid-js';
+import { EmbObject } from '../emb-objects/shared';
+import { AccordionItem } from './generics/Accordian';
+import { AppContext } from '../store';
+import { Cursor } from '../store/toolStore';
+import { arrayFirst } from '../utils/array';
+import { Show } from 'solid-js';
 
 export function SidebarDebug() {
-  const { toolStore, sceneStore } = useContext(AppContext);
+    const { toolStore, sceneStore } = useContext(AppContext);
 
-  const { boxTool, selectTool } = toolStore;
+    const { boxTool, selectTool } = toolStore;
 
-  const first = createMemo(() => arrayFirst(sceneStore.selectedObjects));
+    const first = createMemo(() => arrayFirst(sceneStore.selectedObjects));
 
-  return (
-    <AccordionItem value="debug" header="Debug">
-      <p>tool: {toolStore.tool.toString()}</p>
-      <p>
-        cursor: {toolStore.cursorStack.map((c) => <span>{Cursor[c]}</span>)}
-      </p>
-      <h3>SelectTool: {selectTool.state().toString()}</h3>
-      <h3>BoxTool: {boxTool.state().toString()}</h3>
-      <div class="border-b border-orange-800 border-solid" />
-      <h3>Scene</h3>
-      <p>Inspecting: {sceneStore.inspecting}</p>
-      <p>Selected IDs: {sceneStore.selectedIds.join(",")}</p>
-      <Show when={first()}>
-        {first => <p>Selected: ({first().position.x},{first().position.y} </p>}
-      </Show>
-    </AccordionItem>
-  );
+    return (
+        <AccordionItem value="debug" header="Debug">
+            <p>tool: {toolStore.tool.toString()}</p>
+            <p>
+                cursor:{' '}
+                <For each={toolStore.cursorStack}>
+                    {(c) => <span>{Cursor[c]}</span>}
+                </For>
+            </p>
+            <h3>SelectTool: {selectTool.state().toString()}</h3>
+            <h3>BoxTool: {boxTool.state().toString()}</h3>
+            <div class="border-b border-orange-800 border-solid" />
+            <h3>Scene</h3>
+            <p>Inspecting: {sceneStore.inspecting}</p>
+            <p>Selected IDs: {sceneStore.selectedIds.join(',')}</p>
+            <Show when={first()}>
+                {(first) => (
+                    <p>
+                        Selected: ({first().position.x},{first().position.y}{' '}
+                    </p>
+                )}
+            </Show>
+        </AccordionItem>
+    );
 }

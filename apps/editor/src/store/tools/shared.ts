@@ -1,76 +1,76 @@
-import { Point } from "@pixi/core";
+import { Point } from '@pixi/core';
 import {
     createExclusiveStateMachine,
     CreateExclusiveStateMachineOptions,
     t,
-} from "../../utils/fsm";
-import { Cursor, ToolHandler } from "../toolStore";
+} from '../../utils/fsm';
+import { Cursor, ToolHandler } from '../toolStore';
 
 export type ToolInputs = {
-    "pointer1-down": {
+    'pointer1-down': {
         position: Point;
         screenPosition: Point;
     };
-    "pointer1-move": {
+    'pointer1-move': {
         position: Point;
         downPosition?: Point;
         screenPosition: Point;
         screenDownPosition?: Point;
     };
-    "pointer1-up": {
+    'pointer1-up': {
         downPosition: Point;
         position: Point;
         screenPosition: Point;
         screenDownPosition: Point;
     };
-    "pointer1-click": {
+    'pointer1-click': {
         position: Point;
         screenPosition: Point;
     };
-    "pointer1-doubleclick": {
+    'pointer1-doubleclick': {
         position: Point;
         screenPosition: Point;
     };
-    "pointer1-dragstart": {
+    'pointer1-dragstart': {
         downPosition: Point;
         position: Point;
     };
-    "pointer1-dragmove": {
-        downPosition: Point;
-        position: Point;
-        screenDownPosition: Point;
-        screenPosition: Point;
-    };
-    "pointer1-dragend": {
+    'pointer1-dragmove': {
         downPosition: Point;
         position: Point;
         screenDownPosition: Point;
         screenPosition: Point;
     };
-    "pointer3-down": {
+    'pointer1-dragend': {
+        downPosition: Point;
+        position: Point;
+        screenDownPosition: Point;
+        screenPosition: Point;
+    };
+    'pointer3-down': {
         position: Point;
         screenPosition: Point;
     };
-    "pointer3-move": {
+    'pointer3-move': {
         position: Point;
         downPosition?: Point;
         screenPosition: Point;
         screenDownPosition?: Point;
     };
-    "pointer3-up": {
+    'pointer3-up': {
         downPosition: Point;
         position: Point;
         screenPosition: Point;
         screenDownPosition: Point;
     };
-    "keypress": {
+    keypress: {
         key: string;
     };
-    "keydown": {
+    keydown: {
         key: string;
         keys: Set<string>;
     };
-    "keyup": {
+    keyup: {
         key: string;
         keys: Set<string>;
     };
@@ -85,29 +85,32 @@ export type ToolInputMessage<
 };
 
 export const ViewportStates = {
-    Blocked: Symbol("Blocked"),
-    Default: Symbol("Default"),
-    CanPan: Symbol("CanPan"),
-    Panning: Symbol("Panning"),
-    PanningWithoutSpace: Symbol("PanningWithoutSpace"),
+    Blocked: Symbol('Blocked'),
+    Default: Symbol('Default'),
+    CanPan: Symbol('CanPan'),
+    Panning: Symbol('Panning'),
+    PanningWithoutSpace: Symbol('PanningWithoutSpace'),
 };
-type ViewportStatesType = typeof ViewportStates[keyof typeof ViewportStates];
+type ViewportStatesType = (typeof ViewportStates)[keyof typeof ViewportStates];
 export const ViewportEvents = {
-    Block: Symbol("Block"),
-    Unblock: Symbol("Unblock"),
-    SpaceDown: Symbol("SpaceDown"),
-    SpaceUp: Symbol("SpaceUp"),
-    PanButtonDown: Symbol("PanButtonDown"),
-    PanButtonUp: Symbol("PanButtonUp"),
-    PointerDown: Symbol("PointerDown"),
-    PointerUp: Symbol("PointerUp"),
+    Block: Symbol('Block'),
+    Unblock: Symbol('Unblock'),
+    SpaceDown: Symbol('SpaceDown'),
+    SpaceUp: Symbol('SpaceUp'),
+    PanButtonDown: Symbol('PanButtonDown'),
+    PanButtonUp: Symbol('PanButtonUp'),
+    PointerDown: Symbol('PointerDown'),
+    PointerUp: Symbol('PointerUp'),
 };
-type ViewportEventsType = typeof ViewportEvents[keyof typeof ViewportEvents];
+type ViewportEventsType = (typeof ViewportEvents)[keyof typeof ViewportEvents];
 
 export const createViewportStateMachine = (
     dispatch: ToolHandler,
     options: Partial<
-        CreateExclusiveStateMachineOptions<ViewportStatesType, ViewportEventsType>
+        CreateExclusiveStateMachineOptions<
+            ViewportStatesType,
+            ViewportEventsType
+        >
     >,
 ) => {
     const transitions = [
@@ -116,21 +119,21 @@ export const createViewportStateMachine = (
             ViewportEvents.SpaceDown,
             ViewportStates.CanPan,
             () => {
-                dispatch("tool:push-cursor", Cursor.Grab);
+                dispatch('tool:push-cursor', Cursor.Grab);
             },
         ),
         t(
             ViewportStates.CanPan,
             ViewportEvents.PointerDown,
             ViewportStates.Panning,
-            () => dispatch("tool:push-cursor", Cursor.Grabbing),
+            () => dispatch('tool:push-cursor', Cursor.Grabbing),
         ),
         t(
             ViewportStates.CanPan,
             ViewportEvents.SpaceUp,
             ViewportStates.Default,
             () => {
-                dispatch("tool:clear-cursor", Cursor.Grab);
+                dispatch('tool:clear-cursor', Cursor.Grab);
             },
         ),
         t(
@@ -139,15 +142,15 @@ export const createViewportStateMachine = (
             ViewportStates.Panning,
             () => {
                 dispatch('tool:push-cursor', Cursor.Grabbing);
-            }
+            },
         ),
         t(
             ViewportStates.Panning,
             ViewportEvents.PanButtonUp,
             ViewportStates.Default,
             () => {
-                dispatch("tool:clear-cursor", [Cursor.Grabbing, Cursor.Grab]);
-            }
+                dispatch('tool:clear-cursor', [Cursor.Grabbing, Cursor.Grab]);
+            },
         ),
         t(
             ViewportStates.Panning,
@@ -158,14 +161,14 @@ export const createViewportStateMachine = (
             ViewportStates.Panning,
             ViewportEvents.PointerUp,
             ViewportStates.CanPan,
-            () => dispatch("tool:clear-cursor", Cursor.Grabbing),
+            () => dispatch('tool:clear-cursor', Cursor.Grabbing),
         ),
         t(
             ViewportStates.PanningWithoutSpace,
             ViewportEvents.PointerUp,
             ViewportStates.Default,
             () => {
-                dispatch("tool:clear-cursor", [Cursor.Grabbing, Cursor.Grab]);
+                dispatch('tool:clear-cursor', [Cursor.Grabbing, Cursor.Grab]);
             },
         ),
     ];
@@ -177,7 +180,7 @@ export const createViewportStateMachine = (
             ViewportStates.PanningWithoutSpace,
         ],
         onBlock() {
-            dispatch("tool:clear-cursor", [Cursor.Grab, Cursor.Grabbing]);
+            dispatch('tool:clear-cursor', [Cursor.Grab, Cursor.Grabbing]);
         },
     });
 };

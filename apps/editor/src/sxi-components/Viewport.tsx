@@ -1,4 +1,4 @@
-import { Solixi, useFrame } from "@bearbroidery/solixi";
+import { Solixi, useFrame } from '@bearbroidery/solixi';
 import {
     Clamp,
     Drag,
@@ -7,7 +7,7 @@ import {
     Pinch,
     Viewport as PixiViewport,
     Wheel,
-} from "pixi-viewport";
+} from 'pixi-viewport';
 import {
     createEffect,
     type JSX,
@@ -15,15 +15,15 @@ import {
     onMount,
     untrack,
     useContext,
-} from "solid-js";
-import { createMemo } from "solid-js";
-import { Cursor } from "../store/toolStore";
-import { AppContext } from "../store";
-import { Container } from "@pixi/display";
-import { createEventListener } from "@solid-primitives/event-listener";
-import { FederatedPointerEvent } from "@pixi/events";
-import { Point } from "@pixi/core";
-import { mapLinear } from "../utils/math";
+} from 'solid-js';
+import { createMemo } from 'solid-js';
+import { Cursor } from '../store/toolStore';
+import { AppContext } from '../store';
+import { Container } from '@pixi/display';
+import { createEventListener } from '@solid-primitives/event-listener';
+import { FederatedPointerEvent } from '@pixi/events';
+import { Point } from '@pixi/core';
+import { mapLinear } from '../utils/math';
 
 const PViewport = Solixi.wrapConstructable(PixiViewport, {
     // @ts-expect-error; Parent must be constainer.
@@ -32,34 +32,36 @@ const PViewport = Solixi.wrapConstructable(PixiViewport, {
         return () => parent.removeChild(object);
     },
     defaultArgs: (ctx) =>
-        [{
-            events: ctx.app.renderer.events,
-            ticker: ctx.ticker,
-        }] as [options: IViewportOptions],
+        [
+            {
+                events: ctx.app.renderer.events,
+                ticker: ctx.ticker,
+            },
+        ] as [options: IViewportOptions],
     extraProps: {
         pinch: (_1, _2, object, enable: boolean) => {
             const pinchPlugin = new Pinch(object);
             if (enable) {
-                object.plugins.add("pinch", pinchPlugin);
+                object.plugins.add('pinch', pinchPlugin);
             } else {
-                object.plugins.remove("pinch");
+                object.plugins.remove('pinch');
             }
             return () => {
                 if (object.plugins.list.includes(pinchPlugin)) {
-                    object.plugins.remove("pinch");
+                    object.plugins.remove('pinch');
                 }
             };
         },
         drag: (_1, _2, object, enable: boolean) => {
             const dragPlugin = new Drag(object);
             if (enable) {
-                object.plugins.add("drag", dragPlugin);
+                object.plugins.add('drag', dragPlugin);
             } else {
-                object.plugins.remove("drag");
+                object.plugins.remove('drag');
             }
             return () => {
                 if (object.plugins.list.includes(dragPlugin)) {
-                    object.plugins.remove("drag");
+                    object.plugins.remove('drag');
                 }
             };
         },
@@ -67,26 +69,26 @@ const PViewport = Solixi.wrapConstructable(PixiViewport, {
             let clampPlugin: Clamp | undefined;
             if (options) {
                 const clampPlugin = new Clamp(object, options);
-                object.plugins.add("clamp", clampPlugin);
+                object.plugins.add('clamp', clampPlugin);
             } else {
-                object.plugins.remove("clamp");
+                object.plugins.remove('clamp');
             }
             return () => {
                 if (clampPlugin && object.plugins.list.includes(clampPlugin)) {
-                    object.plugins.remove("clamp");
+                    object.plugins.remove('clamp');
                 }
             };
         },
         wheel: (_1, _2, object, enable: boolean) => {
             const wheelPlugin = new Wheel(object);
             if (enable) {
-                object.plugins.add("wheel", wheelPlugin);
+                object.plugins.add('wheel', wheelPlugin);
             } else {
-                object.plugins.remove("wheel");
+                object.plugins.remove('wheel');
             }
             return () => {
                 if (object.plugins.list.includes(wheelPlugin)) {
-                    object.plugins.remove("wheel");
+                    object.plugins.remove('wheel');
                 }
             };
         },
@@ -104,30 +106,34 @@ export const Viewport = (props: ViewportProps) => {
         const cursor = toolStore.currentCursor;
         return cursor !== Grab && cursor !== Grabbing;
     });
-    createEffect(on(panPaused, (panPaused) => {
-        if (viewportEl) {
-            if (panPaused) {
-                viewportEl.plugins.plugins["drag"]?.pause();
-            } else {
-                viewportEl.plugins.plugins["drag"]?.resume();
+    createEffect(
+        on(panPaused, (panPaused) => {
+            if (viewportEl) {
+                if (panPaused) {
+                    viewportEl.plugins.plugins['drag']?.pause();
+                } else {
+                    viewportEl.plugins.plugins['drag']?.resume();
+                }
             }
-        }
-    }));
+        }),
+    );
 
     // Update viewport store position each frame.
     useFrame(() => {
         untrack(() => {
             if (viewportEl !== undefined) {
                 if (!viewportStore.position.equals(viewportEl.position)) {
-                    dispatch("viewport:move-to", viewportEl.position);
+                    dispatch('viewport:move-to', viewportEl.position);
                 }
 
                 const { left, right, top, bottom } = viewportEl;
                 if (
-                    left !== viewportStore.left || top !== viewportStore.top ||
-                    right !== viewportStore.right || bottom !== viewportStore.bottom
+                    left !== viewportStore.left ||
+                    top !== viewportStore.top ||
+                    right !== viewportStore.right ||
+                    bottom !== viewportStore.bottom
                 ) {
-                    dispatch("viewport:set-bounds", {
+                    dispatch('viewport:set-bounds', {
                         left,
                         right,
                         top,
@@ -142,7 +148,7 @@ export const Viewport = (props: ViewportProps) => {
         if (viewportEl) {
             let downScreenPosition: Point | undefined;
             let downPosition: Point | undefined;
-            createEventListener(viewportEl, "pointerdown", (event) => {
+            createEventListener(viewportEl, 'pointerdown', (event) => {
                 const ev = event as unknown as FederatedPointerEvent;
                 console.log(ev);
 
@@ -154,13 +160,13 @@ export const Viewport = (props: ViewportProps) => {
 
                 downScreenPosition = ev.global.clone();
                 downPosition = position.clone();
-                dispatch("input:pointerdown", {
+                dispatch('input:pointerdown', {
                     screenPosition: ev.global.clone(),
                     position,
                 });
             });
 
-            createEventListener(viewportEl, "pointermove", (event) => {
+            createEventListener(viewportEl, 'pointermove', (event) => {
                 const ev = event as unknown as FederatedPointerEvent;
 
                 const { left, right, top, bottom, screenWidth, screenHeight } =
@@ -169,7 +175,7 @@ export const Viewport = (props: ViewportProps) => {
                 const y = mapLinear(ev.global.y, 0, screenHeight, top, bottom);
 
                 const position = new Point(x, y);
-                dispatch("input:pointermove", {
+                dispatch('input:pointermove', {
                     downScreenPosition,
                     downPosition,
                     screenPosition: ev.global.clone(),
@@ -177,7 +183,7 @@ export const Viewport = (props: ViewportProps) => {
                 });
             });
 
-            createEventListener(viewportEl, "pointerup", (event) => {
+            createEventListener(viewportEl, 'pointerup', (event) => {
                 const ev = event as unknown as FederatedPointerEvent;
 
                 const { left, right, top, bottom, screenWidth, screenHeight } =
@@ -186,7 +192,7 @@ export const Viewport = (props: ViewportProps) => {
                 const y = mapLinear(ev.global.y, 0, screenHeight, top, bottom);
 
                 const position = new Point(x, y);
-                dispatch("input:pointerup", {
+                dispatch('input:pointerup', {
                     downScreenPosition,
                     downPosition,
                     screenPosition: ev.global.clone(),

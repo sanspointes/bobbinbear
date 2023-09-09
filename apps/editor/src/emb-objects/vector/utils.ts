@@ -1,9 +1,6 @@
-import { Graphics, ILineStyleOptions } from "@pixi/graphics";
-import { IFillStyleOptions } from "@pixi/graphics";
-import {
-    SegmentUtils,
-    VectorShape,
-} from "../vec-seg";
+import { Graphics, ILineStyleOptions } from '@pixi/graphics';
+import { IFillStyleOptions } from '@pixi/graphics';
+import { SegmentUtils, VectorShape } from '../vec-seg';
 
 export const drawVectorShapeToGraphic = (
     g: Graphics,

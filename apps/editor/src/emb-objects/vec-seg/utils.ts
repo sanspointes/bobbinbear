@@ -1,4 +1,4 @@
-import { VectorNode } from "../node";
+import { VectorNode } from '../node';
 import {
     AnyVectorSegment,
     BezierToVectorSegment,
@@ -7,26 +7,26 @@ import {
     QuadraticToVectorSegment,
     VectorSegment,
     VectorSegmentType,
-} from "./shared";
-import { Polygon } from "@pixi/core";
+} from './shared';
+import { Polygon } from '@pixi/core';
 
 export function isMove(vecseg: VectorSegment): vecseg is MoveToVectorSegment {
-    return (vecseg.type === VectorSegmentType.MoveTo);
+    return vecseg.type === VectorSegmentType.MoveTo;
 }
 
 export function isLine(vecseg: VectorSegment): vecseg is LineToVectorSegment {
-    return (vecseg.type === VectorSegmentType.LineTo);
+    return vecseg.type === VectorSegmentType.LineTo;
 }
 export function isQuadratic(
     vecseg: VectorSegment,
 ): vecseg is QuadraticToVectorSegment {
-    return (vecseg.type === VectorSegmentType.QuadraticTo);
+    return vecseg.type === VectorSegmentType.QuadraticTo;
 }
 
 export function isBezier(
     vecseg: VectorSegment,
 ): vecseg is BezierToVectorSegment {
-    return (vecseg.type === VectorSegmentType.BezierTo);
+    return vecseg.type === VectorSegmentType.BezierTo;
 }
 
 export function generateControlPolygon(
@@ -47,10 +47,10 @@ export function generateControlPolygon(
 export function segmentHasNode(
     vecseg: VectorSegment,
     node: VectorNode,
-): "to" | "c0" | "c1" | false {
+): 'to' | 'c0' | 'c1' | false {
     const seg = vecseg as BezierToVectorSegment;
-    if (seg.to.id === node.id) return "to";
-    if (seg.c0.id === node.id) return "c0";
-    if (seg.c1.id === node.id) return "c1";
+    if (seg.to.id === node.id) return 'to';
+    if (seg.c0.id === node.id) return 'c0';
+    if (seg.c1.id === node.id) return 'c1';
     return false;
 }

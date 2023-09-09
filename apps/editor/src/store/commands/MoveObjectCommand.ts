@@ -1,13 +1,19 @@
-import { Point } from "@pixi/core";
-import { produce, SetStoreFunction } from "solid-js/store";
-import { EmbBase, EmbState } from "../../emb-objects/shared";
-import { getObject, getObjectSetter, SceneModel } from "../sceneStore";
-import { AbstractCommand, assertSameType, SerializedCommand } from "./shared";
-import { Command } from ".";
-import { Uuid } from "../../utils/uuid";
-import { EmbNode, EmbVector, VectorNode } from "../../emb-objects";
-import { isEmbNode, isEmbVecSeg, isEmbVector } from "../../emb-objects/utils";
-import { BezierToVectorSegment, EmbVecSeg, QuadraticToVectorSegment, segmentHasNode, VectorSegment } from "../../emb-objects/vec-seg";
+import { Point } from '@pixi/core';
+import { produce, SetStoreFunction } from 'solid-js/store';
+import { EmbBase, EmbState } from '../../emb-objects/shared';
+import { getObject, getObjectSetter, SceneModel } from '../sceneStore';
+import { AbstractCommand, assertSameType, SerializedCommand } from './shared';
+import { Command } from '.';
+import { Uuid } from '../../utils/uuid';
+import { EmbNode, EmbVector, VectorNode } from '../../emb-objects';
+import { isEmbNode, isEmbVecSeg, isEmbVector } from '../../emb-objects/utils';
+import {
+    BezierToVectorSegment,
+    EmbVecSeg,
+    QuadraticToVectorSegment,
+    segmentHasNode,
+    VectorSegment,
+} from '../../emb-objects/vec-seg';
 // import { arrayGetCircular, arraySetCircular } from "../../utils/array";
 // import {
 //     EmbNode,
@@ -19,22 +25,23 @@ import { BezierToVectorSegment, EmbVecSeg, QuadraticToVectorSegment, segmentHasN
 // } from "../../emb-objects";
 // import { isEmbNode } from "../../emb-objects/utils";
 
-export class MoveObjectCommand<TObject extends EmbBase & EmbState>
-    extends AbstractCommand {
+export class MoveObjectCommand<
+    TObject extends EmbBase & EmbState,
+> extends AbstractCommand {
     public updatable: boolean = true;
 
-    name = "Move Object";
-    type = "MoveObjectCommand" as const;
+    name = 'Move Object';
+    type = 'MoveObjectCommand' as const;
 
     oldPosition?: Point;
 
-    constructor(private objectId: Uuid<TObject>, private newPosition: Point) {
+    constructor(
+        private objectId: Uuid<TObject>,
+        private newPosition: Point,
+    ) {
         super();
     }
-    perform(
-        store: SceneModel,
-        _setStore: SetStoreFunction<SceneModel>,
-    ): void {
+    perform(store: SceneModel, _setStore: SetStoreFunction<SceneModel>): void {
         const object = getObject(store, this.objectId);
         if (!object) {
             throw new Error(
@@ -54,15 +61,14 @@ export class MoveObjectCommand<TObject extends EmbBase & EmbState>
 
         // Update node position
         const set = getObjectSetter(store, this.objectId)!;
-        set(produce((object) => {
-            object.position = this.newPosition.clone();
-        }));
+        set(
+            produce((object) => {
+                object.position = this.newPosition.clone();
+            }),
+        );
     }
 
-    undo(
-        store: SceneModel,
-        _setStore: SetStoreFunction<SceneModel>,
-    ): void {
+    undo(store: SceneModel, _setStore: SetStoreFunction<SceneModel>): void {
         const object = store.objects.get(this.objectId);
         if (!object) {
             throw new Error(
@@ -77,7 +83,7 @@ export class MoveObjectCommand<TObject extends EmbBase & EmbState>
 
         const set = getObjectSetter(store, this.objectId)!;
 
-        set(produce((object) => object.position = this.oldPosition!.clone()));
+        set(produce((object) => (object.position = this.oldPosition!.clone())));
     }
 
     /**
@@ -89,19 +95,22 @@ export class MoveObjectCommand<TObject extends EmbBase & EmbState>
         newPosition: Point,
     ) {
         const setNode = getObjectSetter(store, object.id);
-        if (!setNode) throw new Error(`MoveObjectCommand.handleMoveNode:  Cannot get setter for ${object.id}.`);
+        if (!setNode)
+            throw new Error(
+                `MoveObjectCommand.handleMoveNode:  Cannot get setter for ${object.id}.`,
+            );
         setNode('node', 'x', newPosition.x);
         setNode('node', 'y', newPosition.y);
     }
 
     fromObject<T extends Command>(object: SerializedCommand<T>): void {
-        this.objectId = object["objectId"] as Uuid<TObject>;
-        this.oldPosition = object["oldPosition"] as Point | undefined;
+        this.objectId = object['objectId'] as Uuid<TObject>;
+        this.oldPosition = object['oldPosition'] as Point | undefined;
     }
 
     toObject(object: Record<string, unknown>): void {
-        object["objectId"] = this.objectId;
-        object["oldPosition"] = this.oldPosition;
+        object['objectId'] = this.objectId;
+        object['oldPosition'] = this.oldPosition;
     }
 
     updateData(newer: Command): void {

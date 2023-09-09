@@ -1,25 +1,27 @@
-import { P } from "@bearbroidery/solixi";
-import { Point, Texture } from "@pixi/core";
-import { Container } from "@pixi/display";
-import { FillStyle, Graphics, GraphicsGeometry, ILineStyleOptions, LineStyle } from "@pixi/graphics";
-import { MeshGeometry, MeshMaterial } from "@pixi/mesh";
+import { P } from '@bearbroidery/solixi';
+import { Point, Texture } from '@pixi/core';
+import { Container } from '@pixi/display';
+import {
+    FillStyle,
+    Graphics,
+    GraphicsGeometry,
+    ILineStyleOptions,
+    LineStyle,
+} from '@pixi/graphics';
+import { MeshGeometry, MeshMaterial } from '@pixi/mesh';
 import {
     createEffect,
     createMemo,
     createRenderEffect,
     Show,
     useContext,
-} from "solid-js";
-import { AppContext } from "../../store";
-import { EmbState } from "../shared";
-import {
-    BezierToVectorSegment,
-    EmbVecSeg,
-    VectorSegment,
-} from "./shared";
-import { useTemporarySceneObject } from "../../composables/useVirtualSceneObjects";
-import { EmbNode, EmbNodeView } from "../node";
-import { SegmentUtils } from ".";
+} from 'solid-js';
+import { AppContext } from '../../store';
+import { EmbState } from '../shared';
+import { BezierToVectorSegment, EmbVecSeg, VectorSegment } from './shared';
+import { useTemporarySceneObject } from '../../composables/useVirtualSceneObjects';
+import { EmbNode, EmbNodeView } from '../node';
+import { SegmentUtils } from '.';
 
 const updateGraphics = (
     g: Graphics,
@@ -53,11 +55,11 @@ const HIT_GEOMETRY_LINE_STYLE: ILineStyleOptions = {
     width: 3,
 };
 const HOVER_LINE_STYLE: ILineStyleOptions = {
-    color: 0x41A3E9,
+    color: 0x41a3e9,
     width: 1,
 };
 const SELECT_LINE_STYLE: ILineStyleOptions = {
-    color: 0x41A3E9,
+    color: 0x41a3e9,
     width: 2,
 };
 const HANDLE_LINE_STLE: ILineStyleOptions = {
@@ -65,9 +67,10 @@ const HANDLE_LINE_STLE: ILineStyleOptions = {
     width: 1,
 };
 
-type EmbVecSegProps = EmbVecSeg & EmbState & {
-    order: number;
-};
+type EmbVecSegProps = EmbVecSeg &
+    EmbState & {
+        order: number;
+    };
 /**
  * Component that displays an EmbVecSeg model.
  */
@@ -87,11 +90,11 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
         if (!graphics) return;
         updateGraphics(graphics, props.segment, HIT_GEOMETRY_LINE_STYLE);
         if (geometry) {
-            const posBuffer = geometry.getBuffer("aVertexPosition");
+            const posBuffer = geometry.getBuffer('aVertexPosition');
             posBuffer.data = new Float32Array(graphics.geometry.points);
             posBuffer.update();
 
-            const coordBuffer = geometry.getBuffer("aTextureCoord");
+            const coordBuffer = geometry.getBuffer('aTextureCoord');
             coordBuffer.data = new Float32Array(graphics.geometry.uvs);
             coordBuffer.update();
 
@@ -105,9 +108,17 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
     createEffect(() => {
         if (highlightGraphics) {
             if (props.selected) {
-                updateGraphics(highlightGraphics, props.segment, SELECT_LINE_STYLE);
+                updateGraphics(
+                    highlightGraphics,
+                    props.segment,
+                    SELECT_LINE_STYLE,
+                );
             } else if (props.hovered) {
-                updateGraphics(highlightGraphics, props.segment, HOVER_LINE_STYLE);
+                updateGraphics(
+                    highlightGraphics,
+                    props.segment,
+                    HOVER_LINE_STYLE,
+                );
             }
         }
     });
@@ -117,7 +128,7 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
             const { to } = props.segment;
             const nodeData: EmbNode = {
                 node: to,
-                type: "node",
+                type: 'node',
                 id: to.id,
                 position: new Point(to.x, to.y),
                 parent: props.id,
@@ -130,12 +141,13 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
     });
 
     const c0NodeModel = createMemo(() => {
-        const seg = props.segment as VectorSegment & Partial<BezierToVectorSegment>;
+        const seg = props.segment as VectorSegment &
+            Partial<BezierToVectorSegment>;
         if (props.inspecting && seg.c0) {
             const { c0 } = seg;
             const nodeData: EmbNode = {
                 node: c0,
-                type: "node",
+                type: 'node',
                 id: c0.id,
                 position: new Point(c0.x, c0.y),
                 parent: props.id,
@@ -148,12 +160,13 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
     });
 
     const c1NodeModel = createMemo(() => {
-        const seg = props.segment as VectorSegment & Partial<BezierToVectorSegment>;
+        const seg = props.segment as VectorSegment &
+            Partial<BezierToVectorSegment>;
         if (props.inspecting && seg.c1) {
             const { c1 } = props.segment;
             const nodeData: EmbNode = {
                 node: c1,
-                type: "node",
+                type: 'node',
                 id: c1.id,
                 position: new Point(c1.x, c1.y),
                 parent: props.id,
@@ -171,11 +184,11 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
             lineGraphic.clear();
             const polygon = SegmentUtils.generateControlPolygon(props.segment);
             if (polygon) {
-                lineGraphic.lineStyle( HANDLE_LINE_STLE );
-                lineGraphic.drawShape(polygon,);
+                lineGraphic.lineStyle(HANDLE_LINE_STLE);
+                lineGraphic.drawShape(polygon);
             }
         }
-    })
+    });
 
     return (
         <P.Container
@@ -192,7 +205,7 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
                 visible={props.visible}
                 interactive={props.inspecting}
                 alpha={0}
-                onpointerover={e => console.log(e)}
+                onpointerover={(e) => console.log(e)}
             />
             <P.Graphics
                 ref={highlightGraphics}
