@@ -1,28 +1,32 @@
 import { EventBoundary } from '@pixi/events';
 import { Accessor, createEffect } from 'solid-js';
-import { AllMessages, BaseStore, GeneralHandler, generateStore } from '..';
-import { Cursor } from '../toolStore';
+import { SolixiState } from '@bearbroidery/solixi';
+import { Point } from '@pixi/core';
+import { Uuid, newUuid, uuid } from '@/utils/uuid';
 import {
-    createViewportStateMachine,
+    EMB_STATE_DEFAULTS,
+    EmbBase,
+    EmbHasVirtual,
+    EmbState,
+    EmbVector,
+    NodeUtils,
+} from '@/emb-objects';
+import {
     ToolInputMessage,
     ToolInputs,
     ViewportEvents,
+    createViewportStateMachine,
 } from './shared';
-import { createExclusiveStateMachine, t } from '../../utils/fsm';
-import { SolixiState } from '@bearbroidery/solixi';
-import { Uuid } from '../../utils/uuid';
-import { EmbBase, EmbHasVirtual, EmbObject } from '../../emb-objects/shared';
-import {
-    Command,
-    DeselectObjectsCommand,
-    MoveObjectCommand,
-} from '../commands';
-import { SceneModel } from '../sceneStore';
+import { AllMessages, BaseStore, GeneralHandler, generateStore } from '..';
 import { InputModel } from '../inputStore';
-import { Point } from '@pixi/core';
+import { SceneModel } from '../sceneStore';
+import { Cursor } from '../toolStore';
+import { t } from 'typescript-fsm';
+import { createExclusiveStateMachine } from '@/utils/fsm';
+import { hslFromRgb } from '@/utils/color';
+import { VectorShape } from '@/emb-objects/vec-seg';
+import { CreateObjectCommand, SetSceneObjectFieldCommand } from '../commands';
 import { MultiCommand } from '../commands/shared';
-import { SetInspectingCommand } from '../commands/SetInspectingCommand';
-import { tryMakeGraphicsNodeACurve } from '../helpers';
 
 export const PenEvents = {
     Hover: Symbol('s-Hover'),
@@ -39,8 +43,9 @@ export const PenStates = {
     Default: Symbol('s-Default'),
     Hoverring: Symbol('s-Hoverring'),
     Moving: Symbol('s-Moving'),
-    PointerDownOnElement: Symbol('s-PointerDownOnElement'),
-    PointerDownOnEmpty: Symbol('s-PointerDownOnElement'),
+    CreatingNew: Symbol('s-CreatingNew'),
+    CreatingLineTo: Symbol('s-CreatingLineTo'),
+    CreatingBezierToStart: Symbol('s-CreatingBezierTo'),
     Pening: Symbol('s-Pening'),
 } as const;
 
@@ -71,10 +76,12 @@ export const createPenToolStore = (
         }
     });
     // Internal State
-    let currHover: Uuid<EmbBase> | undefined;
-    const offset = new Point();
-    let newPosition: Point | undefined;
+    let currHover: Uuid<EmbBase & EmbState> | undefined;
+    let currentVectorId: Uuid<EmbVector & EmbState> | undefined;
+    // const offset = new Point();
+    // let newPosition: Point | undefined;
 
+    let createCommand: CreateObjectCommand<EmbVector & EmbState> | undefined;
     // Viewport FSM
     const {
         block: vpBlock,
@@ -92,51 +99,54 @@ export const createPenToolStore = (
 
     // FSM definition
     const transitions = [
-        t(PenStates.Default, PenEvents.Hover, PenStates.Hoverring, () =>
-            dispatch('tool:push-cursor', Cursor.Point),
-        ),
-        t(PenStates.Hoverring, PenEvents.Unhover, PenStates.Default, () =>
-            dispatch('tool:clear-cursor', Cursor.Point),
-        ),
+        t(PenStates.Default, PenEvents.Hover, PenStates.Hoverring),
+        t(PenStates.Hoverring, PenEvents.Unhover, PenStates.Default),
         t(
-            PenStates.Hoverring,
+            PenStates.Default,
             PenEvents.PointerDown,
-            PenStates.PointerDownOnElement,
-            (id: Uuid<EmbBase>) => {
-                // const cmds: Command[] = [];
-                const obj = sceneModel.objects.get(id) as EmbBase &
-                    EmbHasVirtual;
-                console.log(obj);
-                // if (obj && obj.virtual) {
-                //   const cmd = obj.virtualCreator();
-                //   cmds.push(cmd);
-                // }
-                // cmds.push(
-                //   new DeselectObjectsCommand(
-                //     ...sceneModel.selectedIds,
-                //   ),
-                // );
-                // cmds.push(new PenObjectsCommand(id));
-                // const cmd = new MultiCommand(...cmds);
-                // cmd.name = `Pen ${id}`;
-                // dispatch("scene:do-command", cmd);
+            PenStates.CreatingNew,
+            (e: ToolInputs['pointer1-down']) => {
+                currentVectorId = newUuid<EmbVector & EmbState>();
+                const newVector: EmbVector & EmbState = {
+                    ...EMB_STATE_DEFAULTS,
+                    id: currentVectorId,
+                    type: 'vector',
+                    name: 'Vector',
+                    position: e.position,
+                    parent: uuid('root'),
+                    children: [],
+                    shape: new VectorShape(),
+                    fill: {
+                        color: hslFromRgb({ r: 200, g: 200, b: 200 }),
+                    },
+                    line: {
+                        width: 1,
+                        color: hslFromRgb({ r: 0, g: 0, b: 0 }),
+                        alpha: 1,
+                    },
+                };
+
+                createCommand = new CreateObjectCommand(newVector);
+                const setShapeCommand = new SetSceneObjectFieldCommand<
+                    EmbVector,
+                    keyof EmbVector
+                >(
+                    currentVectorId,
+                    'shape',
+                    new VectorShape().moveTo(NodeUtils.newPoint(0, 0)),
+                );
+                setShapeCommand.final = false;
+                const cmd = new MultiCommand(createCommand, setShapeCommand);
+                cmd.name = 'Updating Box';
+                cmd.final = false;
+
+                dispatch('scene:do-command', cmd);
             },
         ),
         t(
-            PenStates.PointerDownOnEmpty,
-            PenEvents.PointerUp,
-            PenStates.Default,
-            () => {},
-        ),
-        t(
-            PenStates.Default,
-            PenEvents.PointerDown,
-            PenStates.PointerDownOnEmpty,
-        ),
-        t(
-            PenStates.PointerDownOnEmpty,
+            PenStates.CreatingNew,
             PenEvents.DragStart,
-            PenStates.Pening,
+            PenStates.CreatingBezierToStart,
             () => {},
         ),
         t(PenStates.Pening, PenEvents.DragEnd, PenStates.Default, () => {}),
@@ -224,7 +234,7 @@ export const createPenToolStore = (
                             vpDispatch(ViewportEvents.PointerDown);
                         }
                         if (sCan(PenEvents.PointerDown)) {
-                            sDispatch(PenEvents.PointerDown, currHover);
+                            sDispatch(PenEvents.PointerDown, msg);
                         }
                     }
                     break;

@@ -12,7 +12,12 @@ import { createBoxGraphicsCommands } from '../../utils/graphics';
 import { SetSceneObjectFieldCommand, CreateObjectCommand } from '../commands';
 import { Point } from '@pixi/core';
 import { MultiCommand } from '../commands/shared';
-import { EmbObject, EmbState, EmbVector } from '../../emb-objects';
+import {
+    EMB_STATE_DEFAULTS,
+    EmbObject,
+    EmbState,
+    EmbVector,
+} from '../../emb-objects';
 import { hslFromRgb } from '../../utils/color';
 
 export const BoxEvents = {
@@ -70,22 +75,16 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
                 currentlyBuildingId = newUuid();
                 const currentShape = createBoxGraphicsCommands(0, 0);
 
-                createCommand = new CreateObjectCommand({
+                const newVector: EmbVector & EmbState = {
+                    ...EMB_STATE_DEFAULTS,
                     type: 'vector',
                     name: 'Box',
-                    visible: true,
                     position: e.position,
                     id: currentlyBuildingId,
                     parent: parent ? parent.id : uuid('root'),
                     children: [],
-                    selected: false,
-                    locked: false,
-                    inspectingRoot: undefined,
-                    shallowLocked: false,
-                    hovered: false,
-                    segments: currentShape,
-                    close: true,
-                    inspecting: false,
+                    shape: currentShape,
+                    disableMove: false,
                     fill: {
                         color: hslFromRgb({ r: 200, g: 200, b: 200 }),
                         alpha: 1,
@@ -95,7 +94,9 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
                         color: hslFromRgb({ r: 0, g: 0, b: 0 }),
                         alpha: 1,
                     },
-                });
+                };
+
+                createCommand = new CreateObjectCommand(newVector);
 
                 const setShapeCommand =
                     new SetSceneObjectFieldCommand<EmbVector>(

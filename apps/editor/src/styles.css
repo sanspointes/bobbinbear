@@ -12,6 +12,25 @@
   }
 }
 
+@layer utilities {
+    /* Custom cursor classes */
+    .b-cursor-default {
+        cursor: url(/cursors/50/cursor_default.png) 32 32, default;
+    }
+    .b-cursor-default-tap {
+        cursor: url(/cursors/50/cursor_default_tap.png) 32 32, default;
+    }
+    .b-cursor-pointer {
+        cursor: url(/cursors/50/cursor_pointer.png) 32 32, default;
+    }
+    .b-cursor-pointer-tap {
+        cursor: url(/cursors/50/cursor_pointer_tap.png) 32 32, default;
+    }
+    .b-cursor-pen {
+        cursor: url(/cursors/50/cursor_pen.png) 32 32, default;
+    }
+}
+
 #root {
   width: 100vw;
   height: 100vh;

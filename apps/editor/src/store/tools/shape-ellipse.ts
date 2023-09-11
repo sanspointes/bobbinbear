@@ -12,7 +12,7 @@ import { createEllipseGraphicsCommands } from '../../utils/graphics';
 import { SetSceneObjectFieldCommand, CreateObjectCommand } from '../commands';
 import { Point } from '@pixi/core';
 import { MultiCommand } from '../commands/shared';
-import { EmbObject, EmbState, EmbVector } from '../../emb-objects';
+import { EMB_STATE_DEFAULTS, EmbObject, EmbState, EmbVector } from '../../emb-objects';
 import { hslFromRgb } from '../../utils/color';
 
 export const EllipseEvents = {
@@ -73,20 +73,14 @@ export const createEllipseToolStore = (
                 const currentShape = createEllipseGraphicsCommands(0, 0);
 
                 createCommand = new CreateObjectCommand({
+                    ...EMB_STATE_DEFAULTS,
                     type: 'vector',
                     name: 'Ellipse',
-                    visible: true,
                     position: e.position,
                     id: currentlyBuildingId,
                     parent: parent ? parent.id : uuid('root'),
                     children: [],
-                    selected: false,
-                    locked: false,
-                    inspectingRoot: undefined,
-                    shallowLocked: false,
-                    hovered: false,
                     shape: currentShape,
-                    close: true,
                     inspecting: false,
                     fill: {
                         color: hslFromRgb({ r: 200, g: 200, b: 200 }),

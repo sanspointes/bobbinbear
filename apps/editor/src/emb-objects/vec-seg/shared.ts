@@ -86,6 +86,7 @@ export class VectorShape extends Array<VectorSegment> {
             prev: this.prev,
         };
         this.push(seg);
+        return this;
     }
     lineTo(to: VectorNode) {
         const seg: LineToVectorSegment = {
@@ -95,6 +96,7 @@ export class VectorShape extends Array<VectorSegment> {
             prev: this.prev,
         };
         this.push(seg);
+        return this;
     }
     quadTo(c0: VectorNode, to: VectorNode) {
         const seg: QuadraticToVectorSegment = {
@@ -105,6 +107,7 @@ export class VectorShape extends Array<VectorSegment> {
             prev: this.prev,
         };
         this.push(seg);
+        return this;
     }
     bezierTo(c0: VectorNode, c1: VectorNode, to: VectorNode) {
         const seg: BezierToVectorSegment = {
@@ -116,15 +119,17 @@ export class VectorShape extends Array<VectorSegment> {
             prev: this.prev,
         };
         this.push(seg);
+        return this;
     }
 
     close() {
         const first = arrayFirst(this)!;
         const last = arrayLast(this)!;
         first.prev = last;
+        return this;
     }
 
-    static fromJSON(array: Array<VectorSegment>) {
+    static fromJSON(_array: Array<VectorSegment>) {
         throw new Error('STUB: VectorShape.fromJSON() Not implemented.');
     }
 }

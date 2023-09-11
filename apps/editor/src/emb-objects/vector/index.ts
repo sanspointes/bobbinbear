@@ -14,5 +14,4 @@ export type EmbVector = EmbBase &
 
         type: 'vector';
         shape: VectorShape;
-        close: boolean;
     };
