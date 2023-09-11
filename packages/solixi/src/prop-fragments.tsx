@@ -1,81 +1,128 @@
-import { ExtraPropHandler } from "@bearbroidery/constructables/dist/elements";
-import { Container } from "@pixi/display";
-import { Point } from "@pixi/core";
-import { Layer } from "@pixi/layers";
-import { SolixiState } from "./state";
-import { Constructable } from "@bearbroidery/constructables";
+import { ExtraPropHandler } from '@bearbroidery/constructables/dist/elements';
+import { Container } from '@pixi/display';
+import { Point } from '@pixi/core';
+import { Layer } from '@pixi/layers';
+import { SolixiState } from './state';
+import { Constructable } from '@bearbroidery/constructables';
 
-const NameHandler: ExtraPropHandler<SolixiState, Constructable, string> = (_1, _2, object, value) => {
-  // @ts-expect-error ; This is not technically a field but widely supported by pixi ecosystem.
-  object.name = value
-}
+const NameHandler: ExtraPropHandler<SolixiState, Constructable, string> = (
+    _1,
+    _2,
+    object,
+    value,
+) => {
+    // @ts-expect-error ; This is not technically a field but widely supported by pixi ecosystem.
+    object.name = value;
+};
 
 export const HasNameFragment = {
-  ['name']: NameHandler,
-}
+    ['name']: NameHandler,
+};
 
-const ParentLayerHandler: ExtraPropHandler<SolixiState, Constructable, Layer> = (_1, _2, object, value) => {
-  // @ts-expect-error ; This is not technically a field but widely supported by pixi ecosystem.
-  object.parentLayer = value;
-}
+const ParentLayerHandler: ExtraPropHandler<
+    SolixiState,
+    Constructable,
+    Layer
+> = (_1, _2, object, value) => {
+    // @ts-expect-error ; This is not technically a field but widely supported by pixi ecosystem.
+    object.parentLayer = value;
+};
 
 export const HasParentLayerFragment = {
-  ['parentLayer']: ParentLayerHandler,
-}
+    ['parentLayer']: ParentLayerHandler,
+};
 
-const PositionHandler: ExtraPropHandler<SolixiState, Constructable, Point | [number, number]> = (_1, _2, object, value) => {
-  if (Array.isArray(value)) {
-    (object as unknown as Container).position.set(value[0], value[1]);
-  } else {
-    (object as unknown as Container).position.copyFrom(value)
-  }
-}
-const PositionXHandler: ExtraPropHandler<SolixiState, Constructable, number> = (_1, _2, object, value) => {
-  (object as unknown as Container).position.x = value;
-}
-const PositionYHandler: ExtraPropHandler<SolixiState, Constructable, number> = (_1, _2, object, value) => {
-  (object as unknown as Container).position.y = value;
-}
+const PositionHandler: ExtraPropHandler<
+    SolixiState,
+    Constructable,
+    Point | [number, number]
+> = (_1, _2, object, value) => {
+    if (Array.isArray(value)) {
+        (object as unknown as Container).position.set(value[0], value[1]);
+    } else {
+        (object as unknown as Container).position.copyFrom(value);
+    }
+};
+const PositionXHandler: ExtraPropHandler<SolixiState, Constructable, number> = (
+    _1,
+    _2,
+    object,
+    value,
+) => {
+    (object as unknown as Container).position.x = value;
+};
+const PositionYHandler: ExtraPropHandler<SolixiState, Constructable, number> = (
+    _1,
+    _2,
+    object,
+    value,
+) => {
+    (object as unknown as Container).position.y = value;
+};
 
 export const HasPositionFragment = {
-  ['position']: PositionHandler,
-  ['position-x']: PositionXHandler,
-  ['position-y']: PositionYHandler,
-}
+    ['position']: PositionHandler,
+    ['position-x']: PositionXHandler,
+    ['position-y']: PositionYHandler,
+};
 
-const ScaleHandler: ExtraPropHandler<SolixiState, Constructable, Point | [number, number]> = (_1, _2, object, value) => {
-  if (Array.isArray(value)) {
-    (object as unknown as Container).scale.set(value[0], value[1]);
-  } else {
-    (object as unknown as Container).scale.copyFrom(value)
-  }
-}
-const ScaleXHandler: ExtraPropHandler<SolixiState, Constructable, number> = (_1, _2, object, value) => {
-  (object as unknown as Container).scale.x = value;
-}
-const ScaleYHandler: ExtraPropHandler<SolixiState, Constructable, number> = (_1, _2, object, value) => {
-  (object as unknown as Container).scale.y = value;
-}
+const ScaleHandler: ExtraPropHandler<
+    SolixiState,
+    Constructable,
+    Point | [number, number]
+> = (_1, _2, object, value) => {
+    if (Array.isArray(value)) {
+        (object as unknown as Container).scale.set(value[0], value[1]);
+    } else {
+        (object as unknown as Container).scale.copyFrom(value);
+    }
+};
+const ScaleXHandler: ExtraPropHandler<SolixiState, Constructable, number> = (
+    _1,
+    _2,
+    object,
+    value,
+) => {
+    (object as unknown as Container).scale.x = value;
+};
+const ScaleYHandler: ExtraPropHandler<SolixiState, Constructable, number> = (
+    _1,
+    _2,
+    object,
+    value,
+) => {
+    (object as unknown as Container).scale.y = value;
+};
 
 export const HasScaleFragment = {
-  ['scale']: ScaleHandler,
-  ['scale-x']: ScaleXHandler,
-  ['scale-y']: ScaleYHandler,
-}
+    ['scale']: ScaleHandler,
+    ['scale-x']: ScaleXHandler,
+    ['scale-y']: ScaleYHandler,
+};
 
-const RotationHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object, value: number) => {
-  (object as unknown as Container).rotation = value;
+const RotationHandler: ExtraPropHandler<SolixiState, Constructable> = (
+    _1,
+    _2,
+    object,
+    value: number,
+) => {
+    (object as unknown as Container).rotation = value;
 };
 export const HasRotationFragment = {
-  ['rotation']: RotationHandler,
-}
+    ['rotation']: RotationHandler,
+};
 
-const VisibilityHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object, value: boolean) => {
-  (object as unknown as Container).visible = value;
+const VisibilityHandler: ExtraPropHandler<SolixiState, Constructable> = (
+    _1,
+    _2,
+    object,
+    value: boolean,
+) => {
+    (object as unknown as Container).visible = value;
 };
 export const HasVisibilityFragment = {
-  ['visible']: VisibilityHandler,
-}
+    ['visible']: VisibilityHandler,
+};
 
 // const OnWheelHandler: ExtraPropHandler<SolixiState, Constructable> = (_1, _2, object, value: (event: FederatedWheelEvent) => void) => {
 //   object.on('wheel', value)
