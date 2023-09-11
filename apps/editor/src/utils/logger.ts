@@ -26,7 +26,7 @@ declare const __COMMIT_HASH__: string;
  * Not currently in use.
  */
 class Logger {
-    private logLevel: LogLevel = LogLevel.info;
+    private logLevel: LogLevel = LogLevel.warn;
     private storedLevel: LogLevel = LogLevel.debug;
     private logs: RingBuffer<LogEntry>;
 
