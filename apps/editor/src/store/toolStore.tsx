@@ -34,14 +34,16 @@ export enum Cursor {
     Grab,
     Grabbing,
     Point,
+    Moving,
     Cross,
+    Box,
     Pen,
 }
 
 export const TOOL_TO_DEFAULT_CURSOR_MAP: Record<Tool, Cursor> = {
     [Tool.None]: Cursor.Default,
     [Tool.Select]: Cursor.Default,
-    [Tool.Box]: Cursor.Cross,
+    [Tool.Box]: Cursor.Box,
     [Tool.Ellipse]: Cursor.Cross,
     [Tool.Pen]: Cursor.Pen,
 };

@@ -19,6 +19,7 @@ import {
     EmbVector,
 } from '../../emb-objects';
 import { hslFromRgb } from '../../utils/color';
+import { Cursor } from '../toolStore';
 
 export const BoxEvents = {
     PointerDown: Symbol('b-Pointerdown'),
@@ -72,6 +73,7 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
             BoxEvents.DragStart,
             BoxStates.Building,
             (e: ToolInputs['pointer1-dragstart'], parent?: EmbObject) => {
+                dispatch("tool:push-cursor", Cursor.Cross);
                 currentlyBuildingId = newUuid();
                 const currentShape = createBoxGraphicsCommands(0, 0);
 
@@ -178,6 +180,7 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
             BoxEvents.DragEnd,
             BoxStates.Default,
             (e: ToolInputs['pointer1-dragend']) => {
+                dispatch("tool:clear-cursor", Cursor.Cross);
                 if (!createCommand || !currentlyBuildingId) {
                     throw new Error(
                         'boxTool: DragMove event but no box currently being built.',

@@ -112,19 +112,23 @@ export const Editor = () => {
                                 'b-cursor-default-tap':
                                     toolStore.currentCursor ===
                                         Cursor.Default && justTapped(),
-                                'cursor-grab':
+                                'b-cursor-grab':
                                     toolStore.currentCursor === Cursor.Grab,
-                                'cursor-grabbing':
+                                'b-cursor-grabbing':
                                     toolStore.currentCursor === Cursor.Grabbing,
                                 'b-cursor-pointer':
                                     toolStore.currentCursor === Cursor.Point,
                                 'b-cursor-pointer-tap':
                                     toolStore.currentCursor === Cursor.Point &&
                                     justTapped(),
-                                'cursor-crosshair':
+                                'b-cursor-box':
+                                    toolStore.currentCursor === Cursor.Box,
+                                'b-cursor-cross':
                                     toolStore.currentCursor === Cursor.Cross,
                                 'b-cursor-pen':
                                     toolStore.currentCursor === Cursor.Pen,
+                                'b-cursor-moving':
+                                    toolStore.currentCursor === Cursor.Moving,
                             }}
                             devtools={true}
                             onCreated={onCreated}

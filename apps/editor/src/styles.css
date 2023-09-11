@@ -29,6 +29,21 @@
     .b-cursor-pen {
         cursor: url(/cursors/50/cursor_pen.png) 32 32, default;
     }
+    .b-cursor-moving {
+        cursor: url(/cursors/50/cursor_moving.png) 32 32, default;
+    }
+    .b-cursor-grab {
+        cursor: url(/cursors/50/cursor_grab.png) 32 32, default;
+    }
+    .b-cursor-grabbing {
+        cursor: url(/cursors/50/cursor_grabbing.png) 32 32, default;
+    }
+    .b-cursor-box {
+        cursor: url(/cursors/50/cursor_box.png) 32 32, default;
+    }
+    .b-cursor-cross {
+        cursor: url(/cursors/50/cursor_cross.png) 32 32, default;
+    }
 }
 
 #root {
