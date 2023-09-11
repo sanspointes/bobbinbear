@@ -41,9 +41,9 @@ const INTERNAL_PROP_KEYS = [
 ] as unknown as keyof InternalCanvasProps[];
 
 export const Canvas = (props: CanvasProps) => {
-    // @ts-expect-error ; Can't be bothered to type this right now
     const [internalProps, divElementProps] = splitProps(
         props,
+        // @ts-expect-error ; Can't be bothered to type this right now
         INTERNAL_PROP_KEYS,
     );
     const [childrenProps, pixiProps] = splitProps(internalProps, ['children']);
