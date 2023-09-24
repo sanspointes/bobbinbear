@@ -7,8 +7,8 @@ export function MainMenu() {
     return (
         <DropdownMenu.Root>
             <DropdownMenu.Trigger class='group'>
-                <img src={LogoImage} class='w-14 h-auto block group-hover:hidden drop-shadow-[0_0_5px_rgba(0,0,0,0.9)] shadow-orange-900' />
-                <img src={LogoWinkImage} class='w-14 h-auto hidden group-hover:block drop-shadow-[0_0_5px_rgba(0,0,0,0.9)] shadow-orange-900' />
+                <img src={LogoImage} class='w-14 h-auto block group-hover:hidden drop-shadow-md shadow-orange-900' />
+                <img src={LogoWinkImage} class='w-14 h-auto hidden group-hover:block drop-shadow-md shadow-orange-900' />
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
                 <DropdownMenu.Content class="bg-orange-200 min-w-[250px] p-1 rounded-md shadow-2xl shadow-orange-500">
