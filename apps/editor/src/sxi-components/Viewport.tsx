@@ -150,7 +150,6 @@ export const Viewport = (props: ViewportProps) => {
             let downPosition: Point | undefined;
             createEventListener(viewportEl, 'pointerdown', (event) => {
                 const ev = event as unknown as FederatedPointerEvent;
-                console.log(ev);
 
                 const { left, right, top, bottom, screenWidth, screenHeight } =
                     viewportEl!;
