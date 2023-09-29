@@ -1,10 +1,8 @@
 import { FontHandle } from '.';
-import { FillRule, tesselate_font } from 'tesselator';
 import { Mesh, MeshMaterial } from '@pixi/mesh';
 import { Geometry, Rectangle, Texture } from '@pixi/core';
 import { Container } from '@pixi/display';
 import { TyprGlyphShape } from './lib/Typr.U';
-import { Graphics } from '@pixi/graphics';
 
 type FontCache = Record<string, Geometry>;
 
@@ -37,25 +35,24 @@ export class GeometryCharacter extends Mesh {
         super(geometry, new MeshMaterial(Texture.WHITE));
         // this.scale.y = -1;
     }
-
-    debugGraphic?: Graphics;
-    showDebug(handle: FontHandle, gid: number) {
-        const meta = handle.getGlyphMeta(gid);
-        if (meta) {
-            console.log(this.char, meta);
-            this.debugGraphic = this.debugGraphic ?? new Graphics();
-
-            this.debugGraphic.clear();
-            this.debugGraphic.beginFill(0x00ff00, 0.1);
-            this.debugGraphic.drawRect(
-                meta.xMin,
-                meta.yMin,
-                meta.xMax,
-                meta.yMax,
-            );
-            this.addChild(this.debugGraphic);
-        }
-    }
+    // debugGraphic?: Graphics;
+    // showDebug(handle: FontHandle, gid: number) {
+    //     const meta = handle.getGlyphMeta(gid);
+    //     if (meta) {
+    //         console.log(this.char, meta);
+    //         this.debugGraphic = this.debugGraphic ?? new Graphics();
+    //
+    //         this.debugGraphic.clear();
+    //         this.debugGraphic.beginFill(0x00ff00, 0.1);
+    //         this.debugGraphic.drawRect(
+    //             meta.xMin,
+    //             meta.yMin,
+    //             meta.xMax,
+    //             meta.yMax,
+    //         );
+    //         this.addChild(this.debugGraphic);
+    //     }
+    // }
 }
 
 export class GeometryText extends Container {
@@ -130,7 +127,7 @@ export class GeometryText extends Container {
                     offsetx + shape.dx,
                     offsety + shape.dy,
                 );
-                currentChild.showDebug(this.handle, shape.g);
+                // currentChild.showDebug(this.handle, shape.g);
                 offsetx += shape.ax;
                 offsety += shape.ay;
             }
@@ -173,17 +170,11 @@ export class GeometryText extends Container {
         if (cache.has(handle, char)) {
             geometry = GeometryText.cache.get(handle, char);
         } else {
-            const path = handle.getStringPathFromShape([shape]);
-            const result = tesselate_font(
-                path.cmds,
-                path.crds,
-                5,
-                FillRule.EvenOdd,
-            );
+            const result = handle.getGidGeometry(shape.g);
 
             geometry = new Geometry();
-            geometry.addAttribute('aVertexPosition', result.vertices);
-            geometry.addAttribute('aTextureCoord', result.vertices);
+            geometry.addAttribute('aVertexPosition', result.positions);
+            geometry.addAttribute('aTextureCoord', result.positions);
             geometry.addIndex(result.indices);
 
             cache.set(handle, char, geometry);

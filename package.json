@@ -7,6 +7,7 @@
     "dev:packages": "turbo run --filter=\"./packages/*\" dev",
     "playground:constructables": "turbo run --filter ./packages/constructables playground",
     "playground:solixi": "turbo run --filter ./packages/solixi playground",
+    "playground:pixi-geometry-text": "turbo run --filter ./packages/pixi-geometry-text playground",
     "lint": "turbo run lint",
     "test:constructables": "pnpm run --filter ./packages/constructables/ test",
     "format": "prettier --write \"**/*.{ts,tsx,md}\""

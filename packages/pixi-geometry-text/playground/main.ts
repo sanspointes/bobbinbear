@@ -18,10 +18,13 @@ async function main() {
 
     const font = fontResult.value;
     console.log(font);
-    const path = font.getStringPath('123');
-    console.log(path);
-    const shape = font.getStringShape('123');
+    const cgid = font.font.gid_by_code_point('c');
+    const v = font.font.names();
+    console.log(cgid, v);
+    const shape = font.getStringShape('hello man');
     console.log(shape);
+    const a = font.getCharGeometry('p');
+    console.log({ a });
 
     const events = new EventSystem(app.renderer);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any

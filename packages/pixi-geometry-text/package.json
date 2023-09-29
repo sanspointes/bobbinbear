@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@pixi/graphics": "^7.2.4",
-    "tesselator": "link:/Users/connormeehan/projects/personal/bearbroidery/packages/pixi-geometry-text/tesselator/pkg",
+    "bobbin-wasm-utils": "link:/Users/connormeehan/projects/personal/bearbroidery/packages/pixi-geometry-text/bobbin-wasm-utils/pkg",
     "typr-ts": "^1.1.5"
   }
 }

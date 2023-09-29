@@ -3,16 +3,14 @@ import { TyprFont, TyprPath } from './Typr';
 type TyprGlyphShape = {
     /** GID of char **/
     g: number;
-    /** Index of char **/
-    cl: number;
-    /** TODO **/
-    dx: number;
-    /** TODO **/
-    dy: number;
     /** X axis kerning of char **/
     ax: number;
     /** Y Axis kerning of char **/
     ay: number;
+    /** TODO **/
+    dx: number;
+    /** TODO **/
+    dy: number;
 };
 
 export declare class TyprU {

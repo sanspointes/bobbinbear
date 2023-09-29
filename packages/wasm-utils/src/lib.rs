@@ -1,10 +1,12 @@
 mod tesselator;
 mod utils;
+mod font;
+mod vector;
 
 use std::convert::TryInto;
 
 use js_sys::{Array, Float32Array, Uint16Array};
-use lyon::{lyon_tessellation::FillOptions};
+use lyon::lyon_tessellation::FillOptions;
 use tesselator::tesselate_font_path;
 use wasm_bindgen::prelude::*;
 
@@ -56,7 +58,12 @@ impl Into<lyon::path::FillRule> for FillRule {
 }
 
 #[wasm_bindgen]
-pub fn tesselate_font(cmds: &Array, crds: &Array, tolerance: f32, fill_rule: FillRule) -> TesselationResult {
+pub fn tesselate_font(
+    cmds: &Array,
+    crds: &Array,
+    tolerance: f32,
+    fill_rule: FillRule,
+) -> TesselationResult {
     console_error_panic_hook::set_once();
     let mut cmds_vec: Vec<char> = Vec::with_capacity(cmds.length().try_into().unwrap());
     for cmd_val in cmds.iter() {
@@ -72,9 +79,7 @@ pub fn tesselate_font(cmds: &Array, crds: &Array, tolerance: f32, fill_rule: Fil
         }
     }
 
-    let options = FillOptions::tolerance(tolerance)
-        .with_fill_rule(fill_rule.into())
-    ;
+    let options = FillOptions::tolerance(tolerance).with_fill_rule(fill_rule.into());
 
     let geometry = tesselate_font_path(&cmds_vec, &crds_vec, &options);
 
@@ -99,5 +104,8 @@ pub fn tesselate_font(cmds: &Array, crds: &Array, tolerance: f32, fill_rule: Fil
         unsafe { js_sys::Uint16Array::view(&std::slice::from_raw_parts(ptr, length)) }
     };
 
-    TesselationResult { _vertices: vertices, _indices: indices }
+    TesselationResult {
+        _vertices: vertices,
+        _indices: indices,
+    }
 }
