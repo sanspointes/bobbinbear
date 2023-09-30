@@ -1,19 +1,26 @@
-
 {
   "name": "@bearbroidery/bobbin-wasm-utils",
   "collaborators": [
     "Connor G Meehan <connorgm@pm.me>"
   ],
   "version": "0.1.0",
+  "type": "module",
+  "module": "./bobbin-wasm-utils/pkg/bobbin_wasm_utils.js",
+  "types": "./bobbin-wasm-utils/pkg/bobbin_wasm_utils.d.ts",
   "files": [
-    "./bobbin-wasm-utils/pkg/bobbin_wasm_utils_bg.wasm",
-    "./bobbin-wasm-utils/pkg/bobbin_wasm_utils.js",
-    "./bobbin-wasm-utils/pkg/bobbin_wasm_utils.d.ts"
+    "./bobbin-wasm-utils/pkg/bobbin_wasm_utils_bg.wasm"
   ],
   "scripts": {
     "dev": "rsw watch",
     "build": "rsw build"
   },
-  "module": "./bobbin-wasm-utils/pkg/bobbin_wasm_utils.js",
-  "types": "./bobbin-wasm-utils/pkg/bobbin_wasm_utils.d.ts"
+  "devDependencies": {
+    "vite": "^4.4.9",
+    "vite-plugin-dts": "^3.3.1",
+    "vite-plugin-rsw": "^2.0.11",
+    "vite-plugin-static-copy": "^0.17.0"
+  },
+  "dependencies": {
+    "bobbin-wasm-utils": "link:/Users/connormeehan/projects/personal/bearbroidery/packages/bobbin-wasm-utils/bobbin-wasm-utils/pkg"
+  }
 }

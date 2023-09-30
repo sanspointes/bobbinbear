@@ -1,0 +1,24 @@
+[INFO]: 🎯  Checking for the Wasm target...
+[INFO]: 🌀  Compiling to Wasm...
+   Compiling bobbin-wasm-utils v0.1.0 (/Users/connormeehan/projects/personal/bearbroidery/packages/bobbin-wasm-utils/bobbin-wasm-utils)
+error[E0432]: unresolved import `web_sys`
+ --> src/font/parser.rs:7:5
+  |
+7 | use web_sys::console;
+  |     ^^^^^^^ use of undeclared crate or module `web_sys`
+
+warning: unused macro definition: `console_log`
+  --> src/tesselator.rs:19:14
+   |
+19 | macro_rules! console_log {
+   |              ^^^^^^^^^^^
+   |
+   = note: `#[warn(unused_macros)]` on by default
+
+For more information about this error, try `rustc --explain E0432`.
+warning: `bobbin-wasm-utils` (lib) generated 1 warning
+error: could not compile `bobbin-wasm-utils` due to previous error; 1 warning emitted
+Error: Compiling your crate to WebAssembly failed
+Caused by: Compiling your crate to WebAssembly failed
+Caused by: failed to execute `cargo build`: exited with exit status: 101
+  full command: cd "bobbin-wasm-utils" && "cargo" "build" "--lib" "--release" "--target" "wasm32-unknown-unknown"

@@ -1,14 +1,8 @@
 import { EventBoundary } from '@pixi/events';
-import { Accessor, createEffect, sharedConfig } from 'solid-js';
+import { Accessor, createEffect } from 'solid-js';
 import { SolixiState } from '@bearbroidery/solixi';
 import { Uuid, newUuid, uuid } from '@/utils/uuid';
-import {
-    EMB_STATE_DEFAULTS,
-    EmbBase,
-    EmbState,
-    EmbVector,
-    NodeUtils,
-} from '@/emb-objects';
+import { EMB_STATE_DEFAULTS, EmbBase, EmbState } from '@/emb-objects';
 import {
     ToolInputMessage,
     ToolInputs,
@@ -20,8 +14,6 @@ import { InputModel } from '../inputStore';
 import { SceneModel } from '../sceneStore';
 import { t } from 'typescript-fsm';
 import { createExclusiveStateMachine } from '@/utils/fsm';
-import { hslFromRgb } from '@/utils/color';
-import { VectorShape } from '@/emb-objects/vec-seg';
 import { CreateObjectCommand, SetSceneObjectFieldCommand } from '../commands';
 import { MultiCommand } from '../commands/shared';
 import { EmbText } from '@/emb-objects/text';
@@ -43,7 +35,6 @@ export const TextStates = {
     Moving: Symbol('s-Moving'),
     PendingCreateType: Symbol('s-CreatingNew'),
     CreatingLineTo: Symbol('s-CreatingLineTo'),
-    Default: Symbol('s-CreatingBezierTo'),
     Pening: Symbol('s-Pening'),
 } as const;
 
@@ -103,45 +94,6 @@ export const createTextToolStore = (
             TextStates.Default,
             TextEvents.PointerDown,
             TextStates.PendingCreateType,
-            (e: ToolInputs['pointer1-down']) => {
-                currentVectorId = newUuid<EmbText & EmbState>();
-                const newVector: EmbText & EmbState = {
-                    ...EMB_STATE_DEFAULTS,
-                    id: currentVectorId,
-                    type: 'text',
-                    name: 'Text',
-                    position: e.position,
-                    parent: uuid('root'),
-                    children: [],
-                    value: 'My Text',
-                    width: 150,
-                    height: 30,
-                };
-
-                createCommand = new CreateObjectCommand(newVector);
-
-                const setWidthCmd = new SetSceneObjectFieldCommand<
-                    EmbText,
-                    keyof EmbText
-                >(currentVectorId, 'width', 150);
-                setWidthCmd.final = false;
-
-                const setHeightCmd = new SetSceneObjectFieldCommand<
-                    EmbText,
-                    keyof EmbText
-                >(currentVectorId, 'height', 30);
-                setHeightCmd.final = false;
-
-                const cmd = new MultiCommand(
-                    createCommand,
-                    setWidthCmd,
-                    setHeightCmd,
-                );
-                cmd.name = 'Creating Text';
-                cmd.final = false;
-
-                dispatch('scene:do-command', cmd);
-            },
         ),
         t(
             TextStates.PendingCreateType,
@@ -149,7 +101,7 @@ export const createTextToolStore = (
             TextStates.Default,
             (e: ToolInputs['pointer1-down']) => {
                 currentVectorId = newUuid<EmbText & EmbState>();
-                const newVector: EmbText & EmbState = {
+                const newText: EmbText & EmbState = {
                     ...EMB_STATE_DEFAULTS,
                     id: currentVectorId,
                     type: 'text',
@@ -158,30 +110,18 @@ export const createTextToolStore = (
                     parent: uuid('root'),
                     children: [],
                     value: 'My Text',
+                    fontFace: {
+                        fontFamily: 'Roboto',
+                        weight: 400,
+                        italic: false,
+                    },
                     width: 150,
                     height: 30,
                 };
 
-                createCommand = new CreateObjectCommand(newVector);
+                createCommand = new CreateObjectCommand(newText);
 
-                const setWidthCmd = new SetSceneObjectFieldCommand<
-                    EmbText,
-                    keyof EmbText
-                >(currentVectorId, 'width', 150);
-
-                const setHeightCmd = new SetSceneObjectFieldCommand<
-                    EmbText,
-                    keyof EmbText
-                >(currentVectorId, 'height', 30);
-
-                const cmd = new MultiCommand(
-                    createCommand,
-                    setWidthCmd,
-                    setHeightCmd,
-                );
-                cmd.name = 'Creating text';
-
-                dispatch('scene:do-command', cmd);
+                dispatch('scene:do-command', createCommand);
             },
         ),
         t(TextStates.Pening, TextEvents.DragEnd, TextStates.Default, () => {}),

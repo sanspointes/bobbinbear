@@ -12,8 +12,9 @@
     "visualise": "vite-bundle-visualizer"
   },
   "dependencies": {
-    "@bearbroidery/solixi": "*",
+    "@bearbroidery/bobbin-wasm-utils": "workspace:^",
     "@bearbroidery/pixi-geometry-text": "*",
+    "@bearbroidery/solixi": "*",
     "@kobalte/core": "^0.9.8",
     "@pixi/app": "^7.2.4",
     "@pixi/assets": "^7.2.4",
@@ -31,10 +32,12 @@
     "@pixi/ticker": "^7.2.4",
     "@pixi/utils": "^7.2.4",
     "@solid-primitives/event-listener": "^2.2.13",
+    "@solid-primitives/fetch": "^2.4.6",
     "@solid-primitives/keyboard": "^1.2.3",
     "@solid-primitives/map": "^0.4.7",
     "@solid-primitives/resize-observer": "^2.0.18",
     "@solid-primitives/utils": "^6.2.0",
+    "@tanstack/solid-query": "^4.35.3",
     "@thisbeyond/solid-dnd": "^0.7.4",
     "clsx": "^2.0.0",
     "pixi-viewport": "^5.0.1",

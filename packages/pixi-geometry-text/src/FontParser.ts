@@ -1,5 +1,4 @@
-import { TyprGlyphShape } from './lib/Typr.U';
-import { Typr, TyprFont } from './lib/Typr';
+import { type TyprGlyphShape } from './lib/Typr.U';
 import { Result } from './lib/result';
 
 import {
@@ -7,10 +6,6 @@ import {
     BBFillOptions,
     BBFillRule,
 } from '@bearbroidery/bobbin-wasm-utils';
-
-export function parseOTFFont(buffer: ArrayBuffer): TyprFont | TyprFont[] {
-    return Typr.parse(buffer);
-}
 
 /**
  * Errors

@@ -3,17 +3,21 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "module": "./dist/pixi-geometry-text.js",
+  "types": "./dist/index.d.ts",
   "scripts": {
     "dev": "vite build -w",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "playground": "vite --mode playground"
+    "playground": "vite --mode playground",
+    "visualise": "vite-bundle-visualizer ./vite.config.ts"
   },
   "devDependencies": {
     "@pixi/events": "^7.2.4",
     "@types/opentype.js": "^1.3.6",
     "concurrently": "^8.2.1",
     "pixi-viewport": "^5.0.1",
+    "tsup": "^7.2.0",
     "typescript": "^5.0.2",
     "vite": "^4.4.5",
     "vite-bundle-visualizer": "^0.10.0",
@@ -26,13 +30,12 @@
     "@pixi/assets": "^7.2.4",
     "@pixi/core": "^7.2.4",
     "@pixi/display": "^7.2.4",
+    "@pixi/graphics": "^7.2.4",
     "@pixi/mesh": "^7.2.4",
-    "@pixi/mesh-extras": "^7.2.4"
+    "@pixi/mesh-extras": "^7.2.4",
+    "@bearbroidery/bobbin-wasm-utils": "workspace:^"
   },
   "dependencies": {
-    "@bearbroidery/bobbin-wasm-utils": "workspace:^",
-    "@pixi/graphics": "^7.2.4",
-    "bobbin-wasm-utils": "link:/Users/connormeehan/projects/personal/bearbroidery/packages/pixi-geometry-text/bobbin-wasm-utils/pkg",
-    "typr-ts": "^1.1.5"
+    "@laynezh/vite-plugin-lib-assets": "^0.5.5"
   }
 }

@@ -1,13 +1,10 @@
 import { useContext } from 'solid-js';
-import { EmbObject } from '../emb-objects/shared';
 import { AccordionItem } from './generics/Accordian';
 import { NumberInput } from './generics/NumberInput';
 import { AppContext } from '../store';
-import {
-    MoveObjectCommand,
-    SetSceneObjectFieldCommand,
-} from '../store/commands';
+import { MoveObjectCommand } from '../store/commands';
 import { Point } from '@pixi/core';
+import { EmbObject } from '@/emb-objects';
 
 type SidebarTransformProps = {
     object: EmbObject;

@@ -1,25 +1,30 @@
-import { BuildOptions, defineConfig } from 'vite';
-import noBundlePlugin from 'vite-plugin-no-bundle';
+import { defineConfig } from 'vite';
 import dts from 'vite-plugin-dts';
-import { ViteRsw } from 'vite-plugin-rsw';
+import libAssetsPlugin from '@laynezh/vite-plugin-lib-assets';
 
 export default defineConfig(({ mode }) => {
-    const plugins =
-        mode !== 'playground'
-            ? [dts(), noBundlePlugin({ copy: '**/*.css' }), ViteRsw()]
-            : [ViteRsw()];
-    const build: BuildOptions | undefined =
-        mode !== 'playground'
-            ? {
-                  sourcemap: true,
-                  lib: {
-                      formats: ['es'],
-                      entry: 'src/index.ts',
-                  },
-              }
-            : undefined;
+    console.log(mode);
+    const plugins = mode !== 'playground' ? [dts()] : [];
     return {
-        build,
+        build: {
+            minify: false,
+            lib: {
+                formats: ['es'],
+                entry: 'src/index.ts',
+            },
+            rollupOptions: {
+                external: [
+                    '@bearbroidery/bobbin-wasm-utils',
+                    '@pixi/app',
+                    '@pixi/assets',
+                    '@pixi/core',
+                    '@pixi/display',
+                    '@pixi/mesh',
+                    '@pixi/mesh-extras',
+                    '@pixi/graphics',
+                ],
+            },
+        },
         plugins,
     };
 });

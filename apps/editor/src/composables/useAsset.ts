@@ -1,13 +1,7 @@
 import { Assets } from '@pixi/assets';
 import { Texture } from '@pixi/core';
 import { MaybeAccessor, access } from '@solid-primitives/utils';
-import {
-    Accessor,
-    createEffect,
-    createMemo,
-    createSignal,
-    createUniqueId,
-} from 'solid-js';
+import { Accessor, createEffect, createMemo, createSignal } from 'solid-js';
 
 type UseAssetOptions<T> = {
     src: MaybeAccessor<string>;

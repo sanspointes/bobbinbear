@@ -2,7 +2,7 @@ import { FontHandle } from '.';
 import { Mesh, MeshMaterial } from '@pixi/mesh';
 import { Geometry, Rectangle, Texture } from '@pixi/core';
 import { Container } from '@pixi/display';
-import { TyprGlyphShape } from './lib/Typr.U';
+import { type TyprGlyphShape } from './lib/Typr.U';
 
 type FontCache = Record<string, Geometry>;
 

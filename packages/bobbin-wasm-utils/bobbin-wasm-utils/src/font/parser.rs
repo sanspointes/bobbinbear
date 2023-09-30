@@ -4,7 +4,6 @@ use lyon::path::FillRule;
 use owned_ttf_parser::{AsFaceRef, Face, GlyphId, OwnedFace, Rect};
 use rustybuzz::{UnicodeBuffer, shape};
 use wasm_bindgen::prelude::*;
-use web_sys::console;
 
 use crate::font::vector_builder::BBFaceVectorBuilder;
 use crate::vector::BBVector;

@@ -7,11 +7,17 @@ import { SidebarDebug } from './Sidebar.Debug';
 import { SidebarSceneObject } from './Sidebar.SceneObject';
 import { SidebarStyle } from './Sidebar.Style';
 import { Resizable } from './generics/Resizable';
+import { EmbObject, EmbState } from '@/emb-objects';
+import { SidebarText } from './Sidebar.Text';
+import { EmbText } from '@/emb-objects/text';
 
 export function Sidebar() {
     const { sceneStore } = useContext(AppContext);
-    const firstObject = createMemo(() =>
-        arrayFirst(sceneStore.selectedObjects),
+    const firstObject = createMemo(
+        () =>
+            arrayFirst(sceneStore.selectedObjects) as
+                | (EmbObject & EmbState)
+                | undefined,
     );
 
     return (
@@ -36,6 +42,11 @@ export function Sidebar() {
                                     <SidebarSceneObject object={obj()} />
                                     <SidebarTransform object={obj()} />
                                     <SidebarStyle object={obj()} />
+                                    <Show when={obj().type === 'text'}>
+                                        <SidebarText
+                                            object={obj() as EmbText & EmbState}
+                                        />
+                                    </Show>
                                 </>
                             )}
                         </Show>
