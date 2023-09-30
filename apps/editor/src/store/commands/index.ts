@@ -23,7 +23,7 @@ export {
     MutateSceneObjectArrayFieldCommand,
 };
 
-type AtomicCommands<TObject extends EmbBase> =
+type AtomicCommands<TObject extends EmbBase & EmbState> =
     | ParentObjectCommand<TObject>
     | CreateObjectCommand<TObject>
     | DeleteObjectCommand<TObject>

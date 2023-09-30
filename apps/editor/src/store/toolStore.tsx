@@ -18,6 +18,7 @@ import {
 } from './tools/shape-box';
 import { createPenToolStore } from './tools/pen';
 import { createEllipseToolStore } from './tools/shape-ellipse';
+import { createTextToolStore } from './tools/text';
 
 type SubToolStores = SelectToolStore | BoxToolStore;
 
@@ -27,6 +28,7 @@ export enum Tool {
     Box = 'Box',
     Ellipse = 'Ellipse',
     Pen = 'Pen',
+    Text = 'Text',
 }
 
 export enum Cursor {
@@ -36,6 +38,7 @@ export enum Cursor {
     Point,
     Moving,
     Cross,
+    Text,
     Box,
     Pen,
 }
@@ -46,6 +49,7 @@ export const TOOL_TO_DEFAULT_CURSOR_MAP: Record<Tool, Cursor> = {
     [Tool.Box]: Cursor.Box,
     [Tool.Ellipse]: Cursor.Cross,
     [Tool.Pen]: Cursor.Pen,
+    [Tool.Text]: Cursor.Text,
 };
 
 export type ToolStoreMessage = {
@@ -84,6 +88,12 @@ export const createToolStore = (
         [Tool.Box]: createBoxToolStore(dispatch),
         [Tool.Ellipse]: createEllipseToolStore(dispatch),
         [Tool.Pen]: createPenToolStore(
+            dispatch,
+            solixi,
+            inputModel,
+            sceneModel,
+        ),
+        [Tool.Text]: createTextToolStore(
             dispatch,
             solixi,
             inputModel,

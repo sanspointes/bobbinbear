@@ -70,3 +70,8 @@ export type EmbHasLine = {
 export type EmbHasInspecting = {
     inspecting: boolean;
 };
+
+export type EmbHasDimensions = {
+    width: number;
+    height: number;
+};

@@ -19,7 +19,6 @@ import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 
 import { SceneObjectChildren } from './emb-objects';
-import { CursorTest } from './sxi-components/CursorTest';
 import { SelectBox } from './sxi-components/SelectBox';
 import { Viewport } from './sxi-components/Viewport';
 
@@ -48,7 +47,6 @@ const EditorView = () => {
 
     return (
         <>
-            <CursorTest />
             <SelectBox />
             <Viewport>
                 <SceneObjectChildren children={rootObject!.children} />
@@ -129,6 +127,8 @@ export const Editor = () => {
                                     toolStore.currentCursor === Cursor.Pen,
                                 'b-cursor-moving':
                                     toolStore.currentCursor === Cursor.Moving,
+                                'cursor-text':
+                                    toolStore.currentCursor === Cursor.Text,
                             }}
                             devtools={true}
                             onCreated={onCreated}

@@ -1,7 +1,7 @@
 import { createStore, produce, SetStoreFunction } from 'solid-js/store';
 import { getObjectSetter, SceneModel } from '../sceneStore';
 import { type Command, type CommandPrototypeMap } from '.';
-import { EmbBase } from '../../emb-objects/shared';
+import { EmbBase, EmbState } from '../../emb-objects/shared';
 import { Uuid } from '../../utils/uuid';
 import { arrayRemove } from '../../utils/array';
 import { batch } from 'solid-js';
@@ -102,10 +102,12 @@ export abstract class AbstractCommand {
     }
 }
 
-export class MultiCommand<TObject extends EmbBase> extends AbstractCommand {
+export class MultiCommand<
+    TObject extends EmbBase & EmbState = EmbBase & EmbState,
+> extends AbstractCommand {
     public updatable: boolean = true;
     name = 'Multi Command';
-    type: 'MultiCommand' | string = 'MultiCommand';
+    type = 'MultiCommand' as const;
     commands: Command<TObject>[];
     constructor(...commands: Command<TObject>[]) {
         super();

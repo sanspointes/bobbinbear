@@ -1,5 +1,5 @@
 import { EventBoundary } from '@pixi/events';
-import { Accessor, createEffect } from 'solid-js';
+import { Accessor, createEffect, sharedConfig } from 'solid-js';
 import { SolixiState } from '@bearbroidery/solixi';
 import { Uuid, newUuid, uuid } from '@/utils/uuid';
 import {
@@ -24,8 +24,9 @@ import { hslFromRgb } from '@/utils/color';
 import { VectorShape } from '@/emb-objects/vec-seg';
 import { CreateObjectCommand, SetSceneObjectFieldCommand } from '../commands';
 import { MultiCommand } from '../commands/shared';
+import { EmbText } from '@/emb-objects/text';
 
-export const PenEvents = {
+export const TextEvents = {
     Hover: Symbol('s-Hover'),
     Unhover: Symbol('s-Unhover'),
     PointerDown: Symbol('s-Pointerdown'),
@@ -36,28 +37,28 @@ export const PenEvents = {
     DragEnd: Symbol('s-Dragend'),
 } as const;
 
-export const PenStates = {
+export const TextStates = {
     Default: Symbol('s-Default'),
     Hoverring: Symbol('s-Hoverring'),
     Moving: Symbol('s-Moving'),
-    CreatingNew: Symbol('s-CreatingNew'),
+    PendingCreateType: Symbol('s-CreatingNew'),
     CreatingLineTo: Symbol('s-CreatingLineTo'),
-    CreatingBezierToStart: Symbol('s-CreatingBezierTo'),
+    Default: Symbol('s-CreatingBezierTo'),
     Pening: Symbol('s-Pening'),
 } as const;
 
-export type PenToolMessage = {
+export type TextToolMessage = {
     activate: void;
     deactivate: void;
     input: ToolInputMessage;
 };
-export type PenToolModel = {
-    state: Accessor<(typeof PenStates)[keyof typeof PenStates]>;
+export type TextToolModel = {
+    state: Accessor<(typeof TextStates)[keyof typeof TextStates]>;
 };
 
-export type PenToolStore = BaseStore<PenToolModel, PenToolMessage>;
+export type TextToolStore = BaseStore<TextToolModel, TextToolMessage>;
 
-export const createPenToolStore = (
+export const createTextToolStore = (
     dispatch: GeneralHandler<AllMessages>,
     solixi: Accessor<SolixiState | undefined>,
     inputModel: InputModel,
@@ -74,11 +75,11 @@ export const createPenToolStore = (
     });
     // Internal State
     let currHover: Uuid<EmbBase & EmbState> | undefined;
-    let currentVectorId: Uuid<EmbVector & EmbState> | undefined;
+    let currentVectorId: Uuid<EmbText & EmbState> | undefined;
     // const offset = new Point();
     // let newPosition: Point | undefined;
 
-    let createCommand: CreateObjectCommand<EmbVector & EmbState> | undefined;
+    let createCommand: CreateObjectCommand<EmbText & EmbState> | undefined;
     // Viewport FSM
     const {
         block: vpBlock,
@@ -96,76 +97,94 @@ export const createPenToolStore = (
 
     // FSM definition
     const transitions = [
-        t(PenStates.Default, PenEvents.Hover, PenStates.Hoverring),
-        t(PenStates.Hoverring, PenEvents.Unhover, PenStates.Default),
+        t(TextStates.Default, TextEvents.Hover, TextStates.Hoverring),
+        t(TextStates.Hoverring, TextEvents.Unhover, TextStates.Default),
         t(
-            PenStates.Default,
-            PenEvents.PointerDown,
-            PenStates.CreatingNew,
+            TextStates.Default,
+            TextEvents.PointerDown,
+            TextStates.PendingCreateType,
             (e: ToolInputs['pointer1-down']) => {
-                currentVectorId = newUuid<EmbVector & EmbState>();
-                const newVector: EmbVector & EmbState = {
+                currentVectorId = newUuid<EmbText & EmbState>();
+                const newVector: EmbText & EmbState = {
                     ...EMB_STATE_DEFAULTS,
                     id: currentVectorId,
-                    type: 'vector',
-                    name: 'Vector',
+                    type: 'text',
+                    name: 'Text',
                     position: e.position,
                     parent: uuid('root'),
                     children: [],
-                    shape: new VectorShape(),
-                    fill: {
-                        color: hslFromRgb({ r: 200, g: 200, b: 200 }),
-                    },
-                    line: {
-                        width: 1,
-                        color: hslFromRgb({ r: 0, g: 0, b: 0 }),
-                        alpha: 1,
-                    },
+                    value: 'My Text',
+                    width: 150,
+                    height: 30,
                 };
 
                 createCommand = new CreateObjectCommand(newVector);
-                const setShapeCommand = new SetSceneObjectFieldCommand<
-                    EmbVector,
-                    keyof EmbVector
-                >(
-                    currentVectorId,
-                    'shape',
-                    new VectorShape().moveTo(NodeUtils.newPoint(0, 0)),
+
+                const setWidthCmd = new SetSceneObjectFieldCommand<
+                    EmbText,
+                    keyof EmbText
+                >(currentVectorId, 'width', 150);
+                setWidthCmd.final = false;
+
+                const setHeightCmd = new SetSceneObjectFieldCommand<
+                    EmbText,
+                    keyof EmbText
+                >(currentVectorId, 'height', 30);
+                setHeightCmd.final = false;
+
+                const cmd = new MultiCommand(
+                    createCommand,
+                    setWidthCmd,
+                    setHeightCmd,
                 );
-                setShapeCommand.final = false;
-                const cmd = new MultiCommand(createCommand, setShapeCommand);
-                cmd.name = 'Updating Box';
+                cmd.name = 'Creating Text';
                 cmd.final = false;
 
                 dispatch('scene:do-command', cmd);
             },
         ),
         t(
-            PenStates.CreatingNew,
-            PenEvents.DragStart,
-            PenStates.CreatingBezierToStart,
-            () => {},
+            TextStates.PendingCreateType,
+            TextEvents.PointerUp,
+            TextStates.Default,
+            (e: ToolInputs['pointer1-down']) => {
+                currentVectorId = newUuid<EmbText & EmbState>();
+                const newVector: EmbText & EmbState = {
+                    ...EMB_STATE_DEFAULTS,
+                    id: currentVectorId,
+                    type: 'text',
+                    name: 'Text',
+                    position: e.position,
+                    parent: uuid('root'),
+                    children: [],
+                    value: 'My Text',
+                    width: 150,
+                    height: 30,
+                };
+
+                createCommand = new CreateObjectCommand(newVector);
+
+                const setWidthCmd = new SetSceneObjectFieldCommand<
+                    EmbText,
+                    keyof EmbText
+                >(currentVectorId, 'width', 150);
+
+                const setHeightCmd = new SetSceneObjectFieldCommand<
+                    EmbText,
+                    keyof EmbText
+                >(currentVectorId, 'height', 30);
+
+                const cmd = new MultiCommand(
+                    createCommand,
+                    setWidthCmd,
+                    setHeightCmd,
+                );
+                cmd.name = 'Creating text';
+
+                dispatch('scene:do-command', cmd);
+            },
         ),
-        t(PenStates.Pening, PenEvents.DragEnd, PenStates.Default, () => {}),
-        t(
-            PenStates.PointerDownOnElement,
-            PenEvents.PointerUp,
-            PenStates.Hoverring,
-        ),
-        t(
-            PenStates.PointerDownOnElement,
-            PenEvents.DoubleClick,
-            PenStates.PointerDownOnElement,
-            () => {},
-        ),
-        t(
-            PenStates.PointerDownOnElement,
-            PenEvents.DragStart,
-            PenStates.Moving,
-            () => {},
-        ),
-        t(PenStates.Moving, PenEvents.DragMove, PenStates.Moving, () => {}),
-        t(PenStates.Moving, PenEvents.DragEnd, PenStates.Hoverring, () => {}),
+        t(TextStates.Pening, TextEvents.DragEnd, TextStates.Default, () => {}),
     ];
 
     const {
@@ -174,8 +193,8 @@ export const createPenToolStore = (
         unblock: sUnblock,
         can: sCan,
         dispatch: sDispatch,
-    } = createExclusiveStateMachine(PenStates.Default, transitions, {
-        exclusiveStates: [PenStates.Pening, PenStates.Moving],
+    } = createExclusiveStateMachine(TextStates.Default, transitions, {
+        exclusiveStates: [TextStates.Pening, TextStates.Moving],
         onExclusive: () => {
             vpBlock();
         },
@@ -187,11 +206,11 @@ export const createPenToolStore = (
     sUnblock();
     vpUnblock();
 
-    const model: PenToolModel = {
+    const model: TextToolModel = {
         state: state,
     };
 
-    const result = generateStore<PenToolModel, PenToolMessage>(model, {
+    const result = generateStore<TextToolModel, TextToolMessage>(model, {
         input: (_1, _2, msg) => {
             switch (msg.type) {
                 case 'pointer1-move':
@@ -205,19 +224,19 @@ export const createPenToolStore = (
                             );
                             if (result && result.id) {
                                 if (currHover && result.id !== currHover) {
-                                    if (sCan(PenEvents.Unhover)) {
-                                        sDispatch(PenEvents.Unhover);
+                                    if (sCan(TextEvents.Unhover)) {
+                                        sDispatch(TextEvents.Unhover);
                                         dispatch('scene:unhover', currHover);
                                     }
                                 }
-                                if (sCan(PenEvents.Hover)) {
-                                    sDispatch(PenEvents.Hover);
+                                if (sCan(TextEvents.Hover)) {
+                                    sDispatch(TextEvents.Hover);
                                     dispatch('scene:hover', result.id);
                                     currHover = result.id;
                                 }
-                            } else if (sCan(PenEvents.Unhover)) {
+                            } else if (sCan(TextEvents.Unhover)) {
                                 // console.log("Unhovering");
-                                sDispatch(PenEvents.Unhover);
+                                sDispatch(TextEvents.Unhover);
                                 if (currHover)
                                     dispatch('scene:unhover', currHover);
                                 currHover = undefined;
@@ -230,43 +249,43 @@ export const createPenToolStore = (
                         if (vpCan(ViewportEvents.PointerDown)) {
                             vpDispatch(ViewportEvents.PointerDown);
                         }
-                        if (sCan(PenEvents.PointerDown)) {
-                            sDispatch(PenEvents.PointerDown, msg);
+                        if (sCan(TextEvents.PointerDown)) {
+                            sDispatch(TextEvents.PointerDown, msg.data);
                         }
                     }
                     break;
                 case 'pointer1-doubleclick':
                     {
-                        if (sCan(PenEvents.DoubleClick)) {
-                            sDispatch(PenEvents.DoubleClick);
+                        if (sCan(TextEvents.DoubleClick)) {
+                            sDispatch(TextEvents.DoubleClick, msg.data);
                         }
                     }
                     break;
                 case 'pointer1-up':
                     {
                         if (vpCan(ViewportEvents.PointerUp)) {
-                            vpDispatch(ViewportEvents.PointerUp);
+                            vpDispatch(ViewportEvents.PointerUp, msg.data);
                         }
-                        if (sCan(PenEvents.PointerUp))
-                            sDispatch(PenEvents.PointerUp);
+                        if (sCan(TextEvents.PointerUp))
+                            sDispatch(TextEvents.PointerUp, msg.data);
                     }
                     break;
                 case 'pointer1-dragstart':
                     {
-                        if (sCan(PenEvents.DragStart))
-                            sDispatch(PenEvents.DragStart);
+                        if (sCan(TextEvents.DragStart))
+                            sDispatch(TextEvents.DragStart, msg.data);
                     }
                     break;
                 case 'pointer1-dragmove':
                     {
-                        if (sCan(PenEvents.DragMove))
-                            sDispatch(PenEvents.DragMove);
+                        if (sCan(TextEvents.DragMove))
+                            sDispatch(TextEvents.DragMove, msg.data);
                     }
                     break;
                 case 'pointer1-dragend':
                     {
-                        if (sCan(PenEvents.DragEnd))
-                            sDispatch(PenEvents.DragEnd);
+                        if (sCan(TextEvents.DragEnd))
+                            sDispatch(TextEvents.DragEnd, msg.data);
                     }
                     break;
                 case 'keydown':
@@ -291,12 +310,12 @@ export const createPenToolStore = (
             }
         },
         activate: (_1, _2) => {
-            console.log('Pen tool activated');
+            console.log('Text tool activated');
             vpUnblock();
             sUnblock();
         },
         deactivate: (_1, _2) => {
-            console.log('Pen tool deactivated');
+            console.log('Text tool deactivated');
             vpBlock();
             sBlock();
         },

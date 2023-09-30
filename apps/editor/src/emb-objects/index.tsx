@@ -6,6 +6,7 @@ import { EmbBase, EmbHasVirtual, EmbState } from './shared';
 import { EmbVector, EmbVectorView } from './vector';
 import { AppContext } from '../store';
 import { EmbVecSeg, EmbVecSegView } from './vec-seg';
+import { EmbText, EmbTextView } from './text';
 
 export * from './shared';
 
@@ -20,6 +21,7 @@ export type EmbObject = (
     | EmbCanvas
     | EmbNode
     | EmbGroup
+    | EmbText
 ) &
     EmbHasVirtual;
 
@@ -39,6 +41,7 @@ const SCENE_OBJECT_LOOKUP = {
     'vec-seg': EmbVecSegView,
     node: EmbNodeView,
     group: EmbGroupView,
+    text: EmbTextView,
 };
 
 export const SceneObjectChildren = (props: Pick<EmbBase, 'children'>) => {

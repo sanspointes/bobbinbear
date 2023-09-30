@@ -15,6 +15,7 @@ import {
     EmbState,
 } from '../emb-objects/shared';
 import { EmbGroup, EmbObject } from '../emb-objects';
+import { MultiCommand } from './commands/shared';
 
 export const getObject = <T extends EmbBase & EmbState>(
     store: SceneModel,
@@ -39,6 +40,25 @@ export const isInspectable = <T extends EmbBase>(
     const o = obj as unknown as T & EmbHasInspecting;
     if (o.inspecting !== undefined) return true;
     return false;
+};
+
+const isCommandUpdatable = (
+    a: Command | MultiCommand,
+    b: Command | MultiCommand,
+) => {
+    if (a.type === 'MultiCommand' && b.type === 'MultiCommand') {
+        const multA = a as MultiCommand;
+        const multB = b as MultiCommand;
+        if (multA.commands.length !== multB.commands.length) return false;
+        for (let i = 0; i < multA.commands.length; i++) {
+            const cmdA = multA.commands[i]!;
+            const cmdB = multB.commands[i]!;
+            if (cmdA.type !== cmdB.type) return false;
+        }
+        return true;
+    } else {
+        return a.type === b.type;
+    }
 };
 /**
  * Keep a flat reference to every object on the scene and its setter function
@@ -111,7 +131,8 @@ export const createSceneStore = () => {
         'scene:do-command': (store, set, command) => {
             const lastCommand = arrayLast(store.undoStack);
             if (lastCommand) {
-                const sameType = lastCommand.type === command.type;
+                const sameType = isCommandUpdatable(lastCommand, command);
+
                 const needsPush = lastCommand.final;
                 const needsUpdate = !lastCommand.final && sameType;
 
