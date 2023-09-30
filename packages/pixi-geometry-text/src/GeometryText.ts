@@ -173,8 +173,8 @@ export class GeometryText extends Container {
             const result = handle.getGidGeometry(shape.g);
 
             geometry = new Geometry();
-            geometry.addAttribute('aVertexPosition', result.positions);
-            geometry.addAttribute('aTextureCoord', result.positions);
+            geometry.addAttribute('aVertexPosition', result.vertices);
+            geometry.addAttribute('aTextureCoord', result.vertices);
             geometry.addIndex(result.indices);
 
             cache.set(handle, char, geometry);

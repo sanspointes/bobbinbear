@@ -6,7 +6,6 @@ import {
     BBFace,
     BBFillOptions,
     BBFillRule,
-    BBGeometry,
 } from '@bearbroidery/bobbin-wasm-utils';
 
 export function parseOTFFont(buffer: ArrayBuffer): TyprFont | TyprFont[] {
@@ -29,6 +28,11 @@ class NoFontLoadError extends Error {
         super(`No font found in "${path}".`);
     }
 }
+
+type CharGeometry = {
+    vertices: Float32Array;
+    indices: Uint16Array;
+};
 
 type LoadFontResult = Promise<Result<BBFace, NoFontLoadError | FetchLoadError>>;
 
@@ -90,52 +94,41 @@ export class FontHandle {
     }
 
     getStringShape(str: string, ltr = true): TyprGlyphShape[] {
+        const res = this.font.shape_text(str);
         const result = new Array<TyprGlyphShape>(str.length);
+
         for (let i = 0; i < str.length; i++) {
-            const c = str.charAt(i);
-            const cshape = this.getCharShape(c, ltr);
-            if (!cshape) {
-                console.warn(
-                    `FontHandle.getStringShape() - No shape for char "${c}".`,
-                );
-                continue;
-            }
-            result[i] = cshape;
+            const v = res.glyph_at(i);
+
+            if (!v) throw new Error(`Missing glyph at ${i}`);
+
+            result[i] = {
+                g: v.gid,
+                ax: v.x_advance,
+                ay: v.y_advance,
+                dx: v.x_offset,
+                dy: v.y_offset,
+            };
         }
+
         return result;
     }
-    getCharShape(char: string, ltr = true): TyprGlyphShape | undefined {
-        const gid = this.font.gid_by_code_point(char);
-        if (!gid) return undefined;
-        const ax = this.font.x_advance_by_gid(gid) ?? 0;
-        const ay = this.font.y_advance_by_gid(gid) ?? 0;
-        const dx = this.font.x_side_bearing_by_gid(gid) ?? 0;
-        const dy = this.font.y_side_bearing_by_gid(gid) ?? 0;
-
-        return {
-            g: gid,
-            ax,
-            ay,
-            dx,
-            dy,
-        };
-    }
-    getGidGeometry(gid: number, ltr = true): BBGeometry {
+    getGidGeometry(gid: number, ltr = true): CharGeometry {
         const options = new BBFillOptions();
         options.fill_rule = BBFillRule.EvenOdd;
-        options.tolerance = 20;
+        options.tolerance = 1;
         const r = this.font.gid_to_fill_geometry(gid, options);
-        return r.geometry;
+        const result: CharGeometry = {
+            vertices: new Float32Array(r.vertices.length),
+            indices: new Uint16Array(r.indices.length),
+        };
+        result.vertices.set(r.vertices);
+        result.indices.set(r.indices);
+        return result;
     }
-    getCharGeometry(char: string, ltr = true): BBGeometry | undefined {
+    getCharGeometry(char: string, ltr = true): CharGeometry | undefined {
         const gid = this.font.gid_by_code_point(char);
         if (!gid) return undefined;
         return this.getGidGeometry(gid, ltr);
     }
-    // getStringPathFromShape(shape: TyprGlyphShape[]): TyprPath {
-    //     return TyprU.shapeToPath(this.font, shape) as TyprPath;
-    // }
-    // getGlyphMeta(gid: number): TyprGlyphMeta | null {
-    //     return this.font.glyf[gid];
-    // }
 }

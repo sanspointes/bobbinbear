@@ -1,11 +1,11 @@
-use std::borrow::BorrowMut;
-
-use js_sys::{Array, Uint8Array};
+use js_sys::{Array, Uint8Array, Float32Array, Uint16Array};
 use lyon::lyon_tessellation::{FillOptions, Orientation};
 use lyon::path::FillRule;
 use owned_ttf_parser::{AsFaceRef, Face, GlyphId, OwnedFace, Rect};
+use rustybuzz::{UnicodeBuffer, shape};
 use ts_rs::TS;
 use wasm_bindgen::prelude::*;
+use web_sys::console;
 
 use crate::font::vector_builder::BBFaceVectorBuilder;
 use crate::vector::BBVector;
@@ -117,6 +117,7 @@ impl From<BBFillOptions> for FillOptions {
 #[derive(TS)]
 #[ts(export)]
 #[wasm_bindgen]
+#[derive(Copy, Clone)]
 pub struct BBRect {
     x: f32,
     y: f32,
@@ -160,14 +161,75 @@ pub struct BBToGeometryReturn{ geometry: BBGeometry, bounds: Option<BBRect> }
 #[wasm_bindgen]
 impl BBToGeometryReturn {
     #[wasm_bindgen(getter)]
-    pub fn geometry(self) -> BBGeometry {
-        self.geometry
+    pub fn vertices(&self) -> Float32Array {
+        self.geometry.positions_as_float32array()
     }
     #[wasm_bindgen(getter)]
-    pub fn bounds(self) -> Option<BBRect> {
-        self.bounds
+    pub fn indices(&self) -> Uint16Array {
+        self.geometry.indices_as_uint16array()
+    }
+    #[wasm_bindgen(getter)]
+    pub fn bounds(&self) -> Option<BBRect> {
+        self.bounds.clone()
     }
 }
+
+#[wasm_bindgen]
+#[derive(Clone, Copy, Debug)]
+pub struct BBGlyphShape {
+    gid: u32,
+    cluster: u32,
+    x_advance: i32,
+    y_advance: i32,
+    x_offset: i32,
+    y_offset: i32,
+}
+#[wasm_bindgen]
+impl BBGlyphShape {
+    #[wasm_bindgen(getter)]
+    pub fn gid(&self) -> u32 {
+        self.gid
+    }
+    #[wasm_bindgen(getter)]
+    pub fn cluster(&self) -> u32 {
+        self.cluster
+    }
+    #[wasm_bindgen(getter)]
+    pub fn x_advance(&self) -> i32 {
+        self.x_advance
+    }
+    #[wasm_bindgen(getter)]
+    pub fn y_advance(&self) -> i32 {
+        self.y_advance
+    }
+    #[wasm_bindgen(getter)]
+    pub fn x_offset(&self) -> i32 {
+        self.x_offset
+    }
+    #[wasm_bindgen(getter)]
+    pub fn y_offset(&self) -> i32 {
+        self.y_offset
+    }
+}
+
+
+#[wasm_bindgen]
+pub struct BBLineShape {
+    glyphs: Vec<BBGlyphShape>
+}
+
+#[wasm_bindgen] 
+impl BBLineShape {
+    #[wasm_bindgen(getter)]
+    pub fn length(&self) -> usize {
+        return self.glyphs.len();
+    }
+    #[wasm_bindgen]
+    pub fn glyph_at(&self, index: usize) -> Option<BBGlyphShape> {
+        return self.glyphs.get(index).cloned();
+    }
+}
+
 
 #[wasm_bindgen]
 impl BBFace {
@@ -275,6 +337,8 @@ impl BBFace {
         gid: u16,
         options: BBFillOptions,
     ) -> Result<BBToGeometryReturn, JsError> {
+
+        console::log_1(&format!("geometry: {:?}", gid).into());
         let (bounds, vector) = self.bb_vector_by_gid(gid);
         match tesselate_bb_vector_fill(vector, &options.into()) {
             Ok(mut geometry) => {
@@ -291,6 +355,44 @@ impl BBFace {
                 Err(JsError::new(&msg))
             }
         }
+    }
+
+    #[wasm_bindgen]
+    pub fn shape_text(&self, text: &str) -> BBLineShape {
+        let face_ref = self.face.as_face_ref();
+        let face = rustybuzz::Face::from_face(face_ref.clone());
+
+        let mut buffer = UnicodeBuffer::new();
+        buffer.push_str(text);
+
+        let result = shape(&face, &[], buffer);
+
+        let positions = result.glyph_positions();
+        let infos = result.glyph_infos();
+
+        // iterate over the shaped glyphs
+        let glyph_shapes: Vec<BBGlyphShape> = positions.iter().zip(infos).map(|(position, info)| {
+            let gid = info.glyph_id;
+            let cluster = info.cluster;
+            let x_advance = position.x_advance;
+            let y_advance = position.y_advance;
+            let x_offset = position.x_offset;
+            let y_offset = position.y_offset;
+            let glyph_shape = BBGlyphShape {
+                gid,
+                cluster,
+                x_advance,
+                y_advance,
+                x_offset,
+                y_offset,
+            };
+            console::log_1(&format!("shape: {:?}", glyph_shape).into());
+
+            glyph_shape
+        }).collect();
+
+
+        BBLineShape { glyphs: glyph_shapes }
     }
 }
 

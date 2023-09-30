@@ -1,0 +1,3 @@
+[RSW::ERR]
+[RSW::NAME] :~> bobbin-wasm-utils
+[RSW::BUILD] :~> wasm-pack build bobbin-wasm-utils --out-dir pkg --target web --dev

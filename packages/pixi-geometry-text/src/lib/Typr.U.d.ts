@@ -3,9 +3,9 @@ import { TyprFont, TyprPath } from './Typr';
 type TyprGlyphShape = {
     /** GID of char **/
     g: number;
-    /** X axis kerning of char **/
+    /** X axis advance of char **/
     ax: number;
-    /** Y Axis kerning of char **/
+    /** Y Axis advance of char **/
     ay: number;
     /** TODO **/
     dx: number;

@@ -1,5 +1,10 @@
 import { Application } from '@pixi/app';
-import { FontHandle, GeometryText, initTesselator } from '../src';
+import {
+    FontHandle,
+    GeometryText,
+    GeometryTextInput,
+    initTesselator,
+} from '../src';
 import { Viewport } from 'pixi-viewport';
 import { EventSystem } from '@pixi/events';
 
@@ -34,29 +39,34 @@ async function main() {
     viewport.drag().decelerate().wheel();
     app.stage.addChild(viewport);
 
-    const text = new GeometryText(font);
+    const text = new GeometryTextInput(font, {
+        ltr: true,
+        multiline: true,
+    });
+
+    console.log({ text });
+
+    text.value = `Test string`;
     text.position.set(100, 100);
     // text.scale.set(0.05, 0.05);
     text.interactive = true;
-    let value = `Test string`;
-    text.value = value;
 
     text.interactive = true;
-    text.onpointermove = (e) => {
-        const localPos = e.getLocalPosition(text);
-        console.log(text.hitTestCharIndex(localPos.x, localPos.y));
-    };
-
-    window.addEventListener('keydown', (e) => {
-        console.log(e.key);
-        if (e.key.length === 1) {
-            value += e.key;
-            text.value = value;
-        } else if (e.key === 'Backspace') {
-            value = value.slice(0, value.length - 1);
-            text.value = value;
-        }
-    });
+    // text.onpointermove = (e) => {
+    //     const localPos = e.getLocalPosition(text);
+    //     console.log(text.hitTestCharIndex(localPos.x, localPos.y));
+    // };
+    //
+    // window.addEventListener('keydown', (e) => {
+    //     console.log(e.key);
+    //     if (e.key.length === 1) {
+    //         value += e.key;
+    //         text.value = value;
+    //     } else if (e.key === 'Backspace') {
+    //         value = value.slice(0, value.length - 1);
+    //         text.value = value;
+    //     }
+    // });
 
     viewport.addChild(text);
 }
