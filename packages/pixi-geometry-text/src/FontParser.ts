@@ -131,4 +131,17 @@ export class FontHandle {
         if (!gid) return undefined;
         return this.getGidGeometry(gid, ltr);
     }
+
+    get ascender() {
+        return this.font.ascender;
+    }
+    get descender() {
+        return this.font.descender;
+    }
+    get capitalHeight() {
+        return this.font.capital_height;
+    }
+    get xHeight() {
+        return this.font.x_height;
+    }
 }

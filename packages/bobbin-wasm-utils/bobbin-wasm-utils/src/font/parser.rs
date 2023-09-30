@@ -3,7 +3,6 @@ use lyon::lyon_tessellation::{FillOptions, Orientation};
 use lyon::path::FillRule;
 use owned_ttf_parser::{AsFaceRef, Face, GlyphId, OwnedFace, Rect};
 use rustybuzz::{UnicodeBuffer, shape};
-use ts_rs::TS;
 use wasm_bindgen::prelude::*;
 use web_sys::console;
 
@@ -16,8 +15,6 @@ pub struct BBFace {
     face: OwnedFace,
 }
 
-#[derive(TS)]
-#[ts(export)]
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
 pub enum BBOrientation {
@@ -34,8 +31,6 @@ impl From<BBOrientation> for Orientation {
     }
 }
 
-#[derive(TS)]
-#[ts(export)]
 #[wasm_bindgen]
 #[derive(Clone, Copy)]
 pub enum BBFillRule {
@@ -114,8 +109,6 @@ impl From<BBFillOptions> for FillOptions {
     }
 }
 
-#[derive(TS)]
-#[ts(export)]
 #[wasm_bindgen]
 #[derive(Copy, Clone)]
 pub struct BBRect {
@@ -272,14 +265,14 @@ impl BBFace {
         return face_ref.ascender();
     }
     #[wasm_bindgen(getter)]
-    pub fn descender(&self) -> i16 {
-        let face_ref: &Face<'_> = self.face.as_face_ref();
-        return face_ref.descender();
-    }
-    #[wasm_bindgen(getter)]
     pub fn x_height(&self) -> Option<i16> {
         let face_ref: &Face<'_> = self.face.as_face_ref();
         return face_ref.x_height();
+    }
+    #[wasm_bindgen(getter)]
+    pub fn descender(&self) -> i16 {
+        let face_ref: &Face<'_> = self.face.as_face_ref();
+        return face_ref.descender();
     }
     #[wasm_bindgen(getter)]
     pub fn capital_height(&self) -> Option<i16> {
@@ -338,7 +331,6 @@ impl BBFace {
         options: BBFillOptions,
     ) -> Result<BBToGeometryReturn, JsError> {
 
-        console::log_1(&format!("geometry: {:?}", gid).into());
         let (bounds, vector) = self.bb_vector_by_gid(gid);
         match tesselate_bb_vector_fill(vector, &options.into()) {
             Ok(mut geometry) => {
@@ -386,7 +378,6 @@ impl BBFace {
                 x_offset,
                 y_offset,
             };
-            console::log_1(&format!("shape: {:?}", glyph_shape).into());
 
             glyph_shape
         }).collect();

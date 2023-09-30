@@ -39,7 +39,6 @@ export class GeometryCharacter extends Mesh {
     // showDebug(handle: FontHandle, gid: number) {
     //     const meta = handle.getGlyphMeta(gid);
     //     if (meta) {
-    //         console.log(this.char, meta);
     //         this.debugGraphic = this.debugGraphic ?? new Graphics();
     //
     //         this.debugGraphic.clear();
@@ -56,15 +55,14 @@ export class GeometryCharacter extends Mesh {
 }
 
 export class GeometryText extends Container {
-    private static cache = new CharGeometryCache();
+    static cache = new CharGeometryCache();
     public hitArea: Rectangle;
 
     constructor(
-        private handle: FontHandle,
+        public handle: FontHandle,
         private ltr = true,
     ) {
         super();
-        console.log(handle);
         this.hitArea = new Rectangle();
     }
 
@@ -98,7 +96,6 @@ export class GeometryText extends Container {
 
                 let currentChild = this.charChildren[i];
                 const shape = valueShape[i]!;
-                console.log(shape);
                 if (!currentChild || currentChild.char !== char) {
                     const geometry = GeometryText.getCharGeometry(
                         GeometryText.cache,
@@ -140,7 +137,6 @@ export class GeometryText extends Container {
     }
 
     public hitTestCharIndex(x: number, y: number) {
-        console.log(x, y);
         const nearestResult = this.charChildren.reduce<{
             distx: number;
             i: number | undefined;
@@ -155,6 +151,10 @@ export class GeometryText extends Container {
         );
 
         return nearestResult.i;
+    }
+
+    public getCharAtIndex(index: number) {
+        return this.charChildren[index];
     }
 
     /**

@@ -1,4 +1,5 @@
 import { ColorSource, Point, Texture } from '@pixi/core';
+import { Graphics } from '@pixi/graphics';
 import { Mesh, MeshGeometry, MeshMaterial } from '@pixi/mesh';
 
 type CaretOptions = {
@@ -7,23 +8,23 @@ type CaretOptions = {
     rangeColor: ColorSource;
     rangeAlpha: number;
 };
-class CaretView extends Mesh {
+export class CaretView extends Graphics {
     constructor(private options: CaretOptions) {
-        const geometry = new MeshGeometry();
-        super(geometry, new MeshMaterial(Texture.WHITE));
-
-        this.material.tint = options.color;
-        this.material.alpha = options.alpha;
+        super();
     }
 
     isSelectionRange = false;
-    updatePosition(origin: Point, height: number, width?: number) {
+    updatePosition(origin: Point, height: number, width = 40) {
         this.isSelectionRange = width !== undefined;
 
-        this.getBounds;
+        this.position.copyFrom(origin);
+
+        console.log(origin, height, width);
+
+        this.clear();
+
+        this.beginFill(this.options.color, this.options.alpha);
+
+        this.drawRect(0, origin.y, width, height);
     }
-}
-
-class CaretManager extends Mesh {
-
 }

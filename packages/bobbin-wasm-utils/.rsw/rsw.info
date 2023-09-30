@@ -1,3 +1,3 @@
-[RSW::ERR]
+[RSW::OK]
 [RSW::NAME] :~> bobbin-wasm-utils
-[RSW::BUILD] :~> wasm-pack build bobbin-wasm-utils --out-dir pkg --target web --dev
+[RSW::PATH] :~> /Users/connormeehan/projects/personal/bearbroidery/packages/bobbin-wasm-utils/bobbin-wasm-utils/src/font/parser.rs~
