@@ -36,7 +36,9 @@ dir = "bobbin-wasm-utils"
 # #! npm package name (path: $ROOT/rsw-hello)
 name = "bobbin-wasm-utils"
 # #! run `npm link`: `true` | `false`, default is `false`
-link = true
+
+
+
 
 #! 📦 -------- package: @rsw/utils --------
 # [[crates]]

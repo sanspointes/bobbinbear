@@ -7,7 +7,7 @@
     "dev": "vite build -w",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "playground": "concurrently \"vite --mode playground\" \"rsw watch\""
+    "playground": "vite --mode playground"
   },
   "devDependencies": {
     "@pixi/events": "^7.2.4",
@@ -30,6 +30,7 @@
     "@pixi/mesh-extras": "^7.2.4"
   },
   "dependencies": {
+    "@bearbroidery/bobbin-wasm-utils": "workspace:^",
     "@pixi/graphics": "^7.2.4",
     "bobbin-wasm-utils": "link:/Users/connormeehan/projects/personal/bearbroidery/packages/pixi-geometry-text/bobbin-wasm-utils/pkg",
     "typr-ts": "^1.1.5"

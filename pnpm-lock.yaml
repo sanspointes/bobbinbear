@@ -247,6 +247,8 @@ importers:
         specifier: ^4.1.4
         version: 4.4.7(@types/node@18.17.0)
 
+  packages/bobbin-wasm-utils: {}
+
   packages/constructables:
     dependencies:
       solid-js:
@@ -286,6 +288,9 @@ importers:
 
   packages/pixi-geometry-text:
     dependencies:
+      '@bearbroidery/bobbin-wasm-utils':
+        specifier: workspace:^
+        version: link:../bobbin-wasm-utils
       '@pixi/app':
         specifier: ^7.2.4
         version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
@@ -426,6 +431,8 @@ importers:
       vite-plugin-solid:
         specifier: ^2.7.0
         version: 2.7.0(solid-js@1.7.11)(vite@4.4.7)
+
+  packages/wasm-utils: {}
 
 packages:
 
