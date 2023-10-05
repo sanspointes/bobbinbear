@@ -23,6 +23,11 @@ import {
     SettingsModel,
     createSettingsStore,
 } from './settingsStore';
+import {
+    DocumentMessage,
+    DocumentModel,
+    createDocumentStore,
+} from './documentStore';
 
 type BaseMessages = Record<string, unknown>;
 type BaseModel = Record<string, unknown>;
@@ -96,7 +101,8 @@ export type AllMessages = SceneStoreMessages &
     ToolStoreMessage &
     InputMessages &
     ViewportMessage &
-    SettingsMessage;
+    SettingsMessage &
+    DocumentMessage;
 
 type EditorModel = {
     temp: 1;
@@ -153,6 +159,9 @@ export const createAppStore = (solixi: Accessor<SolixiState | undefined>) => {
                 } else if (type.startsWith('settings')) {
                     // @ts-expect-error; Can't be bothered typing.
                     settingsHandler(type, message, handleResponse);
+                } else if (type.startsWith('document')) {
+                    // @ts-expect-error; Can't be bothered typing.
+                    documentHandler(type, message, handleResponse);
                 } else {
                     throw new Error(
                         `EditorStore: Unable to dispatch message to correct store.  Not store with prefix for ${type}.`,
@@ -177,6 +186,8 @@ export const createAppStore = (solixi: Accessor<SolixiState | undefined>) => {
         createViewportStore(appStoreResult.handle);
     const { store: settingsStore, handle: settingsHandler } =
         createSettingsStore();
+    const { store: documentStore, handle: documentHandler } =
+        createDocumentStore(appStoreResult.handle, sceneStore);
 
     // Setup initial state
     appStoreResult.handle('tool:switch', Tool.Select);
@@ -187,6 +198,7 @@ export const createAppStore = (solixi: Accessor<SolixiState | undefined>) => {
         toolStore,
         viewportStore,
         settingsStore,
+        documentStore,
         dispatch: appStoreResult.handle,
     });
     return finalStore;
@@ -198,6 +210,7 @@ type AppContextModel = {
     toolStore: ToolModel;
     viewportStore: ViewportModel;
     settingsStore: SettingsModel;
+    documentStore: DocumentModel;
     dispatch: GeneralHandler<AllMessages>;
 };
 export const AppContext = createContext({

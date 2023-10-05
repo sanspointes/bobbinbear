@@ -14,7 +14,7 @@ import { AppContext, createAppStore } from './store';
 import { Cursor } from './store/toolStore';
 
 import { ErrorView } from './components/ErrorView';
-import { SidebarLeft } from './components/SceneTree';
+import { SidebarLeft } from './components/SidebarLeft';
 import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 

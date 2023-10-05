@@ -4,11 +4,9 @@ import { IFillStyleOptions, ILineStyleOptions } from '@pixi/graphics';
 import { Command } from '../store/commands';
 import { HslColor } from '../utils/color';
 
-export type EmbState = {
+export type EmbStatePersistable = {
     /** Internal locking used for blocking the user from interacting with this element (but not children) */
     shallowLocked: boolean;
-    /** Hover state */
-    hovered: boolean;
     /** Selected state */
     selected: boolean;
     /** User controlled States */
@@ -18,6 +16,11 @@ export type EmbState = {
     name: string;
     /** User controls locking, disables interacitivity */
     locked: boolean;
+};
+
+export type EmbState = EmbStatePersistable & {
+    /** Hover state */
+    hovered: boolean;
     /** Is this element inspecting */
     inspecting: boolean;
 

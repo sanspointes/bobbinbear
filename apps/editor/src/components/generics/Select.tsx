@@ -2,6 +2,7 @@ import { Select as KSelect } from '@kobalte/core';
 import { TbCheck } from 'solid-icons/tb';
 import type { JSX } from 'solid-js';
 import { splitProps } from 'solid-js';
+import { Dynamic } from 'solid-js/web';
 
 export interface SelectSingleSelectionOptions<T> {
     /** The controlled value of the select. */
@@ -44,6 +45,7 @@ export type SelectProps<TOption> = Omit<
         | SelectMultipleSelectionOptions<TOption>
     ) & {
         children: (value: TOption) => JSX.Element | string;
+        placementStrategy?: 'portal' | 'none';
     };
 
 export function Select<TOption>(props: SelectProps<TOption>) {
@@ -64,7 +66,7 @@ export function Select<TOption>(props: SelectProps<TOption>) {
             itemComponent={(props) => (
                 <KSelect.Item
                     item={props.item}
-                    class="flex justify-between items-center py-2 px-4 w-full border-b border-orange-500 border-solid last-of-type:border-b-0 hover:bg-orange-100 cursor-pointer"
+                    class="flex justify-between items-center py-2 px-4 w-full border-b border-orange-500 border-solid cursor-pointer hover:bg-orange-100 last-of-type:border-b-0"
                 >
                     <KSelect.ItemLabel class="text-left">
                         {internalProps.children(props.item.rawValue)}
@@ -84,11 +86,17 @@ export function Select<TOption>(props: SelectProps<TOption>) {
                 </KSelect.Value>
                 <KSelect.Icon class="select_icon" />
             </KSelect.Trigger>
-            <KSelect.Portal>
-                <KSelect.Content class="pt-2 -mt-4 w-full shadow-2xl shadow-orange-500 rounded-b-md">
+            <Dynamic
+                component={
+                    props.placementStrategy === 'portal'
+                        ? KSelect.Portal
+                        : 'div'
+                }
+            >
+                <KSelect.Content class="pt-2 -mt-4 w-full rounded-b-md shadow-2xl shadow-orange-500">
                     <KSelect.Listbox class="bg-orange-200" />
                 </KSelect.Content>
-            </KSelect.Portal>
+            </Dynamic>
         </KSelect.Root>
     );
 }

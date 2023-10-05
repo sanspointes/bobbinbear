@@ -29,6 +29,7 @@
     "@pixi/text": "^7.2.4",
     "@pixi/ticker": "^7.2.4",
     "@pixi/utils": "^7.2.4",
+    "@solid-primitives/active-element": "^2.0.17",
     "@solid-primitives/event-listener": "^2.2.13",
     "@solid-primitives/keyboard": "^1.2.3",
     "@solid-primitives/map": "^0.4.7",

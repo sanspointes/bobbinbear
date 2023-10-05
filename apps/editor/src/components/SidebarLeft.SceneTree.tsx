@@ -5,7 +5,7 @@ import { Collapsible as KCollapsible } from '@kobalte/core';
 import { AllMessages, AppContext, GeneralHandler } from '../store';
 import { Uuid, uuid } from '../utils/uuid';
 import { Tree } from './generics/Tree';
-import { EmbBase, EmbObject } from '../emb-objects/shared';
+import { EmbBase, EmbState } from '../emb-objects/shared';
 import { SceneModel } from '../store/sceneStore';
 import { Button } from './generics/Button';
 import {
@@ -16,17 +16,16 @@ import {
 import { TextInput } from './generics/TextInput';
 import { useClickOutside } from '../composables/useClickOutside';
 import { stopPropagation } from '@solid-primitives/event-listener';
-import { Select } from './generics/Select';
-import { Resizable } from './generics/Resizable';
 import { useDragDropContext } from '@thisbeyond/solid-dnd';
 import { ParentObjectCommand } from '../store/commands/ParentObjectCommand';
 import { MultiCommand } from '../store/commands/shared';
+import { EmbObject } from '@/emb-objects';
 
 /**
  * Mutation Helpers
  */
 const toggleVisibility = (
-    object: EmbBase,
+    object: EmbBase & EmbState,
     dispatch: GeneralHandler<AllMessages>,
 ) => {
     const newValue = !object.visible;
@@ -35,7 +34,7 @@ const toggleVisibility = (
 };
 
 const selectObject = (
-    objectId: Uuid<EmbBase>,
+    objectId: Uuid<EmbBase & EmbState>,
     sceneModel: SceneModel,
     dispatch: GeneralHandler<AllMessages>,
 ) => {
@@ -50,7 +49,7 @@ const selectObject = (
 };
 
 const setObjectName = (
-    objectId: Uuid<EmbBase>,
+    objectId: Uuid<EmbBase & EmbState>,
     name: string,
     dispatch: GeneralHandler<AllMessages>,
     final?: boolean,
@@ -63,43 +62,13 @@ const setObjectName = (
 /**
  * Tree related helpers
  */
-const childResolver = (sceneStore: SceneModel, node: EmbObject) => {
+const childResolver = (sceneStore: SceneModel, node: EmbObject & EmbState) => {
     const children = node.children
         .map((id) => sceneStore.objects.get(id))
         // .filter(o => !o?.shallowLocked)
-        .filter((o): o is EmbObject => o !== undefined);
+        .filter((o): o is EmbObject & EmbState => o !== undefined);
     return children;
 };
-
-export function SidebarLeft() {
-    const [currentDocument, setCurrentDocument] = createSignal<Uuid<EmbBase>>(
-        uuid('Document 1'),
-    );
-
-    const options = ['Document 1', 'Document 2'];
-
-    return (
-        <Resizable
-            handlePosition="right"
-            defaultWidth={200}
-            class="bg-orange-50"
-            minWidth={200}
-            maxWidth={400}
-        >
-            <div class="flex justify-between items-center border-b border-solid border-b-orange-300">
-                <Select
-                    value={currentDocument()}
-                    options={options}
-                    onChange={(v) => setCurrentDocument(v)}
-                    multiple={false}
-                >
-                    {(option) => <span>{option}</span>}
-                </Select>
-            </div>
-            <SceneTree />
-        </Resizable>
-    );
-}
 
 const DROPPABLE_ID_REGEX = /(?:(?:(before|after)-)?)(cl-\d+)/;
 
@@ -184,7 +153,7 @@ export function SceneTree() {
     return (
         <div class="overflow-y-scroll text-orange-800 bg-orange-50 fill-orange-800 stroke-orange-50">
             <Tree
-                root={root as EmbObject}
+                root={root as EmbObject & EmbState}
                 childResolver={(node) => childResolver(sceneStore, node)}
                 onDragEnd={(e) => console.log(e)}
                 isDroppablePredicate={(n) =>
@@ -252,7 +221,7 @@ export function SceneTree() {
                                 }
                             >
                                 <span
-                                    class="ml-2 h-6 select-none whitespace-nowrap overflow-hidden text-ellipsis"
+                                    class="overflow-hidden ml-2 h-6 whitespace-nowrap select-none text-ellipsis"
                                     onDblClick={() =>
                                         setCurrentlyRenaming(node.id)
                                     }
