@@ -42,7 +42,7 @@ export const EMB_DOC_PRESETS: EmbDocumentPreset[] = [
 
 export type DocumentMessage = {
     'document:new': EmbDocument;
-    'document:load': string;
+    'document:load-by-slug': string;
 };
 export type DocumentModel = {
     documents: Record<string, EmbDocument>;
@@ -72,9 +72,17 @@ export function createDocumentStore(
                 console.warn('DocumentStore: Overwriting existing document');
             }
             set('documents', data.slug, data);
+            dispatch('document:load-by-slug', data.slug);
         },
-        'document:load': (store, set, data) => {
-            dispatch('scene:reset');
+        'document:load-by-slug': (store, set, slug) => {
+            const document = store.documents[slug];
+            if (!document)
+                throw new Error(
+                    "DocumentStore: Tried to load document that doesn't exist",
+                );
+
+            dispatch('scene:reset', document);
+            set('activeDocumentSlug', slug);
         },
     });
 

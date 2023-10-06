@@ -76,7 +76,6 @@ export function UnitNumberInputRoot(props: UnitNumberInputRootProps) {
 
     createEffect(
         on(internalValue, (strValue) => {
-            console.log(strValue);
             const mmValue = getCurrentValueAsMm();
             if (mmValue) {
                 setLastValidValue(mmValue.value);
@@ -88,7 +87,6 @@ export function UnitNumberInputRoot(props: UnitNumberInputRootProps) {
         on(
             () => props.value,
             (value) => {
-                console.log(value);
                 const strValue = value.toString();
                 if (strValue !== internalValue()) {
                     setLastValidValue(value);
@@ -140,10 +138,6 @@ export function UnitNumberInputInput(props: UnitNumberInputInputProps) {
 
                     const mmValue = ctx.getCurrentValueAsMm();
                     if (!mmValue) {
-                        console.log(
-                            'On focus trying to update internal value with',
-                            mmValue,
-                        );
                         ctx.setInternalValue(ctx.lastValidValue().toString());
                     } else {
                         ctx.setInternalValue(mmValue.value.toString());

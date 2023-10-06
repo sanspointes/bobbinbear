@@ -28,6 +28,9 @@ export default defineConfig(({ mode }) => {
                 src: fileURLToPath(new URL('./src', import.meta.url)),
             },
         },
+        optimizeDeps: {
+            include: ['@kobalte/core'],
+        },
         build: {
             emptyOutDir: true,
             minify: true,

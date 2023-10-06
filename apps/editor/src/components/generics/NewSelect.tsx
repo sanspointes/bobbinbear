@@ -66,7 +66,7 @@ export function SelectItem<TOption>(props: SelectItemProps<TOption>) {
     return (
         <KSelect.Item
             item={props.item}
-            class="flex justify-between items-center py-2 px-4 w-full border-b last:border-b-0 border-orange-500 b-cursor-pointer hover:bg-orange-100"
+            class="flex justify-between items-center py-2 px-4 w-full border-b last:border-b-0 border-orange-500 b-cursor-pointer hover:bg-orange-50"
         >
             <KSelect.ItemLabel class="text-left w-full">
                 {props.children}
@@ -86,7 +86,7 @@ export function SelectTrigger<TOption>(props: SelectTriggerProps) {
             {...props}
             class={clsx(
                 'flex overflow-hidden justify-between items-center py-2 px-4 w-full rounded-md',
-                'bg-orange-50 appearance-none focus:outline-orange-400/50 focus:outline focus:outline-4',
+                'bg-white appearance-none focus:outline-orange-400/50 focus:outline focus:outline-4',
                 props.class,
             )}
         >
@@ -107,7 +107,7 @@ export function SelectList(props: SelectListProps) {
             as={props.usePortal ? KSelect.Portal : 'div'}
             {...props}
             class={clsx(
-                'pt-2 w-full rounded-b-md shadow-xl shadow-orange-500/50 bg-orange-50 rounded-md overflow-hidden',
+                'w-full rounded-b-md shadow-xl shadow-orange-500/50 bg-white rounded-md overflow-hidden',
                 props.class,
             )}
         >

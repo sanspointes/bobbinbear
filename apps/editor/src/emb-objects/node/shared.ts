@@ -36,7 +36,7 @@ export type VectorNode = NodePoint | NodePointVirtual | NodeControl;
 export type EmbNode = EmbBase & {
     /** Internal States */
     /** Unique ID for each scene object */
-    id: Uuid<EmbNode>;
+    id: Uuid<EmbNode & EmbState>;
     type: 'node';
     node: VectorNode;
     /** The uuid this node object is bound to (i.e. makes up part of a GraphicSceneObject path) */

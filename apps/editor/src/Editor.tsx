@@ -18,12 +18,13 @@ import { SidebarLeft } from './components/SidebarLeft';
 import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 
-import { SceneObjectChildren } from './emb-objects';
+import { SceneObjectChildren, EmbCanvasView, EmbCanvas } from './emb-objects';
 import { CursorTest } from './sxi-components/CursorTest';
 import { SelectBox } from './sxi-components/SelectBox';
 import { Viewport } from './sxi-components/Viewport';
 
 import { uuid } from './utils/uuid';
+import { NewDocumentLauncher } from './features/new-document';
 
 export const [appError, setAppError] = createSignal<Error>();
 
@@ -44,14 +45,14 @@ const EditorView = () => {
         });
     });
 
-    const rootObject = sceneStore.objects.get(uuid('root'));
+    const rootObject = sceneStore.objects.get(uuid('root')) as EmbCanvas;
 
     return (
         <>
             <CursorTest />
             <SelectBox />
             <Viewport>
-                <SceneObjectChildren children={rootObject!.children} />
+                <EmbCanvasView {...rootObject} order={0} />
             </Viewport>
         </>
     );
@@ -140,6 +141,9 @@ export const Editor = () => {
                             <EditorView />
                         </Canvas>
                         <Sidebar />
+                    </div>
+                    <div>
+                        <NewDocumentLauncher />
                     </div>
                 </AppContext.Provider>
             </ErrorBoundary>

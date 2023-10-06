@@ -1,23 +1,35 @@
 import { Show, createMemo, createSignal } from 'solid-js';
-import { Modal, ModalProps } from './generics/Modal';
-import { EMB_DOC_PRESETS, EmbDocumentPreset } from '@/store/documentStore';
+import {
+    EMB_DOC_PRESETS,
+    EmbDocument,
+    EmbDocumentPreset,
+} from '@/store/documentStore';
 import {
     UnitNumberInputInput,
     UnitNumberInputLabel,
     UnitNumberInputRoot,
-} from './generics/UnitNumberInput';
-import { Button } from './generics/Button';
+} from '@/components/generics/UnitNumberInput';
+import { Button } from '@/components/generics/Button';
 import {
     SelectList,
     SelectRoot,
     SelectLabel,
     SelectTrigger,
-} from './generics/NewSelect';
+} from '@/components/generics/NewSelect';
+import {
+    TextInputInput,
+    TextInputLabel,
+    TextInputRoot,
+} from '@/components/generics/TextInput';
+import { StringUtils } from '@/utils/string';
 
-type NewDocumentModalProps = {
-    onClose: ModalProps['onClose'];
+type NewDocumentFormProps = {
+    onCancel(): void;
+    onCreate(document: EmbDocument): void;
 };
-export function NewDocumentModal(props: NewDocumentModalProps) {
+export function NewDocumentForm(props: NewDocumentFormProps) {
+    const [name, setName] = createSignal('My Design');
+    const nameSlug = createMemo(() => StringUtils.slugify(name()));
     const [width, setWidth] = createSignal<number>(EMB_DOC_PRESETS[0]!.width);
     const [height, setHeight] = createSignal<number>(
         EMB_DOC_PRESETS[0]!.height,
@@ -29,27 +41,39 @@ export function NewDocumentModal(props: NewDocumentModalProps) {
         );
 
         return (
-            preset ?? {
+            preset ??
+            ({
+                id: -1,
                 width: width(),
                 height: height(),
                 name: 'Custom',
                 brand: 'Custom',
-            }
+            } as EmbDocumentPreset)
         );
     });
-
     return (
-        <Modal
-            open={true}
-            onClose={props.onClose}
-            title="Add a new design"
-            class="max-w-[90vw] w-[600px]"
-        >
-            <h3 class="mb-4 mt-6 w-full text-orange-900/90">
+        <>
+            <h3 class="mt-6 mb-4 w-full text-lg text-orange-950">
+                What would you like to call your document?
+            </h3>
+            <div class="flex justify-center items-center">
+                <TextInputRoot
+                    class="w-96 max-w-[90%]"
+                    value={name()}
+                    onChange={setName}
+                >
+                    <TextInputLabel class="hidden">Name</TextInputLabel>
+                    <TextInputInput />
+                </TextInputRoot>
+            </div>
+
+            <div class="my-8 border-b border-orange-300 border-solid" />
+
+            <h3 class="mt-6 mb-4 w-full text-lg text-orange-950">
                 Select a size for your embroidery design
             </h3>
             <div class="flex gap-4 justify-between">
-                <div class="text-orange-900 w-[300px]">
+                <div class="text-orange-900 sm:w-[300px]">
                     <SelectRoot
                         class="flex gap-4 items-center w-full"
                         value={selectedPreset()}
@@ -69,7 +93,7 @@ export function NewDocumentModal(props: NewDocumentModalProps) {
                                             </span>
                                             <span>{option().brand}</span>
                                         </p>{' '}
-                                        <p class="font-medium w-full">
+                                        <p class="w-full font-medium">
                                             {option().name}
                                         </p>
                                     </span>
@@ -109,7 +133,7 @@ export function NewDocumentModal(props: NewDocumentModalProps) {
                     </UnitNumberInputRoot>
                 </div>
 
-                <div class="flex justify-center items-center w-[200px] box-border">
+                <div class="hidden justify-center items-center sm:flex w-[200px] box-border">
                     <div class="relative w-40 h-40">
                         <div
                             class="absolute top-1/2 left-1/2 bg-white shadow-xl -translate-x-1/2 -translate-y-1/2 shadow-orange-600/30"
@@ -133,10 +157,21 @@ export function NewDocumentModal(props: NewDocumentModalProps) {
             </div>
 
             <div class="flex gap-4 justify-end items-center mt-8">
-                <Button variant="default" inverted>
+                <Button onClick={() => props.onCancel()}>Cancel</Button>
+                <Button
+                    inverted
+                    onClick={() =>
+                        props.onCreate({
+                            name: name(),
+                            slug: nameSlug(),
+                            width: width(),
+                            height: height(),
+                        })
+                    }
+                >
                     Create new document
                 </Button>
             </div>
-        </Modal>
+        </>
     );
 }

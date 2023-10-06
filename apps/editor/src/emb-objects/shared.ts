@@ -3,6 +3,7 @@ import { Uuid } from '../utils/uuid';
 import { IFillStyleOptions, ILineStyleOptions } from '@pixi/graphics';
 import { Command } from '../store/commands';
 import { HslColor } from '../utils/color';
+import { EmbObject } from '.';
 
 export type EmbStatePersistable = {
     /** Internal locking used for blocking the user from interacting with this element (but not children) */
@@ -38,14 +39,13 @@ export const EMB_STATE_DEFAULTS: EmbState = {
     locked: false,
 };
 
-export type EmbBase = {
-    id: Uuid<EmbBase & EmbState>;
+export type EmbBase = EmbState & {
     /** X-Y position of object */
     position: Point;
     /** Optional parent, if no parent provided, it is at the top level. */
-    parent: Uuid<EmbBase>;
+    parent: Uuid<EmbObject>;
     /** Children ids */
-    children: Uuid<EmbBase>[];
+    children: Uuid<EmbObject>[];
 };
 
 /**
