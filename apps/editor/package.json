@@ -42,7 +42,7 @@
     "rerror": "^2.0.0",
     "ring-buffer-ts": "^1.2.0",
     "solid-icons": "^1.0.11",
-    "solid-js": "^1.7.11",
+    "solid-js": "^1.7.12",
     "tailwind-variants": "^0.1.13",
     "typescript-fsm": "^1.3.0",
     "vite-bundle-visualizer": "^0.10.0"

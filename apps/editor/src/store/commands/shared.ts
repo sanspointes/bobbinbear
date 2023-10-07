@@ -213,8 +213,8 @@ export const addObject = (
         // Add all children to store
         traverse(store, newObjectData, (obj) => {
             const [object, setObject] = createStore(obj);
-            store.objects.set(object.id, object);
-            store.objectSetters.set(object.id, setObject);
+            store.objects.set(obj.id, object);
+            store.objectSetters.set(obj.id, setObject);
         });
 
         const object = store.objects.get(newObjectData.id);

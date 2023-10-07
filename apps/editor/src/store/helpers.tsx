@@ -1,28 +1,9 @@
 import { Point } from '@pixi/core';
-import { newUuid, Uuid, uuid } from '../utils/uuid';
-import {
-    Command,
-    CreateObjectCommand,
-    MutateSceneObjectArrayFieldCommand,
-    SetSceneObjectFieldCommand,
-} from './commands';
+import { newUuid, uuid } from '../utils/uuid';
+import { CreateObjectCommand } from './commands';
 import { EmbState, EMB_STATE_DEFAULTS } from '../emb-objects/shared';
 import { AppDispatcher } from '.';
-import { SceneModel } from './sceneStore';
-import {
-    arrayFindFromBackwardsCircular,
-    arrayFindFromCircular,
-} from '../utils/array';
-import { assertDefined, MultiCommand } from './commands/shared';
-import { addPoint, lerpPoint, subPoint } from '../utils/math';
-import {
-    EmbCanvas,
-    VectorNodeType,
-    EmbVector,
-    isNodePointVirtual,
-    VectorNode,
-} from '../emb-objects';
-import { isEmbNode } from '../emb-objects/utils';
+import { EmbCanvas } from '../emb-objects';
 import { hslFromRgb } from '../utils/color';
 
 export const createCanvas = (

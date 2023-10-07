@@ -6,7 +6,7 @@ import { createEffect, createMemo, For, onMount, useContext } from 'solid-js';
 import { EmbVector } from '.';
 import { mapTemporarySceneObjects } from '../../composables/useVirtualSceneObjects';
 import { AppContext } from '../../store';
-import { EmbState, SceneObjectChildren } from '..';
+import { EMB_STATE_DEFAULTS, EmbState, SceneObjectChildren } from '..';
 import { drawVectorShapeToGraphic } from './utils';
 import { EmbVecSeg } from '../vec-seg';
 import { EmbVecSegView } from '../vec-seg/EmbVecSeg';
@@ -43,10 +43,11 @@ export const EmbVectorView = (props: EmbVectorProps) => {
 
     const embSegments = mapTemporarySceneObjects(
         // eslint-disable-next-line solid/reactivity
-        () => props.shape,
+        () => (isThisInspecting() ? props.shape : undefined),
         // eslint-disable-next-line solid/reactivity
         (seg) => {
             const model: EmbVecSeg & Partial<EmbState> = {
+                ...EMB_STATE_DEFAULTS,
                 id: seg.id,
                 type: 'vec-seg',
                 position: new Point(),

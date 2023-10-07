@@ -2,6 +2,7 @@
 import { ErrorBoundary } from 'solid-js';
 import { render } from 'solid-js/web';
 import './styles.css';
+import 'solid-devtools';
 
 import { Editor } from './Editor';
 import { ErrorView } from './components/ErrorView';

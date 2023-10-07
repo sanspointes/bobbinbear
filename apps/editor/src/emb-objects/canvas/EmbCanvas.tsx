@@ -22,12 +22,11 @@ export const EmbCanvasView = (props: EmbCanvasProps) => {
             visible={props.visible}
             name={props.name}
             ref={mesh}
-            scale={props.size}
             position={props.position}
             interactive={true}
             zIndex={props.order}
         >
-            <P.PlaneGeometry args={[1, 1]} />
+            <P.PlaneGeometry args={[props.size.x, props.size.y]} />
             <P.MeshMaterial tint={props.fill.color} />
             <SceneObjectChildren children={props.children} />
         </P.Mesh>
