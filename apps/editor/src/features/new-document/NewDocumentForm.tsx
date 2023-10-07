@@ -26,6 +26,7 @@ import { StringUtils } from '@/utils/string';
 type NewDocumentFormProps = {
     onCancel(): void;
     onCreate(document: EmbDocument): void;
+    disableCancel?: boolean;
 };
 export function NewDocumentForm(props: NewDocumentFormProps) {
     const [name, setName] = createSignal('My Design');
@@ -157,7 +158,9 @@ export function NewDocumentForm(props: NewDocumentFormProps) {
             </div>
 
             <div class="flex gap-4 justify-end items-center mt-8">
-                <Button onClick={() => props.onCancel()}>Cancel</Button>
+                <Show when={!props.disableCancel}>
+                    <Button onClick={() => props.onCancel()}>Cancel</Button>
+                </Show>
                 <Button
                     inverted
                     onClick={() =>

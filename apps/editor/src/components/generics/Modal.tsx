@@ -1,5 +1,5 @@
 import { Dialog } from '@kobalte/core';
-import { JSX, splitProps } from 'solid-js';
+import { JSX, Show, splitProps } from 'solid-js';
 import { VsClose } from 'solid-icons/vs';
 import clsx from 'clsx';
 
@@ -44,7 +44,7 @@ export function ModalTrigger(props: ModalTriggerProps) {
 export type ModalWindowProps = {
     title: JSX.Element;
     children: JSX.Element;
-    closeButton?: JSX.Element;
+    disableClose?: boolean;
     class?: string;
     innerClass?: string;
 };
@@ -60,9 +60,11 @@ export function ModalWindow(props: ModalWindowProps) {
                         <Dialog.Title class="text-lg font-bold">
                             {props.title}
                         </Dialog.Title>
-                        <Dialog.CloseButton class="b-cursor-pointer">
-                            <VsClose />
-                        </Dialog.CloseButton>
+                        <Show when={!props.disableClose}>
+                            <Dialog.CloseButton class="b-cursor-pointer">
+                                <VsClose />
+                            </Dialog.CloseButton>
+                        </Show>
                     </div>
                     <Dialog.Description as="div" class={props.innerClass}>
                         {props.children}

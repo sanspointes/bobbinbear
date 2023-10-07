@@ -25,7 +25,10 @@ import { SelectBox } from './sxi-components/SelectBox';
 import { Viewport } from './sxi-components/Viewport';
 
 import { uuid } from './utils/uuid';
-import { NewDocumentLauncher } from './features/new-document';
+import {
+    NewDocumentLauncher,
+    requestNewDocument,
+} from './features/new-document';
 
 export const [appError, setAppError] = createSignal<Error>();
 
@@ -68,12 +71,15 @@ export const Editor = () => {
     };
 
     const contextModel = createAppStore(solixi);
-    const { toolStore } = contextModel;
+    const { dispatch, toolStore, documentStore } = contextModel;
     let wrapperEl: HTMLDivElement | undefined;
     onMount(() => {
-        contextModel.dispatch('input:set-source', {
-            keys: wrapperEl,
-        });
+        console.log(documentStore.activeDocumentSlug);
+        if (documentStore.activeDocumentSlug === undefined) {
+            requestNewDocument({ cancellable: false }).then((document) => {
+                dispatch('document:new', document);
+            });
+        }
     });
 
     const onWheel = preventDefault(() => {});

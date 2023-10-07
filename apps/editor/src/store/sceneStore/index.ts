@@ -93,6 +93,7 @@ export const createSceneStore = () => {
             parent: undefined as unknown as Uuid,
             children: [],
             size: new Point(doc.width, doc.height),
+            disableMove: true,
             fill: {
                 color: hslFromRgb({ r: 255, g: 255, b: 255 }),
             },

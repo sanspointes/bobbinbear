@@ -7,13 +7,14 @@ export * from './NewDocumentForm';
 export * from './NewDocumentModal';
 
 const [promiseHandles, setPromiseHandles] = createSignal<
-    ParkedPromise<EmbDocument> | undefined
+    (RequestNewDocumentOptions & ParkedPromise<EmbDocument>) | undefined
 >();
 export function NewDocumentLauncher() {
     return (
         <Show when={promiseHandles()}>
             {(handle) => (
                 <NewDocumentModal
+                    isCancellable={handle().cancellable}
                     onCreate={(document) => {
                         const h = handle();
                         setPromiseHandles(undefined);
@@ -33,12 +34,20 @@ export function NewDocumentLauncher() {
 /**
  * Exposes a promise based api for creating new documents, returning the output here.
  */
-export function requestNewDocument(): Promise<EmbDocument> {
+type RequestNewDocumentOptions = {
+    cancellable: boolean;
+};
+export function requestNewDocument(
+    opts?: Partial<RequestNewDocumentOptions>,
+): Promise<EmbDocument> {
     const handle = promiseHandles();
     if (handle) return handle.promise;
 
     const parkedPromise = PromiseUtils.createParkable<EmbDocument>();
-    setPromiseHandles(parkedPromise);
+    setPromiseHandles({
+        ...parkedPromise,
+        cancellable: opts?.cancellable ?? true,
+    });
 
     return parkedPromise.promise;
 }
