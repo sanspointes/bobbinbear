@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "concurrently 'vite' 'rsw watch'",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -52,6 +52,7 @@
     "@solid-devtools/overlay": "^0.27.7",
     "add": "^2.0.6",
     "autoprefixer": "^10.4.13",
+    "concurrently": "^8.2.1",
     "eslint-import-resolver-typescript": "^3.6.0",
     "eslint-plugin-import": "npm:eslint-plugin-i@^2.28.1",
     "eslint-plugin-prettier": "^5.0.0",
