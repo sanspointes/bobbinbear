@@ -249,7 +249,7 @@ type ExtraPropsSignature<
     [K in keyof T]: Parameters<T[K]>[3];
 };
 export type ClassTypeReservedProps<TSource extends Constructable> = {
-    ref?: InstanceType<TSource>;
+    ref?: InstanceType<TSource> | ((instance: InstanceType<TSource>) => void);
     args?: ConstructorParameters<TSource>;
     children?: JSX.Element | null;
 };
