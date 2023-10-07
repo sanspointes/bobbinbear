@@ -19,16 +19,16 @@ import { SceneStoreSerialisable } from './utils';
 import { EmbDocument } from '../documentStore';
 import { hslFromRgb } from '@/utils/color';
 
-export const getObject = <T extends EmbObject & EmbState>(
+export const getObject = <T extends EmbObject>(
     store: SceneModel,
-    uuid: Uuid<T> | undefined,
+    uuid: Uuid | undefined,
 ): T | undefined => {
     if (uuid === undefined) return undefined;
     return store.objects.get(uuid) as T | undefined;
 };
-export const getObjectSetter = <T extends EmbObject & EmbState>(
+export const getObjectSetter = <T extends EmbObject>(
     store: SceneModel,
-    uuid: Uuid<T> | undefined,
+    uuid: Uuid | undefined,
 ): SetStoreFunction<T> | undefined => {
     if (uuid === undefined) return undefined;
     const setter = store.objectSetters.get(uuid);
@@ -36,7 +36,7 @@ export const getObjectSetter = <T extends EmbObject & EmbState>(
     return setter as SetStoreFunction<T>;
 };
 
-export const isInspectable = <T extends EmbBase>(
+export const isInspectable = <T extends EmbObject>(
     obj: T,
 ): obj is T & EmbHasInspecting => {
     const o = obj as unknown as T & EmbHasInspecting;
@@ -46,33 +46,32 @@ export const isInspectable = <T extends EmbBase>(
 /**
  * Keep a flat reference to every object on the scene and its setter function
  */
-export type ObjectMapData<T extends EmbObject = EmbObject> = {
-    object: T;
-    set: SetStoreFunction<T>;
-};
 
 export type SceneStoreMessages = {
-    'scene:hover': Uuid<EmbObject & EmbState>;
-    'scene:unhover': Uuid<EmbObject & EmbState>;
-    'scene:do-command': Command<EmbObject & EmbState>;
+    'scene:hover': Uuid;
+    'scene:unhover': Uuid;
+    'scene:do-command': Command<EmbObject>;
     'scene:undo': void;
     'scene:redo': void;
     'scene:reset': EmbDocument;
     'scene:load': SceneStoreSerialisable;
 };
 
+type ObjectMap = ReactiveMap<Uuid, EmbObject>;
+type ObjectSetterMap = Map<Uuid, SetStoreFunction<EmbObject>>;
+
 export type SceneModel = {
     /** UUID of object that we're currently inspecting */
-    inspecting: Uuid<EmbBase> | undefined;
+    inspecting: Uuid | undefined;
     /** UUID of inspect root object, used for storing temporary parts of the document i.e. nodes */
-    inspectRoot: Uuid<EmbBase> | undefined;
+    inspectRoot: Uuid | undefined;
     /* List of selected ids */
-    selectedIds: Uuid<EmbObject & EmbState>[];
-    selectedObjects: (EmbObject & EmbState)[];
+    selectedIds: Uuid[];
+    selectedObjects: EmbObject[];
     undoStack: Command[];
     redoStack: Command[];
-    objects: ReactiveMap<Uuid<EmbObject>, EmbObject & EmbState>;
-    objectSetters: Map<Uuid<EmbObject>, SetStoreFunction<EmbObject & EmbState>>;
+    objects: ObjectMap;
+    objectSetters: ObjectSetterMap;
     root: EmbBase;
 };
 
@@ -91,12 +90,11 @@ export const createSceneStore = () => {
             type: 'canvas',
             id: uuid('root'),
             name: doc.name,
-            parent: undefined as unknown as Uuid<EmbObject>,
+            parent: undefined as unknown as Uuid,
             children: [],
             size: new Point(doc.width, doc.height),
             fill: {
                 color: hslFromRgb({ r: 255, g: 255, b: 255 }),
-                alpha: 1,
             },
             position: new Point(0, 0),
             shallowLocked: true,
@@ -150,7 +148,7 @@ export const createSceneStore = () => {
                             );
                         }
 
-                        // @ts-expect-error; Type is asserted to be same by the `sameType` check above.
+                        // @ts-expect-error: Union too complex
                         lastCommand.updateData(command);
                         lastCommand.final = command.final;
                     }
@@ -224,14 +222,18 @@ export const createSceneStore = () => {
                     const defaults = generateDefaultModel(document);
                     for (const key in store) {
                         const k = key as keyof SceneModel;
-                        const v = store[k];
                         // Clear and copy map values one by one
-                        if (v instanceof Map) {
+                        if (k === 'objects') {
+                            const v = store[k];
                             v.clear();
-                            const defaultValue = defaults[k] as ReactiveMap<
-                                Uuid<EmbObject>,
-                                EmbObject & EmbState
-                            >;
+                            const defaultValue = defaults[k];
+                            for (const [key, value] of defaultValue.entries()) {
+                                v.set(key, value);
+                            }
+                        } else if (k === 'objectSetters') {
+                            const v = store[k];
+                            v.clear();
+                            const defaultValue = defaults[k];
                             for (const [key, value] of defaultValue.entries()) {
                                 v.set(key, value);
                             }
@@ -245,7 +247,7 @@ export const createSceneStore = () => {
             },
             'scene:load': (store, set, model) => {
                 // TODO Reset tool stores etc.
-                result.handle('scene:reset');
+                result.handle('scene:reset', model.document);
                 batch(() => {
                     set('selectedIds', model.selectedIds);
 
@@ -253,8 +255,8 @@ export const createSceneStore = () => {
                         const data = model.objects[uuid]!;
 
                         const [obj, setter] = createStore(data);
-                        store.objects.set(uuid as Uuid<EmbBase>, obj);
-                        store.objectSetters.set(uuid as Uuid<EmbBase>, setter);
+                        store.objects.set(uuid as Uuid, obj);
+                        store.objectSetters.set(uuid as Uuid, setter);
                     }
                 });
             },

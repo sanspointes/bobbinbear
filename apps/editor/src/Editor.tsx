@@ -1,6 +1,7 @@
 import { Canvas, SolixiState, useSolixi } from '@bearbroidery/solixi';
 import {
     ErrorBoundary,
+    createMemo,
     createRenderEffect,
     createSignal,
     onMount,
@@ -18,7 +19,7 @@ import { SidebarLeft } from './components/SidebarLeft';
 import { Sidebar } from './components/Sidebar';
 import { Toolbar } from './components/Toolbar';
 
-import { SceneObjectChildren, EmbCanvasView, EmbCanvas } from './emb-objects';
+import { EmbCanvasView, EmbCanvas } from './emb-objects';
 import { CursorTest } from './sxi-components/CursorTest';
 import { SelectBox } from './sxi-components/SelectBox';
 import { Viewport } from './sxi-components/Viewport';
@@ -45,14 +46,16 @@ const EditorView = () => {
         });
     });
 
-    const rootObject = sceneStore.objects.get(uuid('root')) as EmbCanvas;
+    const rootObject = createMemo(() => {
+        return sceneStore.objects.get(uuid('root')) as EmbCanvas;
+    });
 
     return (
         <>
             <CursorTest />
             <SelectBox />
             <Viewport>
-                <EmbCanvasView {...rootObject} order={0} />
+                <EmbCanvasView {...rootObject()} order={0} />
             </Viewport>
         </>
     );

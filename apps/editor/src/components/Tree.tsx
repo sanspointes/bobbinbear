@@ -27,7 +27,7 @@ const toggleVisibility = (
 };
 
 const selectObject = (
-    objectId: Uuid<EmbBase>,
+    objectId: Uuid,
     sceneModel: SceneModel,
     dispatch: GeneralHandler<AllMessages>,
 ) => {

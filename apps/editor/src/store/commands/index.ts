@@ -1,5 +1,4 @@
 import { AbstractCommand, MultiCommand } from './shared';
-import { EmbBase, EmbState } from '../../emb-objects/shared';
 import { ParentObjectCommand } from './ParentObjectCommand';
 import { CreateObjectCommand } from './CreateObjectCommand';
 import { DeleteObjectCommand } from './DeleteObjectCommand';
@@ -8,8 +7,8 @@ import { MoveObjectCommand } from './MoveObjectCommand';
 import { SelectObjectsCommand } from './SelectObjectCommand';
 import { SetEmbObjectFieldCommand } from './SetSceneObjectFieldCommand';
 import { MutateSceneObjectArrayFieldCommand } from './MutateSceneObjectArrayFieldCommand';
-import { UpdateGraphicsNodeCommand } from './UpdateGraphicsNodeCommand';
 import { SetInspectingCommand } from './SetInspectingCommand';
+import { EmbObject } from '@/emb-objects';
 
 export {
     ParentObjectCommand as ChangeObjectOrderCommand,
@@ -19,23 +18,21 @@ export {
     MoveObjectCommand,
     SelectObjectsCommand,
     SetEmbObjectFieldCommand as SetSceneObjectFieldCommand,
-    UpdateGraphicsNodeCommand,
     MutateSceneObjectArrayFieldCommand,
 };
 
-type AtomicCommands<TObject extends EmbBase> =
-    | ParentObjectCommand<TObject>
+type AtomicCommands<TObject extends EmbObject> =
+    | ParentObjectCommand
     | CreateObjectCommand<TObject>
     | DeleteObjectCommand<TObject>
-    | DeselectObjectsCommand<TObject>
-    | MoveObjectCommand<TObject>
-    | SelectObjectsCommand<TObject>
+    | DeselectObjectsCommand
+    | MoveObjectCommand
+    | SelectObjectsCommand
     | SetEmbObjectFieldCommand<TObject>
-    | UpdateGraphicsNodeCommand
-    | MutateSceneObjectArrayFieldCommand
+    | MutateSceneObjectArrayFieldCommand<TObject>
     | SetInspectingCommand;
 
-export type Command<TObject extends EmbBase & EmbState = EmbBase & EmbState> =
+export type Command<TObject extends EmbObject = EmbObject> =
     | MultiCommand<TObject>
     | AtomicCommands<TObject>;
 export type CommandType = Command['type'];
@@ -48,7 +45,6 @@ export const _commandPrototypeMap: Record<CommandType, Command> = {
     MoveObjectCommand: MoveObjectCommand.prototype,
     SelectObjectsCommand: SelectObjectsCommand.prototype,
     SetSceneObjectFieldCommand: SetEmbObjectFieldCommand.prototype,
-    UpdateGraphicsNodeCommand: UpdateGraphicsNodeCommand.prototype,
     MultiCommand: MultiCommand.prototype,
     DeselectObjectsCommand: DeselectObjectsCommand.prototype,
     ParentObjectCommand: ParentObjectCommand.prototype,

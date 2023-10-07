@@ -76,8 +76,8 @@ export const createPenToolStore = (
         }
     });
     // Internal State
-    let currHover: Uuid<EmbBase & EmbState> | undefined;
-    let currentVectorId: Uuid<EmbVector & EmbState> | undefined;
+    let currHover: Uuid | undefined;
+    let currentVectorId: Uuid | undefined;
     // const offset = new Point();
     // let newPosition: Point | undefined;
 
@@ -106,7 +106,7 @@ export const createPenToolStore = (
             PenEvents.PointerDown,
             PenStates.CreatingNew,
             (e: ToolInputs['pointer1-down']) => {
-                currentVectorId = newUuid<EmbVector & EmbState>();
+                currentVectorId = newUuid();
                 const newVector: EmbVector & EmbState = {
                     ...EMB_STATE_DEFAULTS,
                     id: currentVectorId,
@@ -122,7 +122,6 @@ export const createPenToolStore = (
                     line: {
                         width: 1,
                         color: hslFromRgb({ r: 0, g: 0, b: 0 }),
-                        alpha: 1,
                     },
                 };
 

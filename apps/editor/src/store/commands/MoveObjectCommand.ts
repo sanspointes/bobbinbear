@@ -1,33 +1,13 @@
 import { Point } from '@pixi/core';
 import { produce, SetStoreFunction } from 'solid-js/store';
-import { EmbBase, EmbState } from '../../emb-objects/shared';
 import { getObject, getObjectSetter, SceneModel } from '../sceneStore';
 import { AbstractCommand, assertSameType, SerializedCommand } from './shared';
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
-import { EmbNode, EmbVector, VectorNode } from '../../emb-objects';
-import { isEmbNode, isEmbVecSeg, isEmbVector } from '../../emb-objects/utils';
-import {
-    BezierToVectorSegment,
-    EmbVecSeg,
-    QuadraticToVectorSegment,
-    segmentHasNode,
-    VectorSegment,
-} from '../../emb-objects/vec-seg';
-// import { arrayGetCircular, arraySetCircular } from "../../utils/array";
-// import {
-//     EmbNode,
-//     EmbVector,
-//     isNodePoint,
-//     NodePoint,
-//     VectorNode,
-//     VectorNodeType,
-// } from "../../emb-objects";
-// import { isEmbNode } from "../../emb-objects/utils";
+import { EmbNode } from '../../emb-objects';
+import { isEmbNode } from '../../emb-objects/utils';
 
-export class MoveObjectCommand<
-    TObject extends EmbBase & EmbState,
-> extends AbstractCommand {
+export class MoveObjectCommand extends AbstractCommand {
     public updatable: boolean = true;
 
     name = 'Move Object';
@@ -36,7 +16,7 @@ export class MoveObjectCommand<
     oldPosition?: Point;
 
     constructor(
-        private objectId: Uuid<TObject>,
+        private objectId: Uuid,
         private newPosition: Point,
     ) {
         super();
@@ -94,7 +74,7 @@ export class MoveObjectCommand<
         object: EmbNode,
         newPosition: Point,
     ) {
-        const setNode = getObjectSetter(store, object.id);
+        const setNode = getObjectSetter<EmbNode>(store, object.id);
         if (!setNode)
             throw new Error(
                 `MoveObjectCommand.handleMoveNode:  Cannot get setter for ${object.id}.`,
@@ -102,16 +82,16 @@ export class MoveObjectCommand<
         setNode('node', 'x', newPosition.x);
         setNode('node', 'y', newPosition.y);
     }
-
-    fromObject<T extends Command>(object: SerializedCommand<T>): void {
-        this.objectId = object['objectId'] as Uuid<TObject>;
-        this.oldPosition = object['oldPosition'] as Point | undefined;
-    }
-
-    toObject(object: Record<string, unknown>): void {
-        object['objectId'] = this.objectId;
-        object['oldPosition'] = this.oldPosition;
-    }
+    //
+    // fromObject<T extends Command>(object: SerializedCommand<T>): void {
+    //     this.objectId = object['objectId'] as Uuid;
+    //     this.oldPosition = object['oldPosition'] as Point | undefined;
+    // }
+    //
+    // toObject(object: Record<string, unknown>): void {
+    //     object['objectId'] = this.objectId;
+    //     object['oldPosition'] = this.oldPosition;
+    // }
 
     updateData(newer: Command): void {
         const n = assertSameType(this, newer);

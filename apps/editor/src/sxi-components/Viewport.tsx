@@ -146,7 +146,7 @@ export const Viewport = (props: ViewportProps) => {
 
     onMount(() => {
         if (viewportEl) {
-            let downScreenPosition: Point | undefined;
+            let screenDownPosition: Point | undefined;
             let downPosition: Point | undefined;
             createEventListener(viewportEl, 'pointerdown', (event) => {
                 const ev = event as unknown as FederatedPointerEvent;
@@ -157,7 +157,7 @@ export const Viewport = (props: ViewportProps) => {
                 const y = mapLinear(ev.global.y, 0, screenHeight, top, bottom);
                 const position = new Point(x, y);
 
-                downScreenPosition = ev.global.clone();
+                screenDownPosition = ev.global.clone();
                 downPosition = position.clone();
                 dispatch('input:pointerdown', {
                     screenPosition: ev.global.clone(),
@@ -175,7 +175,7 @@ export const Viewport = (props: ViewportProps) => {
 
                 const position = new Point(x, y);
                 dispatch('input:pointermove', {
-                    downScreenPosition,
+                    screenDownPosition,
                     downPosition,
                     screenPosition: ev.global.clone(),
                     position,
@@ -192,7 +192,7 @@ export const Viewport = (props: ViewportProps) => {
 
                 const position = new Point(x, y);
                 dispatch('input:pointerup', {
-                    downScreenPosition,
+                    screenDownPosition,
                     downPosition,
                     screenPosition: ev.global.clone(),
                     position,

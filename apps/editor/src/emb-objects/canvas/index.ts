@@ -11,7 +11,7 @@ export type EmbCanvas = EmbBase &
     EmbHasFill & {
         /** Internal States */
         /** Unique ID for each scene object */
-        id: Uuid<EmbCanvas>;
+        id: Uuid;
 
         type: 'canvas';
         size: Point;

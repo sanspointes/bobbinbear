@@ -1,15 +1,14 @@
 import { createMemo, Show, useContext } from 'solid-js';
 import { AccordionItem } from './generics/Accordian';
 import { AppContext } from '../store';
-import { SetSceneObjectFieldCommand } from '../store/commands';
+import { Command, SetSceneObjectFieldCommand } from '../store/commands';
 import { ColorPicker } from './generics/ColorPicker';
-import { ILineStyleOptions, LINE_CAP } from '@pixi/graphics';
+import { LINE_CAP } from '@pixi/graphics';
 import { NumberInput } from './generics/NumberInput';
 import { Select } from './generics/Select';
-import { Uuid } from '../utils/uuid';
 import {
-    EmbBase,
     EmbHasFill,
+    EmbObject,
     EmbVector,
     FillOptions,
     LineOptions,
@@ -34,19 +33,19 @@ const AlignmentValue: Record<Alignment, number> = {
 };
 
 type SidebarStyleProps = {
-    object: EmbBase & EmbHasFill;
+    object: EmbObject & Partial<EmbHasFill>;
 };
 export function SidebarStyle(props: SidebarStyleProps) {
     const { dispatch } = useContext(AppContext);
 
     const updateFillStyle = (model: Partial<FillOptions>) => {
-        const fill = { ...props.object.fill, ...model };
-        const cmd = new SetSceneObjectFieldCommand<EmbBase & EmbHasFill>(
-            props.object.id as unknown as Uuid<EmbBase & EmbHasFill>,
+        const fill = { ...props.object.fill!, ...model };
+        const cmd = new SetSceneObjectFieldCommand<EmbObject & EmbHasFill>(
+            props.object.id,
             'fill',
             fill,
         );
-        dispatch('scene:do-command', cmd);
+        dispatch('scene:do-command', cmd as Command);
     };
 
     const updateStrokeStyle = (model: Partial<LineOptions>) => {

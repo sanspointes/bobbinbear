@@ -1,5 +1,5 @@
 import { Uuid } from '../../utils/uuid';
-import { EmbBase } from '../shared';
+import { EmbBase, EmbState } from '../shared';
 
 /**
  * GROUP SCENE OBJECT
@@ -7,7 +7,7 @@ import { EmbBase } from '../shared';
 export type EmbGroup = EmbBase & {
     /** Internal States */
     /** Unique ID for each scene object */
-    id: Uuid<EmbGroup>;
+    id: Uuid;
 
     type: 'group';
 };

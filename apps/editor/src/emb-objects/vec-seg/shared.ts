@@ -13,7 +13,7 @@ export enum VectorSegmentType {
 }
 
 type BaseVectorSegment = {
-    id: Uuid<EmbVecSeg>;
+    id: Uuid;
     to: VectorNode;
     prev?: VectorSegment;
 };
@@ -51,10 +51,10 @@ export type AnyVectorSegment = BaseVectorSegment & {
 
 export type EmbVecSeg = EmbBase &
     EmbHasLine & {
-        id: Uuid<EmbVecSeg & EmbBase>;
+        id: Uuid;
         type: 'vec-seg';
         segment: VectorSegment;
-        relatesTo: Uuid<EmbVector & EmbState>;
+        relatesTo: Uuid;
     };
 
 export class VectorShape extends Array<VectorSegment> {
@@ -80,7 +80,7 @@ export class VectorShape extends Array<VectorSegment> {
 
     moveTo(to: VectorNode) {
         const seg: MoveToVectorSegment = {
-            id: newUuid<EmbVecSeg>(),
+            id: newUuid(),
             type: VectorSegmentType.MoveTo,
             to,
             prev: this.prev,
@@ -90,7 +90,7 @@ export class VectorShape extends Array<VectorSegment> {
     }
     lineTo(to: VectorNode) {
         const seg: LineToVectorSegment = {
-            id: newUuid<EmbVecSeg>(),
+            id: newUuid(),
             type: VectorSegmentType.LineTo,
             to,
             prev: this.prev,
@@ -100,7 +100,7 @@ export class VectorShape extends Array<VectorSegment> {
     }
     quadTo(c0: VectorNode, to: VectorNode) {
         const seg: QuadraticToVectorSegment = {
-            id: newUuid<EmbVecSeg>(),
+            id: newUuid(),
             type: VectorSegmentType.QuadraticTo,
             c0,
             to,
@@ -111,7 +111,7 @@ export class VectorShape extends Array<VectorSegment> {
     }
     bezierTo(c0: VectorNode, c1: VectorNode, to: VectorNode) {
         const seg: BezierToVectorSegment = {
-            id: newUuid<EmbVecSeg>(),
+            id: newUuid(),
             type: VectorSegmentType.BezierTo,
             c0,
             c1,

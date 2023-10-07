@@ -1,5 +1,6 @@
 import { EmbObject, EmbState, EmbStatePersistable } from '@/emb-objects';
 import { SceneModel } from '.';
+import { EmbDocument } from '../documentStore';
 
 function extractPersistableFields(
     object: EmbObject & EmbState,
@@ -10,13 +11,15 @@ function extractPersistableFields(
 
 type ObjectsMap = Record<string, EmbObject & EmbStatePersistable>;
 export type SceneStoreSerialisable = {
+    document: EmbDocument;
     objects: ObjectsMap;
     selectedIds: SceneModel['selectedIds'];
 };
 
 export const SceneStoreUtils = {
-    toSerialisable(store: SceneModel) {
+    toSerialisable(store: SceneModel, document: EmbDocument) {
         const result: SceneStoreSerialisable = {
+            document,
             selectedIds: [...store.selectedIds],
             objects: {},
         };

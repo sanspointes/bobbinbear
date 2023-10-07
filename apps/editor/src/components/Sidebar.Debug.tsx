@@ -1,5 +1,4 @@
 import { createMemo, useContext, For, Show } from 'solid-js';
-import { EmbObject } from '../emb-objects/shared';
 import { AccordionItem } from './generics/Accordian';
 import { AppContext } from '../store';
 import { Cursor } from '../store/toolStore';

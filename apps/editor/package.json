@@ -9,6 +9,7 @@
     "preview": "vite preview",
     "test": "vitest",
     "lint": "eslint src/**/*",
+    "check": "tsc --noEmit",
     "visualise": "vite-bundle-visualizer"
   },
   "dependencies": {

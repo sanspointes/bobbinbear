@@ -63,7 +63,7 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
     });
 
     let createCommand: CreateObjectCommand<EmbVector & EmbState> | undefined;
-    let currentlyBuildingId: Uuid<EmbVector & EmbState> | undefined;
+    let currentlyBuildingId: Uuid | undefined;
 
     const transitions = [
         t(BoxStates.Default, BoxEvents.PointerDown, BoxStates.Down),
@@ -73,11 +73,11 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
             BoxEvents.DragStart,
             BoxStates.Building,
             (e: ToolInputs['pointer1-dragstart'], parent?: EmbObject) => {
-                dispatch("tool:push-cursor", Cursor.Cross);
+                dispatch('tool:push-cursor', Cursor.Cross);
                 currentlyBuildingId = newUuid();
                 const currentShape = createBoxGraphicsCommands(0, 0);
 
-                const newVector: EmbVector & EmbState = {
+                const newVector: EmbVector = {
                     ...EMB_STATE_DEFAULTS,
                     type: 'vector',
                     name: 'Box',
@@ -89,12 +89,10 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
                     disableMove: false,
                     fill: {
                         color: hslFromRgb({ r: 200, g: 200, b: 200 }),
-                        alpha: 1,
                     },
                     line: {
                         width: 1,
                         color: hslFromRgb({ r: 0, g: 0, b: 0 }),
-                        alpha: 1,
                     },
                 };
 
@@ -122,7 +120,7 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
                 );
                 cmd.name = 'Creating Box';
                 cmd.final = false;
-                dispatch('scene:do-command', cmd);
+                dispatch('scene:do-command', cmd as MultiCommand<EmbObject>);
             },
         ),
         t(
@@ -166,13 +164,12 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
 
                 const cmd = new MultiCommand(
                     createCommand,
-                    // @ts-expect-error ; Issues with generic typing of GraphicSceneObject
                     setShapeCommand,
                     setPositionCommand,
                 );
                 cmd.name = 'Updating Box';
                 cmd.final = false;
-                dispatch('scene:do-command', cmd);
+                dispatch('scene:do-command', cmd as MultiCommand<EmbObject>);
             },
         ),
         t(
@@ -180,7 +177,7 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
             BoxEvents.DragEnd,
             BoxStates.Default,
             (e: ToolInputs['pointer1-dragend']) => {
-                dispatch("tool:clear-cursor", Cursor.Cross);
+                dispatch('tool:clear-cursor', Cursor.Cross);
                 if (!createCommand || !currentlyBuildingId) {
                     throw new Error(
                         'boxTool: DragMove event but no box currently being built.',
@@ -219,7 +216,7 @@ export const createBoxToolStore = (dispatch: GeneralHandler<AllMessages>) => {
                     setPositionCommand,
                 );
                 cmd.name = 'Creating Box Finished';
-                dispatch('scene:do-command', cmd);
+                dispatch('scene:do-command', cmd as MultiCommand<EmbObject>);
 
                 createCommand = undefined;
                 currentlyBuildingId = undefined;

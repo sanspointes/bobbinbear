@@ -1,5 +1,4 @@
 import { SetStoreFunction } from 'solid-js/store';
-import { EmbBase } from '../../emb-objects/shared';
 import { getObjectSetter, SceneModel } from '../sceneStore';
 import {
     AbstractCommand,
@@ -9,12 +8,13 @@ import {
 } from './shared';
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
+import { EmbObject } from '@/emb-objects';
 
 /**
  * Sets a single field on a scene object.
  */
 export class SetEmbObjectFieldCommand<
-    TObject extends EmbBase = EmbBase,
+    TObject extends EmbObject = EmbObject,
     K extends keyof TObject = keyof TObject,
 > extends AbstractCommand {
     public updatable: boolean = true;
@@ -23,7 +23,7 @@ export class SetEmbObjectFieldCommand<
     type = 'SetSceneObjectFieldCommand' as const;
     oldValue: TObject[K] | undefined = undefined;
     constructor(
-        private objectId: Uuid<TObject>,
+        private objectId: Uuid,
         private field: K,
         private value: TObject[K],
     ) {
@@ -69,17 +69,17 @@ export class SetEmbObjectFieldCommand<
         set(this.field, this.oldValue);
     }
 
-    toObject(object: Record<string, unknown>): void {
-        super.toObject(object);
-        object['objectId'] = this.objectId;
-        object['field'] = this.field;
-        object['value'] = this.value;
-    }
-    fromObject<T extends Command>(object: SerializedCommand<T>): void {
-        this.objectId = object['objectId'] as Uuid<TObject>;
-        this.field = object['field'] as K;
-        this.value = object['value'] as TObject[K];
-    }
+    // toObject(object: Record<string, unknown>): void {
+    //     super.toObject(object);
+    //     object['objectId'] = this.objectId;
+    //     object['field'] = this.field;
+    //     object['value'] = this.value;
+    // }
+    // fromObject<T extends Command>(object: SerializedCommand<T>): void {
+    //     this.objectId = object['objectId'] as Uuid;
+    //     this.field = object['field'] as K;
+    //     this.value = object['value'] as TObject[K];
+    // }
 
     updateData(newer: Command): void {
         // @ts-expect-error; Difficult to resolve typing

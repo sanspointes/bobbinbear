@@ -3,22 +3,19 @@ import { SceneModel, getObjectSetter } from '../sceneStore';
 import { AbstractCommand, SerializedCommand, assertDefined } from './shared';
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
-import { EmbBase } from '../../emb-objects/shared';
 import { arrayMoveElToIndex, arrayRemoveEl } from '../../utils/array';
 
-export class ParentObjectCommand<
-    TObject extends EmbBase,
-> extends AbstractCommand {
+export class ParentObjectCommand extends AbstractCommand {
     public updatable: boolean = true;
     name = 'Parent Object';
     type = 'ParentObjectCommand' as const;
 
-    oldParentId: Uuid<EmbBase> | undefined;
+    oldParentId: Uuid | undefined;
     oldIndex: number | undefined;
 
     constructor(
-        private objectId: Uuid<TObject>,
-        private newParentId: Uuid<EmbBase>,
+        private objectId: Uuid,
+        private newParentId: Uuid,
         private strategy: 'first' | 'last' | 'offset' | 'absolute',
         private index?: number,
     ) {
@@ -126,25 +123,25 @@ export class ParentObjectCommand<
         );
     }
 
-    fromObject<T extends Command>(object: SerializedCommand<T>): void {
-        this.objectId = object['objectId'] as Uuid<TObject>;
-        this.oldIndex = object['oldIndex'] as number | undefined;
-        this.strategy = object['strategy'] as
-            | 'first'
-            | 'last'
-            | 'offset'
-            | 'absolute';
-        this.index = object['index'] as number | undefined;
-    }
-
-    toObject(object: Record<string, unknown>): void {
-        object['objectId'] = this.objectId as Uuid<TObject>;
-        object['oldIndex'] = this.oldIndex as number | undefined;
-        object['strategy'] = this.strategy as
-            | 'first'
-            | 'last'
-            | 'offset'
-            | 'absolute';
-        object['index'] = this.index as number | undefined;
-    }
+    // fromObject<T extends Command>(object: SerializedCommand<T>): void {
+    //     this.objectId = object['objectId'] as Uuid;
+    //     this.oldIndex = object['oldIndex'] as number | undefined;
+    //     this.strategy = object['strategy'] as
+    //         | 'first'
+    //         | 'last'
+    //         | 'offset'
+    //         | 'absolute';
+    //     this.index = object['index'] as number | undefined;
+    // }
+    //
+    // toObject(object: Record<string, unknown>): void {
+    //     object['objectId'] = this.objectId as Uuid;
+    //     object['oldIndex'] = this.oldIndex as number | undefined;
+    //     object['strategy'] = this.strategy as
+    //         | 'first'
+    //         | 'last'
+    //         | 'offset'
+    //         | 'absolute';
+    //     object['index'] = this.index as number | undefined;
+    // }
 }

@@ -1,9 +1,8 @@
 import { Point } from '@pixi/core';
-import { Uuid } from '../utils/uuid';
-import { IFillStyleOptions, ILineStyleOptions } from '@pixi/graphics';
+import { ILineStyleOptions } from '@pixi/graphics';
 import { Command } from '../store/commands';
 import { HslColor } from '../utils/color';
-import { EmbObject } from '.';
+import { Uuid } from '../utils/uuid';
 
 export type EmbStatePersistable = {
     /** Internal locking used for blocking the user from interacting with this element (but not children) */
@@ -43,9 +42,9 @@ export type EmbBase = EmbState & {
     /** X-Y position of object */
     position: Point;
     /** Optional parent, if no parent provided, it is at the top level. */
-    parent: Uuid<EmbObject>;
+    parent: Uuid;
     /** Children ids */
-    children: Uuid<EmbObject>[];
+    children: Uuid[];
 };
 
 /**
@@ -57,14 +56,17 @@ export type EmbHasVirtual = {
     virtualCreator: () => Command;
 };
 
-export type FillOptions = Omit<IFillStyleOptions, 'color'> & {
+export type FillOptions = {
     color: HslColor;
 };
 export type EmbHasFill = {
     fill: FillOptions;
 };
 
-export type LineOptions = Omit<ILineStyleOptions, 'color'> & {
+export type LineOptions = Omit<
+    ILineStyleOptions,
+    'color' | 'alpha' | 'texture' | 'matrix'
+> & {
     color: HslColor;
 };
 export type EmbHasLine = {

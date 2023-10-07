@@ -5,6 +5,7 @@ import { EmbBase } from '../../emb-objects/shared';
 import { Uuid } from '../../utils/uuid';
 import { arrayRemove } from '../../utils/array';
 import { batch } from 'solid-js';
+import { EmbObject } from '@/emb-objects';
 
 export type SerializedCommand<TCommand extends Command> = {
     type: TCommand['type'];
@@ -67,31 +68,31 @@ export abstract class AbstractCommand {
         setStore: SetStoreFunction<SceneModel>,
     ): void;
 
-    toObject(object: Record<string, unknown>) {
-        object['type'] = this.type;
-        object['name'] = this.name;
-    }
-    static fromObject(
-        prototypeMap: CommandPrototypeMap,
-        object: SerializedCommand<Command>,
-    ): CommandPrototypeMap[(typeof object)['type']] {
-        const prototype = prototypeMap[object.type];
-        if (!prototype) {
-            throw new Error(
-                `AbstractCommand: fromObject() Attempting to get prototype for ${object.type} but none found.`,
-            );
-        }
-        const cmd = Object.create(prototype) as Command;
-        cmd.type = object.type;
-        cmd.name = object.name as Command['name'];
-        cmd.final = object.final;
-        cmd.fromObject(object);
+    // toObject(object: Record<string, unknown>) {
+    //     object['type'] = this.type;
+    //     object['name'] = this.name;
+    // }
+    // static fromObject(
+    //     prototypeMap: CommandPrototypeMap,
+    //     object: SerializedCommand<Command>,
+    // ): CommandPrototypeMap[(typeof object)['type']] {
+    //     const prototype = prototypeMap[object.type];
+    //     if (!prototype) {
+    //         throw new Error(
+    //             `AbstractCommand: fromObject() Attempting to get prototype for ${object.type} but none found.`,
+    //         );
+    //     }
+    //     const cmd = Object.create(prototype) as Command;
+    //     cmd.type = object.type;
+    //     cmd.name = object.name as Command['name'];
+    //     cmd.final = object.final;
+    //     cmd.fromObject(object);
+    //
+    //     return cmd;
+    // }
+    // abstract fromObject<T extends Command>(object: SerializedCommand<T>): void;
 
-        return cmd;
-    }
-    abstract fromObject<T extends Command>(object: SerializedCommand<T>): void;
-
-    updateData?<T extends Command = Command>(newer: T): void;
+    abstract updateData?<T extends Command = Command>(newer: T): void;
 
     getName(): string {
         return this.name;
@@ -102,7 +103,9 @@ export abstract class AbstractCommand {
     }
 }
 
-export class MultiCommand<TObject extends EmbBase> extends AbstractCommand {
+export class MultiCommand<
+    TObject extends EmbObject = EmbObject,
+> extends AbstractCommand {
     public updatable: boolean = true;
     name = 'Multi Command';
     type: 'MultiCommand' | string = 'MultiCommand';
@@ -135,32 +138,36 @@ export class MultiCommand<TObject extends EmbBase> extends AbstractCommand {
         });
     }
 
-    fromObject<T extends Command>(object: SerializedCommand<T>): void {
-        let i = 0;
-        for (const cmd of this.commands) {
-            const cmdObject = object[i] as Record<string, unknown>;
-            cmd.fromObject(cmdObject as SerializedCommand<T>);
-            i++;
-        }
-    }
-
-    toObject(object: Record<string, unknown>): void {
-        let i = 0;
-        for (const cmd of this.commands) {
-            const cmdObject: Record<string, unknown> = {};
-            cmd.toObject(cmdObject);
-            object[i] = cmdObject;
-            i++;
-        }
-    }
-
-    updateData(newer: Command<TObject>): void {
-        const n = assertSameType(this, newer) as MultiCommand<TObject>;
+    // fromObject<T extends Command>(object: SerializedCommand<T>): void {
+    //     let i = 0;
+    //     for (const cmd of this.commands) {
+    //         const cmdObject = object[i] as Record<string, unknown>;
+    //         cmd.fromObject(cmdObject as SerializedCommand<T>);
+    //         i++;
+    //     }
+    // }
+    //
+    // toObject(object: Record<string, unknown>): void {
+    //     let i = 0;
+    //     for (const cmd of this.commands) {
+    //         const cmdObject: Record<string, unknown> = {};
+    //         cmd.toObject(cmdObject);
+    //         object[i] = cmdObject;
+    //         i++;
+    //     }
+    // }
+    //
+    updateData(newer: Command): void {
+        const n = assertSameType(
+            this as unknown as MultiCommand<EmbObject>,
+            newer,
+        ) as MultiCommand<EmbObject>;
         // assertSameField(this, newer, 'length');
         let i = 0;
-        for (const cmd of this.commands) {
+        for (const cmd of this.commands as Command[]) {
             const newerCmd = n.commands[i]!;
-            const n2 = assertSameType(cmd, newerCmd) as Command<TObject>;
+            const n2 = assertSameType(cmd, newerCmd) as Command;
+            // @ts-expect-error: updateData expression is too complex for TS
             if (cmd.updateData) cmd.updateData(n2);
             i += 1;
         }
@@ -169,7 +176,7 @@ export class MultiCommand<TObject extends EmbBase> extends AbstractCommand {
 
 /** Helpers **/
 
-export const traverse = <T extends EmbBase>(
+export const traverse = <T extends EmbObject>(
     store: SceneModel,
     obj: T,
     handler: (obj: T) => void,
@@ -190,7 +197,7 @@ export type InsertPosition = 'first' | 'last';
 export const addObject = (
     store: SceneModel,
     _1: SetStoreFunction<SceneModel>,
-    newObjectData: EmbBase,
+    newObjectData: EmbObject,
     insertPosition: InsertPosition = 'last',
 ) => {
     const objMap = store.objects;
@@ -235,7 +242,7 @@ export const addObject = (
 export const deleteObject = (
     store: SceneModel,
     _1: SetStoreFunction<SceneModel>,
-    id: Uuid<EmbBase>,
+    id: Uuid,
 ): boolean => {
     const obj = store.objects.get(id);
     if (!obj) return false;

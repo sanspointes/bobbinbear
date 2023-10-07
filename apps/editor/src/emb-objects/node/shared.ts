@@ -1,6 +1,5 @@
 import { Uuid, newUuid } from '../../utils/uuid';
-import { EmbBase, EmbState } from '../shared';
-import { EmbVecSeg } from '../vec-seg';
+import { EmbBase } from '../shared';
 
 export enum VectorNodeType {
     Control = 0,
@@ -12,16 +11,18 @@ type NodeBase = {
     y: number;
 };
 export type NodePoint = NodeBase & {
-    id: Uuid<EmbNode>;
+    id: Uuid;
     type: VectorNodeType.Point;
+    ownsNext?: true;
+    ownsPrev?: true;
 };
 export type NodePointVirtual = NodeBase & {
-    id: Uuid<EmbNode>;
+    id: Uuid;
     type: VectorNodeType.Point;
     virtual: true;
 };
 export type NodeControl = NodeBase & {
-    id: Uuid<EmbNode>;
+    id: Uuid;
     type: VectorNodeType.Control;
 };
 
@@ -36,11 +37,11 @@ export type VectorNode = NodePoint | NodePointVirtual | NodeControl;
 export type EmbNode = EmbBase & {
     /** Internal States */
     /** Unique ID for each scene object */
-    id: Uuid<EmbNode & EmbState>;
+    id: Uuid;
     type: 'node';
     node: VectorNode;
     /** The uuid this node object is bound to (i.e. makes up part of a GraphicSceneObject path) */
-    relatesTo: Uuid<EmbVecSeg & EmbState>;
+    relatesTo: Uuid;
 };
 
 export const isNodePoint = (node: VectorNode): node is NodePoint => {

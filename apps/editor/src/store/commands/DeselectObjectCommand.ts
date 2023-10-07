@@ -1,9 +1,7 @@
 import { SetStoreFunction, produce } from 'solid-js/store';
-import { EmbBase } from '../../emb-objects/shared';
 import { SceneModel, getObject, getObjectSetter } from '../sceneStore';
 import {
     AbstractCommand,
-    SerializedCommand,
     assertDefined,
     assertSameType,
 } from './shared';
@@ -11,19 +9,18 @@ import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
 import { batch } from 'solid-js';
 import { arrayRemove, arrayRemoveEl } from '../../utils/array';
+import { EmbObject } from '@/emb-objects';
 
-export class DeselectObjectsCommand<
-    TObject extends EmbBase,
-> extends AbstractCommand {
+export class DeselectObjectsCommand extends AbstractCommand {
     public updatable: boolean = true;
 
     name = 'Deselect Objects';
     type = 'DeselectObjectsCommand' as const;
 
-    toDeselect: Uuid<TObject>[] = [];
-    toSelect: Uuid<TObject>[] = [];
+    toDeselect: Uuid[] = [];
+    toSelect: Uuid[] = [];
 
-    constructor(...objectIds: Uuid<TObject>[]) {
+    constructor(...objectIds: Uuid[]) {
         super();
         this.toDeselect = objectIds;
         this.name = `Deselect ${objectIds.join(', ')}`;
@@ -34,7 +31,7 @@ export class DeselectObjectsCommand<
                 const object = getObject(store, id);
                 if (assertDefined(this, object, 'object')) {
                     if (object.selected) this.toSelect.push(id);
-                    const set = getObjectSetter<EmbBase>(store, id)!;
+                    const set = getObjectSetter<EmbObject>(store, id)!;
                     set('selected', false);
                     setStore(
                         produce((store) =>
@@ -61,7 +58,7 @@ export class DeselectObjectsCommand<
                 const object = getObject(store, id);
                 if (assertDefined(this, object, 'object')) {
                     if (object.selected) this.toDeselect.push(id);
-                    const set = getObjectSetter<EmbBase>(store, id)!;
+                    const set = getObjectSetter<EmbObject>(store, id)!;
                     set('selected', true);
                     setStore(
                         produce((store) => {
@@ -74,13 +71,13 @@ export class DeselectObjectsCommand<
         });
     }
 
-    fromObject<T extends Command>(object: SerializedCommand<T>): void {
-        this.toDeselect = object['toSelect'] as Uuid<TObject>[];
-    }
-
-    toObject(object: Record<string, unknown>): void {
-        object['toSelect'] = this.toDeselect;
-    }
+    // fromObject<T extends Command>(object: SerializedCommand<T>): void {
+    //     this.toDeselect = object['toSelect'] as Uuid[];
+    // }
+    //
+    // toObject(object: Record<string, unknown>): void {
+    //     object['toSelect'] = this.toDeselect;
+    // }
 
     updateData(newer: Command): void {
         const n = assertSameType(this, newer);

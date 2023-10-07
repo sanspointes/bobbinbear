@@ -1,13 +1,13 @@
-import { onMount } from 'solid-js';
-import { Sprite } from '@pixi/sprite';
 import { P } from '@bearbroidery/solixi';
+import { Sprite } from '@pixi/sprite';
+import { onMount } from 'solid-js';
 
-import { EmbHasVirtual, EmbState } from '../shared';
 import { useTexture } from '../../composables/useAsset';
+import { EmbHasVirtual } from '../shared';
 
-import NodePointSrc from '../../assets/node_point.png';
+import { ObservablePoint, Point, Texture } from '@pixi/core';
 import NodeControlSrc from '../../assets/node_control.png';
-import { Circle, ObservablePoint, Point, Texture } from '@pixi/core';
+import NodePointSrc from '../../assets/node_point.png';
 import { useHoverSelectOutline } from '../../composables/useHoverSelectOutline';
 import { EmbNode, VectorNodeType } from './shared';
 
@@ -20,10 +20,9 @@ const NodeTypeImageMap: Record<VectorNodeType, string> = {
 
 const CENTER_ANCHOR = new Point(0.5, 0.5) as unknown as ObservablePoint;
 
-type EmbNodeProps = EmbNode &
-    EmbState & {
-        order: number;
-    } & Partial<EmbHasVirtual>;
+type EmbNodeProps = EmbNode & {
+    order: number;
+} & Partial<EmbHasVirtual>;
 
 export function EmbNodeView(props: EmbNodeProps) {
     const [texture] = useTexture({

@@ -1,27 +1,21 @@
 import { P } from '@bearbroidery/solixi';
 import { Point, Texture } from '@pixi/core';
 import { Container } from '@pixi/display';
-import {
-    FillStyle,
-    Graphics,
-    GraphicsGeometry,
-    ILineStyleOptions,
-    LineStyle,
-} from '@pixi/graphics';
+import { Graphics, ILineStyleOptions } from '@pixi/graphics';
 import { MeshGeometry, MeshMaterial } from '@pixi/mesh';
 import {
+    Show,
     createEffect,
     createMemo,
     createRenderEffect,
-    Show,
     useContext,
 } from 'solid-js';
-import { AppContext } from '../../store';
-import { EmbState } from '../shared';
-import { BezierToVectorSegment, EmbVecSeg, VectorSegment } from './shared';
-import { useTemporarySceneObject } from '../../composables/useVirtualSceneObjects';
-import { EmbNode, EmbNodeView } from '../node';
 import { SegmentUtils } from '.';
+import { useTemporarySceneObject } from '../../composables/useVirtualSceneObjects';
+import { AppContext } from '../../store';
+import { EmbNode, EmbNodeView } from '../node';
+import { EMB_STATE_DEFAULTS, EmbState } from '../shared';
+import { BezierToVectorSegment, EmbVecSeg, VectorSegment } from './shared';
 
 const updateGraphics = (
     g: Graphics,
@@ -127,6 +121,7 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
         if (props.inspecting) {
             const { to } = props.segment;
             const nodeData: EmbNode = {
+                ...EMB_STATE_DEFAULTS,
                 node: to,
                 type: 'node',
                 id: to.id,
@@ -146,6 +141,7 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
         if (props.inspecting && seg.c0) {
             const { c0 } = seg;
             const nodeData: EmbNode = {
+                ...EMB_STATE_DEFAULTS,
                 node: c0,
                 type: 'node',
                 id: c0.id,
@@ -163,8 +159,9 @@ export const EmbVecSegView = (props: EmbVecSegProps) => {
         const seg = props.segment as VectorSegment &
             Partial<BezierToVectorSegment>;
         if (props.inspecting && seg.c1) {
-            const { c1 } = props.segment;
+            const { c1 } = seg;
             const nodeData: EmbNode = {
+                ...EMB_STATE_DEFAULTS,
                 node: c1,
                 type: 'node',
                 id: c1.id,

@@ -9,10 +9,19 @@ import { AllMessages, BaseStore, GeneralHandler, generateStore } from '..';
 import { createExclusiveStateMachine, t } from '../../utils/fsm';
 import { newUuid, uuid, Uuid } from '../../utils/uuid';
 import { createEllipseGraphicsCommands } from '../../utils/graphics';
-import { SetSceneObjectFieldCommand, CreateObjectCommand } from '../commands';
+import {
+    SetSceneObjectFieldCommand,
+    CreateObjectCommand,
+    Command,
+} from '../commands';
 import { Point } from '@pixi/core';
 import { MultiCommand } from '../commands/shared';
-import { EMB_STATE_DEFAULTS, EmbObject, EmbState, EmbVector } from '../../emb-objects';
+import {
+    EMB_STATE_DEFAULTS,
+    EmbObject,
+    EmbState,
+    EmbVector,
+} from '../../emb-objects';
 import { hslFromRgb } from '../../utils/color';
 
 export const EllipseEvents = {
@@ -59,7 +68,7 @@ export const createEllipseToolStore = (
     });
 
     let createCommand: CreateObjectCommand<EmbVector & EmbState> | undefined;
-    let currentlyBuildingId: Uuid<EmbVector & EmbState> | undefined;
+    let currentlyBuildingId: Uuid | undefined;
 
     const transitions = [
         t(EllipseStates.Default, EllipseEvents.PointerDown, EllipseStates.Down),
@@ -115,7 +124,7 @@ export const createEllipseToolStore = (
                 );
                 cmd.name = 'Creating Ellipse';
                 cmd.final = false;
-                dispatch('scene:do-command', cmd);
+                dispatch('scene:do-command', cmd as Command);
             },
         ),
         t(
@@ -159,13 +168,12 @@ export const createEllipseToolStore = (
 
                 const cmd = new MultiCommand(
                     createCommand,
-                    // @ts-expect-error ; Issues with generic typing of GraphicSceneObject
                     setShapeCommand,
                     setPositionCommand,
                 );
                 cmd.name = 'Updating Ellipse';
                 cmd.final = false;
-                dispatch('scene:do-command', cmd);
+                dispatch('scene:do-command', cmd as Command);
             },
         ),
         t(
@@ -211,7 +219,7 @@ export const createEllipseToolStore = (
                     setPositionCommand,
                 );
                 cmd.name = 'Creating Ellipse Finished';
-                dispatch('scene:do-command', cmd);
+                dispatch('scene:do-command', cmd as Command);
 
                 createCommand = undefined;
                 currentlyBuildingId = undefined;

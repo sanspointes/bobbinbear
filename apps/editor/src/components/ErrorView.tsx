@@ -1,4 +1,4 @@
-import { createSignal, Show } from 'solid-js';
+import { createEffect, createSignal, Show } from 'solid-js';
 import { FaRegularFaceSadCry } from 'solid-icons/fa';
 import { Command } from '../store/commands';
 import { Button } from './generics/Button';
@@ -15,20 +15,20 @@ const ErrorReason = (props: ErrorReasonProps) => {
     return (
         <KCollapsible.Root class="overflow-hidden mb-2 w-full rounded-md bg-orange-950">
             <KCollapsible.Trigger class="w-full text-left">
-                <p class="text-orange-200 p-4">
+                <p class="p-4 text-orange-200">
                     <IoWarningOutline class="inline mr-1" />
                     Reason: {props.error.message}
                 </p>
             </KCollapsible.Trigger>
-            <KCollapsible.Content class="pl-6 overflow-scroll">
+            <KCollapsible.Content class="overflow-scroll pl-6">
                 <Show when={props.error.stack}>
                     {(stack) => (
-                        <pre class="text-orange-200 text-xs">{stack()}</pre>
+                        <pre class="text-xs text-orange-200">{stack()}</pre>
                     )}
                 </Show>
             </KCollapsible.Content>
             <Show when={props.error.cause}>
-                {(cause) => <ErrorReason error={cause()} />}
+                {(cause) => <ErrorReason error={cause() as Error} />}
             </Show>
         </KCollapsible.Root>
     );
@@ -42,10 +42,12 @@ type ErrorProps = {
 export const ErrorView = (props: ErrorProps) => {
     const [showExtra, setShowExtra] = createSignal(true);
 
-    const error = props.error;
-    if (error instanceof Error) {
-        console.error(error);
-    }
+    createEffect(() => {
+        const error = props.error;
+        if (error instanceof Error) {
+            console.error(error);
+        }
+    });
 
     const handleReload = async (_isReporting: boolean) => {
         window.location.reload();
@@ -98,7 +100,7 @@ export const ErrorView = (props: ErrorProps) => {
                 </div>
 
                 <Show when={showExtra()}>
-                    <div class="flex absolute bottom-6 left-1/2 flex-col gap-2 items-start w-full text-sm -translate-x-1/2 bg-orange-900 max-h-[80vh] py-4">
+                    <div class="flex absolute bottom-6 left-1/2 flex-col gap-2 items-start py-4 w-full text-sm bg-orange-900 -translate-x-1/2 max-h-[80vh]">
                         <div class="flex justify-between w-full">
                             <h2 class="text-lg font-bold text-orange-200">
                                 What gets reported?
@@ -116,7 +118,7 @@ export const ErrorView = (props: ErrorProps) => {
                             from in the code. We also send data on your last few
                             changes. See the Command stack button below.
                         </p>
-                        <ErrorReason error={error} />
+                        <ErrorReason error={props.error} />
                         <Show when={props.stack}>
                             {(stack) => (
                                 <CommandStack

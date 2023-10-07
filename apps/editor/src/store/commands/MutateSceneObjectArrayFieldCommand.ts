@@ -1,16 +1,11 @@
 import { produce, SetStoreFunction } from 'solid-js/store';
-import { EmbBase } from '../../emb-objects/shared';
 import { getObjectSetter, SceneModel } from '../sceneStore';
-import {
-    AbstractCommand,
-    assertSameField,
-    assertSameType,
-    SerializedCommand,
-} from './shared';
+import { AbstractCommand, assertSameField, assertSameType } from './shared';
 import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
 import { PickOfType } from '../../types/utility';
 import { arrayInsertCircular } from '../../utils/array';
+import { EmbObject } from '@/emb-objects';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MutateSceneObjectArrayFieldCommandOptions<T extends any[]> = {
@@ -22,7 +17,7 @@ type MutateSceneObjectArrayFieldCommandOptions<T extends any[]> = {
  * Sets a single field on a scene object.
  */
 export class MutateSceneObjectArrayFieldCommand<
-    TObject extends EmbBase = EmbBase,
+    TObject extends EmbObject,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     TObjectPicked extends PickOfType<TObject, any[]> = PickOfType<
         TObject,
@@ -39,7 +34,7 @@ export class MutateSceneObjectArrayFieldCommand<
     type = 'MutateSceneObjectArrayFieldCommand' as const;
     oldValue: TObjectPicked[K] | undefined = undefined;
     constructor(
-        private objectId: Uuid<TObject>,
+        private objectId: Uuid,
         private field: K,
         private index: number,
         private opts: MutateSceneObjectArrayFieldCommandOptions<KV>,
@@ -105,23 +100,10 @@ export class MutateSceneObjectArrayFieldCommand<
         set(this.field, this.oldValue);
     }
 
-    toObject(object: Record<string, unknown>): void {
-        super.toObject(object);
-        object['objectId'] = this.objectId;
-        object['field'] = this.field;
-        object['value'] = this.value;
-    }
-    fromObject<T extends Command>(object: SerializedCommand<T>): void {
-        this.objectId = object['objectId'] as Uuid<TObject>;
-        this.field = object['field'] as K;
-        this.value = object['value'] as TObject[K];
-    }
-
     updateData(newer: Command): void {
-        // @ts-expect-error; Difficult to resolve typing
         const n = assertSameType(this, newer) as typeof this;
         // @ts-expect-error; Difficult to resolve typing
         assertSameField(this, n, 'field');
-        this.value = n.value;
+        this.opts = n.opts;
     }
 }

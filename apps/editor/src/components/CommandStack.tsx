@@ -3,10 +3,10 @@ import { Collapsible as KCollapsible } from '@kobalte/core';
 import { TbChevronDown } from 'solid-icons/tb';
 import clsx from 'clsx';
 
-import { Command, MultiCommand } from '../store/commands';
+import { Command } from '../store/commands';
 import { Popover } from './generics/Popover';
 import { Button } from './generics/Button';
-import { EmbBase } from '../emb-objects/shared';
+import { MultiCommand } from '@/store/commands/shared';
 
 export type CommandStackProps = {
     stack: Command[];
@@ -48,7 +48,9 @@ function CommandStackRow(props: CommandStackRowProps) {
                 {props.command.name} -{' '}
                 {props.command.updatable ? 'updatable' : 'not updatable'} -{' '}
                 {props.command.final ? 'final' : 'not final'}
-                <Show when={props.command.error} />
+                <Show when={props.command.error}>
+                    {(error) => <p>{JSON.stringify(error())}</p>}
+                </Show>
             </div>
 
             <KCollapsible.Content class="pl-6">
@@ -60,9 +62,7 @@ function CommandStackRow(props: CommandStackRowProps) {
                         </pre>
                     }
                 >
-                    <For
-                        each={(props.command as MultiCommand<EmbBase>).commands}
-                    >
+                    <For each={(props.command as MultiCommand).commands}>
                         {(command) => <CommandStackRow command={command} />}
                     </For>
                 </Show>

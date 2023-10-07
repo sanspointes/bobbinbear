@@ -5,7 +5,7 @@ import { Collapsible as KCollapsible } from '@kobalte/core';
 import { AllMessages, AppContext, GeneralHandler } from '../store';
 import { Uuid, uuid } from '../utils/uuid';
 import { Tree } from './generics/Tree';
-import { EmbBase, EmbState } from '../emb-objects/shared';
+import { EmbState } from '../emb-objects/shared';
 import { SceneModel } from '../store/sceneStore';
 import { Button } from './generics/Button';
 import {
@@ -13,7 +13,7 @@ import {
     SelectObjectsCommand,
     SetSceneObjectFieldCommand,
 } from '../store/commands';
-import { TextInput } from './generics/TextInput';
+import { TextInputRoot, TextInputInput } from './generics/TextInput';
 import { useClickOutside } from '../composables/useClickOutside';
 import { stopPropagation } from '@solid-primitives/event-listener';
 import { useDragDropContext } from '@thisbeyond/solid-dnd';
@@ -25,7 +25,7 @@ import { EmbObject } from '@/emb-objects';
  * Mutation Helpers
  */
 const toggleVisibility = (
-    object: EmbBase & EmbState,
+    object: EmbObject,
     dispatch: GeneralHandler<AllMessages>,
 ) => {
     const newValue = !object.visible;
@@ -34,7 +34,7 @@ const toggleVisibility = (
 };
 
 const selectObject = (
-    objectId: Uuid<EmbBase & EmbState>,
+    objectId: Uuid,
     sceneModel: SceneModel,
     dispatch: GeneralHandler<AllMessages>,
 ) => {
@@ -49,7 +49,7 @@ const selectObject = (
 };
 
 const setObjectName = (
-    objectId: Uuid<EmbBase & EmbState>,
+    objectId: Uuid,
     name: string,
     dispatch: GeneralHandler<AllMessages>,
     final?: boolean,
@@ -97,7 +97,7 @@ export function SceneTree() {
                 // Re-parenting
                 const cmd = new ParentObjectCommand(
                     draggableData.id,
-                    id as Uuid<EmbBase>,
+                    id as Uuid,
                     'last',
                 );
                 dispatch('scene:do-command', cmd);
@@ -111,7 +111,7 @@ export function SceneTree() {
                 const [_, strategy, relatedId] = result as unknown as [
                     _: string,
                     strategy: 'before' | 'after',
-                    relatedId: Uuid<EmbObject>,
+                    relatedId: Uuid,
                 ];
 
                 let newPosition = droppableParent.children.findIndex((uuid) => {
@@ -192,13 +192,11 @@ export function SceneTree() {
                             <Show
                                 when={currentlyRenaming() !== node.id}
                                 fallback={
-                                    <TextInput
+                                    <TextInputRoot
                                         ref={(el) =>
                                             setCurrentClickOutsideTarget(el)
                                         }
-                                        autofocus
                                         class="w-full"
-                                        label={`Rename "${node.name}"`}
                                         value={node.name}
                                         onChange={(v) =>
                                             setObjectName(
@@ -208,16 +206,22 @@ export function SceneTree() {
                                                 false,
                                             )
                                         }
-                                        onBlur={(e) => {
-                                            setObjectName(
-                                                node.id,
-                                                e.target.value,
-                                                dispatch,
-                                                true,
-                                            );
-                                            setCurrentlyRenaming(undefined);
-                                        }}
-                                    />
+                                        onBlur={(e) => {}}
+                                    >
+                                        <TextInputInput
+                                            autofocus
+                                            aria-label={`Rename "${node.name}"`}
+                                            onBlur={(e) => {
+                                                setObjectName(
+                                                    node.id,
+                                                    e.target.value,
+                                                    dispatch,
+                                                    true,
+                                                );
+                                                setCurrentlyRenaming(undefined);
+                                            }}
+                                        />
+                                    </TextInputRoot>
                                 }
                             >
                                 <span

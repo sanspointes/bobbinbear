@@ -1,12 +1,12 @@
 import { useContext } from 'solid-js';
-import { EmbBase } from '../emb-objects/shared';
 import { AccordionItem } from './generics/Accordian';
 import { AppContext } from '../store';
 import { SetSceneObjectFieldCommand } from '../store/commands';
 import { Checkbox } from './generics/Checkbox';
+import { EmbObject } from '@/emb-objects';
 
 type SidebarSceneObjectProps = {
-    object: EmbBase;
+    object: EmbObject;
 };
 export function SidebarSceneObject(props: SidebarSceneObjectProps) {
     const { dispatch } = useContext(AppContext);

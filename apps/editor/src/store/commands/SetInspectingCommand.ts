@@ -1,5 +1,4 @@
 import { produce, SetStoreFunction } from 'solid-js/store';
-import { EmbBase } from '../../emb-objects/shared';
 import { Uuid } from '../../utils/uuid';
 import { SceneModel } from '../sceneStore';
 import {
@@ -15,8 +14,8 @@ export class SetInspectingCommand extends AbstractCommand {
     public name: string;
     public type: string = 'InspectObjectCommand' as const;
 
-    private oldValue: Uuid<EmbBase> | undefined = undefined;
-    constructor(private objectId: Uuid<EmbBase> | undefined) {
+    private oldValue: Uuid | undefined = undefined;
+    constructor(private objectId: Uuid | undefined) {
         super();
         this.name = `Inspect ${objectId}`;
     }

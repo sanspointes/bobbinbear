@@ -1,25 +1,23 @@
 import { SetStoreFunction, produce } from 'solid-js/store';
-import { EmbBase } from '../../emb-objects/shared';
 import { SceneModel, getObject } from '../sceneStore';
 import {
     AbstractCommand,
-    SerializedCommand,
     addObject,
     deleteObject,
 } from './shared';
 import { batch } from 'solid-js';
 import { arrayRemoveEl } from '../../utils/array';
-import { Command } from '.';
 import { Uuid } from '../../utils/uuid';
+import { EmbObject } from '@/emb-objects';
 
 export class DeleteObjectCommand<
-    TObject extends EmbBase,
+    TObject extends EmbObject,
 > extends AbstractCommand {
     public updatable: boolean = false;
 
     name = 'Delete Object';
     type = 'DeleteObjectCommand' as const;
-    constructor(private objectId: Uuid<TObject>) {
+    constructor(private objectId: Uuid) {
         super();
     }
 
@@ -35,7 +33,7 @@ export class DeleteObjectCommand<
                 );
             }
             const object = getObject(store, this.objectId);
-            this.deletedObject = object;
+            this.deletedObject = object as TObject;
             const success = deleteObject(store, setStore, this.objectId);
             if (!success) {
                 console.warn(
@@ -52,13 +50,13 @@ export class DeleteObjectCommand<
         addObject(store, setStore, this.deletedObject);
     }
 
-    toObject(object: Record<string, unknown>): void {
-        super.toObject(object);
-        object['objectId'] = this.objectId;
-        object['deletedObject'] = this.deletedObject;
-    }
-    fromObject<T extends Command>(object: SerializedCommand<T>): void {
-        this.objectId = object['objectId'] as Uuid<TObject>;
-        this.deletedObject = object['deleteObject'] as TObject;
-    }
+    // toObject(object: Record<string, unknown>): void {
+    //     super.toObject(object);
+    //     object['objectId'] = this.objectId;
+    //     object['deletedObject'] = this.deletedObject;
+    // }
+    // fromObject<T extends Command>(object: SerializedCommand<T>): void {
+    //     this.objectId = object['objectId'] as Uuid;
+    //     this.deletedObject = object['deleteObject'] as TObject;
+    // }
 }
