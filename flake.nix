@@ -12,25 +12,26 @@
       let
         pkgs = nixpkgs.legacyPackages.${system};
       in {
-        devShells.default = pkgs.mkShell {
-          nativeBuildInputs = [ pkgs.bashInteractive ];
+        devShells.default = with pkgs; mkShell rec {
+          nativeBuildInputs = [ bashInteractive ];
           buildInputs = [
+            # Monorepo build system
             turbo.packages.${system}.default
-            pkgs.nodejs
-            # You can set the major version of Node.js to a specific one instead
-            # of the default version
-            # pkgs.nodejs-19_x
+            nodejs
+            nodePackages.pnpm
+            nodePackages.typescript
+            nodePackages.typescript-language-server
 
-            # You can choose pnpm, yarn, or none (npm).
-            pkgs.nodePackages.pnpm
-            # pkgs.yarn
-
-            pkgs.nodePackages.typescript
-            pkgs.nodePackages.typescript-language-server
+            # Bevy
+            openssl binaryen pkg-config
+            udev alsa-lib vulkan-loader
+            xorg.libX11 xorg.libXcursor xorg.libXi xorg.libXrandr # To use the x11 feature
+            # libxkbcommon wayland # To use the wayland feature
           ];
           shellHook = ''
             export TURBO_BINARY_PATH="${turbo.packages.${system}.default}/bin/turbo"
           '';
+          LD_LIBRARY_PATH = lib.makeLibraryPath buildInputs;
         };
       }
     );
