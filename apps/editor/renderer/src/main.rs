@@ -5,6 +5,7 @@ mod types;
 
 mod editor;
 mod plugins;
+mod utils;
 
 use bevy::prelude::*;
 use crossbeam_channel::unbounded;

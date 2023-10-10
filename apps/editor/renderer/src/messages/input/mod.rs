@@ -8,7 +8,7 @@ use bevy::{
 };
 use bevy_mod_raycast::RaycastSource;
 
-use self::msgs::{InputMessage, ModifiersState, RawInputMessage};
+pub use self::msgs::{InputMessage, ModifiersState, RawInputMessage};
 
 #[derive(Debug, Clone, Reflect)]
 pub struct RaycastRawInput;
