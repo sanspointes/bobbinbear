@@ -4,38 +4,19 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
+    
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in library 'bobbinbear_core'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--lib",
-                    "--package=renderer"
-                ],
-                "filter": {
-                    "name": "bobbinbear_core",
-                    "kind": "lib"
-                }
-            },
-            "args": [],
-            "cwd": "${workspaceFolder}"
-        },
-        {
-            "type": "lldb",
-            "request": "launch",
-            "name": "Debug executable 'bobbinbear_core'",
+            "name": "Debug executable 'rusty_embroider'",
             "cargo": {
                 "args": [
                     "build",
-                    "--bin=bobbinbear_core",
-                    "--package=renderer",
-                    "--features=linux"
+                    "--bin=rusty_embroider",
+                    "--package=rusty_embroider"
                 ],
                 "filter": {
-                    "name": "bobbinbear_core",
+                    "name": "rusty_embroider",
                     "kind": "bin"
                 }
             },
@@ -45,16 +26,34 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'bobbinbear_core'",
+            "name": "Debug integration tests of executable 'rusty_embroider'",
+            "cargo": {
+                "args": [
+                    "build",
+                    "--bin=rusty_embroider",
+                    "--package=rusty_embroider"
+                ],
+                "filter": {
+                    "name": "rusty_embroider",
+                    "kind": "bin"
+                }
+            },
+            "args": ["--test"],
+            "cwd": "${workspaceFolder}"
+        },
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "Debug unit tests in executable 'rusty_embroider'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--bin=bobbinbear_core",
-                    "--package=renderer"
+                    "--bin=rusty_embroider",
+                    "--package=rusty_embroider"
                 ],
                 "filter": {
-                    "name": "bobbinbear_core",
+                    "name": "rusty_embroider",
                     "kind": "bin"
                 }
             },
@@ -64,16 +63,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug integration test 'web'",
+            "name": "Debug integration test 'app'",
             "cargo": {
                 "args": [
                     "test",
                     "--no-run",
-                    "--test=web",
-                    "--package=renderer"
+                    "--test=integration_test",
+                    "--package=rusty_embroider"
                 ],
                 "filter": {
-                    "name": "web",
+                    "name": "integration_test",
                     "kind": "test"
                 }
             },
