@@ -47,6 +47,8 @@ lazy_static = "1.4.0"
 bevy_mod_raycast = "0.14.1"
 bevy-inspector-egui = "0.19.0"
 serde_json = "1.0.107"
+serde = "1.0.188"
+web-sys = { version = "0.3.64", features = [ "console" ] }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"

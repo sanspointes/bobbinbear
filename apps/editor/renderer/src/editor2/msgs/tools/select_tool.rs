@@ -1,4 +1,3 @@
-use debug_panic::debug_panic;
 use std::collections::VecDeque;
 
 use bevy::{ecs::system::SystemState, input::ButtonState, prelude::*, utils::{HashSet, petgraph::data::Element}, math::Vec3Swizzles};
@@ -78,7 +77,7 @@ pub fn handle_select_tool_message(
                                 hovered_state.set_if_neq(HoveredState::Unhovered);
                             }
                             Err(reason) => {
-                                debug_panic!("DBG: Unable to hover over {:?}.  Reason: {}", to_hover_exit, reason);
+                                println!("DBG: Unable to hover over {:?}.  Reason: {}", to_hover_exit, reason);
                             }
                         }
                         res.prev_hovers.remove(&to_hover_exit);
@@ -90,7 +89,7 @@ pub fn handle_select_tool_message(
                                 hovered_state.set_if_neq(HoveredState::Unhovered);
                             }
                             Err(reason) => {
-                                debug_panic!("DBG: Unable to hover exit {:?}.  Reason: {}", to_hover_over, reason);
+                                println!("DBG: Unable to hover exit {:?}.  Reason: {}", to_hover_over, reason);
                             }
                         }
                         res.prev_hovers.insert(*to_hover_over);

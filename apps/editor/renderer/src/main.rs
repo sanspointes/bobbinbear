@@ -4,12 +4,11 @@ pub mod editor2;
 // mod sketch;
 pub mod types;
 
-use std::io;
-
 // #[cfg(debug_assertions)]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use bevy_prototype_lyon::render::ShapeMaterial;
+use crossbeam_channel::unbounded;
 use editor2::{entities::{HoveredState, SelectedState, Bounded, vector::{PathSegment, Ordered}}, systems::focus_rings::{HasFocusRing, FocusRingTag}};
 
 use crate::editor2::{
@@ -19,11 +18,8 @@ use crate::editor2::{
 
 use bevy::DefaultPlugins;
 use bevy::prelude::*;
-use bevy_debug_text_overlay::OverlayPlugin;
-use crossbeam::channel::unbounded;
 
 fn main() {
-    better_panic::install();
 
     // TODO add webview gui
     let (_from_frontend_sender, from_frontend_receiver) = unbounded::<Message>();
@@ -34,8 +30,6 @@ fn main() {
         .insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)))
         .add_event::<Message>()
-        // .register_type::<Fill>()
-        // .register_type::<Stroke>()
         .insert_resource(FrontendReceiver(from_frontend_receiver))
         .insert_resource(FrontendSender(to_frontend_sender))
         .add_plugins(
@@ -50,15 +44,12 @@ fn main() {
                     ..default()
                 }),
         )
-        .add_plugin(EditorPlugin {})
-        .add_plugin(OverlayPlugin {
-            font_size: 14.,
-            ..Default::default()
-        });
+        .add_plugins(EditorPlugin {})
+    ;
 
     // #[cfg(debug_assertions)]
     {
-        app.add_plugin(WorldInspectorPlugin::new());
+        app.add_plugins(WorldInspectorPlugin::new());
         app.register_type::<ShapeMaterial>();
         app.register_type::<PathSegment>();
         app.register_type::<HoveredState>();

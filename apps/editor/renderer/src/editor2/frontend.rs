@@ -1,5 +1,5 @@
-use bevy::prelude::Resource;
-use crossbeam::channel::{Receiver, Sender};
+use bevy::prelude::{Resource, Event};
+use crossbeam_channel::{Receiver, Sender};
 use serde::{Serialize, Deserialize};
 
 use crate::types::Cursors;
@@ -31,7 +31,7 @@ impl DocumentsUpdatedModel {
 #[derive(Clone, Debug, Serialize, Deserialize /*, specta::Type */)]
 pub struct InitModel;
 
-#[derive(Clone, Debug, Serialize, Deserialize /*, specta::Type */)]
+#[derive(Event, Clone, Debug, Serialize, Deserialize /*, specta::Type */)]
 pub enum FrontendMessage {
     Log(String),
     Warn(String),

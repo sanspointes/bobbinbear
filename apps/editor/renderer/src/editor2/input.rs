@@ -5,10 +5,7 @@ use bevy::{
     prelude::*,
     window::PrimaryWindow,
 };
-use bevy_debug_text_overlay::screen_print;
 use bevy_mod_raycast::RaycastSource;
-
-use crate::debug_log;
 
 use super::{
     camera::{BgHitPlane, RaycastRawInput},
@@ -21,7 +18,7 @@ use super::{
 const DRAG_THRESHOLD: f32 = 10.;
 
 // Raw Input messages passed from winit
-#[derive(Debug, Clone)]
+#[derive(Event, Debug, Clone)]
 pub enum RawInputMessage {
     PointerMove(Vec2),
     PointerInput {
@@ -35,7 +32,7 @@ pub enum RawInputMessage {
 }
 
 // Processed / abstracted input events for common behaviour like click
-#[derive(Debug, Clone, Copy)]
+#[derive(Event, Debug, Clone, Copy)]
 pub enum InputMessage {
     PointerDown {
         screen: Vec2,
@@ -111,18 +108,18 @@ impl Plugin for InputProcessorPlugin {
             .add_event::<InputMessage>()
             // Fetch background hit entity if needed
             .add_state::<BgHitEntityFetchState>()
-            .add_system(fetch_bg_hit_entity.run_if(in_state(BgHitEntityFetchState::Needed)))
+            .add_systems(PreUpdate, fetch_bg_hit_entity.run_if(in_state(BgHitEntityFetchState::Needed)))
             // Input events
-            .configure_set(InputSets::ReceiveInput.in_base_set(CoreSet::PreUpdate))
-            .configure_set(InputSets::ProcessInput.in_base_set(CoreSet::PreUpdate).after(InputSets::ReceiveInput))
-            .add_systems(
+            .configure_set(PreUpdate, InputSets::ReceiveInput)
+            .configure_set(Update, InputSets::ProcessInput.after(InputSets::ReceiveInput))
+            .add_systems(PreUpdate,
                 (
                     mouse_button_input_system,
                     mouse_movement_input_system,
                     keyboard_input_system,
                 ).in_set(InputSets::ReceiveInput)
             )
-            .add_systems((
+            .add_systems(Update, (
                     handle_raw_input_message_system,
                     tool_preprocess_system,
                 ).chain().in_set(InputSets::ProcessInput)
@@ -302,7 +299,7 @@ pub fn handle_raw_input_message_system(
                     });
                 }
 
-                screen_print!("mouse: \ncur_pos {:?}\ndown_pos {:?}\noffset {:?} offset\nleft_pressed {:?}\nis_dragging {:?}", world_point, res.down_pos_world, world_point.sub(res.down_pos_world), res.left_pressed, res.is_dragging);
+                // screen_print!("mouse: \ncur_pos {:?}\ndown_pos {:?}\noffset {:?} offset\nleft_pressed {:?}\nis_dragging {:?}", world_point, res.down_pos_world, world_point.sub(res.down_pos_world), res.left_pressed, res.is_dragging);
             }
             RawInputMessage::PointerInput { pressed, button } => match (button, pressed) {
                 (MouseButton::Left, ButtonState::Pressed) => {
@@ -341,7 +338,7 @@ pub fn handle_raw_input_message_system(
                 (_, _) => {}
             },
             RawInputMessage::KeyboardInput { pressed, key } => match key {
-                KeyCode::LControl | KeyCode::RControl | KeyCode::LWin | KeyCode::RWin => {
+                KeyCode::ControlLeft | KeyCode::ControlRight | KeyCode::SuperLeft | KeyCode::SuperRight => {
                     res.modifiers.command = *pressed;
                     ev_writer.send(
                         InputMessage::ModifiersChanged {
@@ -350,7 +347,7 @@ pub fn handle_raw_input_message_system(
                         .into(),
                     );
                 }
-                KeyCode::LAlt | KeyCode::RAlt => {
+                KeyCode::AltLeft | KeyCode::AltRight => {
                     res.modifiers.alt = *pressed;
                     ev_writer.send(
                         InputMessage::ModifiersChanged {
@@ -359,7 +356,7 @@ pub fn handle_raw_input_message_system(
                         .into(),
                     );
                 }
-                KeyCode::LShift | KeyCode::RShift => {
+                KeyCode::ShiftLeft | KeyCode::ShiftRight => {
                     res.modifiers.shift = *pressed;
                     ev_writer.send(
                         InputMessage::ModifiersChanged {
@@ -395,7 +392,7 @@ pub fn tool_preprocess_system(
     for msg in input_reader.iter() {
         // If this event is not handled by a hotkey handler, it gets passed to the tool
         let mut should_pass_through = false;
-        let cur_tool = selected_tool.as_ref().0;
+        let cur_tool = selected_tool.get();
         match msg {
             InputMessage::Keyboard {
                 pressed,
@@ -404,12 +401,12 @@ pub fn tool_preprocess_system(
             } => match (pressed, key, modifiers.command, modifiers.shift) {
                 // Click to drag around viewport with space key pressed
                 (ButtonState::Pressed, KeyCode::Space, _, _) => {
-                    if cur_tool != Tool::Grab {
+                    if *cur_tool != Tool::Grab {
                         msg_writer.send(ToolMessage::PushTool(Tool::Grab).into());
                     }
                 }
                 (ButtonState::Released, KeyCode::Space, _, _) => {
-                    if cur_tool == Tool::Grab {
+                    if *cur_tool == Tool::Grab {
                         msg_writer.send(ToolMessage::ResetToRootTool.into());
                     }
                 }

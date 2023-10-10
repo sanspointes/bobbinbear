@@ -1,7 +1,6 @@
 use std::{fmt::Debug, sync::Arc};
 
 use bevy::{ecs::world::EntityMut, math::Vec3Swizzles, prelude::*, sprite::Mesh2dHandle};
-use bevy_debug_text_overlay::screen_print;
 use bevy_mod_raycast::RaycastMesh;
 use bevy_prototype_lyon::{
     prelude::{
@@ -13,7 +12,6 @@ use bevy_prototype_lyon::{
     },
     render::ShapeMaterial,
 };
-use debug_panic::debug_panic;
 
 use crate::{
     debug_log,
@@ -551,7 +549,7 @@ pub fn debug_vector_node_order(
     ordered.sort_by(|a,b| a.0.0.partial_cmp(&b.0.0).unwrap());
     for (ordered, path_seg) in ordered {
         let i = ordered.0;
-        screen_print!(push, sec: 0.01, "Node {i} - {path_seg:?}");
+        // screen_print!(push, sec: 0.01, "Node {i} - {path_seg:?}");
     }
 }
 

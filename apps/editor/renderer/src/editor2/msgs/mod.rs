@@ -18,7 +18,7 @@ use super::{
     input::InputMessage,
 };
 
-#[derive(Clone, Debug)]
+#[derive(Event, Clone, Debug)]
 pub enum Message {
     // RawInput(RawInputMessage),
     // Input(InputMessage),

@@ -2412,10 +2412,12 @@ dependencies = [
  "crossbeam-channel",
  "js-sys",
  "lazy_static",
+ "serde",
  "serde_json",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",
+ "web-sys",
 ]
 
 [[package]]

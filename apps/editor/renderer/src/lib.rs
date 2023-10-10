@@ -2,7 +2,7 @@ pub mod editor2;
 // mod sketch;
 pub mod types;
 
-use crossbeam::channel::{unbounded, Receiver, Sender};
+use crossbeam_channel::{unbounded, Receiver, Sender};
 use js_sys::JsString;
 use std::str::FromStr;
 

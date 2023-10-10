@@ -2,7 +2,6 @@ use std::{collections::VecDeque, ops::Mul, sync::Arc};
 
 use bevy::{ecs::system::SystemState, math::Vec3Swizzles, prelude::*};
 use bevy_prototype_lyon::{path::PathBuilder, prelude::*};
-use debug_panic::debug_panic;
 
 use crate::{
     debug_log,
@@ -152,13 +151,13 @@ pub fn handle_pen_tool_message(
                             let message = DocMessage::PerformOperation(command);
                             responses.push_back(message.into());
                         } else {
-                            debug_panic!("PenTool:DragMove on active node but can't find post node to translate.")
+                            println!("PenTool:DragMove on active node but can't find post node to translate.")
                         }
                     } else {
-                        debug_panic!("PenTool: No active node while dragging.");
+                        println!("PenTool: No active node while dragging.");
                     }
                 } else {
-                    debug_panic!("PenTool: No active pen object while dragging.");
+                    println!("PenTool: No active pen object while dragging.");
                 }
             }
             InputMessage::PointerDown {

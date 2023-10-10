@@ -63,7 +63,7 @@ impl Default for MyCameraTag {
 #[derive(Resource, Default)]
 pub struct CameraResource {}
 
-#[derive(Debug, Clone)]
+#[derive(Event, Debug, Clone)]
 pub enum CameraMessage {
     SetTranslate { pos: Vec3 },
     UpdateBounds { rect: Rect, padding: Vec2 },
@@ -80,24 +80,21 @@ impl Plugin for CameraPlugin {
             .add_system(move_bg_hit_plane_system) // Moves bg hit plane to follow camera
             // Raycast cursor updates
             .add_plugin(DefaultRaycastingPlugin::<RaycastSelectable>::default())
-            .add_system(
+            .add_systems(First,
                 update_raycast_selectable_with_cursor
-                    .in_base_set(CoreSet::First)
                     .before(RaycastSystem::BuildRays::<RaycastSelectable>),
             )
             .add_plugin(DefaultRaycastingPlugin::<RaycastRawInput>::default())
-            .add_system(
+            .add_systems(First,
                 update_raycast_raw_input_with_cursor
-                    .in_base_set(CoreSet::First)
                     .before(RaycastSystem::BuildRays::<RaycastRawInput>),
             )
             .add_plugin(DefaultRaycastingPlugin::<RaycastTools>::default())
-            .add_system(
+            .add_systems(First,
                 update_raycast_tool_with_cursor
-                    .in_base_set(CoreSet::First)
                     .before(RaycastSystem::BuildRays::<RaycastTools>),
             )
-            .add_system(camera_message_system.after(editor_msg_system).in_base_set(CoreSet::Update))
+            .add_systems(Update, camera_message_system.after(editor_msg_system))
             .add_startup_system(camera_startup_system);
     }
 }
