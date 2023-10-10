@@ -1,7 +1,6 @@
 mod select_tool;
 mod grab_tool;
 mod box_tool;
-mod pen_tool;
 
 use std::collections::VecDeque;
 
@@ -11,10 +10,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 
 use crate::{editor2::{frontend::FrontendMessage, input::InputMessage, msgs::Message}, debug_log};
 
-use self::{select_tool::{handle_select_tool_message, SelectToolRes}, grab_tool::handle_grab_tool_message, box_tool::handle_box_tool_message, pen_tool::handle_pen_tool_message};
-
-pub use pen_tool::ActivePenObjectTag; 
-
+use self::{select_tool::{handle_select_tool_message, SelectToolRes}, grab_tool::handle_grab_tool_message, box_tool::handle_box_tool_message};
 
 #[derive(Clone, Debug)]
 pub enum ToolMessage {
@@ -68,7 +64,6 @@ pub enum Tool {
     Select,
     Grab,
     Box,
-    Pen,
 }
 #[derive(Resource)]
 pub struct ToolResource {
@@ -164,7 +159,6 @@ pub fn handle_tool_message(world: &mut World, message: &ToolMessage, responses: 
                     Tool::Select => handle_select_tool_message(world, tool_handler_message, responses),
                     Tool::Grab => handle_grab_tool_message(world, tool_handler_message, responses),
                     Tool::Box => handle_box_tool_message(world, tool_handler_message, responses),
-                    Tool::Pen => handle_pen_tool_message(world, tool_handler_message, responses),
                 }
             } else {
                 warn!("Warning: Unhandled ToolMessage ({:?}).  Cannot convert to ToolHandlerMessage to pass to active tool.", tool_message);

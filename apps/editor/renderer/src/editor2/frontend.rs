@@ -4,28 +4,12 @@ use serde::{Serialize, Deserialize};
 
 use crate::types::Cursors;
 
-use super::{msgs::DocumentMetaData, Message, msgs::Tool};
+use super::{Message, msgs::Tool};
 
 #[derive(Clone, Debug, Serialize, Deserialize /*, specta::Type */)]
 pub enum FrontendMessageTypes {
     Init,
     DocumentsUpdated,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize /*, specta::Type */)]
-pub struct DocumentsUpdatedModel {
-    msg_type: FrontendMessageTypes,
-    active_document: Option<usize>,
-    documents: Vec<DocumentMetaData>,
-}
-impl DocumentsUpdatedModel {
-    pub fn new(documents: Vec<DocumentMetaData>, active_document: Option<usize>) -> Self {
-        Self {
-            msg_type: FrontendMessageTypes::DocumentsUpdated,
-            active_document,
-            documents,
-        }
-    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize /*, specta::Type */)]
@@ -37,7 +21,6 @@ pub enum FrontendMessage {
     Warn(String),
     Error(String),
     Init(InitModel),
-    DocumentsUpdated(DocumentsUpdatedModel),
     SetCursor(Cursors),
     SetCurrentTool(Tool),
 }

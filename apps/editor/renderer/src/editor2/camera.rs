@@ -7,7 +7,6 @@ use bevy_mod_raycast::RaycastSource;
 use bevy_mod_raycast::RaycastSystem;
 
 use crate::editor2::constants::BG_HIT_Z_INDEX;
-use crate::editor2::entities::SelectableBundle;
 use crate::editor2::msgs::editor_msg_system;
 
 // use super::EditorSet;
@@ -196,7 +195,6 @@ pub fn setup_bg_hit_plane(mut commands: Commands) {
             ..Default::default()
         },
         RaycastMesh::<RaycastRawInput>::default(),
-        SelectableBundle::default(),
         Fill::color(Color::rgb(0.2, 0.2, 0.2)),
     ));
 }

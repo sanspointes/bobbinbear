@@ -9,7 +9,7 @@ use bevy_mod_raycast::RaycastSource;
 
 use super::{
     camera::{BgHitPlane, RaycastRawInput},
-    msgs::{DocMessage, Tool, ToolMessage},
+    msgs::{Tool, ToolMessage},
     Message,
 };
 
@@ -415,32 +415,6 @@ pub fn tool_preprocess_system(
                 }
                 (ButtonState::Released, KeyCode::Key2, _, _) => {
                     msg_writer.send(ToolMessage::SwitchTool(Tool::Box).into());
-                }
-                (ButtonState::Released, KeyCode::Key3, _, _) => {
-                    msg_writer.send(ToolMessage::SwitchTool(Tool::Pen).into());
-                }
-                // Command+Z: Undo
-                (
-                    ButtonState::Released,
-                    KeyCode::Z,
-                    ButtonState::Pressed,
-                    ButtonState::Released,
-                ) => {
-                    msg_writer.send(DocMessage::PerformUndo.into());
-                }
-                // Command+Shift+Z: Redo
-                (ButtonState::Released, KeyCode::Z, ButtonState::Pressed, ButtonState::Pressed) => {
-                    msg_writer.send(DocMessage::PerformRedo.into());
-                }
-                // Command+N: New Documnet
-                (ButtonState::Released, KeyCode::N, ButtonState::Pressed, _) => {
-                    msg_writer.send(
-                        DocMessage::Create {
-                            size: Vec2::new(400., 400.),
-                            name: "Document 1".into(), // TODO: Generate unique name from number of current documents
-                        }
-                        .into(),
-                    );
                 }
                 (_, _, _, _) => {
                     should_pass_through = true;

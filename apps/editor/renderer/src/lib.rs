@@ -8,7 +8,7 @@ use std::str::FromStr;
 
 use bevy::prelude::*;
 use editor2::{
-    msgs::{DocMessage, ToolMessage, Tool},
+    msgs::{ToolMessage, Tool},
     frontend::{FrontendMessage, FrontendReceiver, FrontendSender},
     EditorPlugin, Message,
 };
@@ -22,43 +22,6 @@ pub struct EditorApi {
 
 #[wasm_bindgen]
 impl EditorApi {
-    /// Adds a new document
-    /// * `name`: Name for the document
-    /// * `width`: Width of the new document
-    /// * `height`: Height of the new document
-    pub async fn add_document(&mut self, name: JsString, width: f32, height: f32) {
-        self.dispatcher
-            .send(Message::Document(DocMessage::Create {
-                    name: name.into(),
-                    size: Vec2::new(width, height),
-            }))
-            .expect("Error adding document.");
-    }
-
-    /// Focuses a specific document
-    ///
-    /// * `id`: Id of the document you'd like to focus
-    pub async fn focus_document(&mut self, id: usize) {
-        self.dispatcher
-            .send(Message::Document(DocMessage::SetActive(id)))
-            .expect("Error focusing document.");
-    }
-
-    pub async fn delete_document(&mut self, id: usize) {
-        self.dispatcher
-            .send(Message::Document(DocMessage::Delete(id)))
-            .expect("Error deleting document.");
-    }
-
-    pub async fn resize_document(&mut self, id: usize, new_width: f32, new_height: f32) {
-        self.dispatcher
-            .send(Message::Document(DocMessage::Resize{
-                id,
-                new_size: Vec2::new(new_width, new_height),
-            }))
-            .expect("Error resizing document.");
-    }
-
     /// Set the current tool
     ///
     /// * `tool`: The tool to select
@@ -114,7 +77,7 @@ pub fn main_web(container_id: String, set_api: js_sys::Function) {
             }),
             ..default()
         }))
-        .add_plugin(EditorPlugin {})
+        .add_plugins(EditorPlugin)
         // .add_system(set_window_icon.on_startup())
         .run();
 }

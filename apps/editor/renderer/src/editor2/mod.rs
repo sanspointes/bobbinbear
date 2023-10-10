@@ -1,28 +1,24 @@
 pub mod camera;
 pub mod constants;
-pub mod entities;
 pub mod frontend;
 pub mod input;
 pub mod msgs;
-pub mod systems;
 pub mod utils;
+pub mod entities;
 
-use bevy::{prelude::*, transform::TransformSystem};
-use bevy_prototype_lyon::{plugin::BuildShapes, prelude::ShapePlugin};
+use bevy::prelude::*;
+use bevy_prototype_lyon::prelude::ShapePlugin;
 
-use self::entities::vector::debug_vector_node_order;
 pub use self::msgs::Message;
-pub use self::msgs::DocMessage;
 pub use self::msgs::ToolMessage;
 use self::{
     camera::CameraPlugin,
     frontend::{FrontendMessage, FrontendReceiver, FrontendSender, InitModel},
     input::InputProcessorPlugin,
-    msgs::{editor_msg_system, DocumentPlugin, ToolControllerPlugin},
-    systems::{calculate_vector_object_bounds, focus_rings::{update_focus_ring_styles, update_focus_ring_positions}}, entities::vector::{handle_vec_node_moved, handle_vec_object_node_updated, VectorResource},
+    msgs::{editor_msg_system, ToolControllerPlugin},
 };
 
-pub struct EditorPlugin {}
+pub struct EditorPlugin;
 
 #[derive(SystemSet, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct PostSet;
@@ -35,30 +31,18 @@ impl Plugin for EditorPlugin {
             // Internals
             .add_event::<FrontendMessage>()
             .add_event::<Message>()
-
-            .add_plugins((CameraPlugin, InputProcessorPlugin, ToolControllerPlugin, DocumentPlugin))
-
+            .add_plugins((
+                CameraPlugin,
+                InputProcessorPlugin,
+                ToolControllerPlugin,
+            ))
             .add_systems(PreUpdate, from_frontend_system)
-            .add_systems(Update, editor_msg_system)
-
-
-            // Editable Vector handle changes to nodes. 
-            .insert_resource(VectorResource::new())
-            .add_systems(Update, (
-                handle_vec_node_moved.after(editor_msg_system),
-                handle_vec_object_node_updated.after(handle_vec_node_moved)
-            ))
-
-            // Post update systems
-            .add_systems(PostUpdate, (
-                update_focus_ring_styles.before(TransformSystem::TransformPropagate),
-                calculate_vector_object_bounds.after(BuildShapes),
-                update_focus_ring_positions,
-                debug_vector_node_order,
-            ))
-        ;
+            .add_systems(Update, editor_msg_system);
         if let Some(frontend_sender) = app.world.get_resource_mut::<FrontendSender>() {
-            frontend_sender.0.send(FrontendMessage::Init(InitModel)).expect("Editor: Failed to send init message.");
+            frontend_sender
+                .0
+                .send(FrontendMessage::Init(InitModel))
+                .expect("Editor: Failed to send init message.");
         }
     }
 }
