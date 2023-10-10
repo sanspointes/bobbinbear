@@ -169,44 +169,6 @@ pub fn camera_message_system(
     }
 }
 
-// BG Hit plane, responsible for proving the background color +
-// mapping mouse events to world coordinates
-
-#[derive(Component)]
-pub struct BgHitPlane;
-
-#[derive(Debug, Clone, Reflect)]
-pub struct RaycastRawInput;
-
-pub fn setup_bg_hit_plane(mut commands: Commands) {
-    let shape = shapes::Rectangle {
-        extents: Vec2::new(10000., 10000.),
-        ..Default::default()
-    };
-    commands.spawn((
-        Name::from("BgHitPlane"),
-        BgHitPlane {},
-        ShapeBundle {
-            path: GeometryBuilder::build_as(&shape),
-            transform: Transform {
-                translation: Vec3::new(0., 0., BG_HIT_Z_INDEX),
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-        RaycastMesh::<RaycastRawInput>::default(),
-        Fill::color(Color::rgb(0.2, 0.2, 0.2)),
-    ));
-}
-pub fn move_bg_hit_plane_system(
-    cam: Query<&Transform, (With<Camera2d>, Without<BgHitPlane>)>,
-    mut bg_hit_plane: Query<&mut Transform, (With<BgHitPlane>, Without<Camera2d>)>) {
-    if let (Ok(cam_transform), Ok(mut bg_hit_transform)) = (cam.get_single(), bg_hit_plane.get_single_mut()) {
-        bg_hit_transform.translation.x = cam_transform.translation.x;
-        bg_hit_transform.translation.y = cam_transform.translation.y;
-    }
-}
-
 
 
 #[derive(Debug, Clone, Reflect)]

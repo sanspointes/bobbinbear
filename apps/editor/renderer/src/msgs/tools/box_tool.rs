@@ -4,13 +4,12 @@ use bevy::prelude::*;
 
 use crate::{
     debug_log,
-    editor2::{frontend::FrontendMessage, Message},
-    types::Cursors,
+    types::BBCursor, msgs::{Message, frontend::FrontendMsg},
 };
 
 use super::ToolHandlerMessage;
 
-pub fn handle_box_tool_message(
+pub fn msg_handler_box_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
     responses: &mut VecDeque<Message>,
@@ -18,7 +17,7 @@ pub fn handle_box_tool_message(
     match message {
         ToolHandlerMessage::OnActivate => {
             debug_log!("BoxTool::OnActivate");
-            responses.push_back(FrontendMessage::SetCursor(Cursors::Box).into());
+            responses.push_back(FrontendMsg::SetCursor(BBCursor::Box).into());
         }
         ToolHandlerMessage::OnDeactivate => {
             debug_log!("BoxTool::OnDeactivate");

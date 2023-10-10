@@ -1,15 +1,29 @@
-use serde::{Serialize, Deserialize};
-use wasm_bindgen::prelude::*;
+use bevy::prelude::*;
 
-use crate::editor2::msgs::Tool;
-
-#[derive(Clone, Debug, Serialize, Deserialize /*, specta::Type */)]
-pub enum Cursors {
+#[derive(
+    Debug,
     Default,
+    Clone,
+    Copy,
+    // Serialize,
+    // Deserialize,
+    PartialEq,
+    Eq,
+    States,
+    Hash, /*, specta::Type */
+)]
+pub enum BBTool {
+    #[default]
+    Select,
+    Grab,
+}
+
+#[derive(Debug, Clone)]
+pub enum BBCursor {
+    Default,
+    Pointer,
     Grab,
     Grabbing,
-    Box,
-    Pen,
 }
 
 #[macro_export]

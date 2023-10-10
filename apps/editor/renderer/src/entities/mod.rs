@@ -1,10 +1,4 @@
-pub mod vector;
-
 use bevy::{prelude::*, math::Vec3Swizzles};
-use bevy_mod_raycast::RaycastMesh;
-
-use super::camera::RaycastSelectable;
-
 #[derive(Component, Default)]
 pub struct DocumentTag;
 
@@ -100,14 +94,6 @@ pub enum SelectedState {
 
 #[derive(Component, Default)]
 pub struct NeedsBoundsUpdate;
-
-#[derive(Component, Default)]
-pub struct SelectableBundle {
-    pub pickable: RaycastMesh<RaycastSelectable>,
-    pub selectable: SelectableTag,
-    pub hover_state: HoveredState,
-    pub selected_state: SelectedState,
-}
 
 #[derive(Component, Default)]
 pub struct NeedsDelete;
