@@ -1,4 +1,4 @@
-use bevy::prelude::*;
+use bevy::{prelude::*, core_pipeline::clear_color::ClearColorConfig};
 
 #[derive(Component, Default)]
 pub struct CameraTag {
@@ -15,6 +15,10 @@ pub fn sys_setup_camera(mut commands: Commands) {
         Camera2dBundle {
             transform: Transform {
                 scale: Vec3::new(1., -1., 1.),
+                ..Default::default()
+            },
+            camera_2d: Camera2d {
+                clear_color: ClearColorConfig::Custom(Color::rgb_u8(230, 230, 230)),
                 ..Default::default()
             },
             ..Default::default()

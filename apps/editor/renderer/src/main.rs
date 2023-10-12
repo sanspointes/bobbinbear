@@ -43,6 +43,8 @@ use msgs::frontend::FrontendMsg;
 use wasm::FrontendReceiver;
 use wasm::FrontendSender;
 
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
+
 fn main() {
     // TODO add webview gui
     let (_from_frontend_sender, from_frontend_receiver) = unbounded::<Message>();
@@ -62,7 +64,9 @@ fn main() {
             }),
             ..default()
         }))
-        .add_plugins(EditorPlugin);
+        .add_plugins(EditorPlugin)
+        .add_plugins(WorldInspectorPlugin::default())
+    ;
 
     // #[cfg(debug_assertions)]
     // {

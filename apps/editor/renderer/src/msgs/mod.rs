@@ -1,19 +1,20 @@
 pub mod tools;
 pub mod frontend;
+pub mod keybinds;
 
 use std::collections::VecDeque;
 
 use bevy::prelude::*;
 
-use crate::wasm::FrontendSender;
+use crate::{wasm::FrontendSender, plugins::input_plugin::InputMessage};
 
-use self::frontend::FrontendMsg;
-pub use self::tools::{sys_tool_msg_handler, ToolControllerPlugin, ToolMessage};
+use self::{frontend::FrontendMsg, keybinds::msg_handler_keybinds};
+pub use self::tools::{msg_handler_tool, ToolControllerPlugin, ToolMessage};
 
 #[derive(Event, Clone, Debug)]
 pub enum Message {
     // RawInput(RawInputMessage),
-    // Input(InputMessage),
+    Input(InputMessage),
     Frontend(FrontendMsg),
     Tool(ToolMessage),
 }
@@ -26,6 +27,11 @@ impl From<FrontendMsg> for Message {
 impl From<ToolMessage> for Message {
     fn from(value: ToolMessage) -> Self {
         Self::Tool(value)
+    }
+}
+impl From<InputMessage> for Message {
+    fn from(value: InputMessage) -> Self {
+        Self::Input(value)
     }
 }
 // impl From<InputMessage> for Message {
@@ -55,7 +61,8 @@ pub fn sys_msg_handler(world: &mut World) {
         }
         iterations += 1;
         match msg {
-            Message::Tool(tool_message) => sys_tool_msg_handler(world, &tool_message, &mut messages),
+            Message::Input(input_message) => msg_handler_keybinds(world, &input_message, &mut messages),
+            Message::Tool(tool_message) => msg_handler_tool(world, &tool_message, &mut messages),
             Message::Frontend(frontend_message) => {
                 if let Some(frontend_sender) = world.get_resource_mut::<FrontendSender>() {
                     match frontend_sender.0.send(frontend_message) {

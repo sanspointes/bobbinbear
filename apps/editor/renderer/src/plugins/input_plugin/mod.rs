@@ -6,18 +6,23 @@ use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
     prelude::*,
 };
-use bevy_mod_raycast::{RaycastSource, RaycastMesh};
-use bevy_prototype_lyon::{shapes, prelude::{GeometryBuilder, ShapeBundle}};
+use bevy_mod_raycast::{
+    DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
+};
+use bevy_prototype_lyon::{
+    prelude::{Fill, GeometryBuilder, ShapeBundle},
+    shapes,
+};
 
-use crate::systems::camera::sys_setup_camera;
+use crate::systems::camera::{sys_setup_camera, CameraTag};
 
-pub use self::types::{RawInputMessage, InputMessage, ModifiersState};
+pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 
 #[derive(Debug, Clone, Reflect)]
 pub struct RaycastRawInput;
 
-const DRAG_THRESHOLD: f32 = 10.;
-const BG_HIT_Z_INDEX: f32 = 50.;
+const DRAG_THRESHOLD: f32 = 3.;
+const BG_HIT_Z_INDEX: f32 = -100.;
 
 /// The input processor plugin processes raw input (mouse down/up, move, etc)
 /// into more useful events like Click, DragStart, move, etc.
@@ -29,32 +34,28 @@ impl Plugin for InputPlugin {
         app.insert_resource(RawInputResource::default())
             .add_event::<RawInputMessage>()
             .add_event::<InputMessage>()
+            .add_plugins(DefaultRaycastingPlugin::<RaycastRawInput>::default())
             // Hit plane creation and movement
-            .add_systems(Startup, sys_setup_bg_hit_plane.before(sys_setup_camera))
-            .add_systems(PreUpdate, sys_move_bg_hit_plane)
+            .add_systems(PostStartup, sys_setup_input_plugin.before(sys_setup_camera))
             // Input events
             .add_systems(
-                PreUpdate,
-                // Convert raw inputs into
+                First,
                 (
+                    // Hit plane follows camera
+                    sys_move_bg_hit_plane,
                     // These systems take raw input events and pass them to the processor.
-                    (
-                        sys_mouse_button_input,
-                        sys_mouse_movement_input,
-                        sys_keyboard_input,
-                    ),
-                    // The processor will then 
-                    sys_raw_input_processor,
+                    sys_mouse_button_input,
+                    sys_mouse_movement_input, // This also updates the raycast ray
+                    sys_keyboard_input,
                 )
-                    .chain(),
+                    .before(RaycastSystem::BuildRays::<RaycastRawInput>)
+                    .before(sys_raw_input_processor),
             );
     }
 }
 
-
 #[derive(Resource, Default)]
 pub struct RawInputResource {
-    bg_hit_entity: Option<Entity>,
     is_dragging: bool,
     left_pressed: bool,
     // right_pressed: bool,
@@ -66,30 +67,29 @@ pub struct RawInputResource {
 
 /// Processes the Raw input events into more useful app events.
 ///
-/// * `res`: 
-/// * `ev_reader`: 
-/// * `ev_writer`: 
-/// * `bg_hit_query`: 
+/// * `res`:
+/// * `ev_reader`:
+/// * `ev_writer`:
+/// * `bg_hit_query`:
 pub fn sys_raw_input_processor(
     mut res: ResMut<RawInputResource>,
     mut ev_reader: EventReader<RawInputMessage>,
     mut ev_writer: EventWriter<InputMessage>,
-    bg_hit_query: Query<&RaycastSource<RaycastRawInput>>,
+    bg_hit_query: Query<&RaycastMesh<RaycastRawInput>, With<InputHitPlaneTag>>,
 ) {
     let mut world_point = Vec3::new(0., 0., 0.);
-    if let Some(bg_hit_entity) = res.bg_hit_entity {
-        let intersections = bg_hit_query.single().intersections();
 
-        if let Some((_, data)) = intersections
-            .iter()
-            .find(|(entity, _)| *entity == bg_hit_entity)
-        {
+    if let Ok(raycast_source) = bg_hit_query.get_single() {
+        let intersections = raycast_source.intersections();
+        dbg!(intersections.len());
+
+        if let Some((_, data)) = intersections.first() {
             world_point = data.position();
         } else {
-            // debug_log!("Warn: Input system cannot get world position of mouse!.");
+            println!("Warn: Input system cannot get world position of mouse!.");
         }
     } else {
-        // debug_log!("Warn: Input system cannot get background entity.");
+        println!("Warn: Input system cannot get background entity.");
     }
 
     for msg in ev_reader.iter() {
@@ -212,11 +212,19 @@ fn sys_mouse_button_input(
     }
 }
 
+/// Passes raw input events into the processor + updates the raycast source with current mouse
+/// position.
+///
 fn sys_mouse_movement_input(
+    mut q_raycast_source: Query<&mut RaycastSource<RaycastRawInput>>,
     mut mousebtn_events: EventReader<CursorMoved>,
     mut message_writer: EventWriter<RawInputMessage>,
 ) {
+    let mut maybe_source = q_raycast_source.get_single_mut();
     for ev in mousebtn_events.iter() {
+        if let Ok(ref mut source) = maybe_source {
+            source.cast_method = RaycastMethod::Screenspace(ev.position)
+        }
         message_writer.send(RawInputMessage::PointerMove(ev.position));
     }
 }
@@ -242,31 +250,47 @@ fn sys_keyboard_input(
 // mapping mouse events to world coordinates
 
 #[derive(Component)]
-pub struct BgHitPlane;
+pub struct InputHitPlaneTag;
 
-fn sys_setup_bg_hit_plane(mut commands: Commands) {
+/// Spawns a Raycaster hit plane for world coordinate mouse inputs + attaches the raycast
+/// source to the camera.
+///
+fn sys_setup_input_plugin(mut commands: Commands, q_camera: Query<Entity, With<CameraTag>>) {
     let shape = shapes::Rectangle {
         extents: Vec2::new(10000., 10000.),
         ..Default::default()
     };
     commands.spawn((
         Name::from("BgHitPlane"),
-        BgHitPlane {},
+        InputHitPlaneTag,
         ShapeBundle {
             path: GeometryBuilder::build_as(&shape),
             transform: Transform {
                 translation: Vec3::new(0., 0., BG_HIT_Z_INDEX),
                 ..Default::default()
             },
+
             ..Default::default()
         },
+        Fill::color(Color::rgb_u8(230, 230, 230)),
         RaycastMesh::<RaycastRawInput>::default(),
     ));
+
+    let e_camera = q_camera
+        .get_single()
+        .expect("sys_setup_input_plugin: Cannot get camera.");
+    let mut camera_commands = commands
+        .get_entity(e_camera)
+        .expect("sys_setup_input_plugin: Cannot get commands handle for camera.");
+    camera_commands.insert(RaycastSource::<RaycastRawInput>::default());
 }
 fn sys_move_bg_hit_plane(
-    cam: Query<&Transform, (With<Camera2d>, Without<BgHitPlane>)>,
-    mut bg_hit_plane: Query<&mut Transform, (With<BgHitPlane>, Without<Camera2d>)>) {
-    if let (Ok(cam_transform), Ok(mut bg_hit_transform)) = (cam.get_single(), bg_hit_plane.get_single_mut()) {
+    cam: Query<&Transform, (With<Camera2d>, Without<InputHitPlaneTag>)>,
+    mut bg_hit_plane: Query<&mut Transform, (With<InputHitPlaneTag>, Without<Camera2d>)>,
+) {
+    if let (Ok(cam_transform), Ok(mut bg_hit_transform)) =
+        (cam.get_single(), bg_hit_plane.get_single_mut())
+    {
         bg_hit_transform.translation.x = cam_transform.translation.x;
         bg_hit_transform.translation.y = cam_transform.translation.y;
     }

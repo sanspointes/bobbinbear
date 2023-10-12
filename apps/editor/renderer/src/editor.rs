@@ -4,7 +4,7 @@ use bevy_prototype_lyon::prelude::ShapePlugin;
 use crate::{
     msgs::{sys_msg_handler, frontend::FrontendMsg, Message, ToolMessage, ToolControllerPlugin},
     plugins::input_plugin::{InputPlugin, InputMessage},
-    wasm::FrontendReceiver,
+    wasm::FrontendReceiver, systems::camera::sys_setup_camera,
 };
 
 // pub use self::msgs::Message;
@@ -29,6 +29,7 @@ impl Plugin for EditorPlugin {
             .add_plugins(InputPlugin)
             .add_plugins(ToolControllerPlugin)
 
+            .add_systems(Startup, sys_setup_camera)
             .add_systems(PreUpdate, sys_handle_pre_editor_msgs)
             .add_systems(Update, sys_msg_handler);
         // if let Some(frontend_sender) = app.world.get_resource_mut::<FrontendSender>() {
@@ -53,7 +54,6 @@ fn sys_handle_pre_editor_msgs(
     }
 
     let msgs: Vec<Message> = input_msg_receiver.iter().cloned().map(|msg| {
-        let msg: ToolMessage = msg.into();
         let msg: Message = msg.into();
         msg
     }).collect();

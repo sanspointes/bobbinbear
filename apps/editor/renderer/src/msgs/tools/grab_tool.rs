@@ -39,6 +39,7 @@ pub fn msg_handler_grab_tool(
                 InputMessage::DragMove { world_offset, .. } => {
                     let (cam, mut transform, projection) = q_camera.single_mut();
                     let proj_size = projection.area.size();
+                    dbg!("{:?}", world_offset);
 
                     // The proposed new camera position
                     let delta_world = world_offset.xy();
@@ -62,6 +63,8 @@ pub fn msg_handler_grab_tool(
                         let max_safe_cam_y = max_y_boundary - proj_size.y / 2.;
                         proposed_cam_transform.y = proposed_cam_transform.y.min(max_safe_cam_y);
                     }
+
+                    println!("GrabTool: Dragging delta {:?}", delta_world);
 
                     transform.translation = proposed_cam_transform;
                 }

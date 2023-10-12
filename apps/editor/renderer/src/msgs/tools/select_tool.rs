@@ -43,13 +43,14 @@ pub fn msg_handler_select_tool(
 
     match message {
         ToolHandlerMessage::OnActivate => {
-            println!("BoxTool::OnActivate");
+            println!("SelectTool::OnActivate");
             responses.push_back(FrontendMsg::SetCursor(BBCursor::Default).into());
         }
         ToolHandlerMessage::OnDeactivate => {
-            println!("BoxTool::OnDeactivate");
+            println!("SelectTool::OnDeactivate");
         }
         ToolHandlerMessage::Input(input_message) => {
+            println!("SelectTool: {:?}", input_message);
             match input_message {
                 InputMessage::PointerMove { .. } => {
                     // let (mut selectables, rc_source, mut res) = select_sys_state.get_mut(world);

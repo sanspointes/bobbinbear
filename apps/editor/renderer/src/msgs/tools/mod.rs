@@ -27,11 +27,6 @@ pub enum ToolMessage {
     PushTool(BBTool),
     ResetToRootTool,
 }
-impl From<InputMessage> for ToolMessage {
-    fn from(value: InputMessage) -> Self {
-        Self::Input(value)
-    }
-}
 
 #[derive(Debug)]
 pub enum ToolHandlerMessage {
@@ -95,7 +90,7 @@ impl Plugin for ToolControllerPlugin {
     }
 }
 
-pub fn sys_tool_msg_handler(
+pub fn msg_handler_tool(
     world: &mut World,
     message: &ToolMessage,
     responses: &mut VecDeque<Message>,
