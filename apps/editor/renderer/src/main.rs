@@ -2,6 +2,8 @@
 // Generally these are just exposed functions that send messages.
 mod wasm;
 
+mod components;
+
 // Contains message definitions + handlers, these implement
 // the higher level behaviours of our app and modify the entities in the scene.
 mod msgs;
@@ -31,6 +33,7 @@ mod editor;
 mod types;
 mod entities;
 mod systems;
+mod utils;
 
 // #[cfg(debug_assertions)]
 use crossbeam_channel::unbounded;

@@ -1,6 +1,6 @@
 mod grab_tool;
 mod select_tool;
-// mod box_tool;
+mod box_tool;
 
 use std::collections::VecDeque;
 
@@ -11,7 +11,7 @@ use crate::{types::BBTool, plugins::input_plugin::InputMessage};
 use self::{
     // box_tool::msg_handler_box_tool,
     grab_tool::msg_handler_grab_tool,
-    select_tool::{msg_handler_select_tool, SelectToolRes},
+    select_tool::{msg_handler_select_tool, SelectToolRes}, box_tool::{msg_handler_box_tool, BoxToolResource},
 };
 
 use super::{frontend::FrontendMsg, Message};
@@ -86,7 +86,9 @@ impl Plugin for ToolControllerPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<BBTool>()
             .insert_resource(ToolResource::default())
-            .insert_resource(SelectToolRes::default());
+            .insert_resource(SelectToolRes::default())
+            .insert_resource(BoxToolResource::default())
+        ;
     }
 }
 
@@ -138,6 +140,7 @@ pub fn msg_handler_tool(
                 match res.get_current_tool() {
                     BBTool::Select => msg_handler_select_tool(world, tool_handler_message, responses),
                     BBTool::Grab => msg_handler_grab_tool(world, tool_handler_message, responses),
+                    BBTool::Box => msg_handler_box_tool(world, tool_handler_message, responses),
                 }
             } else {
                 warn!("Warning: Unhandled ToolMessage ({:?}).  Cannot convert to ToolHandlerMessage to pass to active tool.", tool_message);

@@ -39,7 +39,7 @@ wasm-bindgen = "0.2.85"
 # code size when deploying.
 console_error_panic_hook = { version = "0.1.7", optional = true }
 bevy = { version = "0.11.3", default-features = false }
-bevy_prototype_lyon = "0.9.0"
+bevy_prototype_lyon = { path = "../../../packages/bevy_prototype_lyon", features = [ "bevy_reflect" ] }
 js-sys = "0.3.64"
 wasm-bindgen-futures = "0.4.37"
 crossbeam-channel = "0.5.8"
@@ -49,6 +49,7 @@ bevy-inspector-egui = "0.19.0"
 serde_json = "1.0.107"
 serde = "1.0.188"
 web-sys = { version = "0.3.64", features = [ "console" ] }
+thiserror = "1.0.49"
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"

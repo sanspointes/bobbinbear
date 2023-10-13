@@ -16,6 +16,7 @@ pub enum BBTool {
     #[default]
     Select,
     Grab,
+    Box,
 }
 
 #[derive(Debug, Clone)]
@@ -24,6 +25,7 @@ pub enum BBCursor {
     Pointer,
     Grab,
     Grabbing,
+    Box,
 }
 
 #[macro_export]

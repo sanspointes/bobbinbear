@@ -1,3 +1,4 @@
+mod components;
 mod editor;
 mod msgs;
 mod plugins;
@@ -5,6 +6,7 @@ mod types;
 mod wasm;
 mod entities;
 mod systems;
+mod utils;
 
 use crossbeam_channel::unbounded;
 

@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, println};
 
-use bevy::{ecs::system::SystemState, math::Vec3Swizzles, prelude::*};
+use bevy::{ecs::system::SystemState, prelude::*};
 
 use crate::{
     msgs::{frontend::FrontendMsg, Message},
@@ -42,7 +42,7 @@ pub fn msg_handler_grab_tool(
                     dbg!("{:?}", world_offset);
 
                     // The proposed new camera position
-                    let delta_world = world_offset.xy();
+                    let delta_world = world_offset;
                     let mut proposed_cam_transform = transform.translation - delta_world.extend(0.);
 
                     // Check whether the proposed camera movement would be within the provided boundaries, override it if we

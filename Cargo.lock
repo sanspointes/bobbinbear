@@ -669,8 +669,6 @@ dependencies = [
 [[package]]
 name = "bevy_prototype_lyon"
 version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9e347c16caede05dc5f774ba388cefeef0ab558a5601fc6b5ffd6606bef77308"
 dependencies = [
  "bevy",
  "lyon_algorithms",
@@ -1345,6 +1343,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "87f253bc5c813ca05792837a0ff4b3a580336b224512d48f7eda1d7dd9210787"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1816,6 +1815,7 @@ dependencies = [
  "arrayvec",
  "euclid",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1826,6 +1826,7 @@ checksum = "ca507745ba7ccbc76e5c44e7b63b1a29d2b0d6126f375806a5bbaf657c7d6c45"
 dependencies = [
  "lyon_geom",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1836,6 +1837,7 @@ checksum = "7d2124218d5428149f9e09520b9acc024334a607e671f032d06567b61008977c"
 dependencies = [
  "float_next_after",
  "lyon_path",
+ "serde",
  "thiserror",
 ]
 
@@ -2414,6 +2416,7 @@ dependencies = [
  "lazy_static",
  "serde",
  "serde_json",
+ "thiserror",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "wasm-bindgen-test",

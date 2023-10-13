@@ -4,6 +4,7 @@ use std::ops::Sub;
 
 use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
+    math::Vec3Swizzles,
     prelude::*,
 };
 use bevy_mod_raycast::{
@@ -36,7 +37,7 @@ impl Plugin for InputPlugin {
             .add_event::<InputMessage>()
             .add_plugins(DefaultRaycastingPlugin::<RaycastRawInput>::default())
             // Hit plane creation and movement
-            .add_systems(PostStartup, sys_setup_input_plugin.before(sys_setup_camera))
+            .add_systems(PostStartup, sys_setup_input_plugin)
             // Input events
             .add_systems(
                 First,
@@ -49,8 +50,10 @@ impl Plugin for InputPlugin {
                     sys_keyboard_input,
                 )
                     .before(RaycastSystem::BuildRays::<RaycastRawInput>)
-                    .before(sys_raw_input_processor),
-            );
+            )
+            .add_systems(PreUpdate, sys_raw_input_processor)
+        ;
+
     }
 }
 
@@ -61,7 +64,7 @@ pub struct RawInputResource {
     // right_pressed: bool,
     cur_pos: Vec2,
     down_pos: Vec2,
-    down_pos_world: Vec3,
+    down_pos_world: Vec2,
     modifiers: ModifiersState,
 }
 
@@ -77,14 +80,13 @@ pub fn sys_raw_input_processor(
     mut ev_writer: EventWriter<InputMessage>,
     bg_hit_query: Query<&RaycastMesh<RaycastRawInput>, With<InputHitPlaneTag>>,
 ) {
-    let mut world_point = Vec3::new(0., 0., 0.);
+    let mut world_point = Vec2::new(0., 0.);
 
     if let Ok(raycast_source) = bg_hit_query.get_single() {
         let intersections = raycast_source.intersections();
-        dbg!(intersections.len());
 
         if let Some((_, data)) = intersections.first() {
-            world_point = data.position();
+            world_point = data.position().xy();
         } else {
             println!("Warn: Input system cannot get world position of mouse!.");
         }

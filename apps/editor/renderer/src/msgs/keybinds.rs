@@ -4,7 +4,7 @@ use bevy::{input::ButtonState, prelude::*};
 
 use crate::{plugins::input_plugin::InputMessage, types::BBTool};
 
-use super::{Message, ToolMessage};
+use super::{Message, ToolMessage, cmds::CmdMsg};
 
 pub fn msg_handler_keybinds(
     mut _world: &mut World,
@@ -26,13 +26,21 @@ pub fn msg_handler_keybinds(
                 responses.push_back(ToolMessage::ResetToRootTool.into());
             }
             (ButtonState::Released, KeyCode::Key1, _, _) => {
+                println!("Attempting SwitchTool BBTool::Select");
                 responses.push_back(ToolMessage::SwitchTool(BBTool::Select).into());
             }
             (ButtonState::Released, KeyCode::Key2, _, _) => {
-                // responses.push_back(ToolMessage::SwitchTool(BBTool::Select).into());
+                println!("Attempting SwitchTool BBTool::Box");
+                responses.push_back(ToolMessage::SwitchTool(BBTool::Box).into());
             }
             (ButtonState::Released, KeyCode::Key3, _, _) => {
                 // msg_writer.send(ToolMessage::SwitchTool(BBTool::Pen).into());
+            }
+            (ButtonState::Released, KeyCode::Z, ButtonState::Pressed, ButtonState::Released) => {
+                responses.push_back(CmdMsg::UndoCmd.into());
+            }
+            (ButtonState::Released, KeyCode::Z, ButtonState::Pressed, ButtonState::Pressed) => {
+                responses.push_back(CmdMsg::RedoCmd.into());
             }
             (_, _, _, _) => {
                 should_pass_through = true;
