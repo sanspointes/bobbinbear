@@ -14,7 +14,7 @@ pub fn sys_setup_camera(mut commands: Commands) {
         CameraTag::default(),
         Camera2dBundle {
             transform: Transform {
-                scale: Vec3::new(1., -1., 1.),
+                scale: Vec3::new(1., 1., 1.),
                 ..Default::default()
             },
             camera_2d: Camera2d {

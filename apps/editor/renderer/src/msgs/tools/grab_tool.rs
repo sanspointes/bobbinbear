@@ -11,7 +11,7 @@ use crate::{
     msgs::{frontend::FrontendMsg, Message},
     plugins::input_plugin::InputMessage,
     systems::camera::CameraTag,
-    types::BBCursor,
+    types::BBCursor, utils::coordinates,
 };
 
 use super::ToolHandlerMessage;
@@ -42,6 +42,7 @@ impl Default for GrabToolState {
     }
 }
 
+const VEC2_INVERSE_Y: Vec2 = Vec2::new(1., -1.);
 
 impl GrabToolState {
     /// Returns the drag end or reset of this [`GrabToolState`].
@@ -77,7 +78,7 @@ impl GrabToolState {
                 ..
             } => Ok(Self::Moving {
                 initial_translation: *initial_translation,
-                translation: initial_translation.add(initial_mouse_pos.sub(*current_mouse_pos)),
+                translation: initial_translation.add(initial_mouse_pos.sub(*current_mouse_pos).mul(VEC2_INVERSE_Y)),
                 initial_mouse_pos: *initial_mouse_pos,
             }),
         }
@@ -118,7 +119,7 @@ pub fn msg_handler_grab_tool(
 
             match input_message {
                 InputMessage::DragStart { screen_pressed, .. } => {
-                    let world_pos_2d = screen_pos_px_to_world_pos(screen_pressed, &window_size, &proj_rect);
+                    let world_pos_2d = coordinates::screen_to_world(screen_pressed, &window_size, &proj_rect);
                     let v = grab_state.drag_start(&world_pos_2d);
 
                     match &v {
@@ -126,7 +127,8 @@ pub fn msg_handler_grab_tool(
                             match new_state {
                                 GrabToolState::Moving { translation, .. } => {
                                     responses.push_back(FrontendMsg::SetCursor(BBCursor::Grabbing).into());
-                                    transform.translation = translation.extend(transform.translation.z);
+                                    transform.translation.x = translation.x;
+                                    transform.translation.y = translation.y;
                                 },
                                 _ => {},
                             }
@@ -139,14 +141,15 @@ pub fn msg_handler_grab_tool(
                     screen,
                     ..
                 } => {
-                    let world_pos_2d = screen_pos_px_to_world_pos(screen, &window_size, &proj_rect);
+                    let world_pos_2d = coordinates::screen_to_world(screen, &window_size, &proj_rect);
                     let v = grab_state.drag_move(&world_pos_2d);
 
                     match &v {
                         Ok(new_state) => {
                             match new_state {
                                 GrabToolState::Moving { translation, .. } => {
-                                    transform.translation = translation.extend(transform.translation.z);
+                                    transform.translation.x = translation.x;
+                                    transform.translation.y = translation.y;
                                 },
                                 _ => {},
                             }
@@ -159,14 +162,15 @@ pub fn msg_handler_grab_tool(
                     screen,
                     ..
                 } => {
-                    let world_pos_2d = screen_pos_px_to_world_pos(screen, &window_size, &proj_rect);
+                    let world_pos_2d = coordinates::screen_to_world(screen, &window_size, &proj_rect);
                     let v = grab_state.drag_move(&world_pos_2d);
 
                     match &v {
                         Ok(new_state) => {
                             match new_state {
                                 GrabToolState::Moving { translation, .. } => {
-                                    transform.translation = translation.extend(transform.translation.z);
+                                    transform.translation.x = translation.x;
+                                    transform.translation.y = translation.y;
                                 },
                                 _ => {},
                             }
