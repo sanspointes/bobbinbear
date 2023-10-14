@@ -36,8 +36,8 @@ impl Plugin for EditorPlugin {
             .register_type::<BBId>()
             .register_type::<BBObject>()
 
-            .register_type::<ReflectablePath>()
-            .register_type::<ReflectableFill>()
+            .register_type::<ReflectablePath>() // Also need reflection shimed path for ser/de
+            .register_type::<ReflectableFill>() // Also need reflection shimed path for ser/de
         ;
 
 

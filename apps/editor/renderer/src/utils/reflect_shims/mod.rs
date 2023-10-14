@@ -37,14 +37,14 @@ pub fn patch_world_entities_for_reflection(
         match refl_path {
             Some(refl_path) => {
                 println!("\tPatching Path -> ReflectablePath for {:?}", e);
-                world.entity_mut(e).remove::<Path>().insert(refl_path);
+                world.entity_mut(e).insert(refl_path);
             }
             None => (),
         }
         match refl_fill {
             Some(refl_fill) => {
                 println!("\tPatching Fill -> ReflectableFill for {:?}", e);
-                world.entity_mut(e).remove::<Fill>().insert(refl_fill);
+                world.entity_mut(e).insert(refl_fill);
             }
             None => (),
         }
