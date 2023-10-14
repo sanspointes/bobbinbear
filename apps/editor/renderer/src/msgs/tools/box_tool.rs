@@ -182,7 +182,7 @@ pub fn msg_handler_box_tool_input(
                     let bbid = BBId::default();
                     let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
                         let shape = shapes::Rectangle {
-                            origin: shapes::RectangleOrigin::TopLeft,
+                            origin: shapes::RectangleOrigin::BottomLeft,
                             extents: Vec2::new(100., 100.), // TODO: Convert this to a setting
                         };
                         entity.insert((
@@ -234,7 +234,7 @@ pub fn msg_handler_box_tool_input(
                 )) => {
                     let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
                         let shape = shapes::Rectangle {
-                            origin: shapes::RectangleOrigin::TopLeft,
+                            origin: shapes::RectangleOrigin::BottomLeft,
                             extents: box_extents,
                         };
                         entity.insert((
@@ -278,7 +278,7 @@ pub fn msg_handler_box_tool_input(
                     },
                 )) => {
                     let shape = shapes::Rectangle {
-                        origin: shapes::RectangleOrigin::TopLeft,
+                        origin: shapes::RectangleOrigin::BottomLeft,
                         extents: box_extents,
                     };
                     let path = GeometryBuilder::build_as(&shape).0;
@@ -306,7 +306,7 @@ pub fn msg_handler_box_tool_input(
                     ToolState::None,
                 )) => {
                     let shape = shapes::Rectangle {
-                        origin: shapes::RectangleOrigin::TopLeft,
+                        origin: shapes::RectangleOrigin::BottomLeft,
                         extents: box_extents,
                     };
                     let path = GeometryBuilder::build_as(&shape).0;
