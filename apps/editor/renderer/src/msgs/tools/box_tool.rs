@@ -199,7 +199,7 @@ pub fn msg_handler_box_tool_input(
 
                     match cmd_result {
                         Ok(cmd) => responses.push_back(CmdMsg::execute_from_cmd(cmd).into()),
-                        Err(reason) => println!(
+                        Err(reason) => error!(
                             "Error performing .start_making_box on box_tool \"{reason:?}\"."
                         ),
                     }
@@ -251,7 +251,7 @@ pub fn msg_handler_box_tool_input(
 
                     match cmd_result {
                         Ok(cmd) => responses.push_back(CmdMsg::execute_from_cmd(cmd).into()),
-                        Err(reason) => println!(
+                        Err(reason) => error!(
                             "Error performing .start_making_box on box_tool \"{reason:?}\"."
                         ),
                     }

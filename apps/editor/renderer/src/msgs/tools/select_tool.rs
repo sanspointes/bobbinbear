@@ -43,11 +43,11 @@ pub fn msg_handler_select_tool(
 
     match message {
         ToolHandlerMessage::OnActivate => {
-            println!("SelectTool::OnActivate");
+            debug!("SelectTool::OnActivate");
             responses.push_back(FrontendMsg::SetCursor(BBCursor::Default).into());
         }
         ToolHandlerMessage::OnDeactivate => {
-            println!("SelectTool::OnDeactivate");
+            debug!("SelectTool::OnDeactivate");
         }
         ToolHandlerMessage::Input(input_message) => {
             match input_message {

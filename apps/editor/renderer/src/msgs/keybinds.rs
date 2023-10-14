@@ -26,11 +26,9 @@ pub fn msg_handler_keybinds(
                 responses.push_back(ToolMessage::ResetToRootTool.into());
             }
             (ButtonState::Released, KeyCode::Key1, _, _) => {
-                println!("Attempting SwitchTool BBTool::Select");
                 responses.push_back(ToolMessage::SwitchTool(BBTool::Select).into());
             }
             (ButtonState::Released, KeyCode::Key2, _, _) => {
-                println!("Attempting SwitchTool BBTool::Box");
                 responses.push_back(ToolMessage::SwitchTool(BBTool::Box).into());
             }
             (ButtonState::Released, KeyCode::Key3, _, _) => {

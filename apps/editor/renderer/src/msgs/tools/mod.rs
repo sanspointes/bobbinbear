@@ -64,6 +64,8 @@ impl ToolResource {
         *self.tool_stack.last().unwrap_or(&BBTool::Select)
     }
 
+    // TODO: Move this logic out of this resource.  Probably just manualy handle OnActive /
+    // OnDeactivate without using the message que.
     fn generate_frontend_message(&mut self, responses: &mut VecDeque<Message>) {
         let new_current_tool = self.get_current_tool();
 

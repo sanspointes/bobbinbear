@@ -2,6 +2,7 @@ mod reflectable_fill;
 mod reflectable_path;
 
 use bevy::ecs::query::QueryEntityError;
+use bevy::utils::tracing::field::debug;
 use bevy::{ecs::system::SystemState, prelude::*};
 use bevy_prototype_lyon::prelude::*;
 
@@ -36,14 +37,14 @@ pub fn patch_world_entities_for_reflection(
     for (e, refl_path, refl_fill) in to_apply {
         match refl_path {
             Some(refl_path) => {
-                println!("\tPatching Path -> ReflectablePath for {:?}", e);
+                debug!("\tPatching Path -> ReflectablePath for {:?}", e);
                 world.entity_mut(e).insert(refl_path);
             }
             None => (),
         }
         match refl_fill {
             Some(refl_fill) => {
-                println!("\tPatching Fill -> ReflectableFill for {:?}", e);
+                debug!("\tPatching Fill -> ReflectableFill for {:?}", e);
                 world.entity_mut(e).insert(refl_fill);
             }
             None => (),
@@ -57,12 +58,14 @@ pub fn patch_world_subhierarchy_for_reflection(
     world: &mut World,
     entity: Entity,
 ) -> Result<Vec<Entity>, QueryEntityError> {
-    println!("\nPatching world for reflection/serialisation.");
-
-    println!("\tpre-patch: {entity:?}");
-    let cmps = world.inspect_entity(entity);
-    for cmp in cmps {
-        println!("\t\t - {:?}", cmp.name());
+    #[cfg(debug_assertions)]
+    {
+        debug!("Patching world for reflection/serialisation.");
+        debug!("\tpre-patch: {entity:?}");
+        let cmps = world.inspect_entity(entity);
+        for cmp in cmps {
+            debug!("\t\t - {:?}", cmp.name());
+        }
     }
 
     let mut sys_state: SystemState<Query<Option<&Children>>> = SystemState::new(world);
@@ -72,12 +75,14 @@ pub fn patch_world_subhierarchy_for_reflection(
 
     patch_world_entities_for_reflection(world, &entities)?;
 
-    println!("\tpost-patch: {entity:?}");
-    let cmps = world.inspect_entity(entity);
-    for cmp in cmps {
-        println!("\t\t - {:?}", cmp.name());
+    #[cfg(debug_assertions)]
+    {
+        debug!("\tpost-patch: {entity:?}");
+        let cmps = world.inspect_entity(entity);
+        for cmp in cmps {
+            debug!("\t\t - {:?}", cmp.name());
+        }
     }
-    println!("\n");
 
     Ok(entities)
 }
@@ -108,14 +113,12 @@ pub fn patch_world_entities_for_playback(
     for (e, lyon_path, lyon_fill) in to_apply {
         match lyon_path {
             Some(lyon_path) => {
-                println!("\tPatching ReflectablePath -> Path for {:?}", e);
                 world.entity_mut(e).remove::<ReflectablePath>().insert(lyon_path);
             }
             None => (),
         }
         match lyon_fill {
             Some(lyon_fill) => {
-                println!("\tPatching ReflectableFill -> Fill for {:?}", e);
                 world.entity_mut(e).remove::<ReflectableFill>().insert(lyon_fill);
             }
             None => (),
@@ -129,12 +132,14 @@ pub fn patch_world_subhierarchy_for_playback(
     world: &mut World,
     entity: Entity,
 ) -> Result<Vec<Entity>, QueryEntityError> {
-    println!("\nPatching world for playback/deserialisation.");
-
-    println!("\tpre-patch: {entity:?}");
-    let cmps = world.inspect_entity(entity);
-    for cmp in cmps {
-        println!("\t\t - {:?}", cmp.name());
+    #[cfg(debug_assertions)]
+    {
+        debug!("Patching world for playback/deserialisation.");
+        debug!("\tpre-patch: {entity:?}");
+        let cmps = world.inspect_entity(entity);
+        for cmp in cmps {
+            debug!("\t\t - {:?}", cmp.name());
+        }
     }
 
     let mut sys_state: SystemState<Query<Option<&Children>>> = SystemState::new(world);
@@ -144,12 +149,15 @@ pub fn patch_world_subhierarchy_for_playback(
 
     patch_world_entities_for_playback(world, &entities)?;
 
-    println!("\tpost-patch: {entity:?}");
-    let cmps = world.inspect_entity(entity);
-    for cmp in cmps {
-        println!("\t\t - {:?}", cmp.name());
+    #[cfg(debug_assertions)]
+    {
+        debug!("\tpost-patch: {entity:?}");
+        let cmps = world.inspect_entity(entity);
+        for cmp in cmps {
+            debug!("\t\t - {:?}", cmp.name());
+        }
+        debug!("\n");
     }
-    println!("\n");
 
     Ok(entities)
 }

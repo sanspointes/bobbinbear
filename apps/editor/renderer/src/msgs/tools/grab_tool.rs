@@ -25,11 +25,11 @@ pub fn msg_handler_grab_tool(
 
     match message {
         ToolHandlerMessage::OnActivate => {
-            println!("GrabTool::OnActivate");
+            debug!("GrabTool::OnActivate");
             responses.push_back(FrontendMsg::SetCursor(BBCursor::Grab).into());
         }
         ToolHandlerMessage::OnDeactivate => {
-            println!("GrabTool::OnDeactivate");
+            debug!("GrabTool::OnDeactivate");
         }
         ToolHandlerMessage::Input(input_message) => {
             match input_message {
@@ -63,8 +63,6 @@ pub fn msg_handler_grab_tool(
                         let max_safe_cam_y = max_y_boundary - proj_size.y / 2.;
                         proposed_cam_transform.y = proposed_cam_transform.y.min(max_safe_cam_y);
                     }
-
-                    println!("GrabTool: Dragging delta {:?}", delta_world);
 
                     transform.translation = proposed_cam_transform;
                 }

@@ -11,8 +11,9 @@ mod utils;
 use crossbeam_channel::unbounded;
 
 use bevy::prelude::*;
-use editor::EditorPlugin;
+use editor::{EditorPlugin, start_bobbin_bear};
 use msgs::{Message, frontend::FrontendMsg};
+use wasm::{FrontendReceiver, FrontendSender};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 // web app entry_point
@@ -24,31 +25,21 @@ pub fn main_web(container_id: String, set_api: js_sys::Function) {
     let (_from_frontend_sender, from_frontend_receiver) = unbounded::<Message>();
     let (to_frontend_sender, _to_frontend_receiver) = unbounded::<FrontendMsg>();
 
-    // let api = EditorApi {
-    //     dispatcher: from_frontend_sender,
-    //     receiver: to_frontend_receiver,
-    // };
-    // set_api
-    //     .call1(&JsValue::undefined(), &JsValue::from(api))
-    //     .expect("Error sending api.");
+    let default_plugins = DefaultPlugins.set(WindowPlugin {
+        primary_window: Some(Window {
+            title: "Bobbin Bear :: Embroidery Editor".to_string(),
+            resolution: (800., 600.).into(),
+            canvas: Some(container_id),
+            fit_canvas_to_parent: true,
+            ..Default::default()
+        }),
+        ..Default::default()
+    });
 
-    App::new()
-        .insert_resource(Msaa::Off)
-        .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)))
-        .add_event::<Message>()
-        // .insert_resource(FrontendReceiver(from_frontend_receiver))
-        // .insert_resource(FrontendSender(to_frontend_sender))
-        .add_plugins(DefaultPlugins.set(WindowPlugin {
-            primary_window: Some(Window {
-                title: "Bevy game".to_string(), // ToDo
-                resolution: (800., 600.).into(),
-                canvas: Some(container_id),
-                fit_canvas_to_parent: true,
-                ..default()
-            }),
-            ..default()
-        }))
-        .add_plugins(EditorPlugin)
-        // .add_system(set_window_icon.on_startup())
-        .run();
+    let mut app = start_bobbin_bear(default_plugins);
+
+    app.insert_resource(FrontendReceiver(from_frontend_receiver))
+        .insert_resource(FrontendSender(to_frontend_sender));
+
+    app.run()
 }

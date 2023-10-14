@@ -1,5 +1,8 @@
-use bevy::{prelude::*, utils::Uuid};
+use bevy::{prelude::*, log::LogPlugin, app::PluginGroupBuilder};
 use bevy_prototype_lyon::prelude::*;
+
+#[cfg(feature = "inspector")]
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
     msgs::{sys_msg_handler, frontend::FrontendMsg, Message, ToolControllerPlugin, cmds::CmdPlugin},
@@ -7,14 +10,34 @@ use crate::{
     wasm::FrontendReceiver, systems::camera::sys_setup_camera, components::{bbid::BBId, scene::BBObject}, utils::reflect_shims::{ReflectablePath, ReflectableFill},
 };
 
-// pub use self::msgs::Message;
-// pub use self::msgs::ToolMessage;
-// use self::{
-//     camera::CameraPlugin,
-//     frontend::{FrontendMessage, FrontendReceiver, FrontendSender, InitModel},
-//     input::InputProcessorPlugin,
-//     msgs::{editor_msg_system, ToolControllerPlugin},
-// };
+pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
+    #[cfg(debug_assertions)]
+    let default_plugins = default_plugins.set(LogPlugin {
+        level: bevy::log::Level::DEBUG,
+        filter: "debug,wgpu_core=warn,wgpu_hal=warn,naga=warn,bevy_render=info,bevy_app=info,mygame=debug".into(),
+    });
+
+    // this code is compiled only if debug assertions are disabled (release mode)
+    #[cfg(not(debug_assertions))]
+    let default_plugins = default_plugins.set(LogPlugin {
+        level: bevy::log::Level::INFO,
+        filter: "info,wgpu_core=warn,wgpu_hal=warn,naga=info,bevy_app=info,bevy_render=info".into(),
+    });
+
+    let mut app = App::new();
+
+    app.add_plugins(default_plugins)
+        .add_plugins(EditorPlugin);
+
+    #[cfg(feature = "inspector")]
+    app.add_plugins(WorldInspectorPlugin::default());
+
+    app.insert_resource(Msaa::Off)
+        .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)));
+
+
+    app
+}
 
 pub struct EditorPlugin;
 

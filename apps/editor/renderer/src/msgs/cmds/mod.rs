@@ -70,11 +70,11 @@ pub fn msg_handler_cmds(
     match message {
         CmdMsg::ExecuteCmd(cmd) => {
             let mut unlocked_cmd = cmd.lock().unwrap();
-            println!("CmdMsg::ExecuteCmd -> {}", unlocked_cmd);
+            debug!("CmdMsg::ExecuteCmd -> {}", unlocked_cmd);
             let result = unlocked_cmd.execute(world);
 
             if let Err(reason) = result {
-                println!("Failed to execute command {unlocked_cmd} with reason: \n - {reason:?}.");
+                error!("Failed to execute command {unlocked_cmd} with reason: \n - {reason:?}.");
             }
 
             let mut cmd_resource = world.resource_mut::<CmdResource>();
@@ -89,18 +89,18 @@ pub fn msg_handler_cmds(
             match cmd {
                 Some(cmd) => {
                     let mut unlocked_cmd = cmd.lock().unwrap();
-                    println!("CmdMsg::UndoCmd -> {}", unlocked_cmd);
+                    debug!("CmdMsg::UndoCmd -> {}", unlocked_cmd);
                     let result = unlocked_cmd.undo(world);
 
                     if let Err(reason) = result {
-                        println!("Failed to undo command {unlocked_cmd} with reason: \n - {reason:?}.");
+                        error!("Failed to undo command {unlocked_cmd} with reason: \n - {reason:?}.");
                     }
 
                     let mut cmd_resource = world.resource_mut::<CmdResource>();
                     cmd_resource.redo_stack.push(cmd.clone());
                 }
                 None => {
-                    println!("Nothing to undo.  TODO: Notify frontend.");
+                    debug!("Nothing to undo.  TODO: Notify frontend.");
                 }
             }
         }
@@ -112,18 +112,18 @@ pub fn msg_handler_cmds(
             match cmd {
                 Some(cmd) => {
                     let mut unlocked_cmd = cmd.lock().unwrap();
-                    println!("CmdMsg::RedoCmd -> {}", unlocked_cmd);
+                    debug!("CmdMsg::RedoCmd -> {}", unlocked_cmd);
                     let result = unlocked_cmd.execute(world);
 
                     if let Err(reason) = result {
-                        println!("Failed to redo command {unlocked_cmd} with reason: \n - {reason:?}.");
+                        debug!("Failed to redo command {unlocked_cmd} with reason: \n - {reason:?}.");
                     }
 
                     let mut cmd_resource = world.resource_mut::<CmdResource>();
                     cmd_resource.undo_stack.push(cmd.clone());
                 }
                 None => {
-                    println!("Nothing to undo.  TODO: Notify frontend.");
+                    debug!("Nothing to undo.  TODO: Notify frontend.");
                 }
             }
         }

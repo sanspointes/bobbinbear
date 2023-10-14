@@ -9,7 +9,7 @@ pub struct CameraTag {
 }
 
 pub fn sys_setup_camera(mut commands: Commands) {
-    println!("sys_setup_camera: Setting up camera.");
+    debug!("sys_setup_camera: Setting up camera.");
     commands.spawn((
         CameraTag::default(),
         Camera2dBundle {

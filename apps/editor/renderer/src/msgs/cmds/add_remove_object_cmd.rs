@@ -100,7 +100,6 @@ impl AddObjectCmd {
         let dynamic_scene = builder.build();
 
         let type_registry = world.resource::<AppTypeRegistry>();
-        println!("dynamic_scene as serialize_ron: {:?}", dynamic_scene.serialize_ron(&type_registry));
 
         world.entity_mut(entity).despawn_recursive();
 

@@ -88,10 +88,10 @@ pub fn sys_raw_input_processor(
         if let Some((_, data)) = intersections.first() {
             world_point = data.position().xy();
         } else {
-            println!("Warn: Input system cannot get world position of mouse!.");
+            warn!("Warn: Input system cannot get world position of mouse!.");
         }
     } else {
-        println!("Warn: Input system cannot get background entity.");
+        warn!("Warn: Input system cannot get background entity.");
     }
 
     for msg in ev_reader.iter() {
