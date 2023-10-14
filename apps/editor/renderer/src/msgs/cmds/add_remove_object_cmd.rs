@@ -1,7 +1,7 @@
 use std::fmt::{Debug, Display};
 
 use bevy::{
-    ecs::{entity::EntityMap, system::SystemState, world::EntityMut},
+    ecs::{entity::EntityMap, query::QueryEntityError, world::EntityMut},
     prelude::*,
     scene::SceneSpawnError,
 };
@@ -9,10 +9,7 @@ use thiserror::Error;
 
 use crate::{
     components::bbid::{BBId, BBIdUtils},
-    utils::{
-        reflect_shims::{patch_world_for_playback, patch_world_for_reflection},
-        scene::get_all_children_recursive,
-    },
+    utils::reflect_shims::{patch_world_subhierarchy_for_reflection, patch_world_subhierarchy_for_playback},
 };
 
 use super::{Cmd, CmdError};
@@ -27,6 +24,8 @@ pub enum AddRemoveObjectError {
     CantFindTargetParent(BBId),
     #[error("Error spawning scene. {0:?}")]
     SpawnError(SceneSpawnError),
+    #[error("Error querying entity. {0:?}")]
+    QueryEntityError(QueryEntityError),
 }
 impl From<AddRemoveObjectError> for CmdError {
     fn from(value: AddRemoveObjectError) -> Self {
@@ -44,7 +43,7 @@ impl Display for AddObjectCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let parent_string = match self.parent {
             Some(parent) => parent.to_string(),
-            None => String::from("None"),
+            None => String::from("Scene Root"),
         };
         write!(
             f,
@@ -90,9 +89,18 @@ impl AddObjectCmd {
             .cloned()
             .ok_or(AddRemoveObjectError::CantFindEntity(entity))?;
 
+        let entities = patch_world_subhierarchy_for_reflection(world, entity)
+            .map_err(|err| AddRemoveObjectError::QueryEntityError(err))?;
+
+        for e in entities.iter() {
+        }
+
         let mut builder = DynamicSceneBuilder::from_world(&world);
-        builder.extract_entity(entity);
+        builder.extract_entities(entities.into_iter());
         let dynamic_scene = builder.build();
+
+        let type_registry = world.resource::<AppTypeRegistry>();
+        println!("dynamic_scene as serialize_ron: {:?}", dynamic_scene.serialize_ron(&type_registry));
 
         world.entity_mut(entity).despawn_recursive();
 
@@ -102,31 +110,6 @@ impl AddObjectCmd {
             scene: Some(dynamic_scene),
         })
     }
-}
-
-fn dynamic_scene_from_entity(world: &mut World, entity: Entity) -> DynamicScene {
-    let children = {
-        let mut sys_state: SystemState<Query<Option<&Children>>> = SystemState::new(world);
-        let children_query = sys_state.get(world);
-
-        let mut children: Vec<Entity> = Vec::new();
-        get_all_children_recursive(entity, &children_query, &mut children);
-
-        println!(
-            "dynamic_scene_from_entity found {} children. {:?}",
-            children.len(),
-            children
-        );
-        children
-    };
-
-    patch_world_for_reflection(world);
-
-    let mut builder = DynamicSceneBuilder::from_world(world);
-    builder.extract_entities(children.into_iter());
-    let scene = builder.build();
-
-    scene
 }
 
 impl Cmd for AddObjectCmd {
@@ -152,7 +135,8 @@ impl Cmd for AddObjectCmd {
                     self.entity_bbid,
                 )))?;
 
-        println!("Found bbid: {:?} as {:?}", self.entity_bbid, target_entity);
+        patch_world_subhierarchy_for_playback(world, target_entity)
+            .map_err(|err| CmdError::CustomError(Box::new(err)))?;
 
         let maybe_parent = match self.parent {
             Some(parent) => match world.get_entity_id_by_bbid(parent) {
@@ -166,8 +150,6 @@ impl Cmd for AddObjectCmd {
         if let Some(parent) = maybe_parent {
             world.entity_mut(target_entity).set_parent(parent);
         }
-
-        patch_world_for_playback(world);
 
         Ok(())
     }
@@ -184,7 +166,11 @@ impl Cmd for AddObjectCmd {
                 self.entity_bbid,
             )))?;
 
-        let scene = dynamic_scene_from_entity(world, target_entity);
+        let entities = patch_world_subhierarchy_for_reflection(world, target_entity)
+            .map_err(|err| CmdError::CustomError(Box::new(err)))?;
+        let mut builder = DynamicSceneBuilder::from_world(world);
+        builder.extract_entities(entities.into_iter());
+        let scene = builder.build();
 
         self.scene = Some(scene);
 

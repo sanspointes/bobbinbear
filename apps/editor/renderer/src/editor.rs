@@ -4,7 +4,7 @@ use bevy_prototype_lyon::prelude::*;
 use crate::{
     msgs::{sys_msg_handler, frontend::FrontendMsg, Message, ToolControllerPlugin, cmds::CmdPlugin},
     plugins::input_plugin::{InputPlugin, InputMessage},
-    wasm::FrontendReceiver, systems::camera::sys_setup_camera, components::{bbid::BBId, scene::BBObject}, utils::reflect_shims::ReflectablePath,
+    wasm::FrontendReceiver, systems::camera::sys_setup_camera, components::{bbid::BBId, scene::BBObject}, utils::reflect_shims::{ReflectablePath, ReflectableFill},
 };
 
 // pub use self::msgs::Message;
@@ -37,6 +37,7 @@ impl Plugin for EditorPlugin {
             .register_type::<BBObject>()
 
             .register_type::<ReflectablePath>()
+            .register_type::<ReflectableFill>()
         ;
 
 

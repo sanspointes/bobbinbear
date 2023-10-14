@@ -26,7 +26,7 @@ dev = ["bevy/bevy_dylib"]
 # Desktop
 # default = ["bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_pbr", "bevy/bevy_render", "bevy/bevy_sprite", "bevy/png", "tracing/release_max_level_warn", "tracing/max_level_trace"]
 # Wasm
-default = ["bevy/dynamic_linking", "bevy/x11", "bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "console_error_panic_hook"]
+default = ["bevy/dynamic_linking", "bevy/x11", "bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "console_error_panic_hook"]
 
 linux = []
 
