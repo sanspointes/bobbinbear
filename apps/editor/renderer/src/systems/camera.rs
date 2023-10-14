@@ -1,4 +1,6 @@
-use bevy::{prelude::*, core_pipeline::clear_color::ClearColorConfig};
+use bevy::{prelude::*, core_pipeline::clear_color::ClearColorConfig, render::view::RenderLayers};
+
+use crate::constants::BB_LAYER_SCENE;
 
 #[derive(Component, Default)]
 pub struct CameraTag {
@@ -11,6 +13,7 @@ pub struct CameraTag {
 pub fn sys_setup_camera(mut commands: Commands) {
     debug!("sys_setup_camera: Setting up camera.");
     commands.spawn((
+        Name::from("Camera"),
         CameraTag::default(),
         Camera2dBundle {
             transform: Transform {
@@ -23,5 +26,7 @@ pub fn sys_setup_camera(mut commands: Commands) {
             },
             ..Default::default()
         },
+        ComputedVisibility::default(),
+        RenderLayers::layer(BB_LAYER_SCENE),
     ));
 }
