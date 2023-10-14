@@ -129,7 +129,7 @@ impl ToolState {
 }
 
 #[derive(Resource, Default)]
-pub struct BoxToolResource {
+pub struct BoxToolRes {
     state: ToolState,
 }
 
@@ -161,15 +161,11 @@ pub fn msg_handler_box_tool_input(
     message: &InputMessage,
     responses: &mut VecDeque<Message>,
 ) {
-    let mut sys_state: SystemState<(ResMut<BoxToolResource>,)> = SystemState::new(world);
+    let mut sys_state: SystemState<(ResMut<BoxToolRes>,)> = SystemState::new(world);
 
     let mut res = sys_state.get_mut(world).0;
 
     match message {
-        InputMessage::PointerMove { screen, world, .. } => {
-            dbg!(world);
-            dbg!(screen);
-        }
         // On Click we try make a default box
         InputMessage::PointerClick {
             world: world_pressed,

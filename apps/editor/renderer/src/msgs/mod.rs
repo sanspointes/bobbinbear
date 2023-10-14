@@ -10,7 +10,7 @@ use bevy::prelude::*;
 use crate::{wasm::FrontendSender, plugins::input_plugin::InputMessage};
 
 use self::{frontend::FrontendMsg, keybinds::msg_handler_keybinds, cmds::{CmdMsg, msg_handler_cmds}};
-pub use self::tools::{msg_handler_tool, ToolControllerPlugin, ToolMessage};
+pub use self::tools::{msg_handler_tool, ToolMsgPlugin, ToolMessage};
 
 #[derive(Event, Clone, Debug)]
 pub enum Message {
@@ -41,11 +41,6 @@ impl From<CmdMsg> for Message {
         Self::Cmd(value)
     }
 }
-// impl From<InputMessage> for Message {
-//     fn from(value: InputMessage) -> Self {
-//         Self::Tool(ToolMessage::Input(value))
-//     }
-// }
 
 /// Entry point for a lot of the non-trivial interactivity of the system.
 /// A lot of it requires exclusive world access and thus runs in a single thread.

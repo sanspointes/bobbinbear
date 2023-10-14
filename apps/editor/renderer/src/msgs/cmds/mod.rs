@@ -79,9 +79,9 @@ pub struct CmdResource {
     redo_stack: Vec<CmdType>,
     undo_stack: Vec<CmdType>,
 }
-pub struct CmdPlugin;
+pub struct CmdMsgPlugin;
 
-impl Plugin for CmdPlugin {
+impl Plugin for CmdMsgPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(CmdResource::default());
     }

@@ -40,14 +40,11 @@ use crossbeam_channel::unbounded;
 
 use bevy::prelude::*;
 use bevy::DefaultPlugins;
-use editor::EditorPlugin;
 use editor::start_bobbin_bear;
 use msgs::Message;
 use msgs::frontend::FrontendMsg;
 use wasm::FrontendReceiver;
 use wasm::FrontendSender;
-
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
     // TODO add webview gui

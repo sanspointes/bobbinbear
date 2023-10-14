@@ -1,6 +1,11 @@
-use std::{collections::VecDeque, println};
+use std::{
+    collections::VecDeque,
+    ops::{Add, Div, Mul, Sub},
+    println, default,
+};
 
-use bevy::{ecs::system::SystemState, prelude::*};
+use anyhow::anyhow;
+use bevy::{ecs::system::SystemState, prelude::*, window::PrimaryWindow};
 
 use crate::{
     msgs::{frontend::FrontendMsg, Message},
@@ -11,17 +16,88 @@ use crate::{
 
 use super::ToolHandlerMessage;
 
+fn screen_pos_px_to_world_pos(screen_pos: &Vec2, window_size: &Vec2, proj_rect: &Rect) -> Vec2 {
+    let norm_pos = screen_pos.div(*window_size);
+    norm_pos.mul_add(proj_rect.size(), proj_rect.min)
+}
+
+#[derive(Resource, Clone)]
+pub enum GrabToolState {
+    None {
+        // Stores the current translation of the camera
+        translation: Vec2,
+    },
+    Moving {
+        // Stores the current translation of the camera
+        translation: Vec2,
+        // Stores the initial translation position when moving started
+        initial_translation: Vec2,
+        // Stores the initial position of the mouse in the world.
+        initial_mouse_pos: Vec2,
+    },
+}
+impl Default for GrabToolState {
+    fn default() -> Self {
+        Self::None { translation: Vec2::ZERO }
+    }
+}
+
+
+impl GrabToolState {
+    /// Returns the drag end or reset of this [`GrabToolState`].
+    fn drag_end_or_reset(&self) -> Self {
+        match self {
+            Self::None { translation } => Self::None { translation: *translation },
+            Self::Moving { translation, .. } => Self::None { translation: *translation },
+        }
+    }
+
+    /// .
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if .
+    fn drag_start(&self, initial_mouse_pos: &Vec2) -> Result<Self, anyhow::Error> {
+        match self {
+            Self::None { translation } => Ok(Self::Moving {
+                translation: *translation,
+                initial_translation: *translation,
+                initial_mouse_pos: initial_mouse_pos.clone(),
+            }),
+            _ => Err(anyhow!("Invalid state transition")),
+        }
+    }
+
+    fn drag_move(&self, current_mouse_pos: &Vec2) -> Result<Self, anyhow::Error> {
+        match self {
+            Self::None { .. } => Err(anyhow!("Invalid state transition")),
+            Self::Moving {
+                initial_mouse_pos,
+                initial_translation,
+                ..
+            } => Ok(Self::Moving {
+                initial_translation: *initial_translation,
+                translation: initial_translation.add(initial_mouse_pos.sub(*current_mouse_pos)),
+                initial_mouse_pos: *initial_mouse_pos,
+            }),
+        }
+    }
+}
+
 pub fn msg_handler_grab_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
     responses: &mut VecDeque<Message>,
 ) {
     let mut grab_sys_state: SystemState<(
+        ResMut<GrabToolState>,
         // Current Camera
-        Query<(&CameraTag, &mut Transform, &OrthographicProjection)>,
+        Query<(&mut Transform, &OrthographicProjection), With<CameraTag>>,
+        // Primary window query
+        Query<&Window, With<PrimaryWindow>>,
     )> = SystemState::new(world);
 
-    let mut q_camera = grab_sys_state.get_mut(world).0;
+    let (mut grab_state, mut q_camera, q_primary_window) = grab_sys_state.get_mut(world);
 
     match message {
         ToolHandlerMessage::OnActivate => {
@@ -32,51 +108,72 @@ pub fn msg_handler_grab_tool(
             debug!("GrabTool::OnDeactivate");
         }
         ToolHandlerMessage::Input(input_message) => {
+            let (mut transform, projection) = q_camera.single_mut();
+            let proj_rect = projection.area;
+            let window_size = {
+                let win = q_primary_window.single();
+                Vec2::new(win.width(), win.height())
+            };
+
+
             match input_message {
-                InputMessage::DragStart { .. } => {
-                    responses.push_back(FrontendMsg::SetCursor(BBCursor::Grabbing).into());
+                InputMessage::DragStart { screen_pressed, .. } => {
+                    let world_pos_2d = screen_pos_px_to_world_pos(screen_pressed, &window_size, &proj_rect);
+                    let v = grab_state.drag_start(&world_pos_2d);
+
+                    match &v {
+                        Ok(new_state) => {
+                            match new_state {
+                                GrabToolState::Moving { translation, .. } => {
+                                    responses.push_back(FrontendMsg::SetCursor(BBCursor::Grabbing).into());
+                                    transform.translation = translation.extend(transform.translation.z);
+                                },
+                                _ => {},
+                            }
+                            *grab_state = new_state.clone();
+                        }
+                        Err(_) => {},
+                    }
                 }
-                InputMessage::DragMove { world_offset, .. } => {
-                    let (cam, mut transform, projection) = q_camera.single_mut();
-                    let proj_size = projection.area.size();
-                    dbg!("{:?}", world_offset);
-
-                    // The proposed new camera position
-                    let delta_world = world_offset;
-                    let mut proposed_cam_transform = transform.translation - delta_world.extend(0.);
-
-                    // Check whether the proposed camera movement would be within the provided boundaries, override it if we
-                    // need to do so to stay within bounds.
-                    if let Some(min_x_boundary) = cam.min_x {
-                        let min_safe_cam_x = min_x_boundary + proj_size.x / 2.;
-                        proposed_cam_transform.x = proposed_cam_transform.x.max(min_safe_cam_x);
-                    }
-                    if let Some(max_x_boundary) = cam.max_x {
-                        let max_safe_cam_x = max_x_boundary - proj_size.x / 2.;
-                        proposed_cam_transform.x = proposed_cam_transform.x.min(max_safe_cam_x);
-                    }
-                    if let Some(min_y_boundary) = cam.min_y {
-                        let min_safe_cam_y = min_y_boundary + proj_size.y / 2.;
-                        proposed_cam_transform.y = proposed_cam_transform.y.max(min_safe_cam_y);
-                    }
-                    if let Some(max_y_boundary) = cam.max_y {
-                        let max_safe_cam_y = max_y_boundary - proj_size.y / 2.;
-                        proposed_cam_transform.y = proposed_cam_transform.y.min(max_safe_cam_y);
-                    }
-
-                    transform.translation = proposed_cam_transform;
-                }
-                InputMessage::DragEnd {
-                    screen_offset: offset,
+                InputMessage::DragMove {
+                    screen,
                     ..
                 } => {
-                    // if let Some(_) = data {
-                    //     responses.push_back(Message::Document(DocumentMessage::Camera(
-                    //         DocumentCameraMessage::SetTranslate(
-                    //             self.initial_translate + offset,
-                    //         ),
-                    //     )))
-                    // }
+                    let world_pos_2d = screen_pos_px_to_world_pos(screen, &window_size, &proj_rect);
+                    let v = grab_state.drag_move(&world_pos_2d);
+
+                    match &v {
+                        Ok(new_state) => {
+                            match new_state {
+                                GrabToolState::Moving { translation, .. } => {
+                                    transform.translation = translation.extend(transform.translation.z);
+                                },
+                                _ => {},
+                            }
+                            *grab_state = new_state.clone();
+                        }
+                        Err(_) => {},
+                    }
+                }
+                InputMessage::DragEnd {
+                    screen,
+                    ..
+                } => {
+                    let world_pos_2d = screen_pos_px_to_world_pos(screen, &window_size, &proj_rect);
+                    let v = grab_state.drag_move(&world_pos_2d);
+
+                    match &v {
+                        Ok(new_state) => {
+                            match new_state {
+                                GrabToolState::Moving { translation, .. } => {
+                                    transform.translation = translation.extend(transform.translation.z);
+                                },
+                                _ => {},
+                            }
+                            *grab_state = grab_state.drag_end_or_reset();
+                        }
+                        Err(_) => {},
+                    }
                     responses.push_back(FrontendMsg::SetCursor(BBCursor::Grab).into());
                 }
                 _ => {}

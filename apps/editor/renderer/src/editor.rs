@@ -5,7 +5,7 @@ use bevy_prototype_lyon::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
-    msgs::{sys_msg_handler, frontend::FrontendMsg, Message, ToolControllerPlugin, cmds::CmdPlugin},
+    msgs::{sys_msg_handler, frontend::FrontendMsg, Message, ToolMsgPlugin, cmds::CmdMsgPlugin},
     plugins::input_plugin::{InputPlugin, InputMessage},
     wasm::FrontendReceiver, systems::camera::sys_setup_camera, components::{bbid::BBId, scene::BBObject}, utils::reflect_shims::{ReflectablePath, ReflectableFill},
 };
@@ -33,7 +33,7 @@ pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
     app.add_plugins(WorldInspectorPlugin::default());
 
     app.insert_resource(Msaa::Off)
-        .insert_resource(ClearColor(Color::rgb(0.4, 0.4, 0.4)));
+        .insert_resource(ClearColor(Color::rgb(1., 0., 0.)));
 
 
     app
@@ -50,7 +50,7 @@ impl Plugin for EditorPlugin {
             .add_event::<FrontendMsg>()
             .add_event::<Message>()
             .add_plugins(InputPlugin)
-            .add_plugins((ToolControllerPlugin, CmdPlugin))
+            .add_plugins((ToolMsgPlugin, CmdMsgPlugin))
 
             .add_systems(Startup, sys_setup_camera)
             .add_systems(PreUpdate, sys_handle_pre_editor_msgs)

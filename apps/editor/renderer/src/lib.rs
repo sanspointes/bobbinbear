@@ -11,14 +11,14 @@ mod utils;
 use crossbeam_channel::unbounded;
 
 use bevy::prelude::*;
-use editor::{EditorPlugin, start_bobbin_bear};
+use editor::start_bobbin_bear;
 use msgs::{Message, frontend::FrontendMsg};
 use wasm::{FrontendReceiver, FrontendSender};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 // web app entry_point
 #[wasm_bindgen]
-pub fn main_web(container_id: String, set_api: js_sys::Function) {
+pub fn main_web(container_id: String, _set_api: js_sys::Function) {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
