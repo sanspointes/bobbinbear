@@ -1,6 +1,6 @@
-use std::{collections::VecDeque, ops::Add};
+use std::{collections::VecDeque, ops::{Add, Sub}};
 
-use bevy::{ecs::system::SystemState, prelude::*, utils::thiserror::Error, a11y::accesskit::NameFrom};
+use bevy::{ecs::system::SystemState, prelude::*, utils::thiserror::Error};
 use bevy_prototype_lyon::{
     prelude::{GeometryBuilder, ShapeBundle, Fill},
     shapes,
@@ -11,7 +11,7 @@ use crate::{
     debug_log,
     msgs::{
         cmds::{
-            add_remove_object_cmd::AddObjectCmd, update_bbvector_shape_cmd::UpdatePathComponentCmd,
+            add_remove_object_cmd::AddObjectCmd, update_path_cmd::UpdatePathCmd,
             CmdMsg,
         },
         frontend::FrontendMsg,
@@ -70,7 +70,7 @@ impl ToolState {
             ToolState::None => {
                 let bbid = BBId::default();
                 let box_origin_pos =
-                    Vec2::min(*cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
+                    Vec2::min(*cursor_origin_pos, cursor_origin_pos.sub(*cursor_offset));
                 let box_extents = Vec2::abs(*cursor_offset);
 
                 let old = self.clone();
@@ -166,6 +166,10 @@ pub fn msg_handler_box_tool_input(
     let mut res = sys_state.get_mut(world).0;
 
     match message {
+        InputMessage::PointerMove { screen, world, .. } => {
+            dbg!(world);
+            dbg!(screen);
+        }
         // On Click we try make a default box
         InputMessage::PointerClick {
             world: world_pressed,
@@ -198,7 +202,7 @@ pub fn msg_handler_box_tool_input(
                     });
 
                     match cmd_result {
-                        Ok(cmd) => responses.push_back(CmdMsg::execute_from_cmd(cmd).into()),
+                        Ok(cmd) => responses.push_back(CmdMsg::from(cmd).into()),
                         Err(reason) => error!(
                             "Error performing .start_making_box on box_tool \"{reason:?}\"."
                         ),
@@ -250,7 +254,7 @@ pub fn msg_handler_box_tool_input(
                     });
 
                     match cmd_result {
-                        Ok(cmd) => responses.push_back(CmdMsg::execute_from_cmd(cmd).into()),
+                        Ok(cmd) => responses.push_back(CmdMsg::from(cmd).into()),
                         Err(reason) => error!(
                             "Error performing .start_making_box on box_tool \"{reason:?}\"."
                         ),
@@ -270,7 +274,6 @@ pub fn msg_handler_box_tool_input(
                     ToolState::BuildingBox {
                         bbid,
                         box_extents,
-                        box_origin_pos,
                         ..
                     },
                 )) => {
@@ -280,9 +283,9 @@ pub fn msg_handler_box_tool_input(
                     };
                     let path = GeometryBuilder::build_as(&shape).0;
 
-                    let cmd = UpdatePathComponentCmd::new(bbid, path);
+                    let cmd = UpdatePathCmd::new(bbid, path);
 
-                    responses.push_back(CmdMsg::execute_from_cmd(cmd).into());
+                    responses.push_back(CmdMsg::from(cmd).into());
                 }
                 Ok((_, _)) => panic!("Unhandled state transition"),
                 Err(ToolStateError::NoTransition) => {}
@@ -308,9 +311,9 @@ pub fn msg_handler_box_tool_input(
                     };
                     let path = GeometryBuilder::build_as(&shape).0;
 
-                    let cmd = UpdatePathComponentCmd::new(bbid, path);
+                    let cmd = UpdatePathCmd::new(bbid, path);
 
-                    responses.push_back(CmdMsg::execute_from_cmd(cmd).into());
+                    responses.push_back(CmdMsg::from(cmd).into());
                 }
                 Ok((_, _)) => panic!("Unhandled state transition"),
                 Err(ToolStateError::NoTransition) => {}

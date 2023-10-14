@@ -1,15 +1,27 @@
-use std::fmt::Display;
+use std::{fmt::Display, sync::Arc};
 
 use bevy::prelude::World;
 
-use super::{Cmd, CmdError};
+use super::{Cmd, CmdError, CmdMsg, CmdType};
 
 #[derive(Debug)]
-pub struct MultiCommand {
+pub struct MultiCmd {
     commands: Vec<Box<dyn Cmd>>,
 }
 
-impl Display for MultiCommand {
+impl From<MultiCmd> for CmdType {
+    fn from(value: MultiCmd) -> Self {
+        Self::Multi(value)
+    }
+}
+impl From<MultiCmd> for CmdMsg {
+    fn from(value: MultiCmd) -> Self {
+        let cmd_type: CmdType = value.into();
+        CmdMsg::ExecuteCmd(Arc::new(cmd_type))
+    }
+}
+
+impl Display for MultiCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "MultiCommand on {} commands: \n", self.commands.len())?;
         for cmd in self.commands.iter() {
@@ -19,15 +31,13 @@ impl Display for MultiCommand {
     }
 }
 
-impl MultiCommand {
+impl MultiCmd {
     pub fn new(commands: Vec<Box<dyn Cmd>>) -> Self {
-        Self {
-            commands,
-        }
+        Self { commands }
     }
 }
 
-impl Cmd for MultiCommand {
+impl Cmd for MultiCmd {
     fn name(&self) -> &str {
         "Multi Commands"
     }

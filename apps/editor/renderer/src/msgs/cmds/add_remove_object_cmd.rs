@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::{fmt::{Debug, Display}, sync::{Arc, Mutex}};
 
 use bevy::{
     ecs::{entity::EntityMap, query::QueryEntityError, world::EntityMut},
@@ -12,7 +12,7 @@ use crate::{
     utils::reflect_shims::{patch_world_subhierarchy_for_reflection, patch_world_subhierarchy_for_playback},
 };
 
-use super::{Cmd, CmdError};
+use super::{Cmd, CmdError, CmdType, CmdMsg};
 
 #[derive(Error, Debug)]
 pub enum AddRemoveObjectError {
@@ -37,6 +37,17 @@ pub struct AddObjectCmd {
     entity_bbid: BBId,
     parent: Option<BBId>,
     scene: Option<DynamicScene>,
+}
+impl From<AddObjectCmd> for CmdType {
+    fn from(value: AddObjectCmd) -> Self {
+        Self::AddObject(value)
+    }
+}
+impl From<AddObjectCmd> for CmdMsg {
+    fn from(value: AddObjectCmd) -> Self {
+        let cmd_type: CmdType = value.into();
+        CmdMsg::ExecuteCmd(Arc::new(cmd_type))
+    }
 }
 
 impl Display for AddObjectCmd {
@@ -176,5 +187,9 @@ impl Cmd for AddObjectCmd {
         world.entity_mut(target_entity).despawn_recursive();
 
         Ok(())
+    }
+
+    fn is_repeated(&self, _other: &CmdType) -> bool {
+        false
     }
 }

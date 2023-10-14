@@ -70,7 +70,7 @@ pub fn sys_msg_handler(world: &mut World) {
         match msg {
             Message::Input(input_msg) => msg_handler_keybinds(world, &input_msg, &mut messages),
             Message::Tool(tool_msg) => msg_handler_tool(world, &tool_msg, &mut messages),
-            Message::Cmd(cmd_msg) => msg_handler_cmds(world, &cmd_msg, &mut messages),
+            Message::Cmd(cmd_msg) => msg_handler_cmds(world, cmd_msg, &mut messages),
             Message::Frontend(frontend_msg) => {
                 if let Some(frontend_sender) = world.get_resource_mut::<FrontendSender>() {
                     match frontend_sender.0.send(frontend_msg) {
