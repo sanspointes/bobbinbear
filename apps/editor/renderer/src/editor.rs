@@ -34,7 +34,6 @@ impl Plugin for EditorPlugin {
             .add_systems(Update, sys_msg_handler)
 
             .register_type::<BBId>()
-            .register_type::<Uuid>()
             .register_type::<BBObject>()
 
             .register_type::<ReflectablePath>()

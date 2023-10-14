@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use bevy::prelude::World;
 
 use super::{Cmd, CmdError};
@@ -5,6 +7,16 @@ use super::{Cmd, CmdError};
 #[derive(Debug)]
 pub struct MultiCommand {
     commands: Vec<Box<dyn Cmd>>,
+}
+
+impl Display for MultiCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "MultiCommand on {} commands: \n", self.commands.len())?;
+        for cmd in self.commands.iter() {
+            write!(f, "  - {} \n", cmd)?;
+        }
+        write!(f, "\n")
+    }
 }
 
 impl MultiCommand {

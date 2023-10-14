@@ -1,4 +1,4 @@
-use std::{fmt::Debug, mem};
+use std::{fmt::{Debug, Display}, mem};
 
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::{tess::path::Path as TessPath, Path};
@@ -27,6 +27,17 @@ pub struct UpdatePathComponentCmd {
     target_bbid: BBId,
     path: TessPath,
 }
+
+impl Display for UpdatePathComponentCmd {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "UpdatePathComponentCmd on {}",
+            self.target_bbid,
+        )
+    }
+}
+
 impl Debug for UpdatePathComponentCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("AddObjectCmd")
@@ -39,7 +50,7 @@ impl Debug for UpdatePathComponentCmd {
 impl UpdatePathComponentCmd {
     pub fn new(target_bbid: BBId, path: TessPath) -> Self {
         Self {
-            name: format!("Update path on \"{}\"", target_bbid.0),
+            name: format!("Update path on \"{}\"", target_bbid),
             target_bbid,
             path,
         }

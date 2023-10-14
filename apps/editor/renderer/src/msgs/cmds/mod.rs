@@ -1,10 +1,15 @@
-pub mod multi_cmd;
 pub mod add_remove_object_cmd;
+pub mod multi_cmd;
 pub mod update_bbvector_shape_cmd;
 
-use std::{error::Error, fmt::Debug, sync::{Arc, Mutex}, collections::VecDeque};
+use std::{
+    collections::VecDeque,
+    error::Error,
+    fmt::{Debug, Display},
+    sync::{Arc, Mutex},
+};
 
-use bevy::{prelude::*, ecs::system::SystemState};
+use bevy::prelude::*;
 
 pub use multi_cmd::MultiCommand;
 use thiserror::Error;
@@ -18,7 +23,7 @@ pub enum CmdError {
     #[error("This command is already executed.  This may lead to a broken app state.")]
     DoubleExecute,
     #[error("Command specific error. {0:?}")]
-    CustomError(Box<dyn Error>)
+    CustomError(Box<dyn Error>),
 }
 
 /// Commands
@@ -26,7 +31,7 @@ pub enum CmdError {
 /// Commands are atomic actions that can be undone / redone
 ///
 
-pub trait Cmd: Send + Sync + Debug {
+pub trait Cmd: Send + Sync + Debug + Display {
     fn name(&self) -> &str;
     fn execute(&mut self, world: &mut World) -> Result<(), CmdError>;
     fn undo(&mut self, world: &mut World) -> Result<(), CmdError>;
@@ -53,11 +58,9 @@ pub struct CmdPlugin;
 
 impl Plugin for CmdPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .insert_resource(CmdResource::default());
+        app.insert_resource(CmdResource::default());
     }
 }
-
 
 pub fn msg_handler_cmds(
     mut world: &mut World,
@@ -67,11 +70,11 @@ pub fn msg_handler_cmds(
     match message {
         CmdMsg::ExecuteCmd(cmd) => {
             let mut unlocked_cmd = cmd.lock().unwrap();
+            println!("CmdMsg::ExecuteCmd -> {}", unlocked_cmd);
             let result = unlocked_cmd.execute(world);
 
             if let Err(reason) = result {
-                let name = unlocked_cmd.name();
-                panic!("Failed to execute command {name:?} with reason: {reason:?}.");
+                println!("Failed to execute command {unlocked_cmd} with reason: \n - {reason:?}.");
             }
 
             let mut cmd_resource = world.resource_mut::<CmdResource>();
@@ -86,11 +89,11 @@ pub fn msg_handler_cmds(
             match cmd {
                 Some(cmd) => {
                     let mut unlocked_cmd = cmd.lock().unwrap();
+                    println!("CmdMsg::UndoCmd -> {}", unlocked_cmd);
                     let result = unlocked_cmd.undo(world);
 
                     if let Err(reason) = result {
-                        let name = unlocked_cmd.name();
-                        panic!("Failed to undo command {name:?} with reason: {reason:?}.");
+                        println!("Failed to undo command {unlocked_cmd} with reason: \n - {reason:?}.");
                     }
 
                     let mut cmd_resource = world.resource_mut::<CmdResource>();
@@ -109,11 +112,11 @@ pub fn msg_handler_cmds(
             match cmd {
                 Some(cmd) => {
                     let mut unlocked_cmd = cmd.lock().unwrap();
+                    println!("CmdMsg::RedoCmd -> {}", unlocked_cmd);
                     let result = unlocked_cmd.execute(world);
 
                     if let Err(reason) = result {
-                        let name = unlocked_cmd.name();
-                        panic!("Failed to redo command {name:?} with reason: {reason:?}.");
+                        println!("Failed to redo command {unlocked_cmd} with reason: \n - {reason:?}.");
                     }
 
                     let mut cmd_resource = world.resource_mut::<CmdResource>();

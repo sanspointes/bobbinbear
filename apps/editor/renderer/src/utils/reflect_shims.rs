@@ -77,6 +77,7 @@ pub fn patch_world_for_playback(world: &mut World) {
     )> = SystemState::new(world);
     let (mut commands, mut entities_with_path) = sys_state.get_mut(world);
     for (entity, bb_path) in &mut entities_with_path {
+
         commands.entity(entity)
             .insert(Path::from(bb_path.clone()))
             .remove::<ReflectablePath>();

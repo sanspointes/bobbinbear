@@ -1,13 +1,36 @@
+use std::fmt::{Display, Debug};
+
 use bevy::{ecs::world::EntityMut, prelude::*, reflect::Reflect, utils::Uuid};
 
-#[derive(Component, Reflect, PartialEq, Copy, Clone, Debug)]
+#[derive(Component, Reflect, PartialEq, Copy, Clone)]
 #[reflect(Component)]
 /// A unique identifier that can be used to
-pub struct BBId(pub Uuid);
+pub struct BBId(pub [u64; 2]);
 
 impl Default for BBId {
     fn default() -> Self {
-        Self(Uuid::new_v4())
+        Self(Uuid::new_v4().as_u64_pair().into())
+    }
+}
+
+impl Debug for BBId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "BBID({}-{})",
+            self.0[0],
+            self.0[1]
+        )
+    }
+}
+impl Display for BBId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "BBID({}-{})",
+            self.0[0],
+            self.0[1]
+        )
     }
 }
 

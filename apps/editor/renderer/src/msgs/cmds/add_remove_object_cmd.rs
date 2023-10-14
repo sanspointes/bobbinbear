@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::fmt::{Debug, Display};
 
 use bevy::{
     ecs::{entity::EntityMap, system::SystemState, world::EntityMut},
@@ -9,7 +9,10 @@ use thiserror::Error;
 
 use crate::{
     components::bbid::{BBId, BBIdUtils},
-    utils::{scene::get_all_children_recursive, reflect_shims::{patch_world_for_reflection, patch_world_for_playback}},
+    utils::{
+        reflect_shims::{patch_world_for_playback, patch_world_for_reflection},
+        scene::get_all_children_recursive,
+    },
 };
 
 use super::{Cmd, CmdError};
@@ -35,6 +38,20 @@ pub struct AddObjectCmd {
     entity_bbid: BBId,
     parent: Option<BBId>,
     scene: Option<DynamicScene>,
+}
+
+impl Display for AddObjectCmd {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let parent_string = match self.parent {
+            Some(parent) => parent.to_string(),
+            None => String::from("None"),
+        };
+        write!(
+            f,
+            "Adding object with BBID {} to {}",
+            self.entity_bbid, parent_string
+        )
+    }
 }
 
 impl Debug for AddObjectCmd {
@@ -89,11 +106,17 @@ impl AddObjectCmd {
 
 fn dynamic_scene_from_entity(world: &mut World, entity: Entity) -> DynamicScene {
     let children = {
-        let mut sys_state: SystemState<Query<&Children>> = SystemState::new(world);
+        let mut sys_state: SystemState<Query<Option<&Children>>> = SystemState::new(world);
         let children_query = sys_state.get(world);
 
         let mut children: Vec<Entity> = Vec::new();
         get_all_children_recursive(entity, &children_query, &mut children);
+
+        println!(
+            "dynamic_scene_from_entity found {} children. {:?}",
+            children.len(),
+            children
+        );
         children
     };
 
@@ -114,6 +137,7 @@ impl Cmd for AddObjectCmd {
     fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
         // Write scene into world
         let type_registry = world.resource::<AppTypeRegistry>().clone();
+
         let mut entity_map = EntityMap::default();
         let scene = self.scene.take().ok_or(CmdError::DoubleExecute)?;
         scene
@@ -128,12 +152,12 @@ impl Cmd for AddObjectCmd {
                     self.entity_bbid,
                 )))?;
 
+        println!("Found bbid: {:?} as {:?}", self.entity_bbid, target_entity);
+
         let maybe_parent = match self.parent {
             Some(parent) => match world.get_entity_id_by_bbid(parent) {
                 Some(parent) => Some(parent),
-                None => {
-                    return Err(AddRemoveObjectError::CantFindTargetParent(parent).into())
-                },
+                None => return Err(AddRemoveObjectError::CantFindTargetParent(parent).into()),
             },
             None => None,
         };
@@ -156,7 +180,9 @@ impl Cmd for AddObjectCmd {
         // Get entity of app id.
         let target_entity = world
             .get_entity_id_by_bbid(self.entity_bbid)
-            .ok_or(CmdError::from(AddRemoveObjectError::CantFindTarget(self.entity_bbid)))?;
+            .ok_or(CmdError::from(AddRemoveObjectError::CantFindTarget(
+                self.entity_bbid,
+            )))?;
 
         let scene = dynamic_scene_from_entity(world, target_entity);
 
