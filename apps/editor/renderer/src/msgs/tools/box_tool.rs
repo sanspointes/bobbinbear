@@ -24,7 +24,7 @@ use crate::{
     types::BBCursor,
 };
 
-use super::{ToolFsmError, ToolHandlerMessage};
+use super::{ToolFsmError, ToolHandlerMessage, ToolFsmResult};
 
 //
 // BOX TOOL FSM
@@ -47,16 +47,16 @@ enum BoxFsm {
 
 impl BoxFsm {
     fn handle_pointer_down(
-        &mut self,
+        mut self,
         cursor_position: &Vec2,
-    ) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = *self;
+    ) -> ToolFsmResult<BoxFsm> {
+        let old = self;
         match self {
             BoxFsm::Default => {
-                *self = BoxFsm::PointerDown {
+                self = BoxFsm::PointerDown {
                     cursor_origin_pos: *cursor_position,
                 };
-                Ok(*self)
+                Ok(self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
@@ -64,12 +64,12 @@ impl BoxFsm {
     }
 
     /// Occurs after pointer down, resetting state to default
-    fn handle_pointer_click(&mut self) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = *self;
+    fn handle_pointer_click(mut self) -> ToolFsmResult<BoxFsm> {
+        let old = self;
         match self {
             BoxFsm::PointerDown { .. } => {
-                *self = BoxFsm::Default;
-                Ok(*self)
+                self = BoxFsm::Default;
+                Ok(self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
@@ -81,56 +81,55 @@ impl BoxFsm {
     /// * `world_pressed_pos`:
     /// * `world_drag_offset`:
     fn handle_drag_start(
-        &mut self,
+        mut self,
         cursor_offset: &Vec2,
-    ) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = *self;
+    ) -> ToolFsmResult<BoxFsm> {
+        let old = self;
         match self {
             BoxFsm::PointerDown { cursor_origin_pos } => {
                 let bbid = BBId::default();
                 let box_origin_pos =
-                    Vec2::min(*cursor_origin_pos, cursor_origin_pos.sub(*cursor_offset));
+                    Vec2::min(cursor_origin_pos, cursor_origin_pos.sub(*cursor_offset));
                 let box_extents = Vec2::abs(*cursor_offset);
 
-                *self = BoxFsm::BuildingBox {
+                self = BoxFsm::BuildingBox {
                     bbid,
-                    cursor_origin_pos: *cursor_origin_pos,
+                    cursor_origin_pos,
                     box_origin_pos,
                     box_extents,
                 };
 
-                Ok(*self)
+                Ok(self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
         .map(|new| (old, new))
     }
 
-    fn handle_drag_move(&mut self, cursor_offset: &Vec2) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = *self;
+    fn handle_drag_move(mut self, cursor_offset: &Vec2) -> ToolFsmResult<BoxFsm> {
+        let old = self;
         match self {
             BoxFsm::BuildingBox {
                 cursor_origin_pos,
-                box_origin_pos,
-                box_extents,
+                ref mut box_origin_pos,
+                ref mut box_extents,
                 ..
             } => {
                 *box_extents = Vec2::abs(*cursor_offset);
-                *box_origin_pos =
-                    Vec2::min(*cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
-                Ok(*self)
+                *box_origin_pos = Vec2::min(cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
+                Ok(self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
         .map(|new| (old, new))
     }
 
-    fn handle_drag_end(&mut self) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = *self;
+    fn handle_drag_end(mut self) -> ToolFsmResult<BoxFsm> {
+        let old = self;
         match self {
             BoxFsm::BuildingBox { .. } => {
-                *self = BoxFsm::Default;
-                Ok(*self)
+                self = BoxFsm::Default;
+                Ok(self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
@@ -187,6 +186,11 @@ pub fn msg_handler_box_tool_input(
         InputMessage::DragEnd { .. } => res.state.handle_drag_end(),
         _ => Err(ToolFsmError::NoTransition),
     };
+
+    // Save the new state back in the resource.
+    if let Ok((_, new_state)) = result {
+        res.state = new_state;
+    }
 
     // Handle state transitions
     match result {

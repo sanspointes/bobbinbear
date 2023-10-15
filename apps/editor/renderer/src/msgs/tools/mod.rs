@@ -12,7 +12,7 @@ use crate::{types::BBTool, plugins::input_plugin::InputMessage};
 use self::{
     // box_tool::msg_handler_box_tool,
     grab_tool::{msg_handler_grab_tool, GrabToolState},
-    select_tool::{msg_handler_select_tool, SelectToolRes}, box_tool::{msg_handler_box_tool, BoxToolRes},
+    select_tool::{msg_handler_select_tool, SelectFsm}, box_tool::{msg_handler_box_tool, BoxToolRes},
 };
 
 use super::{frontend::FrontendMsg, Message};
@@ -24,6 +24,8 @@ pub enum ToolFsmError {
     #[error("Unknown error during transtion: {0:?}")]
     TransitionError(anyhow::Error)
 }
+
+pub type ToolFsmResult<T> = Result<(T, T), ToolFsmError>;
 
 #[derive(Clone, Debug)]
 pub enum ToolMessage {
@@ -97,7 +99,7 @@ impl Plugin for ToolMsgPlugin {
     fn build(&self, app: &mut App) {
         app.add_state::<BBTool>()
             .insert_resource(ToolResource::default())
-            .insert_resource(SelectToolRes::default())
+            .insert_resource(SelectFsm::default())
             .insert_resource(BoxToolRes::default())
             .insert_resource(GrabToolState::default())
         ;
