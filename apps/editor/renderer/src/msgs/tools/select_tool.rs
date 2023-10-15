@@ -1,21 +1,75 @@
 use std::collections::VecDeque;
 
-use bevy::{input::ButtonState, prelude::*, utils::HashSet};
+use anyhow::anyhow;
+use bevy::{input::ButtonState, prelude::*, ecs::system::SystemState, utils::HashSet};
+use bevy_mod_raycast::RaycastSource;
 
 use crate::{
+    components::bbid::BBId,
     msgs::{frontend::FrontendMsg, Message},
-    plugins::input_plugin::InputMessage,
-    types::BBCursor,
+    plugins::{input_plugin::InputMessage, selection_plugin::{Selectable, Selected}},
+    types::BBCursor, utils::debug,
 };
 
 use super::ToolHandlerMessage;
+
+#[derive(Debug, Clone)]
+enum SelectToolState {
+    Default { bbids: HashSet<BBId> },
+    Dragging {}, // SelectionBox {
+                 //     initial_world_pos: Vec2,
+                 //     min_pos: Vec2,
+                 //     max_pos: Vec2,
+                 // }
+}
+
+impl Default for SelectToolState {
+    fn default() -> Self {
+        Self::Default {
+            bbids: HashSet::new(),
+        }
+    }
+}
+
+impl SelectToolState {
+    fn select_single(&mut self, bbid: BBId) -> anyhow::Result<(Self, &mut Self)> {
+        let old = self.clone();
+        match self {
+            Self::Default { bbids } => {
+                bbids.clear();
+                bbids.insert(bbid);
+                anyhow::Ok(self)
+            },
+            _ => Err(anyhow!("Invalid state transtion")),
+        }.map(|new| (old, new))
+    }
+    fn select_add(&mut self, bbid: BBId) -> anyhow::Result<(Self, &mut Self)> {
+        let old = self.clone();
+        match self {
+            Self::Default { bbids } => {
+                bbids.insert(bbid);
+                anyhow::Ok(self)
+            },
+            _ => Err(anyhow!("Invalid state transtion")),
+        }.map(|new| (old, new))
+    }
+    fn deselect(&mut self) -> anyhow::Result<(Self, &mut Self)> {
+        let old = self.clone();
+        match self {
+            Self::Default { bbids } => {
+                bbids.clear();
+                anyhow::Ok(self)
+            },
+            _ => Err(anyhow!("Invalid state transtion")),
+        }.map(|new| (old, new))
+    }
+}
 
 type DragStartModel = Vec<(Entity, Vec2)>;
 
 #[derive(Resource, Default, Debug)]
 pub struct SelectToolRes {
-    drag_model: Option<DragStartModel>,
-    prev_hovers: HashSet<Entity>,
+    state: SelectToolState,
 }
 
 pub fn msg_handler_select_tool(
@@ -23,23 +77,21 @@ pub fn msg_handler_select_tool(
     message: &ToolHandlerMessage,
     responses: &mut VecDeque<Message>,
 ) {
-    // let mut select_sys_state = SystemState::<(
-    //     // Selectables
-    //     Query<
-    //         (
-    //             Entity,
-    //             &Parent,
-    //             &SelectedState,
-    //             &mut HoveredState,
-    //             &Transform,
-    //         ),
-    //         With<SelectableTag>,
-    //     >,
-    //     // Raycaster
-    //     Query<&RaycastSource<RaycastSelectable>>,
-    //     // Prev hovers
-    //     ResMut<SelectToolRes>,
-    // )>::new(world);
+    let mut select_sys_state = SystemState::<(
+        // Selectables
+        Query<
+            (
+                &BBId,
+                &Selectable,
+                &mut Selected,
+                &Transform,
+            ),
+        >,
+        // Raycaster
+        Query<&RaycastSource<Selectable>>,
+        // Prev hovers
+        ResMut<SelectToolRes>,
+    )>::new(world);
 
     match message {
         ToolHandlerMessage::OnActivate => {
@@ -103,7 +155,55 @@ pub fn msg_handler_select_tool(
                     //
                     // res.prev_hovers = cur_hovers;
                 }
-                InputMessage::PointerDown { modifiers, .. } => {
+                InputMessage::PointerClick { modifiers, .. } => {
+                    let (mut q_selectables, q_rc_source, mut res) =  select_sys_state.get_mut(world);
+                    let rc_source = q_rc_source.single();
+
+                    // Transition the state.
+                    let transition_result = 'block: {
+                        // Filter out raycasts that are not selectable
+                        let hits = rc_source.intersections();
+
+                        // Early exit, if no hit then deselect.
+                        let Some((hit_entity, data)) = hits.first() else {
+                            break 'block res.state.deselect();
+                        };
+
+                        let Ok((bbid, selectable, _, _)) = q_selectables.get_mut(*hit_entity) else {
+                            error!("SelectTool: Hit entity {hit_entity:?} but querying for it failed.\n Hit data: {data:?}");
+                            return;
+                        };
+
+                        if matches!(selectable, Selectable::Locked) {
+                            debug!("SelectTool: Hit entity {hit_entity:?} with {bbid:?} but entity is {selectable:?}.");
+                            return;
+                        }
+
+                        break 'block match modifiers.shift {
+                            ButtonState::Pressed => res.state.select_add(*bbid),
+                            ButtonState::Released => res.state.select_single(*bbid),
+                        }
+                    };
+
+                    use SelectToolState::*;
+                    match transition_result {
+                        Ok((Default { bbids: old_bbids }, Default {bbids: new_bbids})) => {
+                            let to_remove: HashSet<_> = old_bbids.difference(new_bbids).collect();
+                            let to_add: HashSet<_> = new_bbids.difference(&old_bbids).collect();
+
+                            for (bbid, _, mut selected, _transform) in q_selectables.iter_mut() {
+                                if to_remove.contains(bbid) {
+                                    *selected = Selected::No;
+                                }
+                                if to_add.contains(bbid) {
+                                    *selected = Selected::Yes;
+                                }
+                            }
+                        }
+                        Ok(_) => panic!("SelectTool: Unhandled state transition in PointerDown."),
+                        Err(_) => {},
+                    }
+
                     // let (selectables, rc_source, _) = select_sys_state.get_mut(world);
                     // let src = rc_source.single();
                     // let selected_entities: Vec<_> = selectables

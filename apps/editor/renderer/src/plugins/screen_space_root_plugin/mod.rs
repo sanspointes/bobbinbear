@@ -9,7 +9,7 @@ use bevy_prototype_lyon::{
     shapes::{self, RectangleOrigin},
 };
 
-use crate::{constants::BB_LAYER_UI, systems::camera::CameraTag};
+use crate::{constants::BB_LAYER_UI, systems::camera::CameraTag, editor::EditorSet};
 
 #[derive(Component, Default)]
 pub struct ScreenSpaceCameraTag;
@@ -28,7 +28,7 @@ impl Plugin for ScreenSpaceRootPlugin {
         #[cfg(debug_assertions)]
         {
             app.add_systems(PostStartup, sys_setup_screenspace_test)
-                .add_systems(PostUpdate, sys_update_screenspace_test);
+                .add_systems(Update, sys_update_screenspace_test.in_set(EditorSet::PostMsgs));
         }
     }
 }
@@ -39,6 +39,10 @@ fn sys_setup(mut commands: Commands, q_camera: Query<Entity, With<CameraTag>>) {
         Name::from("ScreenSpaceRootTag"),
         ScreenSpaceRootTag,
         SpatialBundle {
+            transform: Transform {
+                translation: Vec3::new(0., 0., 500.),
+                ..Default::default()
+            },
             ..Default::default()
         },
     ));

@@ -2,7 +2,7 @@ use std::fmt::{Display, Debug};
 
 use bevy::{ecs::world::EntityMut, prelude::*, reflect::Reflect, utils::Uuid};
 
-#[derive(Component, Reflect, PartialEq, Copy, Clone)]
+#[derive(Component, Reflect, Eq, PartialEq, Hash, Copy, Clone)]
 #[reflect(Component)]
 /// A unique identifier that can be used to
 pub struct BBId(pub [u64; 2]);

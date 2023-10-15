@@ -4,9 +4,9 @@ mod msgs;
 mod plugins;
 mod types;
 mod wasm;
-mod entities;
 mod systems;
 mod utils;
+mod constants;
 
 use crossbeam_channel::unbounded;
 

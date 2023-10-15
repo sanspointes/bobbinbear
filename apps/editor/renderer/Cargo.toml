@@ -28,6 +28,11 @@ default = ["bevy/dynamic_linking", "bevy/x11", "bevy/bevy_scene", "bevy/bevy_win
 
 inspector = ["bevy-inspector-egui"]
 
+trace_bevy = []
+debug_select = []
+debug_reflect = []
+debug_bounds = []
+
 [dependencies]
 wasm-bindgen = "0.2.85"
 

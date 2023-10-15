@@ -17,7 +17,7 @@ use crate::{
         frontend::FrontendMsg,
         Message,
     },
-    plugins::input_plugin::InputMessage,
+    plugins::{input_plugin::InputMessage, selection_plugin::SelectableBundle, bounds_2d_plugin::GlobalBounds2D},
     types::BBCursor,
 };
 
@@ -193,6 +193,8 @@ pub fn msg_handler_box_tool_input(
                                 },
                                 ..Default::default()
                             },
+                            GlobalBounds2D::default(),
+                            SelectableBundle::default(),
                             Fill::color(Color::rgb_u8(50, 50, 50))
                         ));
                     });
@@ -245,6 +247,8 @@ pub fn msg_handler_box_tool_input(
                                 },
                                 ..Default::default()
                             },
+                            GlobalBounds2D::default(),
+                            SelectableBundle::default(),
                             Fill::color(Color::rgb_u8(50, 50, 50))
                         ));
                     });

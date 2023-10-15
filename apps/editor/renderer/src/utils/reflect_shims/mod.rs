@@ -2,10 +2,11 @@ mod reflectable_fill;
 mod reflectable_path;
 
 use bevy::ecs::query::QueryEntityError;
-use bevy::utils::tracing::field::debug;
 use bevy::{ecs::system::SystemState, prelude::*};
 use bevy_prototype_lyon::prelude::*;
 
+#[cfg(feature = "debug_reflect")]
+use crate::utils::debug;
 use crate::utils::scene::get_all_children_recursive;
 
 pub use self::reflectable_fill::ReflectableFill;
@@ -35,6 +36,12 @@ pub fn patch_world_entities_for_reflection(
 
     // Apply to world
     for (e, refl_path, refl_fill) in to_apply {
+        #[cfg(feature = "debug_reflect")]
+        {
+            debug!("pre-patch: {e:?}");
+            debug::dump_entity_components(world, e);
+        }
+
         match refl_path {
             Some(refl_path) => {
                 debug!("\tPatching Path -> ReflectablePath for {:?}", e);
@@ -49,6 +56,12 @@ pub fn patch_world_entities_for_reflection(
             }
             None => (),
         }
+
+        #[cfg(feature = "debug_reflect")]
+        {
+            debug!("\tpost-patch: {entity:?}");
+            debug::dump_entity_components(world, entity);
+        }
     }
 
     Ok::<_, QueryEntityError>(())
@@ -59,30 +72,13 @@ pub fn patch_world_subhierarchy_for_reflection(
     entity: Entity,
 ) -> Result<Vec<Entity>, QueryEntityError> {
     #[cfg(debug_assertions)]
-    {
-        debug!("Patching world for reflection/serialisation.");
-        debug!("\tpre-patch: {entity:?}");
-        let cmps = world.inspect_entity(entity);
-        for cmp in cmps {
-            debug!("\t\t - {:?}", cmp.name());
-        }
-    }
-
+    debug!("Patching world for reflection/serialisation.");
     let mut sys_state: SystemState<Query<Option<&Children>>> = SystemState::new(world);
     let children_query = sys_state.get(world);
     let mut entities: Vec<Entity> = Vec::new();
     get_all_children_recursive(entity, &children_query, &mut entities);
 
     patch_world_entities_for_reflection(world, &entities)?;
-
-    #[cfg(debug_assertions)]
-    {
-        debug!("\tpost-patch: {entity:?}");
-        let cmps = world.inspect_entity(entity);
-        for cmp in cmps {
-            debug!("\t\t - {:?}", cmp.name());
-        }
-    }
 
     Ok(entities)
 }
@@ -111,6 +107,12 @@ pub fn patch_world_entities_for_playback(
 
     // Apply to world
     for (e, lyon_path, lyon_fill) in to_apply {
+        #[cfg(feature = "debug_reflect")]
+        {
+            debug!("pre-patch: {e:?}");
+            debug::dump_entity_components(world, e);
+        }
+
         match lyon_path {
             Some(lyon_path) => {
                 world.entity_mut(e).remove::<ReflectablePath>().insert(lyon_path);
@@ -123,6 +125,12 @@ pub fn patch_world_entities_for_playback(
             }
             None => (),
         }
+
+        #[cfg(feature = "debug_reflect")]
+        {
+            debug!("\tpost-patch: {entity:?}");
+            debug::dump_entity_components(world, entity);
+        }
     }
 
     Ok::<_, QueryEntityError>(())
@@ -133,14 +141,7 @@ pub fn patch_world_subhierarchy_for_playback(
     entity: Entity,
 ) -> Result<Vec<Entity>, QueryEntityError> {
     #[cfg(debug_assertions)]
-    {
-        debug!("Patching world for playback/deserialisation.");
-        debug!("\tpre-patch: {entity:?}");
-        let cmps = world.inspect_entity(entity);
-        for cmp in cmps {
-            debug!("\t\t - {:?}", cmp.name());
-        }
-    }
+    debug!("Patching world for playback/deserialisation.");
 
     let mut sys_state: SystemState<Query<Option<&Children>>> = SystemState::new(world);
     let children_query = sys_state.get(world);
@@ -148,16 +149,6 @@ pub fn patch_world_subhierarchy_for_playback(
     get_all_children_recursive(entity, &children_query, &mut entities);
 
     patch_world_entities_for_playback(world, &entities)?;
-
-    #[cfg(debug_assertions)]
-    {
-        debug!("\tpost-patch: {entity:?}");
-        let cmps = world.inspect_entity(entity);
-        for cmp in cmps {
-            debug!("\t\t - {:?}", cmp.name());
-        }
-        debug!("\n");
-    }
 
     Ok(entities)
 }

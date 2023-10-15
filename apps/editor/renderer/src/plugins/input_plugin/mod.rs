@@ -37,7 +37,7 @@ impl Plugin for InputPlugin {
             .add_event::<InputMessage>()
             .add_plugins(DefaultRaycastingPlugin::<RaycastRawInput>::default())
             // Hit plane creation and movement
-            .add_systems(PostStartup, sys_setup_input_plugin)
+            .add_systems(Startup, sys_setup_input_plugin)
             // Input events
             .add_systems(
                 First,
@@ -49,11 +49,9 @@ impl Plugin for InputPlugin {
                     sys_mouse_movement_input, // This also updates the raycast ray
                     sys_keyboard_input,
                 )
-                    .before(RaycastSystem::BuildRays::<RaycastRawInput>)
+                    .before(RaycastSystem::BuildRays::<RaycastRawInput>),
             )
-            .add_systems(PreUpdate, sys_raw_input_processor)
-        ;
-
+            .add_systems(PreUpdate, sys_raw_input_processor);
     }
 }
 

@@ -31,9 +31,9 @@ mod editor;
 
 
 mod types;
-mod entities;
 mod systems;
 mod utils;
+mod constants;
 
 // #[cfg(debug_assertions)]
 use crossbeam_channel::unbounded;
@@ -54,6 +54,7 @@ fn main() {
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             title: "Bobbin Bear :: Embroidery Editor".to_string(),
+            resizable: true,
             ..Default::default()
         }),
         ..Default::default()
