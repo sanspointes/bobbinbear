@@ -37,6 +37,7 @@ impl Plugin for Bounds2DPlugin {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn sys_update_global_bounds_2d(
     r_meshes: Res<Assets<Mesh>>,
     mut param_set: ParamSet<(
@@ -85,12 +86,10 @@ pub fn sys_update_global_bounds_2d(
                 continue;
             };
             let global_matrix = global_transform.compute_matrix();
-            let verts: Vec<_> = verts
-                .into_iter()
+            let verts: Vec<_> = verts.iter()
                 .map(|vert_float3| {
-                    let p = Vec3A::from(vert_float3.clone());
-                    let p = global_matrix.transform_point3a(p);
-                    p
+                    let p = Vec3A::from(*vert_float3);
+                    global_matrix.transform_point3a(p)
                 })
                 .collect();
 

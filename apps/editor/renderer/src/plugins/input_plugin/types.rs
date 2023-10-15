@@ -18,12 +18,6 @@ impl Default for ModifiersState {
     }
 }
 
-
-pub struct KeyboardInputModel {
-    key: KeyCode,
-    pressed: ButtonState,
-}
-
 // Raw Input messages passed from winit
 #[derive(Event, Debug, Clone)]
 pub enum RawInputMessage {

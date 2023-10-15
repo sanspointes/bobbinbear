@@ -15,7 +15,7 @@ use bevy_prototype_lyon::{
     shapes,
 };
 
-use crate::systems::camera::{CameraTag};
+use crate::systems::camera::CameraTag;
 
 pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 
@@ -95,8 +95,8 @@ pub fn sys_raw_input_processor(
     for msg in ev_reader.iter() {
         match msg {
             RawInputMessage::PointerMove(move_model) => {
-                res.cur_pos.x = move_model.x as f32;
-                res.cur_pos.y = move_model.y as f32;
+                res.cur_pos.x = move_model.x;
+                res.cur_pos.y = move_model.y;
 
                 if res.left_pressed
                     && !res.is_dragging
@@ -110,7 +110,7 @@ pub fn sys_raw_input_processor(
                         world: world_point,
                         world_pressed: res.down_pos_world,
                         world_offset: world_point.sub(res.down_pos_world),
-                        modifiers: res.modifiers.clone(),
+                        modifiers: res.modifiers,
                     })
                 } else if res.is_dragging {
                     ev_writer.send(InputMessage::DragMove {
@@ -120,7 +120,7 @@ pub fn sys_raw_input_processor(
                         world: world_point,
                         world_pressed: res.down_pos_world,
                         world_offset: world_point.sub(res.down_pos_world),
-                        modifiers: res.modifiers.clone(),
+                        modifiers: res.modifiers,
                     });
                 } else {
                     ev_writer.send(InputMessage::PointerMove {

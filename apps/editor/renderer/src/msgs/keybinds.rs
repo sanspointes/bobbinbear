@@ -35,10 +35,10 @@ pub fn msg_handler_keybinds(
                 // msg_writer.send(ToolMessage::SwitchTool(BBTool::Pen).into());
             }
             (ButtonState::Released, KeyCode::Z, ButtonState::Pressed, ButtonState::Released) => {
-                responses.push_back(CmdMsg::UndoCmd.into());
+                responses.push_back(CmdMsg::Undo.into());
             }
             (ButtonState::Released, KeyCode::Z, ButtonState::Pressed, ButtonState::Pressed) => {
-                responses.push_back(CmdMsg::RedoCmd.into());
+                responses.push_back(CmdMsg::Redo.into());
             }
             (_, _, _, _) => {
                 should_pass_through = true;

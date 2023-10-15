@@ -16,11 +16,12 @@ use super::ToolHandlerMessage;
 #[derive(Debug, Clone)]
 enum SelectToolState {
     Default { bbids: HashSet<BBId> },
-    Dragging {}, // SelectionBox {
-                 //     initial_world_pos: Vec2,
-                 //     min_pos: Vec2,
-                 //     max_pos: Vec2,
-                 // }
+    // Dragging {}, 
+    // SelectionBox {
+    //     initial_world_pos: Vec2,
+    //     min_pos: Vec2,
+    //     max_pos: Vec2,
+    // }
 }
 
 impl Default for SelectToolState {

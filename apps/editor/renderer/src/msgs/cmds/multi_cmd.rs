@@ -17,17 +17,17 @@ impl From<MultiCmd> for CmdType {
 impl From<MultiCmd> for CmdMsg {
     fn from(value: MultiCmd) -> Self {
         let cmd_type: CmdType = value.into();
-        CmdMsg::ExecuteCmd(Arc::new(cmd_type))
+        CmdMsg::Execute(Arc::new(cmd_type))
     }
 }
 
 impl Display for MultiCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "MultiCommand on {} commands: \n", self.commands.len())?;
+        writeln!(f, "MultiCommand on {} commands:", self.commands.len())?;
         for cmd in self.commands.iter() {
-            write!(f, "  - {} \n", cmd)?;
+            writeln!(f, "  - {}", cmd)?;
         }
-        write!(f, "\n")
+        writeln!(f, "\n")
     }
 }
 

@@ -23,7 +23,7 @@ pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
     });
 
     // this code is compiled only if debug assertions are disabled (release mode)
-    #[cfg(all(not(debug_assertions)))]
+    #[cfg(not(debug_assertions))]
     let default_plugins = default_plugins.set(LogPlugin {
         level: bevy::log::Level::INFO,
         filter: "info,wgpu_core=warn,wgpu_hal=warn,naga=info,bevy_app=info,bevy_render=info".into(),

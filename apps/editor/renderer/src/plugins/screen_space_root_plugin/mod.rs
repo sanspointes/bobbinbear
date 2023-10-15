@@ -49,7 +49,7 @@ fn sys_setup(mut commands: Commands) {
 
     commands.spawn((
         Name::from("ScreenSpaceCamera"),
-        ScreenSpaceCameraTag::default(),
+        ScreenSpaceCameraTag,
         Camera2dBundle {
             camera: Camera {
                 order: 1,
@@ -57,7 +57,6 @@ fn sys_setup(mut commands: Commands) {
             },
             camera_2d: Camera2d {
                 clear_color: ClearColorConfig::None,
-                ..Default::default()
             },
             ..Default::default()
         },
@@ -112,7 +111,6 @@ fn sys_setup_screenspace_test(
             let tl_shape = shapes::Rectangle {
                 extents: Vec2::new(50., 50.),
                 origin,
-                ..default()
             };
             builder.spawn((
                 Name::from(name),

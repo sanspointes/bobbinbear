@@ -72,9 +72,9 @@ macro_rules! unwrap_cmd_type {
 
 #[derive(Event, Clone, Debug)]
 pub enum CmdMsg {
-    ExecuteCmd(Arc<CmdType>),
-    UndoCmd,
-    RedoCmd,
+    Execute(Arc<CmdType>),
+    Undo,
+    Redo,
 }
 
 #[derive(Resource, Default)]
@@ -96,7 +96,7 @@ pub fn msg_handler_cmds(
     _responses: &mut VecDeque<Message>,
 ) {
     match message {
-        CmdMsg::ExecuteCmd(cmd_wrapped) => {
+        CmdMsg::Execute(cmd_wrapped) => {
             // TODO: Improve the unsound logic
             // Currently commands will not be acted upon if there are any strong references to them
             // throughout the app.
@@ -136,7 +136,7 @@ pub fn msg_handler_cmds(
 
             });
         }
-        CmdMsg::UndoCmd => {
+        CmdMsg::Undo => {
             let cmd = {
                 let mut cmd_resource = world.resource_mut::<CmdResource>();
                 cmd_resource.undo_stack.pop()
@@ -158,7 +158,7 @@ pub fn msg_handler_cmds(
             let mut cmd_resource = world.resource_mut::<CmdResource>();
             cmd_resource.redo_stack.push(cmd);
         }
-        CmdMsg::RedoCmd => {
+        CmdMsg::Redo => {
             let cmd = {
                 let mut cmd_resource = world.resource_mut::<CmdResource>();
                 cmd_resource.redo_stack.pop()

@@ -68,12 +68,8 @@ pub fn sys_msg_handler(world: &mut World) {
             Message::Cmd(cmd_msg) => msg_handler_cmds(world, cmd_msg, &mut messages),
             Message::Frontend(frontend_msg) => {
                 if let Some(frontend_sender) = world.get_resource_mut::<FrontendSender>() {
-                    match frontend_sender.0.send(frontend_msg) {
-                        Err(reason) => panic!(
-                            "Error sending message back to frontend. {:?} {:?}",
-                            reason, reason.0
-                        ),
-                        _ => {}
+                    if let Err(reason) = frontend_sender.0.send(frontend_msg) {
+                        panic!( "Error sending message back to frontend. {:?} {:?}", reason, reason.0)
                     }
                 }
             }

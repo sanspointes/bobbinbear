@@ -1,7 +1,7 @@
 use bevy::{
-    prelude::{Color, Component},
-    reflect::{Reflect},
     ecs::reflect::ReflectComponent,
+    prelude::{Color, Component},
+    reflect::Reflect,
 };
 use bevy_prototype_lyon::prelude::{Fill, FillOptions, FillRule, Orientation};
 

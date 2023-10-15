@@ -1,6 +1,8 @@
 use bevy::prelude::*;
 use bevy_prototype_lyon::prelude::*;
 
+use crate::utils::coordinates;
+
 use super::screen_space_root_plugin::ScreenSpaceRootTag;
 
 pub struct CursorTestPlugin;
@@ -35,4 +37,6 @@ pub fn sys_setup_cursor_test(
     });
 }
 
-pub fn sys_update_cursor_test(mut q_cursor: Query<(&mut Transform), With<CursorTestTag>>) {}
+pub fn sys_update_cursor_test(mut q_cursor: Query<(&mut Transform), With<CursorTestTag>>) {
+    coordinates::wor(screen_pos, window_size, proj_rect)
+}

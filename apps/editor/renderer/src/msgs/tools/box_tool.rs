@@ -50,13 +50,13 @@ impl BoxFsm {
         &mut self,
         cursor_position: &Vec2,
     ) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = self.clone();
+        let old = *self;
         match self {
             BoxFsm::Default => {
                 *self = BoxFsm::PointerDown {
-                    cursor_origin_pos: cursor_position.clone(),
+                    cursor_origin_pos: *cursor_position,
                 };
-                Ok(self.clone())
+                Ok(*self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
@@ -65,11 +65,11 @@ impl BoxFsm {
 
     /// Occurs after pointer down, resetting state to default
     fn handle_pointer_click(&mut self) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = self.clone();
+        let old = *self;
         match self {
             BoxFsm::PointerDown { .. } => {
                 *self = BoxFsm::Default;
-                Ok(self.clone())
+                Ok(*self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
@@ -84,7 +84,7 @@ impl BoxFsm {
         &mut self,
         cursor_offset: &Vec2,
     ) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = self.clone();
+        let old = *self;
         match self {
             BoxFsm::PointerDown { cursor_origin_pos } => {
                 let bbid = BBId::default();
@@ -99,7 +99,7 @@ impl BoxFsm {
                     box_extents,
                 };
 
-                Ok(self.clone())
+                Ok(*self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
@@ -107,7 +107,7 @@ impl BoxFsm {
     }
 
     fn handle_drag_move(&mut self, cursor_offset: &Vec2) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = self.clone();
+        let old = *self;
         match self {
             BoxFsm::BuildingBox {
                 cursor_origin_pos,
@@ -118,7 +118,7 @@ impl BoxFsm {
                 *box_extents = Vec2::abs(*cursor_offset);
                 *box_origin_pos =
                     Vec2::min(*cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
-                Ok(self.clone())
+                Ok(*self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }
@@ -126,11 +126,11 @@ impl BoxFsm {
     }
 
     fn handle_drag_end(&mut self) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
-        let old = self.clone();
+        let old = *self;
         match self {
             BoxFsm::BuildingBox { .. } => {
                 *self = BoxFsm::Default;
-                Ok(self.clone())
+                Ok(*self)
             }
             _ => Err(ToolFsmError::NoTransition),
         }

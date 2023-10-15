@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Display}, sync::{Arc}};
+use std::{fmt::{Debug, Display}, sync::Arc};
 
 use bevy::{
     ecs::{entity::EntityMap, query::QueryEntityError, world::EntityMut},
@@ -46,7 +46,7 @@ impl From<AddObjectCmd> for CmdType {
 impl From<AddObjectCmd> for CmdMsg {
     fn from(value: AddObjectCmd) -> Self {
         let cmd_type: CmdType = value.into();
-        CmdMsg::ExecuteCmd(Arc::new(cmd_type))
+        CmdMsg::Execute(Arc::new(cmd_type))
     }
 }
 
@@ -79,7 +79,7 @@ impl Debug for AddObjectCmd {
 
 impl AddObjectCmd {
     pub fn from_builder<F: FnMut(&mut EntityMut<'_>)>(
-        mut world: &mut World,
+        world: &mut World,
         parent: Option<BBId>,
         mut builder: F,
     ) -> Result<Self, AddRemoveObjectError> {
@@ -87,7 +87,7 @@ impl AddObjectCmd {
         builder(&mut entity_mut);
 
         let id = entity_mut.id();
-        AddObjectCmd::from_entity(&mut world, id, parent)
+        AddObjectCmd::from_entity(world, id, parent)
     }
 
     pub fn from_entity(
@@ -101,12 +101,12 @@ impl AddObjectCmd {
             .ok_or(AddRemoveObjectError::CantFindEntity(entity))?;
 
         let entities = patch_world_subhierarchy_for_reflection(world, entity)
-            .map_err(|err| AddRemoveObjectError::QueryEntityError(err))?;
+            .map_err(AddRemoveObjectError::QueryEntityError)?;
 
         for _e in entities.iter() {
         }
 
-        let mut builder = DynamicSceneBuilder::from_world(&world);
+        let mut builder = DynamicSceneBuilder::from_world(world);
         builder.extract_entities(entities.into_iter());
         let dynamic_scene = builder.build();
 

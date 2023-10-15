@@ -51,7 +51,7 @@ impl TryFrom<&ToolMessage> for ToolHandlerMessage {
     fn try_from(value: &ToolMessage) -> Result<Self, Self::Error> {
         match value {
             ToolMessage::Input(input_message) => {
-                Ok(ToolHandlerMessage::Input(input_message.clone()))
+                Ok(ToolHandlerMessage::Input(*input_message))
             }
             ToolMessage::OnActivate(_) => Ok(ToolHandlerMessage::OnActivate),
             ToolMessage::OnDeactivate(_) => Ok(ToolHandlerMessage::OnDeactivate),
@@ -81,8 +81,8 @@ impl ToolResource {
         // If the current tool has changed, pass lifecycle events to the tool sub_handlers
         // so they can load / unload their required state.
         if new_current_tool != self.base_tool {
-            responses.push_back(ToolMessage::OnDeactivate(self.base_tool.clone()).into());
-            responses.push_back(ToolMessage::OnActivate(new_current_tool.clone()).into());
+            responses.push_back(ToolMessage::OnDeactivate(self.base_tool).into());
+            responses.push_back(ToolMessage::OnActivate(new_current_tool).into());
         }
 
         responses.push_back(FrontendMsg::SetCurrentTool(new_current_tool).into());

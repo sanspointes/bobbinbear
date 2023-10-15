@@ -35,7 +35,7 @@ impl From<UpdatePathCmd> for CmdType {
 impl From<UpdatePathCmd> for CmdMsg {
     fn from(value: UpdatePathCmd) -> Self {
         let cmd_type: CmdType = value.into();
-        CmdMsg::ExecuteCmd(Arc::new(cmd_type))
+        CmdMsg::Execute(Arc::new(cmd_type))
     }
 }
 
@@ -84,7 +84,7 @@ impl UpdatePathCmd {
         mem::swap(&mut path.0, &mut self.path);
         path.set_changed();
 
-        return Ok(())
+        Ok(())
     }
 }
 
@@ -94,14 +94,14 @@ impl Cmd for UpdatePathCmd {
     }
 
     fn execute(&mut self, world: &mut bevy::prelude::World) -> Result<(), CmdError> {
-        return self
+        self
             .swap_path(world, self.target_bbid)
-            .map_err(|e| CmdError::from(e));
+            .map_err(CmdError::from)
     }
     fn undo(&mut self, world: &mut bevy::prelude::World) -> Result<(), CmdError> {
-        return self
+        self
             .swap_path(world, self.target_bbid)
-            .map_err(|e| CmdError::from(e));
+            .map_err(CmdError::from)
     }
 
     fn is_repeated(&self, other: &CmdType) -> bool {

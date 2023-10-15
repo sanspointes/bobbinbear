@@ -22,7 +22,6 @@ pub fn sys_setup_camera(mut commands: Commands) {
             },
             camera_2d: Camera2d {
                 clear_color: ClearColorConfig::Custom(Color::rgb(1., 0., 0.)),
-                ..Default::default()
             },
             ..Default::default()
         },

@@ -75,15 +75,12 @@ pub(super) fn sys_handle_selection_change(
     let mut min = Vec2::MAX;
     let mut max = Vec2::MIN;
     for (bounds, selected) in q_all_selecteables.iter() {
-        match (selected, bounds) {
-            (Selected::Yes, GlobalBounds2D::Calculated(bounds)) => {
-                #[cfg(feature = "debug_bounds")]
-                debug!("\tHandling {bounds:?}!");
-                min = bounds.min.min(min);
-                max = bounds.max.max(max);
-                any_selected = true;
-            }
-            _ => {}
+        if let (Selected::Yes, GlobalBounds2D::Calculated(bounds)) = (selected, bounds) {
+            #[cfg(feature = "debug_bounds")]
+            debug!("\tHandling {bounds:?}!");
+            min = bounds.min.min(min);
+            max = bounds.max.max(max);
+            any_selected = true;
         }
     }
 
@@ -121,7 +118,6 @@ pub(super) fn sys_handle_selection_change(
         let shape = shapes::Rectangle {
             extents,
             origin: RectangleOrigin::BottomLeft,
-            ..Default::default()
         };
 
         *path = GeometryBuilder::build_as(&shape);

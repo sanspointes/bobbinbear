@@ -21,14 +21,8 @@ pub fn patch_world_entities_for_reflection(
     let to_apply: Vec<_> = q_to_patch
         .iter_many(world, entities)
         .map(|(e, maybe_path, maybe_fill)| {
-            let refl_path: Option<ReflectablePath> = match maybe_path {
-                Some(lyon_path) => Some(lyon_path.0.clone().into()),
-                None => None,
-            };
-            let refl_fill: Option<ReflectableFill> = match maybe_fill {
-                Some(lyon_fill) => Some(lyon_fill.clone().into()),
-                None => None,
-            };
+            let refl_path: Option<ReflectablePath> = maybe_path.map(|lyon_path| lyon_path.0.clone().into());
+            let refl_fill: Option<ReflectableFill> = maybe_fill.map(|lyon_fill| ReflectableFill::from(*lyon_fill));
 
             (e, refl_path, refl_fill)
         })
@@ -42,25 +36,19 @@ pub fn patch_world_entities_for_reflection(
             debug::dump_entity_components(world, e);
         }
 
-        match refl_path {
-            Some(refl_path) => {
-                debug!("\tPatching Path -> ReflectablePath for {:?}", e);
-                world.entity_mut(e).insert(refl_path);
-            }
-            None => (),
+        if let Some(refl_path) = refl_path {
+            debug!("\tPatching Path -> ReflectablePath for {:?}", e);
+            world.entity_mut(e).insert(refl_path);
         }
-        match refl_fill {
-            Some(refl_fill) => {
-                debug!("\tPatching Fill -> ReflectableFill for {:?}", e);
-                world.entity_mut(e).insert(refl_fill);
-            }
-            None => (),
+        if let Some(refl_fill) = refl_fill {
+            debug!("\tPatching Fill -> ReflectableFill for {:?}", e);
+            world.entity_mut(e).insert(refl_fill);
         }
 
         #[cfg(feature = "debug_reflect")]
         {
-            debug!("\tpost-patch: {entity:?}");
-            debug::dump_entity_components(world, entity);
+            debug!("\tpost-patch: {e:?}");
+            debug::dump_entity_components(world, e);
         }
     }
 
@@ -88,18 +76,13 @@ pub fn patch_world_entities_for_playback(
     entities: &Vec<Entity>,
 ) -> Result<(), QueryEntityError> {
     // Collect the transforms to apply
-    let mut q_to_patch = world.query::<(Entity, Option<&ReflectablePath>, Option<&ReflectableFill>)>();
+    let mut q_to_patch =
+        world.query::<(Entity, Option<&ReflectablePath>, Option<&ReflectableFill>)>();
     let to_apply: Vec<_> = q_to_patch
         .iter_many(world, entities)
         .map(|(e, maybe_path, maybe_fill)| {
-            let lyon_path: Option<Path> = match maybe_path {
-                Some(refl_path) => Some(refl_path.clone().into()),
-                None => None,
-            };
-            let lyon_fill: Option<Fill> = match maybe_fill {
-                Some(refl_fill) => Some(refl_fill.clone().into()),
-                None => None,
-            };
+            let lyon_path: Option<Path> = maybe_path.map(|refl_path| refl_path.clone().into());
+            let lyon_fill: Option<Fill> = maybe_fill.map(|refl_fill| (*refl_fill).into());
 
             (e, lyon_path, lyon_fill)
         })
@@ -113,23 +96,23 @@ pub fn patch_world_entities_for_playback(
             debug::dump_entity_components(world, e);
         }
 
-        match lyon_path {
-            Some(lyon_path) => {
-                world.entity_mut(e).remove::<ReflectablePath>().insert(lyon_path);
-            }
-            None => (),
+        if let Some(lyon_path) = lyon_path {
+            world
+                .entity_mut(e)
+                .remove::<ReflectablePath>()
+                .insert(lyon_path);
         }
-        match lyon_fill {
-            Some(lyon_fill) => {
-                world.entity_mut(e).remove::<ReflectableFill>().insert(lyon_fill);
-            }
-            None => (),
+        if let Some(lyon_fill) = lyon_fill {
+            world
+                .entity_mut(e)
+                .remove::<ReflectableFill>()
+                .insert(lyon_fill);
         }
 
         #[cfg(feature = "debug_reflect")]
         {
-            debug!("\tpost-patch: {entity:?}");
-            debug::dump_entity_components(world, entity);
+            debug!("\tpost-patch: {e:?}");
+            debug::dump_entity_components(world, e);
         }
     }
 

@@ -1,6 +1,6 @@
 use std::{
     collections::VecDeque,
-    ops::{Add, Div, Mul, Sub},
+    ops::{Add, Mul, Sub},
 };
 
 use anyhow::anyhow;
@@ -14,11 +14,6 @@ use crate::{
 };
 
 use super::ToolHandlerMessage;
-
-fn screen_pos_px_to_world_pos(screen_pos: &Vec2, window_size: &Vec2, proj_rect: &Rect) -> Vec2 {
-    let norm_pos = screen_pos.div(*window_size);
-    norm_pos.mul_add(proj_rect.size(), proj_rect.min)
-}
 
 #[derive(Resource, Clone)]
 pub enum GrabToolState {
@@ -62,7 +57,7 @@ impl GrabToolState {
             Self::None { translation } => Ok(Self::Moving {
                 translation: *translation,
                 initial_translation: *translation,
-                initial_mouse_pos: initial_mouse_pos.clone(),
+                initial_mouse_pos: *initial_mouse_pos,
             }),
             _ => Err(anyhow!("Invalid state transition")),
         }
