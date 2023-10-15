@@ -15,7 +15,7 @@ use bevy_prototype_lyon::{
     shapes,
 };
 
-use crate::systems::camera::{sys_setup_camera, CameraTag};
+use crate::systems::camera::{CameraTag};
 
 pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 

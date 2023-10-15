@@ -8,7 +8,7 @@ use crate::{
     components::bbid::BBId,
     msgs::{frontend::FrontendMsg, Message},
     plugins::{input_plugin::InputMessage, selection_plugin::{Selectable, Selected}},
-    types::BBCursor, utils::debug,
+    types::BBCursor,
 };
 
 use super::ToolHandlerMessage;
@@ -265,8 +265,8 @@ pub fn msg_handler_select_tool(
                     //
                     // res.drag_model = Some(to_move);
                 }
-                drag @ InputMessage::DragMove { world_offset, .. }
-                | drag @ InputMessage::DragEnd { world_offset, .. } => {
+                _drag @ InputMessage::DragMove { world_offset: _, .. }
+                | _drag @ InputMessage::DragEnd { world_offset: _, .. } => {
                     // let (_, _, mut res) = select_sys_state.get_mut(world);
                     // if let Some(model) = res.drag_model.clone() {
                     //     let model: Vec<_> = model
@@ -293,7 +293,7 @@ pub fn msg_handler_select_tool(
                 InputMessage::Keyboard {
                     pressed,
                     key,
-                    modifiers,
+                    modifiers: _,
                 } => match (pressed, key) {
                     (ButtonState::Released, KeyCode::Delete)
                     | (ButtonState::Released, KeyCode::Back) => {

@@ -91,7 +91,7 @@ impl Plugin for CmdMsgPlugin {
 }
 
 pub fn msg_handler_cmds(
-    mut world: &mut World,
+    world: &mut World,
     message: CmdMsg,
     _responses: &mut VecDeque<Message>,
 ) {

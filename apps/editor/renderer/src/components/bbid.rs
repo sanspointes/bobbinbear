@@ -58,7 +58,7 @@ impl BBIdUtils for World {
     fn get_entity_id_by_bbid(&mut self, bbid: BBId) -> Option<Entity> {
         self.query::<(Entity, &BBId)>()
             .iter(self)
-            .find(|(entity, id)| (*id).eq(&bbid))
+            .find(|(_entity, id)| (*id).eq(&bbid))
             .map(|(e, _)| e)
     }
 

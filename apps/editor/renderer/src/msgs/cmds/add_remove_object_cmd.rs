@@ -1,4 +1,4 @@
-use std::{fmt::{Debug, Display}, sync::{Arc, Mutex}};
+use std::{fmt::{Debug, Display}, sync::{Arc}};
 
 use bevy::{
     ecs::{entity::EntityMap, query::QueryEntityError, world::EntityMut},
@@ -103,14 +103,14 @@ impl AddObjectCmd {
         let entities = patch_world_subhierarchy_for_reflection(world, entity)
             .map_err(|err| AddRemoveObjectError::QueryEntityError(err))?;
 
-        for e in entities.iter() {
+        for _e in entities.iter() {
         }
 
         let mut builder = DynamicSceneBuilder::from_world(&world);
         builder.extract_entities(entities.into_iter());
         let dynamic_scene = builder.build();
 
-        let type_registry = world.resource::<AppTypeRegistry>();
+        let _type_registry = world.resource::<AppTypeRegistry>();
 
         world.entity_mut(entity).despawn_recursive();
 
