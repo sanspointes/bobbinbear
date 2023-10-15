@@ -1,8 +1,11 @@
-use std::{collections::VecDeque, ops::{Add, Sub}};
+use std::{
+    collections::VecDeque,
+    ops::{Add, Sub},
+};
 
-use bevy::{ecs::system::SystemState, prelude::*, utils::thiserror::Error};
+use bevy::{ecs::system::SystemState, prelude::*};
 use bevy_prototype_lyon::{
-    prelude::{GeometryBuilder, ShapeBundle, Fill},
+    prelude::{Fill, GeometryBuilder, ShapeBundle},
     shapes,
 };
 
@@ -10,27 +13,30 @@ use crate::{
     components::{bbid::BBId, scene::BBObject},
     debug_log,
     msgs::{
-        cmds::{
-            add_remove_object_cmd::AddObjectCmd, update_path_cmd::UpdatePathCmd,
-            CmdMsg,
-        },
+        cmds::{add_remove_object_cmd::AddObjectCmd, update_path_cmd::UpdatePathCmd, CmdMsg},
         frontend::FrontendMsg,
         Message,
     },
-    plugins::{input_plugin::InputMessage, selection_plugin::SelectableBundle, bounds_2d_plugin::GlobalBounds2D},
+    plugins::{
+        bounds_2d_plugin::GlobalBounds2D, input_plugin::InputMessage,
+        selection_plugin::SelectableBundle,
+    },
     types::BBCursor,
 };
 
-use super::ToolHandlerMessage;
+use super::{ToolFsmError, ToolHandlerMessage};
 
 //
 // BOX TOOL FSM
 //
 
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
-enum ToolState {
+enum BoxFsm {
     #[default]
-    None,
+    Default,
+    PointerDown {
+        cursor_origin_pos: Vec2,
+    },
     BuildingBox {
         bbid: BBId,
         cursor_origin_pos: Vec2,
@@ -39,98 +45,102 @@ enum ToolState {
     },
 }
 
-#[derive(Error, Debug)]
-enum ToolStateError {
-    #[error("No valid transition.")]
-    NoTransition,
-}
-
-impl ToolState {
-    fn make_default_box(&mut self) -> Result<(ToolState, ToolState), ToolStateError> {
+impl BoxFsm {
+    fn handle_pointer_down(
+        &mut self,
+        cursor_position: &Vec2,
+    ) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
+        let old = self.clone();
         match self {
-            ToolState::None => {
-                let old = self.clone();
-                *self = ToolState::None;
-                Ok((old, *self))
+            BoxFsm::Default => {
+                *self = BoxFsm::PointerDown {
+                    cursor_origin_pos: cursor_position.clone(),
+                };
+                Ok(self.clone())
             }
-            _ => Err(ToolStateError::NoTransition),
+            _ => Err(ToolFsmError::NoTransition),
         }
+        .map(|new| (old, new))
+    }
+
+    /// Occurs after pointer down, resetting state to default
+    fn handle_pointer_click(&mut self) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
+        let old = self.clone();
+        match self {
+            BoxFsm::PointerDown { .. } => {
+                *self = BoxFsm::Default;
+                Ok(self.clone())
+            }
+            _ => Err(ToolFsmError::NoTransition),
+        }
+        .map(|new| (old, new))
     }
     /// On drag start we start building a box.
     ///
     /// * `world`:
     /// * `world_pressed_pos`:
     /// * `world_drag_offset`:
-    fn start_making_box(
+    fn handle_drag_start(
         &mut self,
-        cursor_origin_pos: &Vec2,
         cursor_offset: &Vec2,
-    ) -> Result<(ToolState, ToolState), ToolStateError> {
-        match *self {
-            ToolState::None => {
+    ) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
+        let old = self.clone();
+        match self {
+            BoxFsm::PointerDown { cursor_origin_pos } => {
                 let bbid = BBId::default();
                 let box_origin_pos =
                     Vec2::min(*cursor_origin_pos, cursor_origin_pos.sub(*cursor_offset));
                 let box_extents = Vec2::abs(*cursor_offset);
 
-                let old = self.clone();
-                *self = ToolState::BuildingBox {
+                *self = BoxFsm::BuildingBox {
                     bbid,
                     cursor_origin_pos: *cursor_origin_pos,
                     box_origin_pos,
                     box_extents,
                 };
 
-                Ok((old, *self))
+                Ok(self.clone())
             }
-            _ => Err(ToolStateError::NoTransition),
+            _ => Err(ToolFsmError::NoTransition),
         }
+        .map(|new| (old, new))
     }
 
-    fn update_current_box(
-        &mut self,
-        cursor_offset: &Vec2,
-    ) -> Result<(ToolState, ToolState), ToolStateError> {
-        match *self {
-            ToolState::BuildingBox {
-                bbid,
+    fn handle_drag_move(&mut self, cursor_offset: &Vec2) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
+        let old = self.clone();
+        match self {
+            BoxFsm::BuildingBox {
                 cursor_origin_pos,
                 box_origin_pos,
                 box_extents,
+                ..
             } => {
-                let box_origin_pos =
-                    Vec2::min(cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
-                let box_extents = Vec2::abs(*cursor_offset);
-
-                let old = self.clone();
-                *self = ToolState::BuildingBox {
-                    bbid,
-                    cursor_origin_pos,
-                    box_origin_pos,
-                    box_extents,
-                };
-
-                Ok((old, *self))
+                *box_extents = Vec2::abs(*cursor_offset);
+                *box_origin_pos =
+                    Vec2::min(*cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
+                Ok(self.clone())
             }
-            _ => Err(ToolStateError::NoTransition),
+            _ => Err(ToolFsmError::NoTransition),
         }
+        .map(|new| (old, new))
     }
 
-    fn complete_current_box(&mut self) -> Result<(ToolState, ToolState), ToolStateError> {
-        match *self {
-            ToolState::BuildingBox { .. } => {
-                let old = self.clone();
-                *self = ToolState::None;
-                Ok((old, *self))
+    fn handle_drag_end(&mut self) -> Result<(BoxFsm, BoxFsm), ToolFsmError> {
+        let old = self.clone();
+        match self {
+            BoxFsm::BuildingBox { .. } => {
+                *self = BoxFsm::Default;
+                Ok(self.clone())
             }
-            _ => Err(ToolStateError::NoTransition),
+            _ => Err(ToolFsmError::NoTransition),
         }
+        .map(|new| (old, new))
     }
 }
 
 #[derive(Resource, Default)]
 pub struct BoxToolRes {
-    state: ToolState,
+    state: BoxFsm,
 }
 
 //
@@ -165,162 +175,141 @@ pub fn msg_handler_box_tool_input(
 
     let mut res = sys_state.get_mut(world).0;
 
-    match message {
+    let result = match message {
+        InputMessage::PointerDown {
+            world: world_pos, ..
+        } => res.state.handle_pointer_down(world_pos),
         // On Click we try make a default box
-        InputMessage::PointerClick {
-            world: world_pressed,
-            ..
-        } => {
-            let result = res.state.make_default_box();
-
-            match result {
-                Ok((ToolState::None, ToolState::None)) => {
-                    let bbid = BBId::default();
-                    let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
-                        let shape = shapes::Rectangle {
-                            origin: shapes::RectangleOrigin::TopLeft,
-                            extents: Vec2::new(100., 100.), // TODO: Convert this to a setting
-                        };
-                        entity.insert((
-                            Name::from("Box"),
-                            bbid,
-                            BBObject::Vector,
-                            ShapeBundle {
-                                path: GeometryBuilder::build_as(&shape),
-                                transform: Transform {
-                                    translation: Vec3::new(world_pressed.x, world_pressed.y, 0.),
-                                    ..Default::default()
-                                },
-                                ..Default::default()
-                            },
-                            GlobalBounds2D::default(),
-                            SelectableBundle::default(),
-                            Fill::color(Color::rgb_u8(50, 50, 50))
-                        ));
-                    });
-
-                    match cmd_result {
-                        Ok(cmd) => responses.push_back(CmdMsg::from(cmd).into()),
-                        Err(reason) => error!(
-                            "Error performing .start_making_box on box_tool \"{reason:?}\"."
-                        ),
-                    }
-                }
-                Ok((_, _)) => panic!("Unhandled state transition"),
-                Err(ToolStateError::NoTransition) => {}
-            }
-        }
+        InputMessage::PointerClick { .. } => res.state.handle_pointer_click(),
         // On Drag start we try to create a box that we will continue to update.
-        InputMessage::DragStart {
-            // screen,
-            // modifiers,
-            world_pressed,
-            world_offset,
-            ..
-        } => {
-            let result = res.state.start_making_box(world_pressed, world_offset);
-
-            match result {
-                Ok((
-                    ToolState::None,
-                    ToolState::BuildingBox {
-                        bbid,
-                        box_origin_pos,
-                        box_extents,
-                        ..
-                    },
-                )) => {
-                    let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
-                        let shape = shapes::Rectangle {
-                            origin: shapes::RectangleOrigin::TopLeft,
-                            extents: box_extents,
-                        };
-                        entity.insert((
-                            Name::from("Box"),
-                            bbid,
-                            BBObject::Vector,
-                            ShapeBundle {
-                                path: GeometryBuilder::build_as(&shape),
-                                transform: Transform {
-                                    translation: Vec3::new(box_origin_pos.x, box_origin_pos.y, 0.),
-                                    ..Default::default()
-                                },
-                                ..Default::default()
-                            },
-                            GlobalBounds2D::default(),
-                            SelectableBundle::default(),
-                            Fill::color(Color::rgb_u8(50, 50, 50))
-                        ));
-                    });
-
-                    match cmd_result {
-                        Ok(cmd) => responses.push_back(CmdMsg::from(cmd).into()),
-                        Err(reason) => error!(
-                            "Error performing .start_making_box on box_tool \"{reason:?}\"."
-                        ),
-                    }
-                }
-                Ok((_, _)) => panic!("Unhandled state transition"),
-                Err(ToolStateError::NoTransition) => {}
-            }
-        }
-
-        InputMessage::DragMove { world_offset, .. } => {
-            let result = res.state.update_current_box(world_offset);
-
-            match result {
-                Ok((
-                    ToolState::BuildingBox { .. },
-                    ToolState::BuildingBox {
-                        bbid,
-                        box_extents,
-                        ..
-                    },
-                )) => {
-                    let shape = shapes::Rectangle {
-                        origin: shapes::RectangleOrigin::TopLeft,
-                        extents: box_extents,
-                    };
-                    let path = GeometryBuilder::build_as(&shape).0;
-
-                    let cmd = UpdatePathCmd::new(bbid, path);
-
-                    responses.push_back(CmdMsg::from(cmd).into());
-                }
-                Ok((_, _)) => panic!("Unhandled state transition"),
-                Err(ToolStateError::NoTransition) => {}
-            }
-        }
-
-        InputMessage::DragEnd { .. } => {
-            let result = res.state.complete_current_box();
-
-            match result {
-                Ok((
-                    ToolState::BuildingBox {
-                        bbid,
-                        box_extents,
-                        box_origin_pos,
-                        ..
-                    },
-                    ToolState::None,
-                )) => {
-                    let shape = shapes::Rectangle {
-                        origin: shapes::RectangleOrigin::TopLeft,
-                        extents: box_extents,
-                    };
-                    let path = GeometryBuilder::build_as(&shape).0;
-
-                    let cmd = UpdatePathCmd::new(bbid, path);
-
-                    responses.push_back(CmdMsg::from(cmd).into());
-                }
-                Ok((_, _)) => panic!("Unhandled state transition"),
-                Err(ToolStateError::NoTransition) => {}
-            }
-        }
-        _ => {}
+        InputMessage::DragStart { world_offset, .. } => res.state.handle_drag_start(world_offset),
+        InputMessage::DragMove { world_offset, .. } => res.state.handle_drag_move(world_offset),
+        InputMessage::DragEnd { .. } => res.state.handle_drag_end(),
+        _ => Err(ToolFsmError::NoTransition),
     };
+
+    // Handle state transitions
+    match result {
+        //
+        // Default -> Pointer down is preparing to either make box manually or via a click event
+        Ok((BoxFsm::Default, BoxFsm::PointerDown { .. })) => {}
+        //
+        // PointerDown -> Default, create a default box by click event.
+        Ok((BoxFsm::PointerDown { cursor_origin_pos }, BoxFsm::Default)) => {
+            let bbid = BBId::default();
+            let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
+                let shape = shapes::Rectangle {
+                    origin: shapes::RectangleOrigin::TopLeft,
+                    extents: Vec2::new(100., 100.), // TODO: Convert this to a setting
+                };
+                entity.insert((
+                    Name::from("Box"),
+                    bbid,
+                    BBObject::Vector,
+                    ShapeBundle {
+                        path: GeometryBuilder::build_as(&shape),
+                        transform: Transform {
+                            translation: Vec3::new(cursor_origin_pos.x, cursor_origin_pos.y, 0.),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    GlobalBounds2D::default(),
+                    SelectableBundle::default(),
+                    Fill::color(Color::rgb_u8(50, 50, 50)),
+                ));
+            });
+
+            match cmd_result {
+                Ok(cmd) => responses.push_back(CmdMsg::from(cmd).into()),
+                Err(reason) => {
+                    error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
+                }
+            }
+        }
+        //
+        // PointerDown -> BuildingBox, Creates a new box with no path
+        Ok((
+            BoxFsm::PointerDown { .. },
+            BoxFsm::BuildingBox {
+                bbid,
+                box_origin_pos,
+                box_extents,
+                ..
+            },
+        )) => {
+            let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
+                let shape = shapes::Rectangle {
+                    origin: shapes::RectangleOrigin::TopLeft,
+                    extents: box_extents,
+                };
+                entity.insert((
+                    Name::from("Box"),
+                    bbid,
+                    BBObject::Vector,
+                    ShapeBundle {
+                        path: GeometryBuilder::build_as(&shape),
+                        transform: Transform {
+                            translation: Vec3::new(box_origin_pos.x, box_origin_pos.y, 0.),
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    },
+                    GlobalBounds2D::default(),
+                    SelectableBundle::default(),
+                    Fill::color(Color::rgb_u8(50, 50, 50)),
+                ));
+            });
+
+            match cmd_result {
+                Ok(cmd) => responses.push_back(CmdMsg::from(cmd).into()),
+                Err(reason) => {
+                    error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
+                }
+            }
+        }
+        //
+        // BuildingBox -> BuildingBox, Updates the currently building box
+        Ok((
+            BoxFsm::BuildingBox { .. },
+            BoxFsm::BuildingBox {
+                bbid, box_extents, ..
+            },
+        )) => {
+            let shape = shapes::Rectangle {
+                origin: shapes::RectangleOrigin::TopLeft,
+                extents: box_extents,
+            };
+            let path = GeometryBuilder::build_as(&shape).0;
+
+            let cmd = UpdatePathCmd::new(bbid, path);
+
+            responses.push_back(CmdMsg::from(cmd).into());
+        }
+        //
+        // BuildingBox -> Default, Finish building the box.
+        Ok((
+            BoxFsm::BuildingBox {
+                bbid, box_extents, ..
+            },
+            BoxFsm::Default,
+        )) => {
+            let shape = shapes::Rectangle {
+                origin: shapes::RectangleOrigin::TopLeft,
+                extents: box_extents,
+            };
+            let path = GeometryBuilder::build_as(&shape).0;
+
+            let cmd = UpdatePathCmd::new(bbid, path);
+
+            responses.push_back(CmdMsg::from(cmd).into());
+        }
+        Ok((arg1, arg2)) => panic!("BoxTool: Unhandled state transition from {arg1:?} to {arg2:?}"),
+        Err(ToolFsmError::NoTransition) => {}
+        Err(ToolFsmError::TransitionError(error)) => {
+            panic!("BoxTool: Error during transition. Reason {error:?}.")
+        }
+    }
 }
 
 //

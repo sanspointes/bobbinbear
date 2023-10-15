@@ -6,7 +6,7 @@ use std::{
     collections::VecDeque,
     error::Error,
     fmt::{Debug, Display},
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
 
 use bevy::prelude::*;
@@ -18,6 +18,22 @@ use self::add_remove_object_cmd::AddObjectCmd;
 use self::update_path_cmd::UpdatePathCmd;
 
 use super::Message;
+
+/// Shared Logic
+
+///
+/// Commands are atomic actions that can be undone / redone
+///
+pub trait Cmd: Send + Sync + Debug + Display {
+    fn name(&self) -> &str;
+    fn execute(&mut self, world: &mut World) -> Result<(), CmdError>;
+    fn undo(&mut self, world: &mut World) -> Result<(), CmdError>;
+    fn is_repeated(&self, _other: &CmdType) -> bool {
+        false
+    }
+}
+
+// Command message / history logic. 
 
 #[derive(Default)]
 /// Sometimes we don't want to push a command to the undo/redo history.
@@ -52,19 +68,6 @@ macro_rules! unwrap_cmd_type {
             CmdType::UpdatePath($pattern) => $result,
         }
     };
-}
-
-/// Commands
-///
-/// Commands are atomic actions that can be undone / redone
-///
-pub trait Cmd: Send + Sync + Debug + Display {
-    fn name(&self) -> &str;
-    fn execute(&mut self, world: &mut World) -> Result<(), CmdError>;
-    fn undo(&mut self, world: &mut World) -> Result<(), CmdError>;
-    fn is_repeated(&self, _other: &CmdType) -> bool {
-        false
-    }
 }
 
 #[derive(Event, Clone, Debug)]

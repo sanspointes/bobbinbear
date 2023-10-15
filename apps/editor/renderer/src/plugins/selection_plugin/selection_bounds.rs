@@ -1,9 +1,7 @@
 use std::ops::Sub;
 
 use bevy::{
-    math::{Vec3A, Vec3Swizzles},
     prelude::*,
-    render::{primitives::Aabb, view::visibility},
     window::PrimaryWindow,
 };
 use bevy_prototype_lyon::{prelude::*, shapes};

@@ -5,6 +5,7 @@ mod box_tool;
 use std::collections::VecDeque;
 
 use bevy::{ecs::system::SystemState, prelude::*};
+use thiserror::Error;
 
 use crate::{types::BBTool, plugins::input_plugin::InputMessage};
 
@@ -15,6 +16,14 @@ use self::{
 };
 
 use super::{frontend::FrontendMsg, Message};
+
+#[derive(Error, Debug)]
+pub enum ToolFsmError {
+    #[error("No transition for event")]
+    NoTransition,
+    #[error("Unknown error during transtion: {0:?}")]
+    TransitionError(anyhow::Error)
+}
 
 #[derive(Clone, Debug)]
 pub enum ToolMessage {

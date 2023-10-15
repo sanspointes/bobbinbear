@@ -1,4 +1,4 @@
-use bevy::{math::Vec3A, prelude::*, render::view::VisibilitySystems, sprite::Mesh2dHandle};
+use bevy::{math::Vec3A, prelude::*, sprite::Mesh2dHandle};
 
 use crate::editor::EditorSet;
 

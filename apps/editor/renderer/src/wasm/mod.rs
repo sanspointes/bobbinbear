@@ -1,3 +1,4 @@
+
 pub mod store;
 
 use bevy::prelude::*;
@@ -28,6 +29,7 @@ pub struct FrontendReceiver(pub Receiver<Message>);
 pub struct FrontendSender(pub Sender<FrontendMsg>);
 
 #[wasm_bindgen]
+#[allow(dead_code)]
 pub struct EditorApi {
     id: usize,
 }

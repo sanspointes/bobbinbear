@@ -18,6 +18,7 @@ pub struct Store {
     items: Mutex<HashMap<usize, EditorApiStore>>,
 }
 
+#[allow(dead_code)]
 impl Store {
     pub fn new() -> Self {
         Self {

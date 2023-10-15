@@ -6,7 +6,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
     msgs::{sys_msg_handler, frontend::FrontendMsg, Message, ToolMsgPlugin, cmds::CmdMsgPlugin},
-    plugins::{input_plugin::{InputPlugin, InputMessage}, selection_plugin::SelectionPlugin, screen_space_root_plugin::{ScreenSpaceCameraTag, ScreenSpaceRootPlugin}, bounds_2d_plugin::Bounds2DPlugin},
+    plugins::{input_plugin::{InputPlugin, InputMessage}, selection_plugin::SelectionPlugin, screen_space_root_plugin::ScreenSpaceRootPlugin, bounds_2d_plugin::Bounds2DPlugin},
     wasm::FrontendReceiver, systems::camera::sys_setup_camera, components::{bbid::BBId, scene::BBObject}, utils::reflect_shims::{ReflectablePath, ReflectableFill},
 };
 

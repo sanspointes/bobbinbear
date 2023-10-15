@@ -9,7 +9,7 @@ use bevy_prototype_lyon::{
     shapes::{self, RectangleOrigin},
 };
 
-use crate::{constants::BB_LAYER_UI, systems::camera::CameraTag, editor::EditorSet};
+use crate::{constants::BB_LAYER_UI, editor::EditorSet};
 
 #[derive(Component, Default)]
 pub struct ScreenSpaceCameraTag;
@@ -34,7 +34,7 @@ impl Plugin for ScreenSpaceRootPlugin {
 }
 
 /// Creates the screenspace root.
-fn sys_setup(mut commands: Commands, q_camera: Query<Entity, With<CameraTag>>) {
+fn sys_setup(mut commands: Commands) {
     commands.spawn((
         Name::from("ScreenSpaceRootTag"),
         ScreenSpaceRootTag,
