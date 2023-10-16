@@ -5,14 +5,14 @@ use bevy::{
     input::ButtonState,
     math::Vec3Swizzles,
     prelude::*,
-    utils::{AHasher, HashMap, HashSet},
+    utils::{HashMap, HashSet},
 };
 use bevy_mod_raycast::RaycastSource;
 
 use crate::{
-    components::bbid::{BBId, BBIdUtils},
+    components::bbid::BBId,
     msgs::{
-        cmds::{move_objects_cmd::MoveObjectsCmd, CmdMsg},
+        cmds::{move_objects_cmd::MoveObjectsCmd, CmdMsg, select_objects_cmd::SelectObjectsCmd},
         frontend::FrontendMsg,
         Message,
     },
@@ -21,7 +21,6 @@ use crate::{
         selection_plugin::{Selectable, Selected},
     },
     types::BBCursor,
-    utils::coordinates::world_to_screen,
 };
 
 use super::{ToolFsmError, ToolFsmResult, ToolHandlerMessage};
@@ -254,16 +253,20 @@ pub fn msg_handler_select_tool(
             fsm.reset()
         }
         // Handle Pointer down and Click events
-        Input(ev @ PointerDown {
-            modifiers,
-            world: world_pos,
-            ..
-        })
-        | Input(ev @ PointerClick {
-            world: world_pos,
-            modifiers,
-            ..
-        }) => {
+        Input(
+            ev @ PointerDown {
+                modifiers,
+                world: world_pos,
+                ..
+            },
+        )
+        | Input(
+            ev @ PointerClick {
+                world: world_pos,
+                modifiers,
+                ..
+            },
+        ) => {
             let mut select_sys_state = SystemState::<(
                 // Selectables
                 Query<(&BBId, &Selectable, &mut Selected, &Transform)>,
@@ -292,9 +295,13 @@ pub fn msg_handler_select_tool(
             };
 
             match ev {
-                InputMessage::PointerDown { .. } => fsm.pointer_down(hit_bbid, modifiers, world_pos),
+                InputMessage::PointerDown { .. } => {
+                    fsm.pointer_down(hit_bbid, modifiers, world_pos)
+                }
                 InputMessage::PointerClick { .. } => fsm.pointer_click(hit_bbid, modifiers),
-                _ => panic!("Unhandled InputMessage variant in select_tool. This should never happen."),
+                _ => panic!(
+                    "Unhandled InputMessage variant in select_tool. This should never happen."
+                ),
             }
         }
         Input(DragStart { world_offset, .. }) => fsm.start_drag(world_offset, world),
@@ -317,16 +324,12 @@ pub fn msg_handler_select_tool(
         Ok((Default { bbids: old }, Default { bbids: new }))
         | Ok((AwaitingMoveSelected { bbids: old, .. }, Default { bbids: new }))
         | Ok((Default { bbids: old }, AwaitingMoveSelected { bbids: new, .. })) => {
-            let to_remove: HashSet<_> = old.difference(new).collect();
-            let to_add: HashSet<_> = new.difference(old).collect();
+            if !new.eq(old) {
+                let to_select: Vec<BBId> = new.difference(old).cloned().collect();
+                let to_deselect: Vec<BBId> = old.difference(new).cloned().collect();
 
-            for (bbid, mut selected) in world.query::<(&BBId, &mut Selected)>().iter_mut(world) {
-                if to_remove.contains(bbid) {
-                    *selected = Selected::No;
-                }
-                if to_add.contains(bbid) {
-                    *selected = Selected::Yes;
-                }
+                let cmd = SelectObjectsCmd::select_deselect(to_select, to_deselect);
+                responses.push_back(CmdMsg::from(cmd).into())
             }
         }
 

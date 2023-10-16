@@ -2,6 +2,7 @@ pub mod add_remove_object_cmd;
 pub mod multi_cmd;
 pub mod update_path_cmd;
 pub mod move_objects_cmd;
+pub mod select_objects_cmd;
 
 use std::{
     collections::VecDeque,
@@ -9,12 +10,14 @@ use std::{
     sync::Arc,
 };
 
-use bevy::prelude::*;
+use bevy::{prelude::*, ecs::query::QueryEntityError};
 
 pub use multi_cmd::MultiCmd;
 use thiserror::Error;
 
-use self::{add_remove_object_cmd::AddObjectCmd, move_objects_cmd::MoveObjectsCmd};
+use crate::components::bbid::BbidWorldError;
+
+use self::{add_remove_object_cmd::AddObjectCmd, move_objects_cmd::MoveObjectsCmd, select_objects_cmd::SelectObjectsCmd};
 use self::update_path_cmd::UpdatePathCmd;
 
 use super::Message;
@@ -61,6 +64,16 @@ impl From<anyhow::Error> for CmdError {
         Self::ExecutionError(value)
     }
 }
+impl From<BbidWorldError> for CmdError {
+    fn from(value: BbidWorldError) -> Self {
+        Self::ExecutionError(value.into())
+    }
+}
+impl From<QueryEntityError> for CmdError {
+    fn from(value: QueryEntityError) -> Self {
+        Self::ExecutionError(value.into())
+    }
+}
 
 #[derive(Debug)]
 pub enum CmdType {
@@ -68,6 +81,7 @@ pub enum CmdType {
     AddObject(AddObjectCmd),
     UpdatePath(UpdatePathCmd),
     MoveObjects(MoveObjectsCmd),
+    SelectObjects(SelectObjectsCmd)
 }
 
 macro_rules! unwrap_cmd_type {
@@ -77,6 +91,7 @@ macro_rules! unwrap_cmd_type {
             CmdType::AddObject($pattern) => $result,
             CmdType::UpdatePath($pattern) => $result,
             CmdType::MoveObjects($pattern) => $result,
+            CmdType::SelectObjects($pattern) => $result,
         }
     };
 }
