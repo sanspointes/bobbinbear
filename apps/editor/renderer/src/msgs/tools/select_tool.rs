@@ -87,29 +87,43 @@ impl SelectFsm {
         #[cfg(feature = "debug_select")]
         debug!("SelectFsm.pointer_down_with_hover(bbid: {bbid:?}, modifiers: {modifiers:?})");
 
-        let result = match (self, modifiers.shift) {
-            // When shift not pressed, selecting single
-            (Self::Default { .. }, ButtonState::Released) => {
-                let mut bbids = HashSet::new();
-                if let Some(bbid) = bbid {
-                    bbids.insert(*bbid);
+        let result = match self {
+            Self::Default { bbids } => {
+                let pointer_down_on_selected = match bbid {
+                    Some(bbid) => bbids.contains(bbid),
+                    None => false,
+                };
+
+                match (pointer_down_on_selected, modifiers.shift) {
+                    // If pointer down on already selected, do not deselect / add select.
+                    (true, _) => Ok(Self::AwaitingMoveSelected { bbids: bbids.clone(), initial_world_pos: *initial_world_pos }),
+
+                    // If pointer down and not pressing shift, just select the new element
+                    (false, ButtonState::Released) => {
+                        let mut bbids = HashSet::new();
+                        if let Some(bbid) = bbid {
+                            bbids.insert(*bbid);
+                        }
+                        Ok(Self::AwaitingMoveSelected {
+                            bbids,
+                            initial_world_pos: *initial_world_pos,
+                        })
+                    }
+
+                    // If pointer down and not pressing try to add new element to selection
+                    (false, ButtonState::Pressed) => {
+                        let mut bbids = bbids.clone();
+                        if let Some(bbid) = bbid {
+                            bbids.insert(*bbid);
+                        }
+                        Ok(Self::AwaitingMoveSelected {
+                            bbids,
+                            initial_world_pos: *initial_world_pos,
+                        })
+                    }
                 }
-                Ok(Self::AwaitingMoveSelected {
-                    bbids,
-                    initial_world_pos: *initial_world_pos,
-                })
             }
-            (Self::Default { bbids }, ButtonState::Pressed) => {
-                let mut bbids = bbids.clone();
-                if let Some(bbid) = bbid {
-                    bbids.insert(*bbid);
-                }
-                Ok(Self::AwaitingMoveSelected {
-                    bbids,
-                    initial_world_pos: *initial_world_pos,
-                })
-            }
-            _ => Err(ToolFsmError::NoTransition),
+            _ => Err(ToolFsmError::NoTransition)
         };
 
         result.map(|new| (self.clone(), new))
