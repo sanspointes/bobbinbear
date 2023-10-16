@@ -29,9 +29,9 @@ pub struct Bounds2DPlugin;
 impl Plugin for Bounds2DPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(
-            Update,
+            PostUpdate,
             // Occurs after `CalculateBounds` system set
-            sys_update_global_bounds_2d.in_set(EditorSet::PostMsgs),
+            sys_update_global_bounds_2d.in_set(EditorSet::PostPlugins),
         )
         .register_type::<GlobalBounds2D>();
     }
@@ -51,7 +51,7 @@ pub fn sys_update_global_bounds_2d(
     )>,
     mut to_update_que: Local<Vec<Entity>>,
 ) {
-    let _span = info_span!("sys_update_global_bounds_2d");
+    let _span = info_span!("sys_update_global_bounds_2d").entered();
     // Get changes / additions of NeedsCalculate and store in a que
     let to_update: Vec<Entity> = {
         param_set

@@ -31,7 +31,7 @@ inspector = ["bevy-inspector-egui"]
 trace_bevy = []
 # Useful for tracing the system order of execution with tracy
 # NOTE: This does not debug the bevy systems.  Just our app.
-debug_trace = ["bevy/trace", "bevy/trace_tracy"]
+debug_trace = ["bevy/trace", "bevy/trace_tracy", "bevy_prototype_lyon/trace"]
 # Debug select tool / selection systems
 debug_select = []
 # Debug reflection/serialisation/deserialisation

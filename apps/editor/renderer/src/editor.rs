@@ -1,5 +1,5 @@
 use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*};
-use bevy_prototype_lyon::prelude::*;
+use bevy_prototype_lyon::{prelude::*, plugin::BuildShapes};
 
 #[cfg(feature = "inspector")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
@@ -71,8 +71,7 @@ pub enum EditorSet {
     PreMsgs,
     Msgs,
     PostMsgs,
-    PostMsgsFlush,
-    PostMsgsFlushed,
+    PostPlugins,
 }
 
 /// The entyr point for the app, containing all non-platform specific behaviour.
@@ -90,8 +89,8 @@ impl Plugin for EditorPlugin {
             // Internal App Logic plugins
             .add_plugins((ToolMsgPlugin, CmdMsgPlugin))
 
-            .configure_sets(Update, (EditorSet::PreMsgs, EditorSet::Msgs, EditorSet::PostMsgs, EditorSet::PostMsgsFlush, EditorSet::PostMsgsFlushed).chain()) 
-            .add_systems(Update, sys_flush_post_msgs.in_set(EditorSet::PostMsgsFlush))
+            .configure_sets(Update, (EditorSet::PreMsgs, EditorSet::Msgs, EditorSet::PostMsgs).chain()) 
+            .configure_set(PostUpdate, EditorSet::PostPlugins.after(BuildShapes))
 
             .add_systems(PreStartup, sys_setup_camera)
             .add_systems(Update, sys_handle_pre_editor_msgs.in_set(EditorSet::PreMsgs))
@@ -136,9 +135,4 @@ fn sys_handle_pre_editor_msgs(
         })
         .collect();
     msg_writer.send_batch(msgs);
-}
-
-fn sys_flush_post_msgs(world: &mut World) {
-    let _span = info_span!("sys_flush_post_msgs").entered();
-    apply_deferred(world);
 }
