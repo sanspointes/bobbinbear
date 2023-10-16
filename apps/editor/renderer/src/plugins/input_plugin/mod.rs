@@ -1,11 +1,11 @@
 mod types;
 
-use std::ops::Sub;
+use std::{ops::Sub, mem::discriminant};
 
 use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
     math::Vec3Swizzles,
-    prelude::*,
+    prelude::*, utils::HashSet,
 };
 use bevy_mod_raycast::{
     DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
@@ -14,8 +14,9 @@ use bevy_prototype_lyon::{
     prelude::{Fill, GeometryBuilder, ShapeBundle},
     shapes,
 };
+use js_sys::Reflect::construct_with_new_target;
 
-use crate::systems::camera::CameraTag;
+use crate::{systems::camera::CameraTag, editor::EditorSet};
 
 pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 
@@ -51,7 +52,7 @@ impl Plugin for InputPlugin {
                 )
                     .before(RaycastSystem::BuildRays::<RaycastRawInput>),
             )
-            .add_systems(PreUpdate, sys_raw_input_processor);
+            .add_systems(Update, sys_raw_input_processor.in_set(EditorSet::PreMsgs));
     }
 }
 
@@ -78,6 +79,8 @@ pub fn sys_raw_input_processor(
     mut ev_writer: EventWriter<InputMessage>,
     bg_hit_query: Query<&RaycastMesh<RaycastRawInput>, With<InputHitPlaneTag>>,
 ) {
+    let _span = info_span!("sys_raw_input_processor").entered();
+
     let mut world_point = Vec2::new(0., 0.);
 
     if let Ok(raycast_source) = bg_hit_query.get_single() {
@@ -92,6 +95,8 @@ pub fn sys_raw_input_processor(
         warn!("Warn: Input system cannot get background entity.");
     }
 
+    let mut to_send = Vec::<InputMessage>::with_capacity(8);
+
     for msg in ev_reader.iter() {
         match msg {
             RawInputMessage::PointerMove(move_model) => {
@@ -102,8 +107,11 @@ pub fn sys_raw_input_processor(
                     && !res.is_dragging
                     && res.cur_pos.distance(res.down_pos) > DRAG_THRESHOLD
                 {
+                    #[cfg(feature = "debug_trace")]
+                    debug!("Sending DragStart: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+
                     res.is_dragging = true;
-                    ev_writer.send(InputMessage::DragStart {
+                    to_send.push(InputMessage::DragStart {
                         screen: res.cur_pos,
                         screen_pressed: res.down_pos,
                         screen_offset: res.cur_pos.sub(res.down_pos),
@@ -113,7 +121,10 @@ pub fn sys_raw_input_processor(
                         modifiers: res.modifiers,
                     })
                 } else if res.is_dragging {
-                    ev_writer.send(InputMessage::DragMove {
+                    #[cfg(feature = "debug_trace")]
+                    debug!("Sending DragMove: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+
+                    to_send.push(InputMessage::DragMove {
                         screen: res.cur_pos,
                         screen_pressed: res.down_pos,
                         screen_offset: res.cur_pos.sub(res.down_pos),
@@ -123,10 +134,13 @@ pub fn sys_raw_input_processor(
                         modifiers: res.modifiers,
                     });
                 } else {
-                    ev_writer.send(InputMessage::PointerMove {
-                        screen: res.cur_pos.clone(),
+                    #[cfg(feature = "debug_trace")]
+                    debug!("Sending PointerMove: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+
+                    to_send.push(InputMessage::PointerMove {
+                        screen: res.cur_pos,
                         world: world_point,
-                        modifiers: res.modifiers.clone(),
+                        modifiers: res.modifiers,
                     });
                 }
             }
@@ -134,12 +148,16 @@ pub fn sys_raw_input_processor(
                 (MouseButton::Left, ButtonState::Pressed) => {
                     if !res.left_pressed {
                         res.left_pressed = true;
-                        res.down_pos = res.cur_pos.clone();
-                        res.down_pos_world = world_point.clone();
-                        ev_writer.send(InputMessage::PointerDown {
-                            screen: res.cur_pos.clone(),
+                        res.down_pos = res.cur_pos;
+                        res.down_pos_world = world_point;
+
+                        #[cfg(feature = "debug_trace")]
+                        debug!("Sending PointerDown: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+
+                        to_send.push(InputMessage::PointerDown {
+                            screen: res.cur_pos,
                             world: world_point,
-                            modifiers: res.modifiers.clone(),
+                            modifiers: res.modifiers,
                         });
                     }
                 }
@@ -147,20 +165,28 @@ pub fn sys_raw_input_processor(
                     res.left_pressed = false;
                     if res.is_dragging {
                         res.is_dragging = false;
-                        ev_writer.send(InputMessage::DragEnd {
+
+                        #[cfg(feature = "debug_trace")]
+                        debug!("Sending DragEnd: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+
+                        to_send.push(InputMessage::DragEnd {
                             screen: res.cur_pos,
                             screen_pressed: res.down_pos,
                             screen_offset: res.cur_pos.sub(res.down_pos),
                             world: world_point,
                             world_pressed: res.down_pos_world,
                             world_offset: world_point.sub(res.down_pos_world),
-                            modifiers: res.modifiers.clone(),
+                            modifiers: res.modifiers,
                         });
                     } else {
-                        ev_writer.send(InputMessage::PointerClick {
-                            screen: res.cur_pos.clone(),
+
+                        #[cfg(feature = "debug_trace")]
+                        debug!("Sending PointerClick: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+
+                        to_send.push(InputMessage::PointerClick {
+                            screen: res.cur_pos,
                             world: world_point,
-                            modifiers: res.modifiers.clone(),
+                            modifiers: res.modifiers,
                         });
                     }
                 }
@@ -172,31 +198,67 @@ pub fn sys_raw_input_processor(
                 | KeyCode::SuperLeft
                 | KeyCode::SuperRight => {
                     res.modifiers.command = *pressed;
-                    ev_writer.send(InputMessage::ModifiersChanged {
-                        state: res.modifiers.clone(),
+
+                    #[cfg(feature = "debug_trace")]
+                    debug!("Sending ModifiersChanged: modifiers: {:?}", res.modifiers);
+
+                    to_send.push(InputMessage::ModifiersChanged {
+                        state: res.modifiers,
                     });
                 }
                 KeyCode::AltLeft | KeyCode::AltRight => {
                     res.modifiers.alt = *pressed;
-                    ev_writer.send(InputMessage::ModifiersChanged {
-                        state: res.modifiers.clone(),
+
+                    #[cfg(feature = "debug_trace")]
+                    debug!("Sending ModifiersChanged: modifiers: {:?}", res.modifiers);
+
+                    to_send.push(InputMessage::ModifiersChanged {
+                        state: res.modifiers,
                     });
                 }
                 KeyCode::ShiftLeft | KeyCode::ShiftRight => {
                     res.modifiers.shift = *pressed;
-                    ev_writer.send(InputMessage::ModifiersChanged {
-                        state: res.modifiers.clone(),
+
+                    #[cfg(feature = "debug_trace")]
+                    debug!("Sending ModifiersChanged: modifiers: {:?}", res.modifiers);
+
+                    to_send.push(InputMessage::ModifiersChanged {
+                        state: res.modifiers,
                     });
                 }
                 key => {
-                    ev_writer.send(InputMessage::Keyboard {
+
+                    #[cfg(feature = "debug_trace")]
+                    debug!("Sending Keyboard: key: {:?}, pressed: {:?}", key, pressed);
+
+
+                    to_send.push(InputMessage::Keyboard {
                         pressed: *pressed,
                         key: *key,
-                        modifiers: res.modifiers.clone(),
+                        modifiers: res.modifiers,
                     });
                 }
             },
         }
+    }
+
+    let mut seen_variants = HashSet::new();
+    let filtered: Vec<_> = to_send
+        .into_iter()
+        .rev()
+        .filter(|variant| {
+            match variant {
+                InputMessage::Keyboard { .. } => true,
+                variant => seen_variants.insert(discriminant(variant)),
+            }
+        })
+        .collect::<Vec<_>>()
+        .into_iter()
+        .rev()
+        .collect();
+
+    for ev in filtered {
+        ev_writer.send(ev);
     }
 }
 
@@ -204,6 +266,8 @@ fn sys_mouse_button_input(
     mut mousebtn_events: EventReader<MouseButtonInput>,
     mut message_writer: EventWriter<RawInputMessage>,
 ) {
+    let _span = info_span!("sys_mouse_button_input").entered();
+
     for ev in mousebtn_events.iter() {
         message_writer.send(RawInputMessage::PointerInput {
             pressed: ev.state,
@@ -220,6 +284,8 @@ fn sys_mouse_movement_input(
     mut mousebtn_events: EventReader<CursorMoved>,
     mut message_writer: EventWriter<RawInputMessage>,
 ) {
+    let _span = info_span!("sys_mouse_movement_input").entered();
+
     let mut maybe_source = q_raycast_source.get_single_mut();
     for ev in mousebtn_events.iter() {
         if let Ok(ref mut source) = maybe_source {
@@ -233,6 +299,8 @@ fn sys_keyboard_input(
     mut key_evr: EventReader<KeyboardInput>,
     mut message_writer: EventWriter<RawInputMessage>,
 ) {
+    let _span = info_span!("sys_keyboard_input").entered();
+
     for ev in key_evr.iter() {
         match (ev.key_code, ev.state) {
             (Some(key_code), state) => {
@@ -256,6 +324,8 @@ pub struct InputHitPlaneTag;
 /// source to the camera.
 ///
 fn sys_setup_input_plugin(mut commands: Commands, q_camera: Query<Entity, With<CameraTag>>) {
+    let _span = info_span!("sys_setup_input_plugin").entered();
+
     let shape = shapes::Rectangle {
         extents: Vec2::new(10000., 10000.),
         ..Default::default()
@@ -288,6 +358,8 @@ fn sys_move_bg_hit_plane(
     cam: Query<&Transform, (With<Camera2d>, Without<InputHitPlaneTag>)>,
     mut bg_hit_plane: Query<&mut Transform, (With<InputHitPlaneTag>, Without<Camera2d>)>,
 ) {
+    let _span = info_span!("sys_move_bg_hit_plane").entered();
+
     if let (Ok(cam_transform), Ok(mut bg_hit_transform)) =
         (cam.get_single(), bg_hit_plane.get_single_mut())
     {

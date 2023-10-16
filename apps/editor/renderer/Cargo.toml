@@ -29,9 +29,17 @@ default = ["bevy/dynamic_linking", "bevy/x11", "bevy/bevy_scene", "bevy/bevy_win
 inspector = ["bevy-inspector-egui"]
 
 trace_bevy = []
+# Useful for tracing the system order of execution with tracy
+# NOTE: This does not debug the bevy systems.  Just our app.
+debug_trace = ["bevy/trace", "bevy/trace_tracy"]
+# Debug select tool / selection systems
 debug_select = []
+# Debug reflection/serialisation/deserialisation
 debug_reflect = []
+# Debug global bounds plugin
 debug_bounds = []
+# Debug commands
+debug_cmd = []
 
 [dependencies]
 wasm-bindgen = "0.2.85"

@@ -237,6 +237,8 @@ pub fn msg_handler_select_tool(
     message: &ToolHandlerMessage,
     responses: &mut VecDeque<Message>,
 ) {
+    let _span = debug_span!("msg_handler_select_tool").entered();
+
     let fsm = world.resource::<SelectFsm>().clone();
 
     use InputMessage::*;

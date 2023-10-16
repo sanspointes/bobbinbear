@@ -8,10 +8,8 @@ use crate::editor::EditorSet;
 
 use self::{
     raycast::{sys_selection_raycast_update_ray, sys_setup_selection_raycast},
-    selection_bounds::{sys_handle_selection_change, sys_setup_selection_bounds},
+    selection_bounds::{sys_selection_bounds_handle_change, sys_setup_selection_bounds},
 };
-
-use super::bounds_2d_plugin::sys_update_global_bounds_2d;
 
 #[derive(Debug, Default, Component, Reflect)]
 #[reflect(Component)]
@@ -48,7 +46,7 @@ pub struct SelectionPlugin;
 impl Plugin for SelectionPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PostStartup, sys_setup_selection_bounds)
-            .add_systems(Update, (sys_handle_selection_change.after(sys_update_global_bounds_2d)).in_set(EditorSet::PostMsgs));
+            .add_systems(Update, sys_selection_bounds_handle_change.in_set(EditorSet::PostMsgsFlushed));
 
         app.add_plugins(DefaultRaycastingPlugin::<Selectable>::default())
             .add_systems(PostStartup, sys_setup_selection_raycast)

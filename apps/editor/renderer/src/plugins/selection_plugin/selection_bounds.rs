@@ -24,6 +24,8 @@ pub(super) fn sys_setup_selection_bounds(
     mut commands: Commands,
     q_ss_root: Query<Entity, With<ScreenSpaceRootTag>>,
 ) {
+    let _span = info_span!("sys_setup_selection_bounds").entered();
+
     let ss_root = q_ss_root.single();
 
     let shape = shapes::Rectangle {
@@ -43,7 +45,7 @@ pub(super) fn sys_setup_selection_bounds(
         .set_parent(ss_root);
 }
 
-pub(super) fn sys_handle_selection_change(
+pub(super) fn sys_selection_bounds_handle_change(
     mut system_set: ParamSet<(
         // Query for selection or bounds changes
         Query<Entity, Or<(Changed<Selected>, Changed<GlobalBounds2D>)>>,
@@ -60,6 +62,8 @@ pub(super) fn sys_handle_selection_change(
     q_primary_window: Query<&Window, With<PrimaryWindow>>,
     q_camera: Query<&OrthographicProjection, With<CameraTag>>,
 ) {
+    let _span = info_span!("sys_selection_bounds_handle_change").entered();
+
     let needs_update = system_set.p0().iter().next().is_some();
     if !needs_update {
         return;

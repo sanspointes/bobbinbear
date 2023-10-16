@@ -1,7 +1,7 @@
 use bevy::{prelude::*, input::ButtonState};
 
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Copy, Clone, Reflect)]
 pub struct ModifiersState {
     pub command: ButtonState,
     pub alt: ButtonState,
@@ -33,7 +33,7 @@ pub enum RawInputMessage {
 }
 
 // Processed / abstracted input events for common behaviour like click
-#[derive(Event, Debug, Clone, Copy)]
+#[derive(Event, Reflect, Debug, Clone, Copy)]
 pub enum InputMessage {
     PointerDown {
         screen: Vec2,

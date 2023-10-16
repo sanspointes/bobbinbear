@@ -84,6 +84,8 @@ pub fn msg_handler_grab_tool(
     message: &ToolHandlerMessage,
     responses: &mut VecDeque<Message>,
 ) {
+    let _span = debug_span!("msg_handler_select_tool").entered();
+
     let mut grab_sys_state: SystemState<(
         ResMut<GrabToolState>,
         // Current Camera

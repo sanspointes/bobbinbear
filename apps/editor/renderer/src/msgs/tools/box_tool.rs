@@ -151,6 +151,8 @@ pub fn msg_handler_box_tool(
     message: &ToolHandlerMessage,
     responses: &mut VecDeque<Message>,
 ) {
+    let _span = debug_span!("msg_handler_box_tool").entered();
+
     match message {
         ToolHandlerMessage::OnActivate => {
             debug_log!("BoxTool::OnActivate");

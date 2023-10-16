@@ -47,6 +47,8 @@ impl From<CmdMsg> for Message {
 ///
 /// * `world`:
 pub fn sys_msg_handler(world: &mut World) {
+    let _span = info_span!("sys_msg_handler").entered();
+
     let mut messages = {
         if let Some(mut events) = world.get_resource_mut::<Events<Message>>() {
             events.drain().collect::<VecDeque<_>>()
@@ -67,6 +69,8 @@ pub fn sys_msg_handler(world: &mut World) {
             Message::Tool(tool_msg) => msg_handler_tool(world, &tool_msg, &mut messages),
             Message::Cmd(cmd_msg) => msg_handler_cmds(world, cmd_msg, &mut messages),
             Message::Frontend(frontend_msg) => {
+                let _span = info_span!("handle_frontend_msg").entered();
+
                 if let Some(frontend_sender) = world.get_resource_mut::<FrontendSender>() {
                     if let Err(reason) = frontend_sender.0.send(frontend_msg) {
                         panic!( "Error sending message back to frontend. {:?} {:?}", reason, reason.0)

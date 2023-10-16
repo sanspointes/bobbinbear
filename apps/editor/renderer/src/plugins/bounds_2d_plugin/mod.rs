@@ -51,6 +51,7 @@ pub fn sys_update_global_bounds_2d(
     )>,
     mut to_update_que: Local<Vec<Entity>>,
 ) {
+    let _span = info_span!("sys_update_global_bounds_2d");
     // Get changes / additions of NeedsCalculate and store in a que
     let to_update: Vec<Entity> = {
         param_set

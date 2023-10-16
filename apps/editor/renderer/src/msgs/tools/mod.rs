@@ -111,6 +111,8 @@ pub fn msg_handler_tool(
     message: &ToolMessage,
     responses: &mut VecDeque<Message>,
 ) {
+    let _span = info_span!("sys_handler_tool").entered();
+
     let mut tool_sys_state = SystemState::<(
         // Cur tool
         ResMut<NextState<BBTool>>,

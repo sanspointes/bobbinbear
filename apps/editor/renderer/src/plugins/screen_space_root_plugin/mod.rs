@@ -23,7 +23,7 @@ pub struct ScreenSpaceRootPlugin;
 impl Plugin for ScreenSpaceRootPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(PreStartup, sys_setup)
-            .add_systems(Update, sys_update_transform);
+            .add_systems(Update, sys_update_transform.in_set(EditorSet::PostMsgs));
         // In debug mode show the test bounds elements
         #[cfg(debug_assertions)]
         {
@@ -63,7 +63,6 @@ fn sys_setup(mut commands: Commands) {
         ComputedVisibility::default(),
         RenderLayers::layer(BB_LAYER_UI),
     ));
-    println!("Adding screenspace root to camera.");
 }
 /// Updates the screenspace root in accordance with the camera projection
 fn sys_update_transform(

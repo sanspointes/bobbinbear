@@ -120,6 +120,8 @@ pub fn msg_handler_cmds(
     message: CmdMsg,
     _responses: &mut VecDeque<Message>,
 ) {
+    let _span = info_span!("sys_handler_cmds").entered();
+
     match message {
         CmdMsg::Execute(cmd_wrapped) => {
             // TODO: Improve the unsound logic
@@ -142,7 +144,7 @@ pub fn msg_handler_cmds(
                 };
                 cmd_resource.repeat_behaviour = RepeatOverride::Default;
 
-                // #[cfg(feature = "debug_cmd")]
+                #[cfg(feature = "debug_cmd")]
                 if matches!(treatment, CmdUpdateTreatment::AsRepeat) {
                     debug!("Command updated from previous. {cmd:?}");
                 }
