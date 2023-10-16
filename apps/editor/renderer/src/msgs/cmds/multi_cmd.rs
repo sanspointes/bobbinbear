@@ -38,9 +38,6 @@ impl MultiCmd {
 }
 
 impl Cmd for MultiCmd {
-    fn name(&self) -> &str {
-        "Multi Commands"
-    }
     fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
         for cmd in self.commands.iter_mut() {
             cmd.execute(world)?;

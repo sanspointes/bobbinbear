@@ -1,11 +1,10 @@
 use std::{fmt::{Debug, Display}, sync::Arc};
 
+use anyhow::anyhow;
 use bevy::{
-    ecs::{entity::EntityMap, query::QueryEntityError, world::EntityMut},
+    ecs::{entity::EntityMap, world::EntityMut},
     prelude::*,
-    scene::SceneSpawnError,
 };
-use thiserror::Error;
 
 use crate::{
     components::bbid::{BBId, BBIdUtils},
@@ -13,25 +12,6 @@ use crate::{
 };
 
 use super::{Cmd, CmdError, CmdType, CmdMsg};
-
-#[derive(Error, Debug)]
-pub enum AddRemoveObjectError {
-    #[error("Cannot find entity {0:?}.")]
-    CantFindEntity(Entity),
-    #[error("Cannot find entity via bbid {0:?}.")]
-    CantFindTarget(BBId),
-    #[error("Cannot find entity parent via bbid {0:?}.")]
-    CantFindTargetParent(BBId),
-    #[error("Error spawning scene. {0:?}")]
-    SpawnError(SceneSpawnError),
-    #[error("Error querying entity. {0:?}")]
-    QueryEntityError(QueryEntityError),
-}
-impl From<AddRemoveObjectError> for CmdError {
-    fn from(value: AddRemoveObjectError) -> Self {
-        CmdError::CustomError(Box::new(value))
-    }
-}
 
 pub struct AddObjectCmd {
     entity_bbid: BBId,
@@ -82,7 +62,7 @@ impl AddObjectCmd {
         world: &mut World,
         parent: Option<BBId>,
         mut builder: F,
-    ) -> Result<Self, AddRemoveObjectError> {
+    ) -> anyhow::Result<Self> {
         let mut entity_mut = world.spawn_empty();
         builder(&mut entity_mut);
 
@@ -94,17 +74,14 @@ impl AddObjectCmd {
         world: &mut World,
         entity: Entity,
         parent: Option<BBId>,
-    ) -> Result<Self, AddRemoveObjectError> {
+    ) -> anyhow::Result<Self> {
         let entity_bbid = world
             .get::<BBId>(entity)
             .cloned()
-            .ok_or(AddRemoveObjectError::CantFindEntity(entity))?;
+            .ok_or(anyhow!("Cant get bbid from {entity:?}."))?;
 
         let entities = patch_world_subhierarchy_for_reflection(world, entity)
-            .map_err(AddRemoveObjectError::QueryEntityError)?;
-
-        for _e in entities.iter() {
-        }
+            .map_err(|reason| anyhow!("Cant get subheirarchy for {entity_bbid:?}.\n - Reason {reason:?}."))?;
 
         let mut builder = DynamicSceneBuilder::from_world(world);
         builder.extract_entities(entities.into_iter());
@@ -123,10 +100,6 @@ impl AddObjectCmd {
 }
 
 impl Cmd for AddObjectCmd {
-    fn name(&self) -> &str {
-        "AddObjectCmd"
-    }
-
     fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
         // Write scene into world
         let type_registry = world.resource::<AppTypeRegistry>().clone();
@@ -135,23 +108,21 @@ impl Cmd for AddObjectCmd {
         let scene = self.scene.take().ok_or(CmdError::DoubleExecute)?;
         scene
             .write_to_world_with(world, &mut entity_map, &type_registry)
-            .map_err(|err| CmdError::from(AddRemoveObjectError::SpawnError(err)))?;
+            .map_err(|err| anyhow!("Error writing to world.\n - Reason: {err:?}"))?;
 
         // Get Target and parent entity to parent to correct object (if necessary)
         let target_entity: Entity =
             world
                 .get_entity_id_by_bbid(self.entity_bbid)
-                .ok_or(CmdError::from(AddRemoveObjectError::CantFindTarget(
-                    self.entity_bbid,
-                )))?;
+                .ok_or(anyhow!("Error finding target. Can't find {:?}.", self.entity_bbid))?;
 
         patch_world_subhierarchy_for_playback(world, target_entity)
-            .map_err(|err| CmdError::CustomError(Box::new(err)))?;
+            .map_err(|err| anyhow!("Error patching world.\n - Reason: {err:?}"))?;
 
         let maybe_parent = match self.parent {
             Some(parent) => match world.get_entity_id_by_bbid(parent) {
                 Some(parent) => Some(parent),
-                None => return Err(AddRemoveObjectError::CantFindTargetParent(parent).into()),
+                None => return Err(anyhow!("Error reparenting target object. Parent specified but not found.").into()),
             },
             None => None,
         };
@@ -172,12 +143,10 @@ impl Cmd for AddObjectCmd {
         // Get entity of app id.
         let target_entity = world
             .get_entity_id_by_bbid(self.entity_bbid)
-            .ok_or(CmdError::from(AddRemoveObjectError::CantFindTarget(
-                self.entity_bbid,
-            )))?;
+            .ok_or(anyhow!("Error finding target. Can't find {:?}.", self.entity_bbid))?;
 
         let entities = patch_world_subhierarchy_for_reflection(world, target_entity)
-            .map_err(|err| CmdError::CustomError(Box::new(err)))?;
+            .map_err(|err| anyhow!("Error patching world.\n - Reason: {err:?}"))?;
         let mut builder = DynamicSceneBuilder::from_world(world);
         builder.extract_entities(entities.into_iter());
         let scene = builder.build();
@@ -189,7 +158,7 @@ impl Cmd for AddObjectCmd {
         Ok(())
     }
 
-    fn is_repeated(&self, _other: &CmdType) -> bool {
-        false
+    fn try_update_from_prev(&mut self, _other: &CmdType) -> super::CmdUpdateTreatment {
+        super::CmdUpdateTreatment::AsSeperate
     }
 }
