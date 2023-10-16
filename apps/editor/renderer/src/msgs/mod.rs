@@ -7,7 +7,7 @@ use std::collections::VecDeque;
 
 use bevy::prelude::*;
 
-use crate::{wasm::FrontendSender, plugins::input_plugin::InputMessage};
+use crate::{api::EditorToApiSender, plugins::input_plugin::InputMessage};
 
 use self::{frontend::FrontendMsg, keybinds::msg_handler_keybinds, cmds::{CmdMsg, msg_handler_cmds}};
 pub use self::tools::{msg_handler_tool, ToolMsgPlugin, ToolMessage};
@@ -71,8 +71,8 @@ pub fn sys_msg_handler(world: &mut World) {
             Message::Frontend(frontend_msg) => {
                 let _span = info_span!("handle_frontend_msg").entered();
 
-                if let Some(frontend_sender) = world.get_resource_mut::<FrontendSender>() {
-                    if let Err(reason) = frontend_sender.0.send(frontend_msg) {
+                if let Some(editor_to_api_sender) = world.get_resource_mut::<EditorToApiSender>() {
+                    if let Err(reason) = editor_to_api_sender.0.send(frontend_msg) {
                         panic!( "Error sending message back to frontend. {:?} {:?}", reason, reason.0)
                     }
                 }

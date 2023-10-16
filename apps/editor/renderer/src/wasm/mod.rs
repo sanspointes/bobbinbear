@@ -3,11 +3,14 @@ pub mod store;
 
 use bevy::prelude::*;
 use crossbeam_channel::{Sender, Receiver};
+
+#[cfg(target_arch = "wasm32")]
 use wasm_bindgen::prelude::*;
 
 use store::{GLOBAL_STORE, EditorApiStore};
 use crate::msgs::{Message, frontend::FrontendMsg};
 
+#[cfg(target_arch = "wasm32")]
 #[wasm_bindgen(start)]
 pub fn set_panic_hook() {
     // When the `console_error_panic_hook` feature is enabled, we can call the

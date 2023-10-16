@@ -1,29 +1,32 @@
+mod api;
 mod components;
+mod constants;
 mod editor;
 mod msgs;
 mod plugins;
-mod types;
-mod wasm;
 mod systems;
+mod types;
 mod utils;
-mod constants;
 
+use api::{ApiToEditorReceiver, EditorApi, EditorToApiSender};
 use crossbeam_channel::unbounded;
 
 use bevy::prelude::*;
 use editor::start_bobbin_bear;
-use msgs::{Message, frontend::FrontendMsg};
-use wasm::{FrontendReceiver, FrontendSender};
-use wasm_bindgen::prelude::wasm_bindgen;
+use msgs::{frontend::FrontendMsg, Message};
+use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 // web app entry_point
 #[wasm_bindgen]
-pub fn main_web(container_id: String, _set_api: js_sys::Function) {
+pub fn main_web(container_id: String, set_api: js_sys::Function) {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    let (_from_frontend_sender, from_frontend_receiver) = unbounded::<Message>();
-    let (to_frontend_sender, _to_frontend_receiver) = unbounded::<FrontendMsg>();
+    let (api_to_editor_sender, api_to_editor_receiver) = unbounded::<Message>();
+    let (editor_to_api_sender, editor_to_api_receiver) = unbounded::<FrontendMsg>();
+
+    let api = EditorApi::new(api_to_editor_sender, editor_to_api_receiver);
+    set_api.call1(&JsValue::undefined(), &JsValue::from(api)).expect("BobbinBear: Error passing API back to JS land.");
 
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
@@ -38,8 +41,8 @@ pub fn main_web(container_id: String, _set_api: js_sys::Function) {
 
     let mut app = start_bobbin_bear(default_plugins);
 
-    app.insert_resource(FrontendReceiver(from_frontend_receiver))
-        .insert_resource(FrontendSender(to_frontend_sender));
+    app.insert_resource(ApiToEditorReceiver(api_to_editor_receiver))
+        .insert_resource(EditorToApiSender(editor_to_api_sender));
 
     app.run()
 }

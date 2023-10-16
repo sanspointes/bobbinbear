@@ -14,8 +14,7 @@ use crate::{
         selection_plugin::SelectionPlugin,
     },
     systems::camera::sys_setup_camera,
-    utils::reflect_shims::{ReflectableFill, ReflectablePath},
-    wasm::FrontendReceiver,
+    utils::reflect_shims::{ReflectableFill, ReflectablePath}, api::ApiToEditorReceiver,
 };
 
 pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
@@ -116,12 +115,12 @@ impl Plugin for EditorPlugin {
 /// by sys_msg_handler
 fn sys_handle_pre_editor_msgs(
     mut input_msg_receiver: EventReader<InputMessage>,
-    frontend_receiver: ResMut<FrontendReceiver>,
+    api_receiver: ResMut<ApiToEditorReceiver>,
     mut msg_writer: EventWriter<Message>,
 ) {
     let _span = info_span!("sys_handle_pre_editor_msgs").entered();
 
-    let receiver = &frontend_receiver.0;
+    let receiver = &api_receiver.0;
     if let Ok(msg) = receiver.try_recv() {
         msg_writer.send(msg);
     }

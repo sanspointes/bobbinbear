@@ -1,6 +1,6 @@
 // Contains the WASM api for interacting with the app,
 // Generally these are just exposed functions that send messages.
-mod wasm;
+mod api;
 
 mod components;
 
@@ -43,13 +43,13 @@ use bevy::DefaultPlugins;
 use editor::start_bobbin_bear;
 use msgs::Message;
 use msgs::frontend::FrontendMsg;
-use wasm::FrontendReceiver;
-use wasm::FrontendSender;
+use api::EditorToApiSender;
+use api::ApiToEditorReceiver;
 
 fn main() {
     // TODO add webview gui
-    let (_from_frontend_sender, from_frontend_receiver) = unbounded::<Message>();
-    let (to_frontend_sender, _to_frontend_receiver) = unbounded::<FrontendMsg>();
+    let (_api_to_editor_sender, api_to_editor_receiver) = unbounded::<Message>();
+    let (editor_to_api_sender, _editor_to_api_receiver) = unbounded::<FrontendMsg>();
 
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
@@ -62,8 +62,8 @@ fn main() {
 
     let mut app = start_bobbin_bear(default_plugins);
 
-    app.insert_resource(FrontendReceiver(from_frontend_receiver))
-        .insert_resource(FrontendSender(to_frontend_sender));
+    app.insert_resource(ApiToEditorReceiver(api_to_editor_receiver))
+        .insert_resource(EditorToApiSender(editor_to_api_sender));
 
     app.run()
 }

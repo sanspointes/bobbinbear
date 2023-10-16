@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(
     Debug,
@@ -12,6 +13,7 @@ use bevy::prelude::*;
     States,
     Hash, /*, specta::Type */
 )]
+#[wasm_bindgen()]
 pub enum BBTool {
     #[default]
     Select,
@@ -20,6 +22,7 @@ pub enum BBTool {
 }
 
 #[derive(Debug, Clone)]
+#[wasm_bindgen()]
 pub enum BBCursor {
     Default,
     Pointer,

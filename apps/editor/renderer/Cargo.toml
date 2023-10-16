@@ -19,12 +19,8 @@ name = "bobbinbear_core"
 path = "src/main.rs"
 
 [features]
-# Bevy defaults minus audio and some other not needed things
-# see https://github.com/bevyengine/bevy/blob/main/Cargo.toml#L31-L54
-# Desktop
-# default = ["bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_pbr", "bevy/bevy_render", "bevy/bevy_sprite", "bevy/png", "tracing/release_max_level_warn", "tracing/max_level_trace"]
-# Wasm
-default = ["bevy/dynamic_linking", "bevy/x11", "bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "console_error_panic_hook"]
+default = ["bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "bevy/webgl2"]
+desktop = ["bevy/dynamic_linking", "bevy/x11"]
 
 inspector = ["bevy-inspector-egui"]
 
@@ -42,24 +38,26 @@ debug_bounds = []
 debug_cmd = []
 
 [dependencies]
+## Wasm Bindgen related 
 wasm-bindgen = "0.2.85"
-
+js-sys = "0.3.64"
+web-sys = { version = "0.3.64", features = [ "console" ] }
+console_error_panic_hook = "0.1.7"
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
-console_error_panic_hook = { version = "0.1.7", optional = true }
 bevy = { version = "0.11.3", default-features = false }
 bevy_prototype_lyon = { path = "../../../packages/bevy_prototype_lyon", features = [ "bevy_reflect" ] }
-js-sys = "0.3.64"
 wasm-bindgen-futures = "0.4.37"
 crossbeam-channel = "0.5.8"
 lazy_static = "1.4.0"
 bevy_mod_raycast = "0.14.1"
 bevy-inspector-egui = { version = "0.19.0", optional = true }
+# Serialisation
 serde_json = "1.0.107"
 serde = "1.0.188"
-web-sys = { version = "0.3.64", features = [ "console" ] }
+# Error handling
 thiserror = "1.0.49"
 anyhow = "1.0.75"
 
