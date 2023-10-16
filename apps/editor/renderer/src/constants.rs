@@ -11,5 +11,5 @@ pub const BB_LAYER_UI: Layer = 1;
 //
 // pub const HOVER_COLOR: Color = Color::rgb(0.038, 0.6, 0.962);
 pub const SELECT_COLOR: Color = Color::rgb(0.033, 0.527, 0.869);
-pub const SELECTION_BOUNDS_STROKE_WIDTH: f32 = 2.;
+pub const SELECTION_BOUNDS_STROKE_WIDTH: f32 = 1.5;
 //

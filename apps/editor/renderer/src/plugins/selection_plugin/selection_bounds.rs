@@ -45,8 +45,8 @@ pub(super) fn sys_setup_selection_bounds(
 
 pub(super) fn sys_handle_selection_change(
     mut system_set: ParamSet<(
-        // Query for selection changes
-        Query<Entity, Changed<Selected>>,
+        // Query for selection or bounds changes
+        Query<Entity, Or<(Changed<Selected>, Changed<GlobalBounds2D>)>>,
         // Query all to calculate selection box
         Query<(&GlobalBounds2D, &Selected)>,
     )>,

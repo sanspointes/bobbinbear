@@ -44,7 +44,7 @@ pub fn sys_update_global_bounds_2d(
         // Query for changes to global bounds
         Query<
             (Entity, &GlobalBounds2D),
-            (Changed<GlobalBounds2D>, &Mesh2dHandle, &GlobalTransform),
+            Or<(Changed<GlobalBounds2D>, Changed<Mesh2dHandle>, Changed<GlobalTransform>)>,
         >,
         // Query for all GlobalBounds2D entities.
         Query<(&Mesh2dHandle, &GlobalTransform, &mut GlobalBounds2D)>,
@@ -62,6 +62,14 @@ pub fn sys_update_global_bounds_2d(
             })
             .collect()
     };
+
+    #[cfg(feature = "debug_bounds")]
+    if !to_update.is_empty() {
+        debug!(
+            "sys_update_global_bounds_2d: Found new entities to update bounds on {to_update:?}."
+        );
+    }
+
     to_update_que.extend(to_update);
 
     let mut next_to_update_que = Vec::<Entity>::with_capacity(to_update_que.len());
@@ -73,8 +81,8 @@ pub fn sys_update_global_bounds_2d(
                 next_to_update_que.push(*entity); // Try again next frame
                 #[cfg(feature = "debug_bounds")]
                 debug!(
-                "sys_update_aabb2d: Could not get mesh to calculate global bounds on {entity:?}."
-            );
+                    "sys_update_global_bounds_2d: Could not get mesh to calculate global bounds on {entity:?}."
+                );
                 continue;
             };
 
@@ -82,7 +90,7 @@ pub fn sys_update_global_bounds_2d(
                 .attribute(Mesh::ATTRIBUTE_POSITION)
                 .and_then(|attr| attr.as_float3())
             else {
-                warn!("sys_update_aabb2d: No position attribute on mesh {entity:?}.");
+                warn!("sys_update_global_bounds_2d: No position attribute on mesh {entity:?}.");
                 continue;
             };
             let global_matrix = global_transform.compute_matrix();
@@ -95,7 +103,7 @@ pub fn sys_update_global_bounds_2d(
 
             let new_bounds = GlobalBounds2D::from_global_vec3as(verts);
             #[cfg(feature = "debug_bounds")]
-            debug!("sys_update_aabb2d: Calculated bounds {new_bounds:?} on {entity:?}.");
+            debug!("sys_update_global_bounds_2d: Calculated bounds {new_bounds:?} on {entity:?}.");
             *global_bounds = new_bounds;
         }
     }

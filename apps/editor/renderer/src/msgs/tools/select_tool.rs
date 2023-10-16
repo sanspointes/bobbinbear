@@ -96,7 +96,10 @@ impl SelectFsm {
 
                 match (pointer_down_on_selected, modifiers.shift) {
                     // If pointer down on already selected, do not deselect / add select.
-                    (true, _) => Ok(Self::AwaitingMoveSelected { bbids: bbids.clone(), initial_world_pos: *initial_world_pos }),
+                    (true, _) => Ok(Self::AwaitingMoveSelected {
+                        bbids: bbids.clone(),
+                        initial_world_pos: *initial_world_pos,
+                    }),
 
                     // If pointer down and not pressing shift, just select the new element
                     (false, ButtonState::Released) => {
@@ -123,7 +126,35 @@ impl SelectFsm {
                     }
                 }
             }
-            _ => Err(ToolFsmError::NoTransition)
+            _ => Err(ToolFsmError::NoTransition),
+        };
+
+        result.map(|new| (self.clone(), new))
+    }
+
+    fn pointer_click(
+        &self,
+        bbid: Option<&BBId>,
+        modifiers: &ModifiersState,
+    ) -> ToolFsmResult<SelectFsm> {
+        #[cfg(feature = "debug_select")]
+        debug!("SelectFsm.pointer_click(bbid: {bbid:?}, modifiers: {modifiers:?})");
+
+        let result = match (self, modifiers.shift) {
+            // If click without shift, deselect all but clicked element
+            (Self::AwaitingMoveSelected { bbids, .. }, ButtonState::Released) => {
+                let mut bbids = HashSet::new();
+                if let Some(bbid) = bbid {
+                    bbids.insert(*bbid);
+                }
+                Ok(Self::Default { bbids })
+            }
+            // If click WITH shift, element has already been selected by pointerdown so transiton
+            // back to default but keep selection.
+            (Self::AwaitingMoveSelected { bbids, .. }, ButtonState::Pressed) => Ok(Self::Default {
+                bbids: bbids.clone(),
+            }),
+            (_, _) => Err(ToolFsmError::NoTransition),
         };
 
         result.map(|new| (self.clone(), new))
@@ -190,9 +221,7 @@ impl SelectFsm {
 
         let result = match self {
             Self::MovingSelected {
-                initial_positions,
-                initial_world_pos,
-                ..
+                initial_positions, ..
             } => Ok(SelectFsm::Default {
                 bbids: initial_positions.clone().into_keys().collect(),
             }),
@@ -222,9 +251,15 @@ pub fn msg_handler_select_tool(
             debug!("SelectTool::OnDeactivate");
             fsm.reset()
         }
-        Input(PointerDown {
+        // Handle Pointer down and Click events
+        Input(ev @ PointerDown {
             modifiers,
             world: world_pos,
+            ..
+        })
+        | Input(ev @ PointerClick {
+            world: world_pos,
+            modifiers,
             ..
         }) => {
             let mut select_sys_state = SystemState::<(
@@ -254,9 +289,12 @@ pub fn msg_handler_select_tool(
                 }
             };
 
-            fsm.pointer_down(hit_bbid, modifiers, world_pos)
+            match ev {
+                InputMessage::PointerDown { .. } => fsm.pointer_down(hit_bbid, modifiers, world_pos),
+                InputMessage::PointerClick { .. } => fsm.pointer_click(hit_bbid, modifiers),
+                _ => panic!("Unhandled InputMessage variant in select_tool. This should never happen."),
+            }
         }
-        Input(PointerClick { .. }) => fsm.reset(),
         Input(DragStart { world_offset, .. }) => fsm.start_drag(world_offset, world),
         Input(DragMove { world_offset, .. }) => fsm.move_drag(world_offset),
         Input(DragEnd { .. }) => fsm.end_drag(),
