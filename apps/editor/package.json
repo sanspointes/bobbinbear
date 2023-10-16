@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently 'vite' 'rsw watch'",
+    "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
     "test": "vitest",
@@ -13,6 +13,7 @@
     "visualise": "vite-bundle-visualizer"
   },
   "dependencies": {
+    "@bearbroidery/bobbinbear-core": "workspace:^",
     "@bearbroidery/solixi": "*",
     "@kobalte/core": "^0.9.8",
     "@pixi/app": "^7.2.4",

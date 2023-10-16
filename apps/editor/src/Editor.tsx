@@ -29,6 +29,7 @@ import {
     NewDocumentLauncher,
     requestNewDocument,
 } from './features/new-document';
+import { Renderer } from './features/core';
 
 export const [appError, setAppError] = createSignal<Error>();
 
@@ -76,9 +77,9 @@ export const Editor = () => {
     onMount(() => {
         console.log(documentStore.activeDocumentSlug);
         if (documentStore.activeDocumentSlug === undefined) {
-            requestNewDocument({ cancellable: false }).then((document) => {
-                dispatch('document:new', document);
-            });
+            // requestNewDocument({ cancellable: false }).then((document) => {
+            //     dispatch('document:new', document);
+            // });
         }
     });
 
@@ -114,41 +115,7 @@ export const Editor = () => {
                                 <SidebarLeft />
                             </DragDropSensors>
                         </DragDropProvider>
-                        <Canvas
-                            onPointerDown={handlePointerDown}
-                            classList={{
-                                'b-cursor-default':
-                                    toolStore.currentCursor === Cursor.Default,
-                                'b-cursor-default-tap':
-                                    toolStore.currentCursor ===
-                                        Cursor.Default && justTapped(),
-                                'b-cursor-grab':
-                                    toolStore.currentCursor === Cursor.Grab,
-                                'b-cursor-grabbing':
-                                    toolStore.currentCursor === Cursor.Grabbing,
-                                'b-cursor-pointer':
-                                    toolStore.currentCursor === Cursor.Point,
-                                'b-cursor-pointer-tap':
-                                    toolStore.currentCursor === Cursor.Point &&
-                                    justTapped(),
-                                'b-cursor-box':
-                                    toolStore.currentCursor === Cursor.Box,
-                                'b-cursor-cross':
-                                    toolStore.currentCursor === Cursor.Cross,
-                                'b-cursor-pen':
-                                    toolStore.currentCursor === Cursor.Pen,
-                                'b-cursor-moving':
-                                    toolStore.currentCursor === Cursor.Moving,
-                            }}
-                            devtools={true}
-                            onCreated={onCreated}
-                            app={{
-                                backgroundColor: 0xe1e1e1,
-                                resolution: window.devicePixelRatio,
-                            }}
-                        >
-                            <EditorView />
-                        </Canvas>
+                        <Renderer />
                         <Sidebar />
                     </div>
                     <div>

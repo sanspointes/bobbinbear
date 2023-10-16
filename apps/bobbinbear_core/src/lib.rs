@@ -18,7 +18,7 @@ use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 // web app entry_point
 #[wasm_bindgen]
-pub fn main_web(container_id: String, set_api: js_sys::Function) {
+pub fn main_web(canvas_id: String, set_api: js_sys::Function) {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
@@ -31,8 +31,8 @@ pub fn main_web(container_id: String, set_api: js_sys::Function) {
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             title: "Bobbin Bear :: Embroidery Editor".to_string(),
-            resolution: (800., 600.).into(),
-            canvas: Some(container_id),
+            resolution: (10., 10.).into(),
+            canvas: Some(canvas_id),
             fit_canvas_to_parent: true,
             ..Default::default()
         }),

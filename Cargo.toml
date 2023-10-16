@@ -2,6 +2,6 @@
 resolver = "2"
 
 members = [
-    "apps/editor/renderer",
+    "apps/bobbinbear_core",
     "packages/bevy_prototype_lyon",
 ]

@@ -1,0 +1,24 @@
+{
+  "name": "@bearbroidery/bobbinbear-core",
+  "collaborators": [
+    "Connor Meehan <connorgm@pm.me>"
+  ],
+  "scripts": {
+    "dev": "watch 'wasm-pack build --target web' ./src/"
+  },
+  "version": "0.1.0",
+  "files": [
+    "pkg/bobbinbear_core_bg.wasm",
+    "pkg/bobbinbear_core.js",
+    "pkg/bobbinbear_core.d.ts"
+  ],
+  "module": "pkg/bobbinbear_core.js",
+  "types": "pkg/bobbinbear_core.d.ts",
+  "sideEffects": [
+    "./snippets/*"
+  ],
+  "devDependencies": {
+    "@types/watch": "^1.0.4",
+    "watch": "^1.0.2"
+  }
+}

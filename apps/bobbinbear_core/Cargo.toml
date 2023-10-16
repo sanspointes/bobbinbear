@@ -1,6 +1,6 @@
 # You must change these to your own details.
 [package]
-name = "renderer"
+name = "bobbinbear_core"
 version = "0.1.0"
 authors = ["Connor Meehan <connorgm@pm.me>"]
 edition = "2021"
@@ -48,7 +48,7 @@ console_error_panic_hook = "0.1.7"
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 bevy = { version = "0.11.3", default-features = false }
-bevy_prototype_lyon = { path = "../../../packages/bevy_prototype_lyon", features = [ "bevy_reflect" ] }
+bevy_prototype_lyon = { path = "../../packages/bevy_prototype_lyon", features = [ "bevy_reflect" ] }
 wasm-bindgen-futures = "0.4.37"
 crossbeam-channel = "0.5.8"
 lazy_static = "1.4.0"
