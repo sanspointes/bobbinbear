@@ -20,7 +20,7 @@ use crate::components::bbid::BbidWorldError;
 use self::{add_remove_object_cmd::AddObjectCmd, move_objects_cmd::MoveObjectsCmd, select_objects_cmd::SelectObjectsCmd};
 use self::update_path_cmd::UpdatePathCmd;
 
-use super::Message;
+use super::{Msg, MsgResponder};
 
 /// Shared Logic
 
@@ -133,7 +133,7 @@ impl Plugin for CmdMsgPlugin {
 pub fn msg_handler_cmds(
     world: &mut World,
     message: CmdMsg,
-    _responses: &mut VecDeque<Message>,
+    _responses: &mut MsgResponder,
 ) {
     let _span = info_span!("sys_handler_cmds").entered();
 

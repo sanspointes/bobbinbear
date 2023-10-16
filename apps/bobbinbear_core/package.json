@@ -4,7 +4,7 @@
     "Connor Meehan <connorgm@pm.me>"
   ],
   "scripts": {
-    "dev": "watch 'wasm-pack build --target web' ./src/"
+    "dev": "watch 'wasm-pack build --target web --dev' ./src/"
   },
   "version": "0.1.0",
   "files": [

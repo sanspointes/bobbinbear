@@ -1,13 +1,10 @@
-use std::{
-    collections::VecDeque,
-    ops::{Add, Mul, Sub},
-};
+use std::ops::{Add, Mul, Sub};
 
 use anyhow::anyhow;
 use bevy::{ecs::system::SystemState, prelude::*, window::PrimaryWindow};
 
 use crate::{
-    msgs::{frontend::FrontendMsg, Message},
+    msgs::{frontend::FrontendMsg, Msg, MsgResponder},
     plugins::input_plugin::InputMessage,
     systems::camera::CameraTag,
     types::BBCursor, utils::coordinates,
@@ -82,7 +79,7 @@ impl GrabToolState {
 pub fn msg_handler_grab_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
-    responses: &mut VecDeque<Message>,
+    responder: &mut MsgResponder,
 ) {
     let _span = debug_span!("msg_handler_select_tool").entered();
 
@@ -99,7 +96,7 @@ pub fn msg_handler_grab_tool(
     match message {
         ToolHandlerMessage::OnActivate => {
             debug!("GrabTool::OnActivate");
-            responses.push_back(FrontendMsg::SetCursor(BBCursor::Grab).into());
+            responder.respond(FrontendMsg::SetCursor(BBCursor::Grab));
         }
         ToolHandlerMessage::OnDeactivate => {
             debug!("GrabTool::OnDeactivate");
@@ -122,7 +119,7 @@ pub fn msg_handler_grab_tool(
                         Ok(new_state) => {
                             match new_state {
                                 GrabToolState::Moving { translation, .. } => {
-                                    responses.push_back(FrontendMsg::SetCursor(BBCursor::Grabbing).into());
+                                    responder.respond(FrontendMsg::SetCursor(BBCursor::Grabbing));
                                     transform.translation.x = translation.x;
                                     transform.translation.y = translation.y;
                                 },
@@ -174,7 +171,7 @@ pub fn msg_handler_grab_tool(
                         }
                         Err(_) => {},
                     }
-                    responses.push_back(FrontendMsg::SetCursor(BBCursor::Grab).into());
+                    responder.respond(FrontendMsg::SetCursor(BBCursor::Grab));
                 }
                 _ => {}
             }

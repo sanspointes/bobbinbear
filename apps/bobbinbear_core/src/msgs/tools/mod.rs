@@ -4,6 +4,7 @@ mod box_tool;
 
 use std::collections::VecDeque;
 
+use anyhow::anyhow;
 use bevy::{ecs::system::SystemState, prelude::*};
 use thiserror::Error;
 
@@ -15,7 +16,7 @@ use self::{
     select_tool::{msg_handler_select_tool, SelectFsm}, box_tool::{msg_handler_box_tool, BoxToolRes},
 };
 
-use super::{frontend::FrontendMsg, Message};
+use super::{frontend::FrontendMsg, Msg, MsgResponder};
 
 #[derive(Error, Debug)]
 pub enum ToolFsmError {
@@ -29,9 +30,6 @@ pub type ToolFsmResult<T> = Result<(T, T), ToolFsmError>;
 
 #[derive(Clone, Debug)]
 pub enum ToolMessage {
-    OnActivate(BBTool),
-    OnDeactivate(BBTool),
-
     Input(InputMessage),
 
     SwitchTool(BBTool),
@@ -49,15 +47,13 @@ pub enum ToolHandlerMessage {
 }
 
 impl TryFrom<&ToolMessage> for ToolHandlerMessage {
-    type Error = String;
-    fn try_from(value: &ToolMessage) -> Result<Self, Self::Error> {
+    type Error = anyhow::Error;
+    fn try_from(value: &ToolMessage) -> anyhow::Result<Self> {
         match value {
             ToolMessage::Input(input_message) => {
                 Ok(ToolHandlerMessage::Input(*input_message))
             }
-            ToolMessage::OnActivate(_) => Ok(ToolHandlerMessage::OnActivate),
-            ToolMessage::OnDeactivate(_) => Ok(ToolHandlerMessage::OnDeactivate),
-            _ => Err(format!(
+            _ => Err(anyhow!(
                 "ToolHandlerMessage does not have an equivalent enum variant for {:?}.",
                 value
             )),
@@ -74,23 +70,6 @@ impl ToolResource {
     fn get_current_tool(&self) -> BBTool {
         *self.tool_stack.last().unwrap_or(&BBTool::Select)
     }
-
-    // TODO: Move this logic out of this resource.  Probably just manualy handle OnActive /
-    // OnDeactivate without using the message que.
-    fn generate_frontend_message(&mut self, responses: &mut VecDeque<Message>) {
-        let new_current_tool = self.get_current_tool();
-
-        // If the current tool has changed, pass lifecycle events to the tool sub_handlers
-        // so they can load / unload their required state.
-        if new_current_tool != self.base_tool {
-            responses.push_back(ToolMessage::OnDeactivate(self.base_tool).into());
-            responses.push_back(ToolMessage::OnActivate(new_current_tool).into());
-        }
-
-        responses.push_back(FrontendMsg::SetCurrentTool(new_current_tool).into());
-
-        self.base_tool = new_current_tool;
-    }
 }
 
 pub struct ToolMsgPlugin;
@@ -106,10 +85,26 @@ impl Plugin for ToolMsgPlugin {
     }
 }
 
+fn handle_active_tool_change(world: &mut World, responder: &mut MsgResponder, prev_tool: BBTool, curr_tool: BBTool) {
+    let msg = ToolHandlerMessage::OnDeactivate;
+    match prev_tool {
+        BBTool::Select => msg_handler_select_tool(world, &msg, responder),
+        BBTool::Grab => msg_handler_grab_tool(world, &msg, responder),
+        BBTool::Box => msg_handler_box_tool(world, &msg, responder),
+    }
+    let msg = ToolHandlerMessage::OnActivate;
+    match curr_tool {
+        BBTool::Select => msg_handler_select_tool(world, &msg, responder),
+        BBTool::Grab => msg_handler_grab_tool(world, &msg, responder),
+        BBTool::Box => msg_handler_box_tool(world, &msg, responder),
+    }
+    responder.respond(FrontendMsg::SetCurrentTool(curr_tool));
+}
+
 pub fn msg_handler_tool(
     world: &mut World,
     message: &ToolMessage,
-    responses: &mut VecDeque<Message>,
+    responder: &mut MsgResponder,
 ) {
     let _span = info_span!("sys_handler_tool").entered();
 
@@ -124,39 +119,44 @@ pub fn msg_handler_tool(
     match message {
         ToolMessage::PushTool(tool) => {
             trace!("ToolMessage::PushTool -> {:?}", tool);
-            if *tool != res.get_current_tool() {
+            let prev = res.get_current_tool();
+            if *tool != prev {
                 res.tool_stack.push(*tool);
                 next_tool.set(res.get_current_tool());
-                res.generate_frontend_message(responses);
+                handle_active_tool_change(world, responder, prev, *tool);
             }
         }
         ToolMessage::SwitchTool(tool) => {
             trace!("ToolMessage::SwitchTool -> {:?}", tool);
+            let prev = res.get_current_tool();
             if let Some(first) = res.tool_stack.first_mut() {
                 *first = *tool;
             } else {
                 res.tool_stack.push(*tool);
             }
             next_tool.set(res.get_current_tool());
-            res.generate_frontend_message(responses);
+            if prev != *tool {
+                handle_active_tool_change(world, responder, prev, *tool);
+            }
         }
         ToolMessage::ResetToRootTool => {
             trace!(
                 "ToolMessage::ResetToRootTool (current_tool_stack: {:?})",
                 res.tool_stack
             );
-            if let Some(first) = res.tool_stack.first() {
-                res.tool_stack = vec![*first];
+            let prev = res.get_current_tool();
+            if let Some(first) = res.tool_stack.first().cloned() {
+                res.tool_stack = vec![first];
                 next_tool.set(res.get_current_tool());
-                res.generate_frontend_message(responses);
+                handle_active_tool_change(world, responder, prev, first);
             }
         }
         tool_message => {
             if let Ok(tool_handler_message) = &tool_message.try_into() {
                 match res.get_current_tool() {
-                    BBTool::Select => msg_handler_select_tool(world, tool_handler_message, responses),
-                    BBTool::Grab => msg_handler_grab_tool(world, tool_handler_message, responses),
-                    BBTool::Box => msg_handler_box_tool(world, tool_handler_message, responses),
+                    BBTool::Select => msg_handler_select_tool(world, tool_handler_message, responder),
+                    BBTool::Grab => msg_handler_grab_tool(world, tool_handler_message, responder),
+                    BBTool::Box => msg_handler_box_tool(world, tool_handler_message, responder),
                 }
             } else {
                 warn!("Warning: Unhandled ToolMessage ({:?}).  Cannot convert to ToolHandlerMessage to pass to active tool.", tool_message);

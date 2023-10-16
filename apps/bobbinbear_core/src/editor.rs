@@ -6,7 +6,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
     components::{bbid::BBId, scene::BBObject},
-    msgs::{cmds::CmdMsgPlugin, frontend::FrontendMsg, sys_msg_handler, Message, ToolMsgPlugin},
+    msgs::{cmds::CmdMsgPlugin, frontend::FrontendMsg, sys_msg_handler, Msg, ToolMsgPlugin},
     plugins::{
         bounds_2d_plugin::Bounds2DPlugin,
         input_plugin::{InputMessage, InputPlugin},
@@ -82,7 +82,7 @@ impl Plugin for EditorPlugin {
             .add_plugins(ShapePlugin)
             // Internals
             .add_event::<FrontendMsg>()
-            .add_event::<Message>()
+            .add_event::<Msg>()
             // Internal generic plugins
             .add_plugins((InputPlugin, SelectionPlugin, ScreenSpaceRootPlugin, Bounds2DPlugin))
             // Internal App Logic plugins
@@ -116,7 +116,7 @@ impl Plugin for EditorPlugin {
 fn sys_handle_pre_editor_msgs(
     mut input_msg_receiver: EventReader<InputMessage>,
     api_receiver: ResMut<ApiToEditorReceiver>,
-    mut msg_writer: EventWriter<Message>,
+    mut msg_writer: EventWriter<Msg>,
 ) {
     let _span = info_span!("sys_handle_pre_editor_msgs").entered();
 
@@ -125,11 +125,11 @@ fn sys_handle_pre_editor_msgs(
         msg_writer.send(msg);
     }
 
-    let msgs: Vec<Message> = input_msg_receiver
+    let msgs: Vec<Msg> = input_msg_receiver
         .iter()
         .cloned()
         .map(|msg| {
-            let msg: Message = msg.into();
+            let msg: Msg = msg.into();
             msg
         })
         .collect();

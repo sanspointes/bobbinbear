@@ -41,14 +41,14 @@ use crossbeam_channel::unbounded;
 use bevy::prelude::*;
 use bevy::DefaultPlugins;
 use editor::start_bobbin_bear;
-use msgs::Message;
+use msgs::Msg;
 use msgs::frontend::FrontendMsg;
 use api::EditorToApiSender;
 use api::ApiToEditorReceiver;
 
 fn main() {
     // TODO add webview gui
-    let (_api_to_editor_sender, api_to_editor_receiver) = unbounded::<Message>();
+    let (_api_to_editor_sender, api_to_editor_receiver) = unbounded::<Msg>();
     let (editor_to_api_sender, _editor_to_api_receiver) = unbounded::<FrontendMsg>();
 
     let default_plugins = DefaultPlugins.set(WindowPlugin {

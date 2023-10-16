@@ -15,7 +15,7 @@ use crate::{
     msgs::{
         cmds::{add_remove_object_cmd::AddObjectCmd, update_path_cmd::UpdatePathCmd, CmdMsg},
         frontend::FrontendMsg,
-        Message,
+        Msg, MsgResponder,
     },
     plugins::{
         bounds_2d_plugin::GlobalBounds2D, input_plugin::InputMessage,
@@ -149,20 +149,20 @@ pub struct BoxToolRes {
 pub fn msg_handler_box_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
-    responses: &mut VecDeque<Message>,
+    responder: &mut MsgResponder,
 ) {
     let _span = debug_span!("msg_handler_box_tool").entered();
 
     match message {
         ToolHandlerMessage::OnActivate => {
             debug_log!("BoxTool::OnActivate");
-            responses.push_back(FrontendMsg::SetCursor(BBCursor::Box).into());
+            responder.respond(FrontendMsg::SetCursor(BBCursor::Box));
         }
         ToolHandlerMessage::OnDeactivate => {
             debug_log!("BoxTool::OnDeactivate");
         }
         ToolHandlerMessage::Input(input_message) => {
-            msg_handler_box_tool_input(world, input_message, responses)
+            msg_handler_box_tool_input(world, input_message, responder)
         }
     }
 }
@@ -170,7 +170,7 @@ pub fn msg_handler_box_tool(
 pub fn msg_handler_box_tool_input(
     world: &mut World,
     message: &InputMessage,
-    responses: &mut VecDeque<Message>,
+    responder: &mut MsgResponder,
 ) {
     let mut sys_state: SystemState<(ResMut<BoxToolRes>,)> = SystemState::new(world);
 
@@ -227,7 +227,7 @@ pub fn msg_handler_box_tool_input(
             });
 
             match cmd_result {
-                Ok(cmd) => responses.push_back(CmdMsg::from(cmd).into()),
+                Ok(cmd) => responder.respond(CmdMsg::from(cmd)),
                 Err(reason) => {
                     error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
                 }
@@ -268,7 +268,7 @@ pub fn msg_handler_box_tool_input(
             });
 
             match cmd_result {
-                Ok(cmd) => responses.push_back(CmdMsg::from(cmd).into()),
+                Ok(cmd) => responder.respond(CmdMsg::from(cmd)),
                 Err(reason) => {
                     error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
                 }
@@ -290,7 +290,7 @@ pub fn msg_handler_box_tool_input(
 
             let cmd = UpdatePathCmd::new(bbid, path);
 
-            responses.push_back(CmdMsg::from(cmd).into());
+            responder.respond(CmdMsg::from(cmd));
         }
         //
         // BuildingBox -> Default, Finish building the box.
@@ -308,7 +308,7 @@ pub fn msg_handler_box_tool_input(
 
             let cmd = UpdatePathCmd::new(bbid, path);
 
-            responses.push_back(CmdMsg::from(cmd).into());
+            responder.respond(CmdMsg::from(cmd));
         }
         Ok((arg1, arg2)) => panic!("BoxTool: Unhandled state transition from {arg1:?} to {arg2:?}"),
         Err(ToolFsmError::NoTransition) => {}

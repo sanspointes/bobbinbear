@@ -14,7 +14,7 @@ use crate::{
     msgs::{
         cmds::{move_objects_cmd::MoveObjectsCmd, CmdMsg, select_objects_cmd::SelectObjectsCmd},
         frontend::FrontendMsg,
-        Message,
+        Msg, MsgResponder,
     },
     plugins::{
         input_plugin::{InputMessage, ModifiersState},
@@ -234,7 +234,7 @@ impl SelectFsm {
 pub fn msg_handler_select_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
-    responses: &mut VecDeque<Message>,
+    responder: &mut MsgResponder,
 ) {
     let _span = debug_span!("msg_handler_select_tool").entered();
 
@@ -245,7 +245,7 @@ pub fn msg_handler_select_tool(
     let transition_result = match message {
         OnActivate => {
             debug!("SelectTool::OnActivate");
-            responses.push_back(FrontendMsg::SetCursor(BBCursor::Default).into());
+            responder.respond(FrontendMsg::SetCursor(BBCursor::Default));
             Err(ToolFsmError::NoTransition)
         }
         OnDeactivate => {
@@ -329,7 +329,7 @@ pub fn msg_handler_select_tool(
                 let to_deselect: Vec<BBId> = old.difference(new).cloned().collect();
 
                 let cmd = SelectObjectsCmd::select_deselect(to_select, to_deselect);
-                responses.push_back(CmdMsg::from(cmd).into())
+                responder.respond(CmdMsg::from(cmd))
             }
         }
 
@@ -352,12 +352,12 @@ pub fn msg_handler_select_tool(
         )) => {
             let bbids: Vec<_> = initial_positions.keys().cloned().collect();
             let cmd = MoveObjectsCmd::from_multiple(bbids, *world_offset);
-            responses.push_back(CmdMsg::from(cmd).into());
+            responder.respond(CmdMsg::from(cmd));
         }
 
         // When movement selection complete, flag that the last command cannot be repeated.
         Ok((MovingSelected { .. }, Default { .. })) => {
-            responses.push_back(CmdMsg::DisallowRepeated.into());
+            responder.respond(CmdMsg::DisallowRepeated);
         }
 
         // Error on valid transitions that are not handled

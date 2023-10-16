@@ -1,15 +1,13 @@
-use std::collections::VecDeque;
-
 use bevy::{input::ButtonState, prelude::*};
 
 use crate::{plugins::input_plugin::InputMessage, types::BBTool};
 
-use super::{Message, ToolMessage, cmds::CmdMsg};
+use super::{ToolMessage, cmds::CmdMsg, MsgResponder};
 
 pub fn msg_handler_keybinds(
     mut _world: &mut World,
     message: &InputMessage,
-    responses: &mut VecDeque<Message>,
+    responder: &mut MsgResponder,
 ) {
     let _span = info_span!("msg_handler_keybinds").entered();
 
@@ -22,25 +20,25 @@ pub fn msg_handler_keybinds(
         } => match (pressed, key, modifiers.command, modifiers.shift) {
             // Click to drag around viewport with space key pressed
             (ButtonState::Pressed, KeyCode::Space, _, _) => {
-                responses.push_back(ToolMessage::PushTool(BBTool::Grab).into());
+                responder.respond(ToolMessage::PushTool(BBTool::Grab));
             }
             (ButtonState::Released, KeyCode::Space, _, _) => {
-                responses.push_back(ToolMessage::ResetToRootTool.into());
+                responder.respond(ToolMessage::ResetToRootTool);
             }
             (ButtonState::Released, KeyCode::Key1, _, _) => {
-                responses.push_back(ToolMessage::SwitchTool(BBTool::Select).into());
+                responder.respond(ToolMessage::SwitchTool(BBTool::Select));
             }
             (ButtonState::Released, KeyCode::Key2, _, _) => {
-                responses.push_back(ToolMessage::SwitchTool(BBTool::Box).into());
+                responder.respond(ToolMessage::SwitchTool(BBTool::Box));
             }
             (ButtonState::Released, KeyCode::Key3, _, _) => {
                 // msg_writer.send(ToolMessage::SwitchTool(BBTool::Pen).into());
             }
             (ButtonState::Released, KeyCode::Z, ButtonState::Pressed, ButtonState::Released) => {
-                responses.push_back(CmdMsg::Undo.into());
+                responder.respond(CmdMsg::Undo);
             }
             (ButtonState::Released, KeyCode::Z, ButtonState::Pressed, ButtonState::Pressed) => {
-                responses.push_back(CmdMsg::Redo.into());
+                responder.respond(CmdMsg::Redo);
             }
             (_, _, _, _) => {
                 should_pass_through = true;
@@ -52,6 +50,6 @@ pub fn msg_handler_keybinds(
     }
 
     if should_pass_through {
-        responses.push_back(ToolMessage::Input(*message).into());
+        responder.respond(ToolMessage::Input(*message));
     }
 }
