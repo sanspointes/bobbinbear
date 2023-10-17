@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use bevy::{ecs::system::SystemState, prelude::*, window::PrimaryWindow};
 
 use crate::{
-    msgs::{frontend::FrontendMsg, Msg, MsgResponder},
+    msgs::{api::{ApiMsg, ApiEffectMsg}, Msg, MsgQue},
     plugins::input_plugin::InputMessage,
     systems::camera::CameraTag,
     types::BBCursor, utils::coordinates,
@@ -79,7 +79,7 @@ impl GrabToolState {
 pub fn msg_handler_grab_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
-    responder: &mut MsgResponder,
+    responder: &mut MsgQue,
 ) {
     let _span = debug_span!("msg_handler_select_tool").entered();
 
@@ -96,7 +96,7 @@ pub fn msg_handler_grab_tool(
     match message {
         ToolHandlerMessage::OnActivate => {
             debug!("GrabTool::OnActivate");
-            responder.respond(FrontendMsg::SetCursor(BBCursor::Grab));
+            responder.respond(ApiEffectMsg::SetCursor(BBCursor::Grab));
         }
         ToolHandlerMessage::OnDeactivate => {
             debug!("GrabTool::OnDeactivate");
@@ -119,7 +119,7 @@ pub fn msg_handler_grab_tool(
                         Ok(new_state) => {
                             match new_state {
                                 GrabToolState::Moving { translation, .. } => {
-                                    responder.respond(FrontendMsg::SetCursor(BBCursor::Grabbing));
+                                    responder.respond(ApiEffectMsg::SetCursor(BBCursor::Grabbing));
                                     transform.translation.x = translation.x;
                                     transform.translation.y = translation.y;
                                 },
@@ -171,7 +171,7 @@ pub fn msg_handler_grab_tool(
                         }
                         Err(_) => {},
                     }
-                    responder.respond(FrontendMsg::SetCursor(BBCursor::Grab));
+                    responder.respond(ApiEffectMsg::SetCursor(BBCursor::Grab));
                 }
                 _ => {}
             }

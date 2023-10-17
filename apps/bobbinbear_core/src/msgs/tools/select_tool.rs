@@ -1,5 +1,3 @@
-use std::collections::VecDeque;
-
 use bevy::{
     ecs::system::SystemState,
     input::ButtonState,
@@ -12,9 +10,9 @@ use bevy_mod_raycast::RaycastSource;
 use crate::{
     components::bbid::BBId,
     msgs::{
-        cmds::{move_objects_cmd::MoveObjectsCmd, CmdMsg, select_objects_cmd::SelectObjectsCmd},
-        frontend::FrontendMsg,
-        Msg, MsgResponder,
+        api::ApiEffectMsg,
+        cmds::{move_objects_cmd::MoveObjectsCmd, select_objects_cmd::SelectObjectsCmd, CmdMsg},
+        MsgQue,
     },
     plugins::{
         input_plugin::{InputMessage, ModifiersState},
@@ -234,7 +232,7 @@ impl SelectFsm {
 pub fn msg_handler_select_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
-    responder: &mut MsgResponder,
+    responder: &mut MsgQue,
 ) {
     let _span = debug_span!("msg_handler_select_tool").entered();
 
@@ -245,7 +243,7 @@ pub fn msg_handler_select_tool(
     let transition_result = match message {
         OnActivate => {
             debug!("SelectTool::OnActivate");
-            responder.respond(FrontendMsg::SetCursor(BBCursor::Default));
+            responder.respond(ApiEffectMsg::SetCursor(BBCursor::Default));
             Err(ToolFsmError::NoTransition)
         }
         OnDeactivate => {
@@ -329,7 +327,7 @@ pub fn msg_handler_select_tool(
                 let to_deselect: Vec<BBId> = old.difference(new).cloned().collect();
 
                 let cmd = SelectObjectsCmd::select_deselect(to_select, to_deselect);
-                responder.respond(CmdMsg::from(cmd))
+                responder.push_internal(CmdMsg::from(cmd))
             }
         }
 
@@ -352,12 +350,12 @@ pub fn msg_handler_select_tool(
         )) => {
             let bbids: Vec<_> = initial_positions.keys().cloned().collect();
             let cmd = MoveObjectsCmd::from_multiple(bbids, *world_offset);
-            responder.respond(CmdMsg::from(cmd));
+            responder.push_internal(CmdMsg::from(cmd));
         }
 
         // When movement selection complete, flag that the last command cannot be repeated.
         Ok((MovingSelected { .. }, Default { .. })) => {
-            responder.respond(CmdMsg::DisallowRepeated);
+            responder.push_internal(CmdMsg::DisallowRepeated);
         }
 
         // Error on valid transitions that are not handled

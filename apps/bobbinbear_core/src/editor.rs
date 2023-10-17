@@ -6,7 +6,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
     components::{bbid::BBId, scene::BBObject},
-    msgs::{cmds::CmdMsgPlugin, frontend::FrontendMsg, sys_msg_handler, Msg, ToolMsgPlugin},
+    msgs::{cmds::CmdMsgPlugin, api::ApiMsg, sys_msg_handler, Msg, ToolMsgPlugin},
     plugins::{
         bounds_2d_plugin::Bounds2DPlugin,
         input_plugin::{InputMessage, InputPlugin},
@@ -14,10 +14,13 @@ use crate::{
         selection_plugin::SelectionPlugin,
     },
     systems::camera::sys_setup_camera,
-    utils::reflect_shims::{ReflectableFill, ReflectablePath}, api::ApiToEditorReceiver,
+    utils::reflect_shims::{ReflectableFill, ReflectablePath},
 };
 
 pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
+    #[cfg(feature = "debug_trace")]
+    let _span = info_span!("start_bobbin_bear").entered();
+
     #[cfg(debug_assertions)]
     let default_plugins = {
 
@@ -51,9 +54,6 @@ pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
 
     let mut app = App::new();
 
-    #[cfg(feature = "debug_trace")]
-    app.insert_resource(TaskPoolOptions::with_num_threads(1));
-
     app.add_plugins(default_plugins).add_plugins(EditorPlugin);
 
     #[cfg(feature = "inspector")]
@@ -81,7 +81,7 @@ impl Plugin for EditorPlugin {
             // 3rd Party Plugins
             .add_plugins(ShapePlugin)
             // Internals
-            .add_event::<FrontendMsg>()
+            .add_event::<ApiMsg>()
             .add_event::<Msg>()
             // Internal generic plugins
             .add_plugins((InputPlugin, SelectionPlugin, ScreenSpaceRootPlugin, Bounds2DPlugin))
@@ -115,15 +115,9 @@ impl Plugin for EditorPlugin {
 /// by sys_msg_handler
 fn sys_handle_pre_editor_msgs(
     mut input_msg_receiver: EventReader<InputMessage>,
-    api_receiver: ResMut<ApiToEditorReceiver>,
     mut msg_writer: EventWriter<Msg>,
 ) {
     let _span = info_span!("sys_handle_pre_editor_msgs").entered();
-
-    let receiver = &api_receiver.0;
-    if let Ok(msg) = receiver.try_recv() {
-        msg_writer.send(msg);
-    }
 
     let msgs: Vec<Msg> = input_msg_receiver
         .iter()

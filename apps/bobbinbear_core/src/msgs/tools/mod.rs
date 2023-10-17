@@ -16,7 +16,7 @@ use self::{
     select_tool::{msg_handler_select_tool, SelectFsm}, box_tool::{msg_handler_box_tool, BoxToolRes},
 };
 
-use super::{frontend::FrontendMsg, Msg, MsgResponder};
+use super::{api::{ApiMsg, ApiEffectMsg}, Msg, MsgQue};
 
 #[derive(Error, Debug)]
 pub enum ToolFsmError {
@@ -85,7 +85,7 @@ impl Plugin for ToolMsgPlugin {
     }
 }
 
-fn handle_active_tool_change(world: &mut World, responder: &mut MsgResponder, prev_tool: BBTool, curr_tool: BBTool) {
+fn handle_active_tool_change(world: &mut World, responder: &mut MsgQue, prev_tool: BBTool, curr_tool: BBTool) {
     let msg = ToolHandlerMessage::OnDeactivate;
     match prev_tool {
         BBTool::Select => msg_handler_select_tool(world, &msg, responder),
@@ -98,13 +98,13 @@ fn handle_active_tool_change(world: &mut World, responder: &mut MsgResponder, pr
         BBTool::Grab => msg_handler_grab_tool(world, &msg, responder),
         BBTool::Box => msg_handler_box_tool(world, &msg, responder),
     }
-    responder.respond(FrontendMsg::SetCurrentTool(curr_tool));
+    responder.respond(ApiEffectMsg::SetCurrentTool(curr_tool));
 }
 
 pub fn msg_handler_tool(
     world: &mut World,
     message: &ToolMessage,
-    responder: &mut MsgResponder,
+    responder: &mut MsgQue,
 ) {
     let _span = info_span!("sys_handler_tool").entered();
 

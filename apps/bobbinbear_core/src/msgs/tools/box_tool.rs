@@ -1,7 +1,4 @@
-use std::{
-    collections::VecDeque,
-    ops::{Add, Sub},
-};
+use std::ops::{Add, Sub};
 
 use bevy::{ecs::system::SystemState, prelude::*};
 use bevy_prototype_lyon::{
@@ -13,9 +10,9 @@ use crate::{
     components::{bbid::BBId, scene::BBObject},
     debug_log,
     msgs::{
+        api::ApiEffectMsg,
         cmds::{add_remove_object_cmd::AddObjectCmd, update_path_cmd::UpdatePathCmd, CmdMsg},
-        frontend::FrontendMsg,
-        Msg, MsgResponder,
+        MsgQue,
     },
     plugins::{
         bounds_2d_plugin::GlobalBounds2D, input_plugin::InputMessage,
@@ -24,7 +21,7 @@ use crate::{
     types::BBCursor,
 };
 
-use super::{ToolFsmError, ToolHandlerMessage, ToolFsmResult};
+use super::{ToolFsmError, ToolFsmResult, ToolHandlerMessage};
 
 //
 // BOX TOOL FSM
@@ -46,10 +43,7 @@ enum BoxFsm {
 }
 
 impl BoxFsm {
-    fn handle_pointer_down(
-        mut self,
-        cursor_position: &Vec2,
-    ) -> ToolFsmResult<BoxFsm> {
+    fn handle_pointer_down(mut self, cursor_position: &Vec2) -> ToolFsmResult<BoxFsm> {
         let old = self;
         match self {
             BoxFsm::Default => {
@@ -80,10 +74,7 @@ impl BoxFsm {
     /// * `world`:
     /// * `world_pressed_pos`:
     /// * `world_drag_offset`:
-    fn handle_drag_start(
-        mut self,
-        cursor_offset: &Vec2,
-    ) -> ToolFsmResult<BoxFsm> {
+    fn handle_drag_start(mut self, cursor_offset: &Vec2) -> ToolFsmResult<BoxFsm> {
         let old = self;
         match self {
             BoxFsm::PointerDown { cursor_origin_pos } => {
@@ -116,7 +107,8 @@ impl BoxFsm {
                 ..
             } => {
                 *box_extents = Vec2::abs(*cursor_offset);
-                *box_origin_pos = Vec2::min(cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
+                *box_origin_pos =
+                    Vec2::min(cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
                 Ok(self)
             }
             _ => Err(ToolFsmError::NoTransition),
@@ -149,14 +141,14 @@ pub struct BoxToolRes {
 pub fn msg_handler_box_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
-    responder: &mut MsgResponder,
+    responder: &mut MsgQue,
 ) {
     let _span = debug_span!("msg_handler_box_tool").entered();
 
     match message {
         ToolHandlerMessage::OnActivate => {
             debug_log!("BoxTool::OnActivate");
-            responder.respond(FrontendMsg::SetCursor(BBCursor::Box));
+            responder.respond(ApiEffectMsg::SetCursor(BBCursor::Box));
         }
         ToolHandlerMessage::OnDeactivate => {
             debug_log!("BoxTool::OnDeactivate");
@@ -170,7 +162,7 @@ pub fn msg_handler_box_tool(
 pub fn msg_handler_box_tool_input(
     world: &mut World,
     message: &InputMessage,
-    responder: &mut MsgResponder,
+    responder: &mut MsgQue,
 ) {
     let mut sys_state: SystemState<(ResMut<BoxToolRes>,)> = SystemState::new(world);
 
@@ -227,7 +219,7 @@ pub fn msg_handler_box_tool_input(
             });
 
             match cmd_result {
-                Ok(cmd) => responder.respond(CmdMsg::from(cmd)),
+                Ok(cmd) => responder.push_internal(CmdMsg::from(cmd)),
                 Err(reason) => {
                     error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
                 }
@@ -268,7 +260,7 @@ pub fn msg_handler_box_tool_input(
             });
 
             match cmd_result {
-                Ok(cmd) => responder.respond(CmdMsg::from(cmd)),
+                Ok(cmd) => responder.push_internal(CmdMsg::from(cmd)),
                 Err(reason) => {
                     error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
                 }
@@ -290,7 +282,7 @@ pub fn msg_handler_box_tool_input(
 
             let cmd = UpdatePathCmd::new(bbid, path);
 
-            responder.respond(CmdMsg::from(cmd));
+            responder.push_internal(CmdMsg::from(cmd));
         }
         //
         // BuildingBox -> Default, Finish building the box.
@@ -308,7 +300,7 @@ pub fn msg_handler_box_tool_input(
 
             let cmd = UpdatePathCmd::new(bbid, path);
 
-            responder.respond(CmdMsg::from(cmd));
+            responder.push_internal(CmdMsg::from(cmd));
         }
         Ok((arg1, arg2)) => panic!("BoxTool: Unhandled state transition from {arg1:?} to {arg2:?}"),
         Err(ToolFsmError::NoTransition) => {}

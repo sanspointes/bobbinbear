@@ -4,7 +4,7 @@ mod wasm;
 use bevy::prelude::*;
 use crossbeam_channel::{Receiver, Sender};
 
-use crate::{msgs::{frontend::FrontendMsg, Msg}, types::BBTool};
+use crate::{msgs::{api::ApiMsg, MsgRespondable}, types::BBTool};
 
 // Wasm API for editor
 pub use wasm::EditorApi;
@@ -16,9 +16,9 @@ pub use wasm::EditorApi;
 // These resources wrap sender/receiver to be stored in the bevy engine
 // The inverse sender/receiver will be stored within the EditorApi struct
 #[derive(Resource, Debug)]
-pub struct ApiToEditorReceiver(pub Receiver<Msg>);
+pub struct ApiToEditorReceiver(pub Receiver<MsgRespondable>);
 #[derive(Resource)]
-pub struct EditorToApiSender(pub Sender<FrontendMsg>);
+pub struct EditorToApiSender(pub Sender<ApiMsg>);
 
 /// Trait contains shared methods between WASM editor api and future editor apis.
 trait EditorApiMethods {

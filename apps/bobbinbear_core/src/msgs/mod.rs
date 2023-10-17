@@ -1,5 +1,5 @@
+pub mod api;
 pub mod cmds;
-pub mod frontend;
 pub mod keybinds;
 pub mod tools;
 
@@ -11,12 +11,15 @@ use std::{
 use bevy::prelude::*;
 use lazy_static::lazy_static;
 
-use crate::{api::EditorToApiSender, plugins::input_plugin::InputMessage};
+use crate::{
+    api::{ApiToEditorReceiver, EditorToApiSender},
+    plugins::input_plugin::InputMessage,
+};
 
 pub use self::tools::{msg_handler_tool, ToolMessage, ToolMsgPlugin};
 use self::{
+    api::ApiMsg,
     cmds::{msg_handler_cmds, CmdMsg},
-    frontend::FrontendMsg,
     keybinds::msg_handler_keybinds,
 };
 
@@ -24,20 +27,14 @@ use self::{
 pub enum Msg {
     // RawInput(RawInputMessage),
     Input(InputMessage),
-    Frontend(FrontendMsg),
+    Api(ApiMsg),
     Tool(ToolMessage),
     Cmd(CmdMsg),
 }
-// All messages are wrapped with an identifier to allow responses.
-pub struct MsgWrapper(pub Msg, pub usize);
 
-lazy_static! {
-    static ref MSG_ID_PROVIDER: AtomicUsize = AtomicUsize::new(0);
-}
-
-impl From<FrontendMsg> for Msg {
-    fn from(value: FrontendMsg) -> Self {
-        Self::Frontend(value)
+impl From<ApiMsg> for Msg {
+    fn from(value: ApiMsg) -> Self {
+        Self::Api(value)
     }
 }
 impl From<ToolMessage> for Msg {
@@ -56,24 +53,59 @@ impl From<CmdMsg> for Msg {
     }
 }
 
-pub struct MsgResponder {
-    que: VecDeque<Msg>,
-    response_id: usize,
+lazy_static! {
+    static ref MSG_ID_PROVIDER: AtomicUsize = AtomicUsize::new(0);
 }
-impl MsgResponder {
-    fn from_msg(msg: Msg) -> Self {
+// All messages are wrapped with an identifier to allow responses.
+// * 0 : The Msg Object
+// * 1 : Optional response ID (if the message is respondable)
+pub struct MsgRespondable(pub Msg, pub usize);
+impl MsgRespondable {
+    pub fn new(msg: impl Into<Msg>) -> Self {
+        Self(msg.into(), MSG_ID_PROVIDER.fetch_add(1, Ordering::Relaxed))
+    }
+}
+
+/// This struct is used to que up messages to p
+///
+/// * `que`: Que of messages to perform, this can be pushed to by message handlers
+/// * `response_id`: Optional response ID if it needs to respond to the EditorApi
+pub struct MsgQue {
+    que: VecDeque<Msg>,
+    responses: VecDeque<ApiMsg>,
+    response_id: Option<usize>,
+}
+impl From<Msg> for MsgQue {
+    fn from(value: Msg) -> Self {
         let mut que = VecDeque::<Msg>::with_capacity(4);
-        que.push_back(msg);
+        que.push_back(value);
         Self {
             que,
-            response_id: MSG_ID_PROVIDER.fetch_add(1, Ordering::Relaxed),
+            responses: VecDeque::new(),
+            response_id: None,
         }
     }
+}
+impl From<MsgRespondable> for MsgQue {
+    fn from(value: MsgRespondable) -> Self {
+        let mut que = VecDeque::<Msg>::with_capacity(4);
+        que.push_back(value.0);
+        Self {
+            que,
+            responses: VecDeque::new(),
+            response_id: Some(value.1),
+        }
+    }
+}
+impl MsgQue {
     fn peek_top(&self) -> Option<&Msg> {
         self.que.get(0)
     }
-    fn respond(&mut self, msg: impl Into<Msg>) {
+    fn push_internal(&mut self, msg: impl Into<Msg>) {
         self.que.push_back(msg.into());
+    }
+    fn respond(&mut self, response: impl Into<ApiMsg>) {
+        self.responses.push_back(response.into());
     }
     fn next(&mut self) -> Option<Msg> {
         self.que.pop_front()
@@ -87,21 +119,27 @@ impl MsgResponder {
 pub fn sys_msg_handler(world: &mut World) {
     let _span = info_span!("sys_msg_handler").entered();
 
-    let mut messages = {
+    let mut all_messages: VecDeque<MsgQue> = {
+        let _span = info_span!("sys_msg_handler: Receiving messages").entered();
+        // Messages sent from API have a unique ID that we can use to respond to the API call with.
+        let receiver = world.resource_mut::<ApiToEditorReceiver>();
+        let mut responders: VecDeque<MsgQue> = receiver.0.try_iter().map(MsgQue::from).collect();
+
+        // These messages are not respondable.
         if let Some(mut events) = world.get_resource_mut::<Events<Msg>>() {
-            events
-                .drain()
-                .map(MsgResponder::from_msg)
-                .collect::<VecDeque<_>>()
+            for msg in events.drain() {
+                responders.push_back(MsgQue::from(msg))
+            }
         } else {
             warn!("WARN: Could not get messages to handle.  This should never happen but shouldn't cause issues");
-            VecDeque::new()
         }
+
+        responders
     };
 
     let mut iterations = 0;
-    while let Some(mut msg_responder) = messages.pop_front() {
-        let description = msg_responder
+    while let Some(mut msg_responder) = all_messages.pop_front() {
+        let source_msg_description = msg_responder
             .peek_top()
             .map(|msg| format!("Handling message: {:?}", msg));
 
@@ -117,7 +155,7 @@ pub fn sys_msg_handler(world: &mut World) {
                 }
                 Msg::Tool(tool_msg) => msg_handler_tool(world, &tool_msg, &mut msg_responder),
                 Msg::Cmd(cmd_msg) => msg_handler_cmds(world, cmd_msg, &mut msg_responder),
-                Msg::Frontend(frontend_msg) => {
+                Msg::Api(frontend_msg) => {
                     let _span = info_span!("handle_frontend_msg").entered();
 
                     if let Some(editor_to_api_sender) =
@@ -131,6 +169,27 @@ pub fn sys_msg_handler(world: &mut World) {
                         }
                     }
                 }
+            }
+        }
+
+        let _span = info_span!("sys_msg_handler: Handing responses/effects").entered();
+        // Respond to API + send side effects back to UI layer
+        let sender = world.resource_mut::<EditorToApiSender>();
+        while let Some(response) = msg_responder.responses.pop_front() {
+            match (response, msg_responder.response_id) {
+                (ApiMsg::Response(response), Some(response_id)) => {
+                    sender
+                        .0
+                        .send(ApiMsg::WrappedResponse(response, response_id))
+                        .expect("sys_msg_handler: Error responding to API call");
+                }
+                (ApiMsg::Effect(effect), _) => {
+                    sender
+                        .0
+                        .send(ApiMsg::Effect(effect))
+                        .expect("sys_msg_handler: Error sending effect for message call.");
+                }
+                (_, _) => (),
             }
         }
     }

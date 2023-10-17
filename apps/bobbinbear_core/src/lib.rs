@@ -14,7 +14,7 @@ use crossbeam_channel::unbounded;
 
 use bevy::prelude::*;
 use editor::start_bobbin_bear;
-use msgs::{frontend::FrontendMsg, Msg};
+use msgs::{api::ApiMsg, MsgRespondable};
 use wasm_bindgen::{prelude::wasm_bindgen, JsValue};
 
 // web app entry_point
@@ -23,8 +23,8 @@ pub fn main_web(canvas_id: String, set_api: js_sys::Function) {
     #[cfg(debug_assertions)]
     console_error_panic_hook::set_once();
 
-    let (api_to_editor_sender, api_to_editor_receiver) = unbounded::<Msg>();
-    let (editor_to_api_sender, editor_to_api_receiver) = unbounded::<FrontendMsg>();
+    let (api_to_editor_sender, api_to_editor_receiver) = unbounded::<MsgRespondable>();
+    let (editor_to_api_sender, editor_to_api_receiver) = unbounded::<ApiMsg>();
 
     let api = EditorApi::new(api_to_editor_sender, editor_to_api_receiver);
     set_api.call1(&JsValue::undefined(), &JsValue::from(api)).expect("BobbinBear: Error passing API back to JS land.");
