@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use bevy::prelude::Event;
+use serde::Serialize;
 
 use crate::types::{BBCursor, BBTool};
 
@@ -25,12 +26,11 @@ pub enum ApiEffectMsg {
 }
 
 #[derive(Event, Clone, Debug)]
-/// Message type for sending data back to the JS/UI Layer and responding to API Calls.
+/// Internal type for sending data back to the JS/UI Layer and responding to API Calls.
+/// This type will be converted to a JsApiResponseMsg.
 pub enum ApiMsg {
     // Internals will send a response
     Response(ApiResponseMsg),
-    // Api will receive a wrapped response
-    WrappedResponse(ApiResponseMsg, usize),
     // Api will receive an effect 
     Effect(ApiEffectMsg),
 }
@@ -46,3 +46,30 @@ impl From<ApiResponseMsg> for ApiMsg {
         Self::Response(value)
     }
 }
+
+//
+// Wasm / frontend ui stuff
+//
+
+#[derive(Serialize, typescript_definitions::TypeScriptify, Debug, Clone)]
+#[serde(tag = "tag", content = "fields")]
+pub enum JsApiResponseMsg {
+    Success,
+    Error(String),
+}
+
+impl From<ApiResponseMsg> for JsApiResponseMsg {
+    fn from(value: ApiResponseMsg) -> Self {
+        match value {
+            ApiResponseMsg::Success => Self::Success,
+            ApiResponseMsg::Err(reason) => Self::Error(reason.to_string()),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum JsApiMsg {
+    Effect(ApiEffectMsg),
+    Response(Vec<JsApiResponseMsg>, usize),
+}
+

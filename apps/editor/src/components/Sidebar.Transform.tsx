@@ -3,7 +3,6 @@ import { AccordionItem } from './generics/Accordian';
 import { NumberInput } from './generics/NumberInput';
 import { AppContext } from '../store';
 import { MoveObjectCommand } from '../store/commands';
-import { Point } from '@pixi/core';
 import { EmbObject } from '@/emb-objects';
 
 type SidebarTransformProps = {

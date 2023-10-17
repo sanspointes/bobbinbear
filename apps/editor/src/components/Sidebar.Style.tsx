@@ -3,7 +3,6 @@ import { AccordionItem } from './generics/Accordian';
 import { AppContext } from '../store';
 import { Command, SetSceneObjectFieldCommand } from '../store/commands';
 import { ColorPicker } from './generics/ColorPicker';
-import { LINE_CAP } from '@pixi/graphics';
 import { NumberInput } from './generics/NumberInput';
 import { Select } from './generics/Select';
 import {

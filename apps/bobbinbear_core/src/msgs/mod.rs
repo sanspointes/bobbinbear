@@ -18,7 +18,7 @@ use crate::{
 
 pub use self::tools::{msg_handler_tool, ToolMessage, ToolMsgPlugin};
 use self::{
-    api::ApiMsg,
+    api::{ApiMsg, JsApiMsg, JsApiResponseMsg},
     cmds::{msg_handler_cmds, CmdMsg},
     keybinds::msg_handler_keybinds,
 };
@@ -27,16 +27,10 @@ use self::{
 pub enum Msg {
     // RawInput(RawInputMessage),
     Input(InputMessage),
-    Api(ApiMsg),
     Tool(ToolMessage),
     Cmd(CmdMsg),
 }
 
-impl From<ApiMsg> for Msg {
-    fn from(value: ApiMsg) -> Self {
-        Self::Api(value)
-    }
-}
 impl From<ToolMessage> for Msg {
     fn from(value: ToolMessage) -> Self {
         Self::Tool(value)
@@ -155,42 +149,43 @@ pub fn sys_msg_handler(world: &mut World) {
                 }
                 Msg::Tool(tool_msg) => msg_handler_tool(world, &tool_msg, &mut msg_responder),
                 Msg::Cmd(cmd_msg) => msg_handler_cmds(world, cmd_msg, &mut msg_responder),
-                Msg::Api(frontend_msg) => {
-                    let _span = info_span!("handle_frontend_msg").entered();
-
-                    if let Some(editor_to_api_sender) =
-                        world.get_resource_mut::<EditorToApiSender>()
-                    {
-                        if let Err(reason) = editor_to_api_sender.0.send(frontend_msg) {
-                            panic!(
-                                "Error sending message back to frontend. {:?} {:?}",
-                                reason, reason.0
-                            )
-                        }
-                    }
-                }
             }
         }
 
         let _span = info_span!("sys_msg_handler: Handing responses/effects").entered();
         // Respond to API + send side effects back to UI layer
         let sender = world.resource_mut::<EditorToApiSender>();
-        while let Some(response) = msg_responder.responses.pop_front() {
-            match (response, msg_responder.response_id) {
-                (ApiMsg::Response(response), Some(response_id)) => {
-                    sender
-                        .0
-                        .send(ApiMsg::WrappedResponse(response, response_id))
-                        .expect("sys_msg_handler: Error responding to API call");
-                }
-                (ApiMsg::Effect(effect), _) => {
-                    sender
-                        .0
-                        .send(ApiMsg::Effect(effect))
-                        .expect("sys_msg_handler: Error sending effect for message call.");
-                }
-                (_, _) => (),
+
+        let (responses, effects): (Vec<_>, Vec<_>) = msg_responder
+            .responses
+            .into_iter()
+            .partition(|msg| matches!(msg, ApiMsg::Response(_)));
+
+        // Collects all the ApiResponseMsgs into a vec and sends back to api layer if necessary.
+        match (msg_responder.response_id, !responses.is_empty()) {
+            (Some(response_id), false) => {
+                let api_response_msgs: Vec<JsApiResponseMsg> = responses.into_iter().filter_map(|msg| {
+                    match msg {
+                        ApiMsg::Response(msg) => Some(msg.into()),
+                        _ => None
+                    }
+                }).collect();
+                let js_response = JsApiMsg::Response(api_response_msgs, response_id);
+                sender.0.send(js_response).expect("sys_msg_handler: Error responding to API call");
             }
+            _ => (),
+        }
+
+        // Collects all the ApiEffectMsgs into a vec and sends them to the API layer one by one.
+        let api_effect_msgs: Vec<_> = effects.into_iter().filter_map(|msg| {
+            match msg {
+                ApiMsg::Effect(msg) => Some(msg),
+                _ => None
+            }
+        }).collect();
+        for effect_msg in api_effect_msgs {
+            let js_effect = JsApiMsg::Effect(effect_msg);
+            sender.0.send(js_effect).expect("sys_msg_handler: Error sending effect for message call.");
         }
     }
 }

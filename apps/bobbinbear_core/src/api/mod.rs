@@ -1,10 +1,14 @@
 // #[cfg(target_arch = "wasm32")]
+mod msg_polling;
 mod wasm;
 
 use bevy::prelude::*;
 use crossbeam_channel::{Receiver, Sender};
 
-use crate::{msgs::{api::ApiMsg, MsgRespondable}, types::BBTool};
+use crate::{
+    msgs::{api::JsApiMsg, MsgRespondable},
+    types::BBTool,
+};
 
 // Wasm API for editor
 pub use wasm::EditorApi;
@@ -18,7 +22,7 @@ pub use wasm::EditorApi;
 #[derive(Resource, Debug)]
 pub struct ApiToEditorReceiver(pub Receiver<MsgRespondable>);
 #[derive(Resource)]
-pub struct EditorToApiSender(pub Sender<ApiMsg>);
+pub struct EditorToApiSender(pub Sender<JsApiMsg>);
 
 /// Trait contains shared methods between WASM editor api and future editor apis.
 trait EditorApiMethods {

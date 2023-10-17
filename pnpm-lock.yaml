@@ -43,57 +43,9 @@ importers:
       '@bearbroidery/bobbinbear-core':
         specifier: workspace:^
         version: link:../bobbinbear_core
-      '@bearbroidery/solixi':
-        specifier: '*'
-        version: link:../../packages/solixi
       '@kobalte/core':
         specifier: ^0.9.8
         version: 0.9.8(solid-js@1.7.12)
-      '@pixi/app':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
-      '@pixi/assets':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)(@pixi/utils@7.2.4)
-      '@pixi/core':
-        specifier: ^7.2.4
-        version: 7.2.4
-      '@pixi/display':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)
-      '@pixi/events':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
-      '@pixi/filter-fxaa':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)
-      '@pixi/filter-outline':
-        specifier: ^5.2.0
-        version: 5.2.0(@pixi/core@7.2.4)
-      '@pixi/graphics':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)(@pixi/sprite@7.2.4)
-      '@pixi/layers':
-        specifier: ^2.1.0
-        version: 2.1.0(@pixi/canvas-renderer@7.2.4)(@pixi/core@7.2.4)(@pixi/display@7.2.4)
-      '@pixi/mesh':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
-      '@pixi/mesh-extras':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)(@pixi/mesh@7.2.4)
-      '@pixi/sprite':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)
-      '@pixi/text':
-        specifier: ^7.2.4
-        version: 7.2.4(@pixi/core@7.2.4)(@pixi/sprite@7.2.4)
-      '@pixi/ticker':
-        specifier: ^7.2.4
-        version: 7.2.4
-      '@pixi/utils':
-        specifier: ^7.2.4
-        version: 7.2.4
       '@solid-primitives/active-element':
         specifier: ^2.0.17
         version: 2.0.17(solid-js@1.7.12)
@@ -118,9 +70,6 @@ importers:
       clsx:
         specifier: ^2.0.0
         version: 2.0.0
-      pixi-viewport:
-        specifier: ^5.0.1
-        version: 5.0.1
       rerror:
         specifier: ^2.0.0
         version: 2.0.0
@@ -2328,22 +2277,6 @@ packages:
 
   /@pixi/extensions@7.2.4:
     resolution: {integrity: sha512-Mnqv9scbL1ARD3QFKfOWs2aSVJJfP1dL8g5UiqGImYO3rZbz/9QCzXOeMVIZ5n3iaRyKMNhFFr84/zUja2H7Dw==}
-
-  /@pixi/filter-fxaa@7.2.4(@pixi/core@7.2.4):
-    resolution: {integrity: sha512-qzKjdL+Ih18uGTJLg8tT/H+YCsTeGkw2uF7lyKnw/lxGLJQhLWIhM95M9qSNgxbXyW1vp7SbG81a9aAEz2HAhA==}
-    peerDependencies:
-      '@pixi/core': 7.2.4
-    dependencies:
-      '@pixi/core': 7.2.4
-    dev: false
-
-  /@pixi/filter-outline@5.2.0(@pixi/core@7.2.4):
-    resolution: {integrity: sha512-xKfAouhZNKl6A0RvxT5i+2/ean7r16dE/QswwIkbWvr2hhHlp4p9U6XsqdgUERCDxK+IZibMAumbWs4DGxOUeQ==}
-    peerDependencies:
-      '@pixi/core': ^7.0.0-X
-    dependencies:
-      '@pixi/core': 7.2.4
-    dev: false
 
   /@pixi/graphics@7.2.4(@pixi/core@7.2.4)(@pixi/display@7.2.4)(@pixi/sprite@7.2.4):
     resolution: {integrity: sha512-3A2EumTjWJgXlDLOyuBrl9b6v1Za/E+/IjOGUIX843HH4NYaf1a2sfDfljx6r3oiDvy+VhuBFmgynRcV5IyA0Q==}
@@ -6810,6 +6743,7 @@ packages:
 
   /pixi-viewport@5.0.1:
     resolution: {integrity: sha512-fIILU9xztqGnhGF5SYfjn1Rir/7asWkJ8zSUay2hwzPrdGTWFtB4yiIlZDeFaLf7KHA04RRb2kI01Sy1kNksAw==}
+    dev: true
 
   /pkg-types@1.0.3:
     resolution: {integrity: sha512-nN7pYi0AQqJnoLPC9eHFQ8AcyaixBUOwvqc5TDnIKCMEE6I0y8P7OKA7fPexsXGCGxQDl/cmrLAp26LhcwxZ4A==}

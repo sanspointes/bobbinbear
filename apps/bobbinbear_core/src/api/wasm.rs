@@ -1,14 +1,16 @@
-use std::{sync::{
+use std::sync::{
     atomic::{AtomicUsize, Ordering},
     Mutex,
-}, time::Duration};
+};
 
-use crate::{msgs::{api::{ApiMsg, ApiResponseMsg}, MsgRespondable, ToolMessage}, types};
-use bevy::utils::{HashMap, BoxedFuture};
-use crossbeam_channel::{Receiver, Sender, select, RecvTimeoutError};
+use crate::{msgs::{api::JsApiMsg, MsgRespondable, ToolMessage}, types};
+use bevy::{utils::HashMap, prelude::debug};
+use crossbeam_channel::{Receiver, Sender};
+use js_sys::{Promise, Array};
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen_futures::{JsFuture, spawn_local};
+
+use super::msg_polling::{ApiResponseQue, start_cancleable_raf, WasmPoll};
 
 /**
 * WASM Bindgen safe API Store
@@ -16,7 +18,7 @@ use wasm_bindgen_futures::{JsFuture, spawn_local};
 #[derive(Clone)]
 pub struct EditorApiStore {
     pub api_to_editor_sender: Sender<MsgRespondable>,
-    pub editor_to_api_receiver: Receiver<ApiMsg>,
+    pub editor_to_api_receiver: ApiResponseQue,
 }
 struct Store {
     next_id: AtomicUsize,
@@ -59,64 +61,67 @@ pub struct EditorApi {
 impl EditorApi {
     pub fn new(
         api_to_editor_sender: Sender<MsgRespondable>,
-        editor_to_api_receiver: Receiver<ApiMsg>,
+        editor_to_api_receiver: Receiver<JsApiMsg>,
     ) -> Self {
         let store_item = EditorApiStore {
             api_to_editor_sender,
-            editor_to_api_receiver,
+            editor_to_api_receiver: ApiResponseQue::new(editor_to_api_receiver),
         };
         let id = GLOBAL_STORE.insert(store_item);
         Self { id }
     }
 }
 
-async fn get_responses_of_id(id: usize, receiver: Receiver<ApiMsg>) -> Result<Vec<ApiResponseMsg>, RecvTimeoutError> {
-    let (result_sender, result_receiver): (Sender<Vec<ApiResponseMsg>>, Receiver<Vec<ApiResponseMsg>>) = crossbeam_channel::unbounded();
-    // Clone the sender to send the result to the main thread.
-    let result_sender_clone = result_sender.clone();
-
-    spawn_local(async move {
-        loop {
-            select! {
-                recv(receiver) -> result => {
-                    let mut responses: Vec<ApiResponseMsg> = Vec::new();
-                    if let Ok(ApiMsg::WrappedResponse(msg, response_id)) = result {
-                        if response_id == id {
-                            responses.push(msg);
-                        }
-                    }
-                    if !responses.is_empty() {
-                        let _ = result_sender_clone.send(responses);
-                        break;
-                    }
-                }
-            }
-        }
-    });
-
-    result_receiver.recv_timeout(Duration::from_secs(3))
-}
-
 // impl EditorApiMethods for EditorApi {
 #[wasm_bindgen]
 impl EditorApi {
     #[wasm_bindgen]
-    pub async fn set_tool(&mut self, tool: types::BBTool) -> Result<bool, JsError> {
+    pub async fn set_tool(&mut self, tool: types::BBTool) -> Promise {
+        debug!("EditorApi.set_tool({:?})", tool);
         let v = GLOBAL_STORE
             .get(self.id)
             .expect("Could not get api sender/receiver");
 
+        debug!("EditorApi.set_tool(..) -> Sending msg.");
         let msg = MsgRespondable::new(ToolMessage::SwitchTool(tool));
         let response_id = msg.1;
         v.api_to_editor_sender
             .send(msg)
             .expect("Could not send set_tool message.");
+        debug!("EditorApi.set_tool(..) -> Awaiting responses.");
 
-        match get_responses_of_id(response_id, v.editor_to_api_receiver).await {
-            Ok(responses) => {
-                Ok(responses.into_iter().any(|response| matches!(response, ApiResponseMsg::Success)))
-            }
-            Err(reason) => Err(JsError::from(reason)),
-        }
+        let promise = js_sys::Promise::new(&mut |res, rej| {
+            let sid = self.id.clone();
+            let rsid = response_id.clone();
+            let cb = Box::new(move || {
+                let mut v = GLOBAL_STORE
+                    .get(sid)
+                    .expect("Could not get api sender/receiver");
+
+                let responses = v.editor_to_api_receiver.extract_responses_with_id(rsid);
+
+                match responses {
+                    None => WasmPoll::Pending,
+                    Some(responses) => {
+                        let data = serde_json::to_string(&responses);
+                        // let data: Result<Vec<_>, _> = responses.into_iter().map(|msg| serde_json::to_string(&msg)).collect();
+
+                        match data {
+                            Ok(serialised) => {
+                                res.call1(&JsValue::undefined(), &JsValue::from(serialised));
+                            }
+                            Err(reason) => {
+                                rej.call1(&JsValue::undefined(), &JsValue::from(reason.to_string()));
+                            }
+                        };
+                        WasmPoll::Ready
+                    },
+                }
+            });
+
+            start_cancleable_raf(cb)
+        });
+
+        promise
     }
 }
