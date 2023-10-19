@@ -42,14 +42,14 @@ use bevy::prelude::*;
 use bevy::DefaultPlugins;
 use editor::start_bobbin_bear;
 use msgs::MsgRespondable;
-use msgs::api::ApiMsg;
 use api::EditorToApiSender;
 use api::ApiToEditorReceiver;
+use msgs::api::JsApiMsg;
 
 fn main() {
     // TODO add webview gui
     let (_api_to_editor_sender, api_to_editor_receiver) = unbounded::<MsgRespondable>();
-    let (editor_to_api_sender, _editor_to_api_receiver) = unbounded::<ApiMsg>();
+    let (editor_to_api_sender, _editor_to_api_receiver) = unbounded::<JsApiMsg>();
 
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
