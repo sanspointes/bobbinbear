@@ -4,7 +4,7 @@ use anyhow::anyhow;
 use bevy::{ecs::system::SystemState, prelude::*, window::PrimaryWindow};
 
 use crate::{
-    msgs::{api::{ApiMsg, ApiEffectMsg}, Msg, MsgQue},
+    msgs::{api::ApiEffectMsg, MsgQue},
     plugins::input_plugin::InputMessage,
     systems::camera::CameraTag,
     types::BBCursor, utils::coordinates,
@@ -96,7 +96,7 @@ pub fn msg_handler_grab_tool(
     match message {
         ToolHandlerMessage::OnActivate => {
             debug!("GrabTool::OnActivate");
-            responder.respond(ApiEffectMsg::SetCursor(BBCursor::Grab));
+            responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Grab));
         }
         ToolHandlerMessage::OnDeactivate => {
             debug!("GrabTool::OnDeactivate");
@@ -119,7 +119,7 @@ pub fn msg_handler_grab_tool(
                         Ok(new_state) => {
                             match new_state {
                                 GrabToolState::Moving { translation, .. } => {
-                                    responder.respond(ApiEffectMsg::SetCursor(BBCursor::Grabbing));
+                                    responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Grabbing));
                                     transform.translation.x = translation.x;
                                     transform.translation.y = translation.y;
                                 },
@@ -171,7 +171,7 @@ pub fn msg_handler_grab_tool(
                         }
                         Err(_) => {},
                     }
-                    responder.respond(ApiEffectMsg::SetCursor(BBCursor::Grab));
+                    responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Grab));
                 }
                 _ => {}
             }

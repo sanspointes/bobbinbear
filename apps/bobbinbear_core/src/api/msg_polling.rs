@@ -1,17 +1,13 @@
-use crossbeam_channel::{Receiver, TryRecvError};
-use js_sys::Function;
-use wasm_bindgen::JsCast;
+use crossbeam_channel::Receiver;
 use std::cell::RefCell;
 use std::collections::VecDeque;
-use std::future::Future;
-use std::pin::Pin;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::task::{Context, Poll};
 use thiserror::Error;
 use wasm_bindgen::prelude::Closure;
+use wasm_bindgen::JsCast;
 
-use crate::msgs::api::{JsApiMsg, ApiResponseMsg, JsApiResponseMsg};
+use crate::msgs::api::{JsApiMsg, JsApiResponseMsg};
 
 #[derive(Error, Debug)]
 pub enum ReceiverFutureError {
@@ -58,7 +54,10 @@ impl ApiResponseQue {
         matches
     }
 
-    pub fn extract_responses_with_id(&mut self, response_id: usize) -> Option<Vec<JsApiResponseMsg>> {
+    pub fn extract_responses_with_id(
+        &mut self,
+        response_id: usize,
+    ) -> Option<VecDeque<JsApiResponseMsg>> {
         let rsid = response_id.clone();
         let same_id_predicate = Arc::new(move |msg: &JsApiMsg| match msg {
             JsApiMsg::Response(_, id) => rsid == *id,
@@ -98,14 +97,12 @@ pub fn start_cancleable_raf(mut callback: Box<dyn FnMut() -> WasmPoll>) {
 
     *out_closure.borrow_mut() = Some(Closure::new(move || {
         let v = (callback)();
-        
+
         match v {
             WasmPoll::Pending => {
                 request_animation_frame(in_closure.borrow().as_ref().unwrap());
             }
-            WasmPoll::Ready => {
-
-            }
+            WasmPoll::Ready => {}
         };
     }));
 

@@ -18,7 +18,7 @@ use crate::{
 
 pub use self::tools::{msg_handler_tool, ToolMessage, ToolMsgPlugin};
 use self::{
-    api::{ApiMsg, JsApiMsg, JsApiResponseMsg},
+    api::{JsApiMsg, JsApiResponseMsg, ApiResponseMsg, ApiEffectMsg},
     cmds::{msg_handler_cmds, CmdMsg},
     keybinds::msg_handler_keybinds,
 };
@@ -66,8 +66,9 @@ impl MsgRespondable {
 /// * `response_id`: Optional response ID if it needs to respond to the EditorApi
 pub struct MsgQue {
     que: VecDeque<Msg>,
-    responses: VecDeque<ApiMsg>,
     response_id: Option<usize>,
+    responses: VecDeque<ApiResponseMsg>,
+    effects: VecDeque<ApiEffectMsg>
 }
 impl From<Msg> for MsgQue {
     fn from(value: Msg) -> Self {
@@ -75,8 +76,9 @@ impl From<Msg> for MsgQue {
         que.push_back(value);
         Self {
             que,
-            responses: VecDeque::new(),
             response_id: None,
+            responses: VecDeque::new(),
+            effects: VecDeque::new(),
         }
     }
 }
@@ -86,8 +88,9 @@ impl From<MsgRespondable> for MsgQue {
         que.push_back(value.0);
         Self {
             que,
-            responses: VecDeque::new(),
             response_id: Some(value.1),
+            responses: VecDeque::new(),
+            effects: VecDeque::new(),
         }
     }
 }
@@ -98,11 +101,26 @@ impl MsgQue {
     fn push_internal(&mut self, msg: impl Into<Msg>) {
         self.que.push_back(msg.into());
     }
-    fn respond(&mut self, response: impl Into<ApiMsg>) {
+    fn respond(&mut self, response: impl Into<ApiResponseMsg>) {
         self.responses.push_back(response.into());
+    }
+    fn notify_effect(&mut self, effect: impl Into<ApiEffectMsg>) {
+        self.effects.push_back(effect.into());
     }
     fn next(&mut self) -> Option<Msg> {
         self.que.pop_front()
+    }
+    fn as_serialised(mut self) -> VecDeque<JsApiMsg> {
+        let MsgQue { responses, effects, mut response_id, .. } = self;
+
+        let mut js_api_msgs: VecDeque<JsApiMsg> = effects.into_iter().map(|v| v.into()).collect();
+        if let Some(response_id) = response_id.take() {
+            let responses: VecDeque<JsApiResponseMsg> = responses.into_iter().map(|v| v.into()).collect();
+            let response_msg = JsApiMsg::Response(responses, response_id);
+            js_api_msgs.push_back(response_msg);
+        }
+
+        js_api_msgs
     }
 }
 
@@ -155,37 +173,9 @@ pub fn sys_msg_handler(world: &mut World) {
         let _span = info_span!("sys_msg_handler: Handing responses/effects").entered();
         // Respond to API + send side effects back to UI layer
         let sender = world.resource_mut::<EditorToApiSender>();
-
-        let (responses, effects): (Vec<_>, Vec<_>) = msg_responder
-            .responses
-            .into_iter()
-            .partition(|msg| matches!(msg, ApiMsg::Response(_)));
-
-        // Collects all the ApiResponseMsgs into a vec and sends back to api layer if necessary.
-        match (msg_responder.response_id, !responses.is_empty()) {
-            (Some(response_id), false) => {
-                let api_response_msgs: Vec<JsApiResponseMsg> = responses.into_iter().filter_map(|msg| {
-                    match msg {
-                        ApiMsg::Response(msg) => Some(msg.into()),
-                        _ => None
-                    }
-                }).collect();
-                let js_response = JsApiMsg::Response(api_response_msgs, response_id);
-                sender.0.send(js_response).expect("sys_msg_handler: Error responding to API call");
-            }
-            _ => (),
-        }
-
-        // Collects all the ApiEffectMsgs into a vec and sends them to the API layer one by one.
-        let api_effect_msgs: Vec<_> = effects.into_iter().filter_map(|msg| {
-            match msg {
-                ApiMsg::Effect(msg) => Some(msg),
-                _ => None
-            }
-        }).collect();
-        for effect_msg in api_effect_msgs {
-            let js_effect = JsApiMsg::Effect(effect_msg);
-            sender.0.send(js_effect).expect("sys_msg_handler: Error sending effect for message call.");
+        let to_send = msg_responder.as_serialised();
+        for msg in to_send {
+            sender.0.send(msg).expect("sys_msg_handler: Error sending effect for message call.");
         }
     }
 }

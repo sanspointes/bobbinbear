@@ -1,29 +1,28 @@
+mod box_tool;
 mod grab_tool;
 mod select_tool;
-mod box_tool;
-
-use std::collections::VecDeque;
 
 use anyhow::anyhow;
 use bevy::{ecs::system::SystemState, prelude::*};
 use thiserror::Error;
 
-use crate::{types::BBTool, plugins::input_plugin::InputMessage};
+use crate::{plugins::input_plugin::InputMessage, types::BBTool};
 
 use self::{
+    box_tool::{msg_handler_box_tool, BoxToolRes},
     // box_tool::msg_handler_box_tool,
     grab_tool::{msg_handler_grab_tool, GrabToolState},
-    select_tool::{msg_handler_select_tool, SelectFsm}, box_tool::{msg_handler_box_tool, BoxToolRes},
+    select_tool::{msg_handler_select_tool, SelectFsm},
 };
 
-use super::{api::{ApiMsg, ApiEffectMsg}, Msg, MsgQue};
+use super::{api::ApiEffectMsg, MsgQue};
 
 #[derive(Error, Debug)]
 pub enum ToolFsmError {
     #[error("No transition for event")]
     NoTransition,
     #[error("Unknown error during transtion: {0:?}")]
-    TransitionError(anyhow::Error)
+    TransitionError(anyhow::Error),
 }
 
 pub type ToolFsmResult<T> = Result<(T, T), ToolFsmError>;
@@ -50,9 +49,7 @@ impl TryFrom<&ToolMessage> for ToolHandlerMessage {
     type Error = anyhow::Error;
     fn try_from(value: &ToolMessage) -> anyhow::Result<Self> {
         match value {
-            ToolMessage::Input(input_message) => {
-                Ok(ToolHandlerMessage::Input(*input_message))
-            }
+            ToolMessage::Input(input_message) => Ok(ToolHandlerMessage::Input(*input_message)),
             _ => Err(anyhow!(
                 "ToolHandlerMessage does not have an equivalent enum variant for {:?}.",
                 value
@@ -80,12 +77,16 @@ impl Plugin for ToolMsgPlugin {
             .insert_resource(ToolResource::default())
             .insert_resource(SelectFsm::default())
             .insert_resource(BoxToolRes::default())
-            .insert_resource(GrabToolState::default())
-        ;
+            .insert_resource(GrabToolState::default());
     }
 }
 
-fn handle_active_tool_change(world: &mut World, responder: &mut MsgQue, prev_tool: BBTool, curr_tool: BBTool) {
+fn handle_active_tool_change(
+    world: &mut World,
+    responder: &mut MsgQue,
+    prev_tool: BBTool,
+    curr_tool: BBTool,
+) {
     let msg = ToolHandlerMessage::OnDeactivate;
     match prev_tool {
         BBTool::Select => msg_handler_select_tool(world, &msg, responder),
@@ -98,14 +99,10 @@ fn handle_active_tool_change(world: &mut World, responder: &mut MsgQue, prev_too
         BBTool::Grab => msg_handler_grab_tool(world, &msg, responder),
         BBTool::Box => msg_handler_box_tool(world, &msg, responder),
     }
-    responder.respond(ApiEffectMsg::SetCurrentTool(curr_tool));
+    responder.notify_effect(ApiEffectMsg::SetCurrentTool(curr_tool));
 }
 
-pub fn msg_handler_tool(
-    world: &mut World,
-    message: &ToolMessage,
-    responder: &mut MsgQue,
-) {
+pub fn msg_handler_tool(world: &mut World, message: &ToolMessage, responder: &mut MsgQue) {
     let _span = info_span!("sys_handler_tool").entered();
 
     let mut tool_sys_state = SystemState::<(
@@ -154,7 +151,9 @@ pub fn msg_handler_tool(
         tool_message => {
             if let Ok(tool_handler_message) = &tool_message.try_into() {
                 match res.get_current_tool() {
-                    BBTool::Select => msg_handler_select_tool(world, tool_handler_message, responder),
+                    BBTool::Select => {
+                        msg_handler_select_tool(world, tool_handler_message, responder)
+                    }
                     BBTool::Grab => msg_handler_grab_tool(world, tool_handler_message, responder),
                     BBTool::Box => msg_handler_box_tool(world, tool_handler_message, responder),
                 }

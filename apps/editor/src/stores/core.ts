@@ -1,5 +1,5 @@
 import * as BobbinBearCore from '@bearbroidery/bobbinbear-core';
-import { BBTool, EditorApi } from '@bearbroidery/bobbinbear-core';
+import { type BBTool, EditorApi } from '@bearbroidery/bobbinbear-core';
 import { createStore } from 'solid-js/store';
 import { BBStore } from '.';
 import { CANVAS_ID } from '@/constants';
@@ -15,7 +15,7 @@ export type CoreApi = {
 };
 const defaultCoreState = (): CoreState => ({
     isInit: false,
-    currentTool: BBTool.Select,
+    currentTool: 'Select',
 });
 
 export const createCoreStore = (): BBStore<CoreState, CoreApi> => {

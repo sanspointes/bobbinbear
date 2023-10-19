@@ -243,7 +243,7 @@ pub fn msg_handler_select_tool(
     let transition_result = match message {
         OnActivate => {
             debug!("SelectTool::OnActivate");
-            responder.respond(ApiEffectMsg::SetCursor(BBCursor::Default));
+            responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Default));
             Err(ToolFsmError::NoTransition)
         }
         OnDeactivate => {

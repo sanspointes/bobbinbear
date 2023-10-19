@@ -148,7 +148,7 @@ pub fn msg_handler_box_tool(
     match message {
         ToolHandlerMessage::OnActivate => {
             debug_log!("BoxTool::OnActivate");
-            responder.respond(ApiEffectMsg::SetCursor(BBCursor::Box));
+            responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Box));
         }
         ToolHandlerMessage::OnDeactivate => {
             debug_log!("BoxTool::OnDeactivate");

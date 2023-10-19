@@ -1,19 +1,11 @@
 use bevy::prelude::*;
+use serde::{Deserialize, Serialize};
 use wasm_bindgen::prelude::wasm_bindgen;
 
 #[derive(
-    Debug,
-    Default,
-    Clone,
-    Copy,
-    // Serialize,
-    // Deserialize,
-    PartialEq,
-    Eq,
-    States,
-    Hash, /*, specta::Type */
+    Serialize, Deserialize, tsify::Tsify, Debug, Clone, Default, States, Eq, PartialEq, Hash, Copy,
 )]
-#[wasm_bindgen()]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 pub enum BBTool {
     #[default]
     Select,
@@ -21,8 +13,8 @@ pub enum BBTool {
     Box,
 }
 
-#[derive(Debug, Clone)]
-#[wasm_bindgen()]
+#[derive(Serialize, Deserialize, tsify::Tsify, Debug, Clone)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 pub enum BBCursor {
     Default,
     Pointer,

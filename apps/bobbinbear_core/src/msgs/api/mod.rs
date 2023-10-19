@@ -1,9 +1,12 @@
+mod serialised;
+
 use std::sync::Arc;
 
 use bevy::prelude::Event;
-use serde::Serialize;
 
 use crate::types::{BBCursor, BBTool};
+
+pub use serialised::{JsApiMsg, JsApiResponseMsg, JsApiEffectMsg};
 
 #[derive(Event, Clone, Debug)]
 // Message type for sending responses to API calls.  It will respond to the API call with the
@@ -46,30 +49,3 @@ impl From<ApiResponseMsg> for ApiMsg {
         Self::Response(value)
     }
 }
-
-//
-// Wasm / frontend ui stuff
-//
-
-#[derive(Serialize, typescript_definitions::TypeScriptify, Debug, Clone)]
-#[serde(tag = "tag", content = "fields")]
-pub enum JsApiResponseMsg {
-    Success,
-    Error(String),
-}
-
-impl From<ApiResponseMsg> for JsApiResponseMsg {
-    fn from(value: ApiResponseMsg) -> Self {
-        match value {
-            ApiResponseMsg::Success => Self::Success,
-            ApiResponseMsg::Err(reason) => Self::Error(reason.to_string()),
-        }
-    }
-}
-
-#[derive(Clone, Debug)]
-pub enum JsApiMsg {
-    Effect(ApiEffectMsg),
-    Response(Vec<JsApiResponseMsg>, usize),
-}
-
