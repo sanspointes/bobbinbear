@@ -4,7 +4,6 @@ import { ImCheckboxUnchecked } from 'solid-icons/im';
 import { Button } from './generics/Button';
 import { MainMenu } from './MainMenu';
 import { useAppStore } from '@/stores';
-import { BBTool } from '@bearbroidery/bobbinbear-core';
 
 export const Toolbar = () => {
     const [{ core }, { core: coreApi }] = useAppStore();
@@ -18,10 +17,10 @@ export const Toolbar = () => {
                     class="w-12 h-12"
                     classList={{
                         'outline outline-2 outline-orange-700':
-                            core.currentTool === BBTool.Select,
+                            core.currentTool === 'Select',
                     }}
-                    highlighted={core.currentTool === BBTool.Select}
-                    onClick={() => coreApi.setTool(BBTool.Select)}
+                    highlighted={core.currentTool === 'Select'}
+                    onClick={() => coreApi.setTool('Select')}
                 >
                     <TbPointer class="stroke-orange-800 w-[22px] h-[22px]" />
                 </Button>
@@ -30,10 +29,10 @@ export const Toolbar = () => {
                     class="w-12 h-12 outline-2"
                     classList={{
                         'outline outline-2 outline-orange-700':
-                            core.currentTool === BBTool.Box,
+                            core.currentTool === 'Box',
                     }}
-                    highlighted={core.currentTool === BBTool.Box}
-                    onClick={() => coreApi.setTool(BBTool.Box)}
+                    highlighted={core.currentTool === 'Box'}
+                    onClick={() => coreApi.setTool('Box')}
                 >
                     <ImCheckboxUnchecked class="fill-orange-800 w-4 h-4" />
                 </Button>

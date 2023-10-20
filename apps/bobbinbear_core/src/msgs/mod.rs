@@ -110,12 +110,15 @@ impl MsgQue {
     fn next(&mut self) -> Option<Msg> {
         self.que.pop_front()
     }
-    fn as_serialised(mut self) -> VecDeque<JsApiMsg> {
+    fn as_js_api_msgs(mut self) -> VecDeque<JsApiMsg> {
         let MsgQue { responses, effects, mut response_id, .. } = self;
 
         let mut js_api_msgs: VecDeque<JsApiMsg> = effects.into_iter().map(|v| v.into()).collect();
         if let Some(response_id) = response_id.take() {
-            let responses: VecDeque<JsApiResponseMsg> = responses.into_iter().map(|v| v.into()).collect();
+            let mut responses: VecDeque<JsApiResponseMsg> = responses.into_iter().map(|v| v.into()).collect();
+            if responses.is_empty() {
+                responses.push_back(JsApiResponseMsg::Success);
+            }
             let response_msg = JsApiMsg::Response(responses, response_id);
             js_api_msgs.push_back(response_msg);
         }
@@ -173,8 +176,9 @@ pub fn sys_msg_handler(world: &mut World) {
         let _span = info_span!("sys_msg_handler: Handing responses/effects").entered();
         // Respond to API + send side effects back to UI layer
         let sender = world.resource_mut::<EditorToApiSender>();
-        let to_send = msg_responder.as_serialised();
+        let to_send = msg_responder.as_js_api_msgs();
         for msg in to_send {
+            info!("sys_msg_handler: Sending msg {msg:?}.");
             sender.0.send(msg).expect("sys_msg_handler: Error sending effect for message call.");
         }
     }

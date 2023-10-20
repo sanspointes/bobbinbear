@@ -3,14 +3,14 @@ use std::sync::{
     Mutex,
 };
 
-use crate::{msgs::{api::JsApiMsg, MsgRespondable, ToolMessage}, types};
-use bevy::{utils::HashMap, prelude::debug};
+use crate::{
+    msgs::{api::JsApiMsg, Msg, MsgRespondable, ToolMessage},
+    types::{self},
+};
+use bevy::utils::HashMap;
 use crossbeam_channel::{Receiver, Sender};
-use js_sys::{Promise, Array};
 use lazy_static::lazy_static;
 use wasm_bindgen::prelude::*;
-
-use super::msg_polling::{ApiResponseQue, start_cancleable_raf, WasmPoll};
 
 /**
 * WASM Bindgen safe API Store
@@ -18,7 +18,7 @@ use super::msg_polling::{ApiResponseQue, start_cancleable_raf, WasmPoll};
 #[derive(Clone)]
 pub struct EditorApiStore {
     pub api_to_editor_sender: Sender<MsgRespondable>,
-    pub editor_to_api_receiver: ApiResponseQue,
+    pub editor_to_api_receiver: Receiver<JsApiMsg>,
 }
 struct Store {
     next_id: AtomicUsize,
@@ -65,10 +65,25 @@ impl EditorApi {
     ) -> Self {
         let store_item = EditorApiStore {
             api_to_editor_sender,
-            editor_to_api_receiver: ApiResponseQue::new(editor_to_api_receiver),
+            editor_to_api_receiver,
         };
         let id = GLOBAL_STORE.insert(store_item);
         Self { id }
+    }
+
+    fn send_to_editor(&mut self, msg: impl Into<Msg>) -> usize {
+        let v = GLOBAL_STORE
+            .get(self.id)
+            .expect("Could not get api sender/receiver");
+
+        let msg = MsgRespondable::new(msg);
+        let id = msg.1;
+
+        v.api_to_editor_sender
+            .send(msg)
+            .expect("Could not send set_tool message.");
+
+        return id;
     }
 }
 
@@ -76,52 +91,15 @@ impl EditorApi {
 #[wasm_bindgen]
 impl EditorApi {
     #[wasm_bindgen]
-    pub async fn set_tool(&mut self, tool: types::BBTool) -> Promise {
-        debug!("EditorApi.set_tool({:?})", tool);
+    pub fn receive_msg(&mut self) -> Option<JsApiMsg> {
         let v = GLOBAL_STORE
             .get(self.id)
             .expect("Could not get api sender/receiver");
+        v.editor_to_api_receiver.try_recv().ok()
+    }
 
-        debug!("EditorApi.set_tool(..) -> Sending msg.");
-        let msg = MsgRespondable::new(ToolMessage::SwitchTool(tool));
-        let response_id = msg.1;
-        v.api_to_editor_sender
-            .send(msg)
-            .expect("Could not send set_tool message.");
-        debug!("EditorApi.set_tool(..) -> Awaiting responses.");
-
-        let promise = js_sys::Promise::new(&mut |res, rej| {
-            let sid = self.id.clone();
-            let rsid = response_id.clone();
-            let cb = Box::new(move || {
-                let mut v = GLOBAL_STORE
-                    .get(sid)
-                    .expect("Could not get api sender/receiver");
-
-                let responses = v.editor_to_api_receiver.extract_responses_with_id(rsid);
-
-                match responses {
-                    None => WasmPoll::Pending,
-                    Some(responses) => {
-                        let data = serde_json::to_string(&responses);
-                        // let data: Result<Vec<_>, _> = responses.into_iter().map(|msg| serde_json::to_string(&msg)).collect();
-
-                        match data {
-                            Ok(serialised) => {
-                                res.call1(&JsValue::undefined(), &JsValue::from(serialised));
-                            }
-                            Err(reason) => {
-                                rej.call1(&JsValue::undefined(), &JsValue::from(reason.to_string()));
-                            }
-                        };
-                        WasmPoll::Ready
-                    },
-                }
-            });
-
-            start_cancleable_raf(cb)
-        });
-
-        promise
+    #[wasm_bindgen]
+    pub fn set_tool(&mut self, tool: types::BBTool) -> usize {
+        self.send_to_editor(ToolMessage::SwitchTool(tool))
     }
 }

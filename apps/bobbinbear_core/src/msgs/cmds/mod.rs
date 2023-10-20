@@ -1,26 +1,28 @@
 pub mod add_remove_object_cmd;
-pub mod multi_cmd;
-pub mod update_path_cmd;
 pub mod move_objects_cmd;
+pub mod multi_cmd;
 pub mod select_objects_cmd;
+pub mod update_path_cmd;
 
 use std::{
-    collections::VecDeque,
     fmt::{Debug, Display},
     sync::Arc,
 };
 
-use bevy::{prelude::*, ecs::query::QueryEntityError};
+use bevy::{ecs::query::QueryEntityError, prelude::*};
 
 pub use multi_cmd::MultiCmd;
 use thiserror::Error;
 
 use crate::components::bbid::BbidWorldError;
 
-use self::{add_remove_object_cmd::AddObjectCmd, move_objects_cmd::MoveObjectsCmd, select_objects_cmd::SelectObjectsCmd};
 use self::update_path_cmd::UpdatePathCmd;
+use self::{
+    add_remove_object_cmd::AddObjectCmd, move_objects_cmd::MoveObjectsCmd,
+    select_objects_cmd::SelectObjectsCmd,
+};
 
-use super::{Msg, MsgQue};
+use super::MsgQue;
 
 /// Shared Logic
 
@@ -28,7 +30,7 @@ use super::{Msg, MsgQue};
 // method in the command trait.  The command will either update itself from the other's data
 // (if they are same type/repeatable) or flag the other command as a seperate command.
 pub enum CmdUpdateTreatment {
-    // Prev command is a repeat of next command, flags that command has updated self and can run.  
+    // Prev command is a repeat of next command, flags that command has updated self and can run.
     // Overwrite prev in update que.
     AsRepeat,
     // Prev command is seperate from next command, push next command to update que.
@@ -48,7 +50,7 @@ pub trait Cmd: Send + Sync + Debug + Display {
     }
 }
 
-// Command message / history logic. 
+// Command message / history logic.
 
 #[derive(Error, Debug)]
 pub enum CmdError {
@@ -81,7 +83,7 @@ pub enum CmdType {
     AddObject(AddObjectCmd),
     UpdatePath(UpdatePathCmd),
     MoveObjects(MoveObjectsCmd),
-    SelectObjects(SelectObjectsCmd)
+    SelectObjects(SelectObjectsCmd),
 }
 
 macro_rules! unwrap_cmd_type {
@@ -130,11 +132,7 @@ impl Plugin for CmdMsgPlugin {
     }
 }
 
-pub fn msg_handler_cmds(
-    world: &mut World,
-    message: CmdMsg,
-    _responses: &mut MsgQue,
-) {
+pub fn msg_handler_cmds(world: &mut World, message: CmdMsg, _responses: &mut MsgQue) {
     let _span = info_span!("sys_handler_cmds").entered();
 
     match message {

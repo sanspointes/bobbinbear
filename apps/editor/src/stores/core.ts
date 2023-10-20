@@ -1,8 +1,8 @@
-import * as BobbinBearCore from '@bearbroidery/bobbinbear-core';
-import { type BBTool, EditorApi } from '@bearbroidery/bobbinbear-core';
+import { type BBTool } from '@bearbroidery/bobbinbear-core';
 import { createStore } from 'solid-js/store';
 import { BBStore } from '.';
 import { CANVAS_ID } from '@/constants';
+import { coreManager } from '@/core';
 
 export type CoreState = {
     isInit: boolean;
@@ -21,20 +21,15 @@ const defaultCoreState = (): CoreState => ({
 export const createCoreStore = (): BBStore<CoreState, CoreApi> => {
     const [store, set] = createStore(defaultCoreState());
 
-    let editorApi: EditorApi | undefined;
-    const handleCoreInit = (instance: EditorApi) => {
-        editorApi = instance;
-    };
-
     const api: CoreApi = {
         async initEditor() {
-            await BobbinBearCore.default();
-            BobbinBearCore.main_web(`#${CANVAS_ID}`, handleCoreInit);
+            coreManager.start(`#${CANVAS_ID}`);
         },
 
         async setTool(tool: BBTool) {
-            if (!editorApi) throw new Error('no editorApi.');
-            return await editorApi.set_tool(tool);
+            const response = await coreManager.setTool(tool);
+            const success = response.some((r) => r.tag === 'Success');
+            return success;
         },
     };
 

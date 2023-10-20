@@ -1,5 +1,4 @@
 // #[cfg(target_arch = "wasm32")]
-mod msg_polling;
 mod wasm;
 
 use bevy::prelude::*;
