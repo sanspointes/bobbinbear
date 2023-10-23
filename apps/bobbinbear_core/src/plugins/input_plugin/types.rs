@@ -50,6 +50,11 @@ pub enum InputMessage {
         world: Vec2,
         modifiers: ModifiersState,
     },
+    DoubleClick {
+        screen: Vec2,
+        world: Vec2,
+        modifiers: ModifiersState,
+    },
     PointerOptionClick {
         screen: Vec2,
         world: Vec2,

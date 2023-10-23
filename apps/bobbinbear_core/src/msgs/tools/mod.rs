@@ -103,6 +103,7 @@ fn handle_active_tool_change(
 }
 
 pub fn msg_handler_tool(world: &mut World, message: &ToolMessage, responder: &mut MsgQue) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_handler_tool").entered();
 
     let mut tool_sys_state = SystemState::<(

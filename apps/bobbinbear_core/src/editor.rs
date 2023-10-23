@@ -117,6 +117,7 @@ fn sys_handle_pre_editor_msgs(
     mut input_msg_receiver: EventReader<InputMessage>,
     mut msg_writer: EventWriter<Msg>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_handle_pre_editor_msgs").entered();
 
     let msgs: Vec<Msg> = input_msg_receiver

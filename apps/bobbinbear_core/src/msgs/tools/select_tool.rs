@@ -11,7 +11,10 @@ use crate::{
     components::bbid::BBId,
     msgs::{
         api::ApiEffectMsg,
-        cmds::{move_objects_cmd::MoveObjectsCmd, select_objects_cmd::SelectObjectsCmd, CmdMsg},
+        cmds::{
+            move_objects_cmd::MoveObjectsCmd, select_objects_cmd::SelectObjectsCmd, Cmd, CmdMsg,
+            MultiCmd, inspect_cmd::InspectCmd,
+        },
         MsgQue,
     },
     plugins::{
@@ -27,6 +30,10 @@ use super::{ToolFsmError, ToolFsmResult, ToolHandlerMessage};
 pub enum SelectFsm {
     Default {
         bbids: HashSet<BBId>,
+    },
+    DoubleClickReturn {
+        bbids: HashSet<BBId>,
+        target: BBId,
     },
     AwaitingMoveSelected {
         bbids: HashSet<BBId>,
@@ -69,6 +76,9 @@ impl SelectFsm {
                 initial_positions, ..
             } => Ok(Self::Default {
                 bbids: initial_positions.clone().into_keys().collect(),
+            }),
+            Self::DoubleClickReturn { bbids, .. } => Ok(Self::Default {
+                bbids: bbids.clone(),
             }),
         };
 
@@ -227,6 +237,18 @@ impl SelectFsm {
 
         result.map(|new| (self.clone(), new))
     }
+
+    fn double_click(&self, bbid: Option<&BBId>) -> ToolFsmResult<SelectFsm> {
+        let result = match (self, bbid) {
+            (Self::AwaitingMoveSelected { bbids, .. }, Some(bbid)) => Ok(Self::DoubleClickReturn {
+                target: bbid.clone(),
+                bbids: bbids.clone(),
+            }),
+            _ => Err(ToolFsmError::NoTransition),
+        };
+
+        result.map(|new| (self.clone(), new))
+    }
 }
 
 pub fn msg_handler_select_tool(
@@ -264,6 +286,13 @@ pub fn msg_handler_select_tool(
                 modifiers,
                 ..
             },
+        )
+        | Input(
+            ev @ DoubleClick {
+                world: world_pos,
+                modifiers,
+                ..
+            },
         ) => {
             let mut select_sys_state = SystemState::<(
                 // Selectables
@@ -297,6 +326,9 @@ pub fn msg_handler_select_tool(
                     fsm.pointer_down(hit_bbid, modifiers, world_pos)
                 }
                 InputMessage::PointerClick { .. } => fsm.pointer_click(hit_bbid, modifiers),
+                InputMessage::DoubleClick { .. } => {
+                    fsm.double_click(hit_bbid)
+                },
                 _ => panic!(
                     "Unhandled InputMessage variant in select_tool. This should never happen."
                 ),
@@ -358,6 +390,15 @@ pub fn msg_handler_select_tool(
             responder.push_internal(CmdMsg::DisallowRepeated);
         }
 
+        Ok((AwaitingMoveSelected { bbids, .. }, DoubleClickReturn { target, .. })) => {
+            let mut cmds: Vec<Box<dyn Cmd>> = Vec::new();
+            let bbids: Vec<_> = bbids.into_iter().cloned().collect();
+            cmds.push(Box::new(SelectObjectsCmd::deselect(bbids)));
+            cmds.push(Box::new(InspectCmd::inspect(*target)));
+            let cmd = MultiCmd::new(cmds);
+            responder.push_internal(CmdMsg::from(cmd));
+        }
+
         // Error on valid transitions that are not handled
         Ok((from, to)) => {
             panic!("SelectTool: Unhandled state transition from tool message({message:?})\n - From {from:?}\n - To {to:?}.")
@@ -369,6 +410,13 @@ pub fn msg_handler_select_tool(
     // Save the new state back in the resource.
     if let Ok((_, new_state)) = transition_result {
         let mut r_fsm = world.resource_mut::<SelectFsm>();
-        *r_fsm = new_state;
+        match new_state {
+            DoubleClickReturn { bbids, .. } => {
+                *r_fsm = Default { bbids: bbids.clone() }
+            }
+            new_state => {
+                *r_fsm = new_state;
+            }
+        }
     }
 }

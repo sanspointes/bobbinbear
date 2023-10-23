@@ -1,11 +1,12 @@
 mod types;
 
-use std::{ops::Sub, mem::discriminant};
+use std::{default, mem::discriminant, ops::Sub};
 
 use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
     math::Vec3Swizzles,
-    prelude::*, utils::HashSet,
+    prelude::*,
+    utils::HashSet,
 };
 use bevy_mod_raycast::{
     DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
@@ -16,7 +17,7 @@ use bevy_prototype_lyon::{
 };
 use js_sys::Reflect::construct_with_new_target;
 
-use crate::{systems::camera::CameraTag, editor::EditorSet};
+use crate::{editor::EditorSet, systems::camera::CameraTag};
 
 pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 
@@ -56,7 +57,7 @@ impl Plugin for InputPlugin {
     }
 }
 
-#[derive(Resource, Default)]
+#[derive(Resource)]
 pub struct RawInputResource {
     is_dragging: bool,
     left_pressed: bool,
@@ -65,6 +66,23 @@ pub struct RawInputResource {
     down_pos: Vec2,
     down_pos_world: Vec2,
     modifiers: ModifiersState,
+
+    double_click_timeout: f32, // TODO: Move to settings resource.
+    last_click_time: f32,
+}
+impl Default for RawInputResource {
+    fn default() -> Self {
+        Self {
+            is_dragging: false,
+            left_pressed: false,
+            cur_pos: Vec2::default(),
+            down_pos: Vec2::default(),
+            down_pos_world: Vec2::default(),
+            modifiers: ModifiersState::default(),
+            double_click_timeout: 0.3f32,
+            last_click_time: 0.0f32,
+        }
+    }
 }
 
 /// Processes the Raw input events into more useful app events.
@@ -74,11 +92,13 @@ pub struct RawInputResource {
 /// * `ev_writer`:
 /// * `bg_hit_query`:
 pub fn sys_raw_input_processor(
+    time: Res<Time>,
     mut res: ResMut<RawInputResource>,
     mut ev_reader: EventReader<RawInputMessage>,
     mut ev_writer: EventWriter<InputMessage>,
     bg_hit_query: Query<&RaycastMesh<RaycastRawInput>, With<InputHitPlaneTag>>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_raw_input_processor").entered();
 
     let mut world_point = Vec2::new(0., 0.);
@@ -108,7 +128,10 @@ pub fn sys_raw_input_processor(
                     && res.cur_pos.distance(res.down_pos) > DRAG_THRESHOLD
                 {
                     #[cfg(feature = "debug_trace")]
-                    debug!("Sending DragStart: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+                    debug!(
+                        "Sending DragStart: screen: {:?}, world: {:?}",
+                        res.cur_pos, world_point
+                    );
 
                     res.is_dragging = true;
                     to_send.push(InputMessage::DragStart {
@@ -122,7 +145,10 @@ pub fn sys_raw_input_processor(
                     })
                 } else if res.is_dragging {
                     #[cfg(feature = "debug_trace")]
-                    debug!("Sending DragMove: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+                    debug!(
+                        "Sending DragMove: screen: {:?}, world: {:?}",
+                        res.cur_pos, world_point
+                    );
 
                     to_send.push(InputMessage::DragMove {
                         screen: res.cur_pos,
@@ -135,7 +161,10 @@ pub fn sys_raw_input_processor(
                     });
                 } else {
                     #[cfg(feature = "debug_trace")]
-                    debug!("Sending PointerMove: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+                    debug!(
+                        "Sending PointerMove: screen: {:?}, world: {:?}",
+                        res.cur_pos, world_point
+                    );
 
                     to_send.push(InputMessage::PointerMove {
                         screen: res.cur_pos,
@@ -152,7 +181,10 @@ pub fn sys_raw_input_processor(
                         res.down_pos_world = world_point;
 
                         #[cfg(feature = "debug_trace")]
-                        debug!("Sending PointerDown: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+                        debug!(
+                            "Sending PointerDown: screen: {:?}, world: {:?}",
+                            res.cur_pos, world_point
+                        );
 
                         to_send.push(InputMessage::PointerDown {
                             screen: res.cur_pos,
@@ -167,7 +199,10 @@ pub fn sys_raw_input_processor(
                         res.is_dragging = false;
 
                         #[cfg(feature = "debug_trace")]
-                        debug!("Sending DragEnd: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+                        debug!(
+                            "Sending DragEnd: screen: {:?}, world: {:?}",
+                            res.cur_pos, world_point
+                        );
 
                         to_send.push(InputMessage::DragEnd {
                             screen: res.cur_pos,
@@ -179,15 +214,32 @@ pub fn sys_raw_input_processor(
                             modifiers: res.modifiers,
                         });
                     } else {
-
                         #[cfg(feature = "debug_trace")]
-                        debug!("Sending PointerClick: screen: {:?}, world: {:?}", res.cur_pos, world_point);
+                        debug!(
+                            "Sending PointerClick: screen: {:?}, world: {:?}",
+                            res.cur_pos, world_point
+                        );
+                        let curr_time = time.elapsed_seconds();
 
-                        to_send.push(InputMessage::PointerClick {
-                            screen: res.cur_pos,
-                            world: world_point,
-                            modifiers: res.modifiers,
-                        });
+                        if curr_time < res.last_click_time + res.double_click_timeout {
+                            res.last_click_time = 0f32;
+
+                            info!("Double clicking {curr_time} {} {}", res.last_click_time, res.double_click_timeout);
+                            to_send.push(InputMessage::DoubleClick {
+                                screen: res.cur_pos,
+                                world: world_point,
+                                modifiers: res.modifiers,
+                            });
+
+                        } else {
+                            res.last_click_time = time.elapsed_seconds();
+
+                            to_send.push(InputMessage::PointerClick {
+                                screen: res.cur_pos,
+                                world: world_point,
+                                modifiers: res.modifiers,
+                            });
+                        }
                     }
                 }
                 (_, _) => {}
@@ -227,10 +279,8 @@ pub fn sys_raw_input_processor(
                     });
                 }
                 key => {
-
                     #[cfg(feature = "debug_trace")]
                     debug!("Sending Keyboard: key: {:?}, pressed: {:?}", key, pressed);
-
 
                     to_send.push(InputMessage::Keyboard {
                         pressed: *pressed,
@@ -246,11 +296,9 @@ pub fn sys_raw_input_processor(
     let filtered: Vec<_> = to_send
         .into_iter()
         .rev()
-        .filter(|variant| {
-            match variant {
-                InputMessage::Keyboard { .. } => true,
-                variant => seen_variants.insert(discriminant(variant)),
-            }
+        .filter(|variant| match variant {
+            InputMessage::Keyboard { .. } => true,
+            variant => seen_variants.insert(discriminant(variant)),
         })
         .collect::<Vec<_>>()
         .into_iter()
@@ -266,6 +314,7 @@ fn sys_mouse_button_input(
     mut mousebtn_events: EventReader<MouseButtonInput>,
     mut message_writer: EventWriter<RawInputMessage>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_mouse_button_input").entered();
 
     for ev in mousebtn_events.iter() {
@@ -284,6 +333,7 @@ fn sys_mouse_movement_input(
     mut mousebtn_events: EventReader<CursorMoved>,
     mut message_writer: EventWriter<RawInputMessage>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_mouse_movement_input").entered();
 
     let mut maybe_source = q_raycast_source.get_single_mut();
@@ -299,6 +349,7 @@ fn sys_keyboard_input(
     mut key_evr: EventReader<KeyboardInput>,
     mut message_writer: EventWriter<RawInputMessage>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_keyboard_input").entered();
 
     for ev in key_evr.iter() {
@@ -324,6 +375,7 @@ pub struct InputHitPlaneTag;
 /// source to the camera.
 ///
 fn sys_setup_input_plugin(mut commands: Commands, q_camera: Query<Entity, With<CameraTag>>) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_setup_input_plugin").entered();
 
     let shape = shapes::Rectangle {
@@ -358,6 +410,7 @@ fn sys_move_bg_hit_plane(
     cam: Query<&Transform, (With<Camera2d>, Without<InputHitPlaneTag>)>,
     mut bg_hit_plane: Query<&mut Transform, (With<InputHitPlaneTag>, Without<Camera2d>)>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_move_bg_hit_plane").entered();
 
     if let (Ok(cam_transform), Ok(mut bg_hit_transform)) =

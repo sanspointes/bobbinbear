@@ -3,6 +3,7 @@ pub mod move_objects_cmd;
 pub mod multi_cmd;
 pub mod select_objects_cmd;
 pub mod update_path_cmd;
+pub mod inspect_cmd;
 
 use std::{
     fmt::{Debug, Display},
@@ -16,7 +17,7 @@ use thiserror::Error;
 
 use crate::components::bbid::BbidWorldError;
 
-use self::update_path_cmd::UpdatePathCmd;
+use self::{update_path_cmd::UpdatePathCmd, inspect_cmd::InspectCmd};
 use self::{
     add_remove_object_cmd::AddObjectCmd, move_objects_cmd::MoveObjectsCmd,
     select_objects_cmd::SelectObjectsCmd,
@@ -84,6 +85,7 @@ pub enum CmdType {
     UpdatePath(UpdatePathCmd),
     MoveObjects(MoveObjectsCmd),
     SelectObjects(SelectObjectsCmd),
+    Inspect(InspectCmd),
 }
 
 macro_rules! unwrap_cmd_type {
@@ -94,6 +96,7 @@ macro_rules! unwrap_cmd_type {
             CmdType::UpdatePath($pattern) => $result,
             CmdType::MoveObjects($pattern) => $result,
             CmdType::SelectObjects($pattern) => $result,
+            CmdType::Inspect($pattern) => $result,
         }
     };
 }
@@ -133,6 +136,7 @@ impl Plugin for CmdMsgPlugin {
 }
 
 pub fn msg_handler_cmds(world: &mut World, message: CmdMsg, _responses: &mut MsgQue) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_handler_cmds").entered();
 
     match message {

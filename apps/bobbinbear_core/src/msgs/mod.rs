@@ -132,9 +132,11 @@ impl MsgQue {
 ///
 /// * `world`:
 pub fn sys_msg_handler(world: &mut World) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_msg_handler").entered();
 
     let mut all_messages: VecDeque<MsgQue> = {
+        #[cfg(feature = "debug_trace")]
         let _span = info_span!("sys_msg_handler: Receiving messages").entered();
         // Messages sent from API have a unique ID that we can use to respond to the API call with.
         let receiver = world.resource_mut::<ApiToEditorReceiver>();
@@ -173,6 +175,7 @@ pub fn sys_msg_handler(world: &mut World) {
             }
         }
 
+        #[cfg(feature = "debug_trace")]
         let _span = info_span!("sys_msg_handler: Handing responses/effects").entered();
         // Respond to API + send side effects back to UI layer
         let sender = world.resource_mut::<EditorToApiSender>();

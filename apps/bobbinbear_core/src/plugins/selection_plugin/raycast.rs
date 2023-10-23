@@ -20,6 +20,7 @@ pub fn sys_selection_raycast_update_ray(
     mut q_raycast_source: Query<&mut RaycastSource<Selectable>>,
     mut ev_cursor_moved: EventReader<CursorMoved>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_selection_raycast_update_ray").entered();
 
     let mut source = q_raycast_source.single_mut();

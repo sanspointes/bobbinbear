@@ -24,6 +24,7 @@ pub(super) fn sys_setup_selection_bounds(
     mut commands: Commands,
     q_ss_root: Query<Entity, With<ScreenSpaceRootTag>>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_setup_selection_bounds").entered();
 
     let ss_root = q_ss_root.single();
@@ -62,6 +63,7 @@ pub(super) fn sys_selection_bounds_handle_change(
     q_primary_window: Query<&Window, With<PrimaryWindow>>,
     q_camera: Query<&OrthographicProjection, With<CameraTag>>,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_selection_bounds_handle_change").entered();
 
     let needs_update = system_set.p0().iter().next().is_some();

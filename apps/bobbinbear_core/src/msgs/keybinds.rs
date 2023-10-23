@@ -9,6 +9,7 @@ pub fn msg_handler_keybinds(
     message: &InputMessage,
     responder: &mut MsgQue,
 ) {
+    #[cfg(feature = "debug_trace")]
     let _span = info_span!("msg_handler_keybinds").entered();
 
     let mut should_pass_through = false;
