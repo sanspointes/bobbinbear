@@ -12,13 +12,14 @@ use crate::{
     msgs::{
         api::ApiEffectMsg,
         cmds::{
-            move_objects_cmd::MoveObjectsCmd, select_objects_cmd::SelectObjectsCmd, Cmd, CmdMsg,
-            MultiCmd, inspect_cmd::InspectCmd,
+            inspect_cmd::InspectCmd, move_objects_cmd::MoveObjectsCmd,
+            select_objects_cmd::SelectObjectsCmd, Cmd, CmdMsg, MultiCmd,
         },
         MsgQue,
     },
     plugins::{
         input_plugin::{InputMessage, ModifiersState},
+        inspect_plugin::InspectState,
         selection_plugin::{Selectable, Selected},
     },
     types::BBCursor,
@@ -241,7 +242,7 @@ impl SelectFsm {
     fn double_click(&self, bbid: Option<&BBId>) -> ToolFsmResult<SelectFsm> {
         let result = match (self, bbid) {
             (Self::AwaitingMoveSelected { bbids, .. }, Some(bbid)) => Ok(Self::DoubleClickReturn {
-                target: bbid.clone(),
+                target: *bbid,
                 bbids: bbids.clone(),
             }),
             _ => Err(ToolFsmError::NoTransition),
@@ -262,6 +263,7 @@ pub fn msg_handler_select_tool(
 
     use InputMessage::*;
     use ToolHandlerMessage::*;
+
     let transition_result = match message {
         OnActivate => {
             debug!("SelectTool::OnActivate");
@@ -321,14 +323,14 @@ pub fn msg_handler_select_tool(
                 }
             };
 
+            
+
             match ev {
                 InputMessage::PointerDown { .. } => {
                     fsm.pointer_down(hit_bbid, modifiers, world_pos)
                 }
                 InputMessage::PointerClick { .. } => fsm.pointer_click(hit_bbid, modifiers),
-                InputMessage::DoubleClick { .. } => {
-                    fsm.double_click(hit_bbid)
-                },
+                InputMessage::DoubleClick { .. } => fsm.double_click(hit_bbid),
                 _ => panic!(
                     "Unhandled InputMessage variant in select_tool. This should never happen."
                 ),
@@ -354,6 +356,13 @@ pub fn msg_handler_select_tool(
         Ok((Default { bbids: old }, Default { bbids: new }))
         | Ok((AwaitingMoveSelected { bbids: old, .. }, Default { bbids: new }))
         | Ok((Default { bbids: old }, AwaitingMoveSelected { bbids: new, .. })) => {
+            // Uninspect if click outside of selected element.
+            let state = world.resource::<State<InspectState>>();
+            info!("{state:?} {:?}", new);
+            if new.is_empty() && !state.eq(&InspectState::None)  {
+                world.resource_mut::<NextState<InspectState>>().set(InspectState::None);
+            }
+
             if !new.eq(old) {
                 let to_select: Vec<BBId> = new.difference(old).cloned().collect();
                 let to_deselect: Vec<BBId> = old.difference(new).cloned().collect();
@@ -412,7 +421,9 @@ pub fn msg_handler_select_tool(
         let mut r_fsm = world.resource_mut::<SelectFsm>();
         match new_state {
             DoubleClickReturn { bbids, .. } => {
-                *r_fsm = Default { bbids: bbids.clone() }
+                *r_fsm = Default {
+                    bbids: bbids.clone(),
+                }
             }
             new_state => {
                 *r_fsm = new_state;

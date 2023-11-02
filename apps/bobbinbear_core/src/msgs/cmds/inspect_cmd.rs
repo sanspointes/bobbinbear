@@ -3,12 +3,15 @@ use std::{fmt::Display, sync::Arc};
 use anyhow::anyhow;
 use bevy::prelude::*;
 
-use crate::components::bbid::{BBId, BBIdUtils};
+use crate::{
+    components::bbid::{BBId, BBIdUtils},
+    plugins::inspect_plugin::{InspectState, update_inspect_state},
+};
 
 use super::{Cmd, CmdError, CmdMsg, CmdType};
 
 #[derive(Component)]
-struct InspectingTag;
+pub struct InspectingTag;
 
 #[derive(Debug)]
 pub struct InspectCmd {
@@ -23,16 +26,13 @@ impl InspectCmd {
 
     fn get_selected_bbid(world: &mut World) -> Option<(Entity, BBId)> {
         let mut q_selected = world.query_filtered::<(Entity, &BBId), With<InspectingTag>>();
-        q_selected
-            .get_single(world)
-            .ok()
-            .map(|(e, b)| (e, b.clone()))
+        q_selected.get_single(world).ok().map(|(e, b)| (e, *b))
     }
 
     /// Takes the current target, inspects it.  If there was a previous target, stores it for
-    /// undoing. 
+    /// undoing.
     ///
-    /// * `world`: 
+    /// * `world`:
     fn perform(&mut self, world: &mut World) -> Result<(), CmdError> {
         let target = self.target.take();
 
@@ -42,6 +42,7 @@ impl InspectCmd {
             match (selected, target) {
                 (Some((entity, bbid)), Some(target)) => {
                     if target != bbid {
+                        update_inspect_state(world, InspectState::None);
                         world.entity_mut(entity).remove::<InspectingTag>();
                         Some(bbid)
                     } else {
@@ -49,6 +50,7 @@ impl InspectCmd {
                     }
                 }
                 (Some((entity, bbid)), None) => {
+                    update_inspect_state(world, InspectState::None);
                     world.entity_mut(entity).remove::<InspectingTag>();
                     Some(bbid)
                 }
@@ -58,15 +60,13 @@ impl InspectCmd {
 
         info!("Deinspected {prev_inspected:?}");
 
-        match target {
-            Some(target) => {
-                let entity = world.get_entity_id_by_bbid(target).ok_or(anyhow!(
-                    "InspectCmd: Cannot find target {target:?} in scene."
-                ))?;
-                world.entity_mut(entity).insert(InspectingTag);
-                info!("InspectCmd: Inspected {target:?}");
-            }
-            None => {} // Do nothing, acting as a
+        if let Some(target) = target {
+            let entity = world.get_entity_id_by_bbid(target).ok_or(anyhow!(
+                "InspectCmd: Cannot find target {target:?} in scene."
+            ))?;
+            world.entity_mut(entity).insert(InspectingTag);
+            update_inspect_state(world, InspectState::InspectVector);
+            info!("InspectCmd: Inspected {target:?}");
         }
 
         if let Some(prev) = prev_inspected {

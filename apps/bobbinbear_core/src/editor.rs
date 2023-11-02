@@ -11,7 +11,7 @@ use crate::{
         bounds_2d_plugin::Bounds2DPlugin,
         input_plugin::{InputMessage, InputPlugin},
         screen_space_root_plugin::ScreenSpaceRootPlugin,
-        selection_plugin::SelectionPlugin,
+        selection_plugin::SelectionPlugin, inspect_plugin::InspectPlugin,
     },
     systems::camera::sys_setup_camera,
     utils::reflect_shims::{ReflectableFill, ReflectablePath},
@@ -86,7 +86,7 @@ impl Plugin for EditorPlugin {
             // Internal generic plugins
             .add_plugins((InputPlugin, SelectionPlugin, ScreenSpaceRootPlugin, Bounds2DPlugin))
             // Internal App Logic plugins
-            .add_plugins((ToolMsgPlugin, CmdMsgPlugin))
+            .add_plugins((ToolMsgPlugin, CmdMsgPlugin, InspectPlugin))
 
             .configure_sets(Update, (EditorSet::PreMsgs, EditorSet::Msgs, EditorSet::PostMsgs).chain()) 
             .configure_set(PostUpdate, EditorSet::PostPlugins.after(BuildShapes))
