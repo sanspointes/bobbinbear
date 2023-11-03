@@ -17,7 +17,7 @@ pub enum BBObject {
 /// Component represents something that has an index associated with it.
 pub struct BBIndex(pub usize);
 
-fn p2_2_v2(p: Point2D<f32, UnknownUnit>) -> Vec2 {
+pub fn p2_2_v2(p: Point2D<f32, UnknownUnit>) -> Vec2 {
     Vec2::new(p.x, p.y)
 }
 
@@ -85,4 +85,12 @@ impl From<Event<Point2D<f32, UnknownUnit>, Point2D<f32, UnknownUnit>>> for BBPat
             },
         }
     }
+}
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+pub enum BBNode {
+    #[default]
+    Endpoint,
+    Control,
 }
