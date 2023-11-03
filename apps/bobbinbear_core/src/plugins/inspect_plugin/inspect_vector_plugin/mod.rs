@@ -1,11 +1,14 @@
-use bevy::{ecs::system::EntityCommands, prelude::*};
+mod utils;
+
+use bevy::prelude::*;
+
 use bevy_prototype_lyon::{
     prelude::{
         tess::{
             math::Point,
             path::{Event, Path as TessPath},
         },
-        Fill, GeometryBuilder, Path, ShapeBundle, Stroke,
+        GeometryBuilder, Path,
     },
     shapes,
 };
@@ -13,11 +16,18 @@ use bevy_prototype_lyon::{
 use crate::{
     components::{
         bbid::BBId,
-        scene::{p2_2_v2, BBIndex, BBNode, BBObject, BBPathEvent},
+        scene::BBObject,
     },
     msgs::cmds::inspect_cmd::InspectingTag,
-    plugins::{inspect_plugin::InspectArtifact, selection_plugin::SelectableBundle},
-    utils::coordinates,
+    plugins::{
+        inspect_plugin::{
+            inspect_vector_plugin::utils::{
+                spawn_bbnodes_of_segment, spawn_bbpathevent_of_segment,
+            },
+            InspectArtifact,
+        },
+        screen_space_root_plugin::ScreenSpaceRootTag,
+    },
 };
 
 use super::InspectState;
@@ -82,181 +92,41 @@ impl VectorResource {
     }
 }
 
-fn make_vector_node_entity(
-    builder: &mut EntityCommands<'_, '_, '_>,
-    res: &Res<VectorResource>,
-    node_type: BBNode,
-    position: Vec2,
-    parent_segment: BBId,
-) {
-    let path = match node_type {
-        BBNode::Control => &res.cached_paths.control_node,
-        BBNode::Endpoint => &res.cached_paths.endpoint_node,
-    };
-    builder.insert((
-        node_type,
-        BBId::default(),
-        InspectArtifact(parent_segment),
-        SelectableBundle::default(),
-        Stroke::new(Color::BLACK, 2.),
-        Fill::color(Color::WHITE),
-        ShapeBundle {
-            path: Path(path.clone()),
-            transform: Transform {
-                translation: position.extend(2.),
-                ..Default::default()
-            },
-            ..Default::default()
-        },
-    ));
-}
-
 /// Generates all of the entities require to inspect the currently inspecting BBVector entity.
 fn sys_handle_enter_inspect_vector(
     mut commands: Commands,
     res: Res<VectorResource>,
-    q_inspected_vector: Query<(Entity, &BBId, &Path), (With<BBObject>, With<InspectingTag>)>,
+    q_inspected_vector: Query<(Entity, &BBId, &Path, &GlobalTransform), (With<BBObject>, With<InspectingTag>)>,
+    q_screenspace: Query<(Entity, &ScreenSpaceRootTag)>,
 ) {
-    let (entity, bbid, path) = q_inspected_vector
+    let (entity, bbid, path, global_transform) = q_inspected_vector
         .get_single()
         .expect("sys_handle_enter_inspect_vector: None or more than 1 entity inspecting.");
     info!("sys_handle_exit_inspect_vector: Inspecting {:?}", bbid);
 
-    commands.entity(entity).with_children(|builder| {
-        for (i, seg) in path.0.iter().enumerate() {
-            let path_seg_bbid = BBId::default();
+    let (ss_root_entity, ss_root) = q_screenspace.single();
 
-            if i == 0 {
-                let pos = p2_2_v2(seg.from());
-                make_vector_node_entity(
-                    &mut builder.spawn_empty(),
-                    &res,
-                    BBNode::Endpoint,
-                    pos,
-                    path_seg_bbid,
-                );
-            }
-
-            let mut pb = TessPath::builder();
-            let mut name: Option<Name> = None;
-
-            // TODO: Add nodes
-            match seg {
-                Event::Line { from, to } => {
-                    name = Some(Name::from("Line"));
-                    pb.begin(from);
-                    pb.line_to(to);
-                    pb.end(false);
-
-                    make_vector_node_entity(
-                        &mut builder.spawn_empty(),
-                        &res,
-                        BBNode::Endpoint,
-                        p2_2_v2(to),
-                        path_seg_bbid,
-                    );
-                }
-                Event::Quadratic { from, ctrl, to } => {
-                    name = Some(Name::from("Quadratic"));
-                    pb.begin(from);
-                    pb.quadratic_bezier_to(ctrl, to);
-                    pb.end(false);
-
-                    make_vector_node_entity(
-                        &mut builder.spawn_empty(),
-                        &res,
-                        BBNode::Control,
-                        p2_2_v2(ctrl),
-                        path_seg_bbid,
-                    );
-                    make_vector_node_entity(
-                        &mut builder.spawn_empty(),
-                        &res,
-                        BBNode::Endpoint,
-                        p2_2_v2(to),
-                        path_seg_bbid,
-                    );
-                }
-                Event::Cubic {
-                    from,
-                    ctrl1,
-                    ctrl2,
-                    to,
-                } => {
-                    name = Some(Name::from("Cubic"));
-                    pb.begin(from);
-                    pb.cubic_bezier_to(ctrl1, ctrl2, to);
-                    pb.end(false);
-
-                    make_vector_node_entity(
-                        &mut builder.spawn_empty(),
-                        &res,
-                        BBNode::Control,
-                        p2_2_v2(ctrl1),
-                        path_seg_bbid,
-                    );
-                    make_vector_node_entity(
-                        &mut builder.spawn_empty(),
-                        &res,
-                        BBNode::Control,
-                        p2_2_v2(ctrl2),
-                        path_seg_bbid,
-                    );
-                    make_vector_node_entity(
-                        &mut builder.spawn_empty(),
-                        &res,
-                        BBNode::Endpoint,
-                        p2_2_v2(to),
-                        path_seg_bbid,
-                    );
-                }
-                Event::Begin { at } => {
-                    name = Some(Name::from("Begin"));
-
-                    make_vector_node_entity(
-                        &mut builder.spawn_empty(),
-                        &res,
-                        BBNode::Endpoint,
-                        p2_2_v2(at),
-                        path_seg_bbid,
-                    );
-                }
-                Event::End { last, first, close } => {
-                    name = Some(Name::from("Close"));
-                    if close {
-                        pb.begin(last);
-                        pb.line_to(first);
-                        pb.end(false);
-                    }
-                }
-            }
-
-            let name = name
-                .expect("sys_handle_enter_inspect_vector: Name is None, this should never happen.");
-            let seg_path = pb.build();
-
-            builder.spawn((
-                name,
-                BBPathEvent::from(seg),
-                Stroke::new(Color::BLACK, 2.),
-                InspectArtifact(*bbid),
-                BBIndex(i),
-                path_seg_bbid,
-                SelectableBundle::default(),
-                ShapeBundle {
-                    path: Path(seg_path),
-                    transform: Transform {
-                        translation: Vec3::new(0., 0., 1.),
-                        ..Default::default()
-                    },
-                    ..Default::default()
-                },
-            ));
-
-            println!("Inspecting entity with {seg:?}");
-        }
-    });
+    for (i, seg) in path.0.iter().enumerate() {
+        spawn_bbnodes_of_segment(
+            &mut commands,
+            &res,
+            *bbid,
+            global_transform,
+            seg,
+            ss_root_entity,
+            ss_root
+        );
+        spawn_bbpathevent_of_segment(
+            &mut commands,
+            *bbid,
+            seg,
+            i,
+            ss_root_entity,
+            ss_root,
+        );
+    }
 }
+
 fn sys_handle_exit_inspect_vector(
     mut commands: Commands,
     q_inspected_vector: Query<(Entity, &BBId, &Path), (With<BBObject>, With<InspectingTag>)>,
@@ -285,9 +155,3 @@ fn sys_handle_exit_inspect_vector(
         }
     }
 }
-
-// fn sys_handle_path_change(
-//     q_changed_path:
-// ) {
-//
-// }

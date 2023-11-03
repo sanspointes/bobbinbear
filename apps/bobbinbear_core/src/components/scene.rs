@@ -91,6 +91,8 @@ impl From<Event<Point2D<f32, UnknownUnit>, Point2D<f32, UnknownUnit>>> for BBPat
 #[reflect(Component)]
 pub enum BBNode {
     #[default]
-    Endpoint,
-    Control,
+    From,
+    Ctrl1,
+    Ctrl2,
+    To,
 }

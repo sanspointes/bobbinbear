@@ -1,20 +1,45 @@
 use std::ops::Div;
 
-use bevy::{
-    core_pipeline::clear_color::ClearColorConfig, prelude::*, render::view::RenderLayers,
-    window::PrimaryWindow,
-};
+use bevy::{prelude::*, render::view::RenderLayers, window::PrimaryWindow, core_pipeline::clear_color::ClearColorConfig};
 use bevy_prototype_lyon::{
     prelude::{Fill, GeometryBuilder, ShapeBundle},
     shapes::{self, RectangleOrigin},
 };
 
-use crate::{constants::BB_LAYER_UI, editor::EditorSet};
+use crate::{
+    constants::BB_LAYER_UI, editor::EditorSet, systems::camera::CameraTag, utils::coordinates,
+};
 
 #[derive(Component, Default)]
 pub struct ScreenSpaceCameraTag;
 #[derive(Component, Default)]
-pub struct ScreenSpaceRootTag;
+/// Component marking the entity that is the screenspace root.
+/// Also has helper methods to convert from world coordinates to screen coordinates.
+///
+/// * `window_size`:
+/// * `proj_rect`:
+pub struct ScreenSpaceRootTag {
+    window_size: Vec2,
+    proj_rect: Rect,
+}
+#[allow(dead_code)]
+impl ScreenSpaceRootTag {
+    pub fn world_to_screen(&self, world: impl Into<Vec2>) -> Vec2 {
+        coordinates::world_to_screen(world.into(), self.window_size, self.proj_rect)
+    }
+    pub fn screen_to_world(&self, screen: impl Into<Vec2>) -> Vec2 {
+        coordinates::screen_to_world(screen.into(), self.window_size, self.proj_rect)
+    }
+    pub fn window_size(&self) -> Vec2 {
+        self.window_size
+    }
+    pub fn half_window_size(&self) -> Vec2 {
+        self.window_size.div(2.)
+    }
+    pub fn proj_rect(&self) -> Rect {
+        self.proj_rect
+    }
+}
 
 /// This plugin creates a new entity with component `ScreenSpaceRootTag` where
 /// you can position content in screenspace coordinates and it will display on camera in
@@ -22,22 +47,36 @@ pub struct ScreenSpaceRootTag;
 pub struct ScreenSpaceRootPlugin;
 impl Plugin for ScreenSpaceRootPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(PreStartup, sys_setup)
-            .add_systems(Update, sys_update_transform.in_set(EditorSet::PostMsgs));
+        app.add_systems(Startup, sys_setup)
+            .add_systems(Update, sys_update_ss_root.in_set(EditorSet::PostMsgs));
         // In debug mode show the test bounds elements
         #[cfg(debug_assertions)]
         {
             app.add_systems(PostStartup, sys_setup_screenspace_test)
-                .add_systems(Update, sys_update_screenspace_test.in_set(EditorSet::PostMsgs));
+                .add_systems(
+                    Update,
+                    sys_update_screenspace_test.in_set(EditorSet::PostMsgs),
+                );
         }
     }
 }
 
 /// Creates the screenspace root.
-fn sys_setup(mut commands: Commands) {
+fn sys_setup(
+    mut commands: Commands,
+    q_window: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<&OrthographicProjection, With<CameraTag>>,
+) {
+    let proj_rect = q_camera.single().area;
+    let window = q_window.single();
+    let window_size = Vec2::new(window.width(), window.height());
+
     commands.spawn((
         Name::from("ScreenSpaceRootTag"),
-        ScreenSpaceRootTag,
+        ScreenSpaceRootTag {
+            window_size,
+            proj_rect,
+        },
         SpatialBundle {
             transform: Transform {
                 translation: Vec3::new(0., 0., 500.),
@@ -64,14 +103,22 @@ fn sys_setup(mut commands: Commands) {
         RenderLayers::layer(BB_LAYER_UI),
     ));
 }
+
 /// Updates the screenspace root in accordance with the camera projection
-fn sys_update_transform(
-    mut q_ss_root: Query<&mut Transform, With<ScreenSpaceRootTag>>, 
+fn sys_update_ss_root(
+    mut q_ss_root: Query<(&mut Transform, &mut ScreenSpaceRootTag)>,
     q_window: Query<&Window, With<PrimaryWindow>>,
+    q_camera: Query<&OrthographicProjection, With<CameraTag>>,
 ) {
+    let (mut ss_root_transform, mut ss_root) = q_ss_root.single_mut();
+
     let window = q_window.single();
-    let half_size = Vec2::new(window.width(), window.height()).div(2.);
-    let mut ss_root_transform = q_ss_root.single_mut();
+    let window_size = Vec2::new(window.width(), window.height());
+    let proj_rect = q_camera.single().area;
+    ss_root.proj_rect = proj_rect;
+    ss_root.window_size = window_size;
+
+    let half_size = window_size.div(2.);
     ss_root_transform.translation.x = -half_size.x;
     ss_root_transform.translation.y = -half_size.y;
 }
@@ -138,7 +185,7 @@ fn sys_update_screenspace_test(
             TopLeft => {
                 transform.translation.x = 0.;
                 transform.translation.y = window_size.y;
-            },
+            }
             BottomLeft => {
                 transform.translation.x = 0.;
                 transform.translation.y = 0.;

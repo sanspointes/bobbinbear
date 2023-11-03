@@ -60,8 +60,7 @@ pub(super) fn sys_selection_bounds_handle_change(
         With<SelectionBoundsTag>,
     >,
     // To Calculate
-    q_primary_window: Query<&Window, With<PrimaryWindow>>,
-    q_camera: Query<&OrthographicProjection, With<CameraTag>>,
+    q_ss_root: Query<&ScreenSpaceRootTag>,
 ) {
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_selection_bounds_handle_change").entered();
@@ -101,12 +100,9 @@ pub(super) fn sys_selection_bounds_handle_change(
     };
 
     if matches!(*visibility, Visibility::Visible) {
-        let proj_rect = q_camera.single().area;
-        let window = q_primary_window.single();
-        let window_size = Vec2::new(window.width(), window.height());
-
-        let screen_min = coordinates::world_to_screen(&min, &window_size, &proj_rect);
-        let screen_max = coordinates::world_to_screen(&max, &window_size, &proj_rect);
+        let ss_root = q_ss_root.single();
+        let screen_min = ss_root.world_to_screen(min);
+        let screen_max = ss_root.world_to_screen(max);
         let extents = screen_max.sub(screen_min);
         let extents_size = extents.length_squared();
 

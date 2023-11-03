@@ -8,6 +8,7 @@ mod plugins;
 mod systems;
 mod types;
 mod utils;
+mod prelude;
 
 use api::{ApiToEditorReceiver, EditorApi, EditorToApiSender};
 use crossbeam_channel::unbounded;

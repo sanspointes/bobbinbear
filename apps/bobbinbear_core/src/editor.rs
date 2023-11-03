@@ -5,7 +5,7 @@ use bevy_prototype_lyon::{prelude::*, plugin::BuildShapes};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
-    components::{bbid::BBId, scene::BBObject},
+    components::{bbid::BBId, scene::{BBObject, BBPathEvent, BBNode}},
     msgs::{cmds::CmdMsgPlugin, api::ApiMsg, sys_msg_handler, Msg, ToolMsgPlugin},
     plugins::{
         bounds_2d_plugin::Bounds2DPlugin,
@@ -97,9 +97,12 @@ impl Plugin for EditorPlugin {
 
             .register_type::<BBId>()
             .register_type::<BBObject>()
+            .register_type::<BBPathEvent>()
+            .register_type::<BBNode>()
 
             .register_type::<ReflectablePath>() // Also need reflection shimed path for ser/de
             .register_type::<ReflectableFill>() // Also need reflection shimed path for ser/de
+
         ;
 
         // if let Some(frontend_sender) = app.world.get_resource_mut::<FrontendSender>() {
