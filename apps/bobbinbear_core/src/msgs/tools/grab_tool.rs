@@ -1,13 +1,14 @@
 use std::ops::{Add, Mul, Sub};
 
 use anyhow::anyhow;
-use bevy::{ecs::system::SystemState, prelude::*, window::PrimaryWindow};
+use bevy::{ecs::system::SystemState, prelude::*};
 
 use crate::{
     msgs::{api::ApiEffectMsg, MsgQue},
-    plugins::{input_plugin::InputMessage, screen_space_root_plugin::ScreenSpaceRootTag},
+    plugins::{input_plugin::InputMessage, screen_space_root_plugin::ScreenSpaceRoot},
     systems::camera::CameraTag,
-    types::BBCursor, utils::coordinates,
+    types::BBCursor,
+    utils::coordinates,
 };
 
 use super::ToolHandlerMessage;
@@ -29,7 +30,9 @@ pub enum GrabToolState {
 }
 impl Default for GrabToolState {
     fn default() -> Self {
-        Self::None { translation: Vec2::ZERO }
+        Self::None {
+            translation: Vec2::ZERO,
+        }
     }
 }
 
@@ -39,8 +42,12 @@ impl GrabToolState {
     /// Returns the drag end or reset of this [`GrabToolState`].
     fn drag_end_or_reset(&self) -> Self {
         match self {
-            Self::None { translation } => Self::None { translation: *translation },
-            Self::Moving { translation, .. } => Self::None { translation: *translation },
+            Self::None { translation } => Self::None {
+                translation: *translation,
+            },
+            Self::Moving { translation, .. } => Self::None {
+                translation: *translation,
+            },
         }
     }
 
@@ -69,7 +76,11 @@ impl GrabToolState {
                 ..
             } => Ok(Self::Moving {
                 initial_translation: *initial_translation,
-                translation: initial_translation.add(initial_mouse_pos.sub(*current_mouse_pos).mul(VEC2_INVERSE_Y)),
+                translation: initial_translation.add(
+                    initial_mouse_pos
+                        .sub(*current_mouse_pos)
+                        .mul(VEC2_INVERSE_Y),
+                ),
                 initial_mouse_pos: *initial_mouse_pos,
             }),
         }
@@ -88,7 +99,7 @@ pub fn msg_handler_grab_tool(
         // Current Camera
         Query<&mut Transform, With<CameraTag>>,
         // Primary window query
-        Query<&ScreenSpaceRootTag>,
+        Query<&ScreenSpaceRoot>,
     )> = SystemState::new(world);
 
     let (mut grab_state, mut q_camera, q_ss_root) = grab_sys_state.get_mut(world);
@@ -107,26 +118,32 @@ pub fn msg_handler_grab_tool(
 
             match input_message {
                 InputMessage::DragStart { screen_pressed, .. } => {
-                    let world_pos_2d = ss_root.screen_to_world(*screen_pressed);
+                    let world_pos_2d = coordinates::screen_to_world(
+                        *screen_pressed,
+                        ss_root.window_size(),
+                        ss_root.projection_area(),
+                    );
                     let v = grab_state.drag_start(&world_pos_2d);
 
                     match &v {
                         Ok(new_state) => {
                             if let GrabToolState::Moving { translation, .. } = new_state {
-                                responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Grabbing));
+                                responder
+                                    .notify_effect(ApiEffectMsg::SetCursor(BBCursor::Grabbing));
                                 transform.translation.x = translation.x;
                                 transform.translation.y = translation.y;
                             }
                             *grab_state = new_state.clone();
                         }
-                        Err(_) => {},
+                        Err(_) => {}
                     }
                 }
-                InputMessage::DragMove {
-                    screen,
-                    ..
-                } => {
-                    let world_pos_2d = ss_root.screen_to_world(*screen);
+                InputMessage::DragMove { screen, .. } => {
+                    let world_pos_2d = coordinates::screen_to_world(
+                        *screen,
+                        ss_root.window_size(),
+                        ss_root.projection_area(),
+                    );
                     let v = grab_state.drag_move(&world_pos_2d);
 
                     match &v {
@@ -137,14 +154,15 @@ pub fn msg_handler_grab_tool(
                             }
                             *grab_state = new_state.clone();
                         }
-                        Err(_) => {},
+                        Err(_) => {}
                     }
                 }
-                InputMessage::DragEnd {
-                    screen,
-                    ..
-                } => {
-                    let world_pos_2d = ss_root.screen_to_world(*screen);
+                InputMessage::DragEnd { screen, .. } => {
+                    let world_pos_2d = coordinates::screen_to_world(
+                        *screen,
+                        ss_root.window_size(),
+                        ss_root.projection_area(),
+                    );
                     let v = grab_state.drag_move(&world_pos_2d);
 
                     match &v {
@@ -155,7 +173,7 @@ pub fn msg_handler_grab_tool(
                             }
                             *grab_state = grab_state.drag_end_or_reset();
                         }
-                        Err(_) => {},
+                        Err(_) => {}
                     }
                     responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Grab));
                 }

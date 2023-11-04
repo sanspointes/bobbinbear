@@ -1,4 +1,4 @@
-use bevy::{math::Vec3Swizzles, prelude::*, render::view::RenderLayers};
+use bevy::{math::Vec3Swizzles, prelude::*};
 use bevy_prototype_lyon::prelude::{
     tess::{
         geom::Point,
@@ -12,13 +12,15 @@ use crate::{
         bbid::BBId,
         scene::{BBIndex, BBNode, BBPathEvent},
     },
-    constants::BB_LAYER_UI,
     plugins::{
-        inspect_plugin::InspectArtifact, screen_space_root_plugin::ScreenSpaceRootTag,
+        inspect_plugin::InspectArtifact, screen_space_root_plugin::ScreenSpaceRoot,
         selection_plugin::SelectableBundle,
     },
     prelude::*,
-    utils::vector::FromPoint2,
+    utils::{
+        coordinates::LocalToScreen,
+        vector::{FromPoint2, FromVec2},
+    },
 };
 
 use super::VectorResource;
@@ -29,24 +31,27 @@ pub fn spawn_bbpathevent_of_segment(
     segment: Event<Point<f32>, Point<f32>>,
     segment_index: usize,
     screen_space_entity: Entity,
-    ss_root: &ScreenSpaceRootTag,
+    ss_root: &ScreenSpaceRoot,
+    world_transform: &Mat4,
 ) -> (Entity, BBId) {
     let mut pb = TessPath::builder();
+
+    #[allow(unused_assignments)]
     let mut name: Option<Name> = None;
 
     match segment {
         Event::Line { from, to } => {
-            name = Some(Name::from("Line"));
-            pb.begin(W(ss_root.world_to_screen(W(from))).into());
-            pb.line_to(W(ss_root.world_to_screen(W(to))).into());
+            name = Some(Name::from("BBPathEvent::Line"));
+            pb.begin(from.local_to_screen(world_transform, ss_root));
+            pb.line_to(to.local_to_screen(world_transform, ss_root));
             pb.end(false);
         }
         Event::Quadratic { from, ctrl, to } => {
-            name = Some(Name::from("Quadratic"));
-            pb.begin(W(ss_root.world_to_screen(W(from))).into());
+            name = Some(Name::from("BBPathEvent::Quadratic"));
+            pb.begin(from.local_to_screen(world_transform, ss_root));
             pb.quadratic_bezier_to(
-                W(ss_root.world_to_screen(W(ctrl))).into(),
-                W(ss_root.world_to_screen(W(to))).into(),
+                ctrl.local_to_screen(world_transform, ss_root),
+                to.local_to_screen(world_transform, ss_root),
             );
             pb.end(false);
         }
@@ -56,24 +61,24 @@ pub fn spawn_bbpathevent_of_segment(
             ctrl2,
             to,
         } => {
-            name = Some(Name::from("Cubic"));
+            name = Some(Name::from("BBPathEvent::Cubic"));
 
-            pb.begin(W(ss_root.world_to_screen(W(from))).into());
+            pb.begin(from.local_to_screen(world_transform, ss_root));
             pb.cubic_bezier_to(
-                W(ss_root.world_to_screen(W(ctrl1))).into(),
-                W(ss_root.world_to_screen(W(ctrl2))).into(),
-                W(ss_root.world_to_screen(W(to))).into(),
+                ctrl1.local_to_screen(world_transform, ss_root),
+                ctrl2.local_to_screen(world_transform, ss_root),
+                to.local_to_screen(world_transform, ss_root),
             );
             pb.end(false);
         }
         Event::Begin { at } => {
-            name = Some(Name::from("Begin"));
+            name = Some(Name::from("BBPathEvent::Begin"));
         }
         Event::End { last, first, close } => {
-            name = Some(Name::from("Close"));
+            name = Some(Name::from("BBPathEvent::Close"));
             if close {
-                pb.begin(last);
-                pb.line_to(first);
+                pb.begin(last.local_to_screen(world_transform, ss_root));
+                pb.line_to(first.local_to_screen(world_transform, ss_root));
                 pb.end(false);
             }
         }
@@ -94,7 +99,6 @@ pub fn spawn_bbpathevent_of_segment(
             BBIndex(segment_index),
             path_seg_bbid,
             SelectableBundle::default(),
-            RenderLayers::layer(BB_LAYER_UI),
             ShapeBundle {
                 path: Path(seg_path),
                 transform: Transform {
@@ -116,17 +120,16 @@ pub fn spawn_bbnodes_of_segment(
     commands: &mut Commands,
     res: &Res<VectorResource>,
     inspecting_target: BBId,
-    parent_transform: &GlobalTransform,
+    parent_matrix: &Mat4,
     segment: Event<Point<f32>, Point<f32>>,
+    segment_index: usize,
     screen_space_entity: Entity,
-    ss_root: &ScreenSpaceRootTag,
+    ss_root: &ScreenSpaceRoot,
 ) -> Vec<(Entity, BBId)> {
     let mut temp_vec = Vec2::default();
-    let parent_matrix = parent_transform.compute_matrix();
-
     // Spawns a single BBNode
     let mut spawn_bbnode =
-        |res: &Res<VectorResource>, bbnode: BBNode, local_p: &Point<f32>| -> (Entity, BBId) {
+        |res: &Res<VectorResource>, bb_node: BBNode, local_p: &Point<f32>| -> (Entity, BBId) {
             let bbid = BBId::default();
 
             let vec3 = temp_vec.copy_from_p2(*local_p).extend(0.);
@@ -134,20 +137,21 @@ pub fn spawn_bbnodes_of_segment(
             let ss_position = ss_root.world_to_screen(vec3.xy());
 
             let bundle = (
+                BBId::default(),
+                bb_node,
+                BBIndex(segment_index),
                 InspectArtifact(inspecting_target),
                 SelectableBundle::default(),
                 Stroke::new(Color::BLACK, 2.),
                 Fill::color(Color::WHITE),
-                BBId::default(),
-                Name::from(match bbnode {
-                    BBNode::From => "From",
-                    BBNode::Ctrl1 => "Ctrl1",
-                    BBNode::Ctrl2 => "To",
-                    BBNode::To => "To",
+                Name::from(match bb_node {
+                    BBNode::From => "BBNode::From",
+                    BBNode::Ctrl1 => "BBNode::Ctrl1",
+                    BBNode::Ctrl2 => "BBNode::Ctrl2",
+                    BBNode::To => "BBNode::To",
                 }),
-                RenderLayers::layer(BB_LAYER_UI),
                 ShapeBundle {
-                    path: Path(match bbnode {
+                    path: Path(match bb_node {
                         BBNode::From => res.cached_paths.endpoint_node.clone(),
                         BBNode::Ctrl1 => res.cached_paths.control_node.clone(),
                         BBNode::Ctrl2 => res.cached_paths.control_node.clone(),

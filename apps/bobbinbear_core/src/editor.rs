@@ -1,6 +1,9 @@
 use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*};
 use bevy_prototype_lyon::{prelude::*, plugin::BuildShapes};
 
+#[cfg(feature = "debug_text")]
+use bevy_debug_text_overlay::OverlayPlugin;
+
 #[cfg(feature = "inspector")]
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
@@ -10,7 +13,7 @@ use crate::{
     plugins::{
         bounds_2d_plugin::Bounds2DPlugin,
         input_plugin::{InputMessage, InputPlugin},
-        screen_space_root_plugin::ScreenSpaceRootPlugin,
+        screen_space_root_plugin::{ScreenSpaceRootPlugin, ScreenSpaceRoot},
         selection_plugin::SelectionPlugin, inspect_plugin::InspectPlugin,
     },
     systems::camera::sys_setup_camera,
@@ -59,6 +62,9 @@ pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
     #[cfg(feature = "inspector")]
     app.add_plugins(WorldInspectorPlugin::default());
 
+    #[cfg(feature = "debug_text")]
+    app.add_plugins(OverlayPlugin { font_size: 12.0, ..default() });
+
     app.insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::rgb(1., 0., 0.)));
 
@@ -99,6 +105,7 @@ impl Plugin for EditorPlugin {
             .register_type::<BBObject>()
             .register_type::<BBPathEvent>()
             .register_type::<BBNode>()
+            .register_type::<ScreenSpaceRoot>()
 
             .register_type::<ReflectablePath>() // Also need reflection shimed path for ser/de
             .register_type::<ReflectableFill>() // Also need reflection shimed path for ser/de

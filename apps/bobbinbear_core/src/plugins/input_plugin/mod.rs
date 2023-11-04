@@ -394,7 +394,7 @@ fn sys_setup_input_plugin(mut commands: Commands, q_camera: Query<Entity, With<C
 
             ..Default::default()
         },
-        Fill::color(Color::rgb_u8(230, 230, 230)),
+        Fill::color(Color::rgb_u8(200, 200, 200)),
         RaycastMesh::<RaycastRawInput>::default(),
     ));
 

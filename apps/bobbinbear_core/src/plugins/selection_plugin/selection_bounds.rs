@@ -8,7 +8,7 @@ use bevy_prototype_lyon::{prelude::*, shapes};
 
 use crate::{
     constants::{SELECTION_BOUNDS_STROKE_WIDTH, SELECT_COLOR},
-    plugins::{screen_space_root_plugin::ScreenSpaceRootTag, bounds_2d_plugin::GlobalBounds2D},
+    plugins::{screen_space_root_plugin::ScreenSpaceRoot, bounds_2d_plugin::GlobalBounds2D},
     systems::camera::CameraTag,
     utils::coordinates,
 };
@@ -22,7 +22,7 @@ pub(super) struct SelectionBoundsTag;
 
 pub(super) fn sys_setup_selection_bounds(
     mut commands: Commands,
-    q_ss_root: Query<Entity, With<ScreenSpaceRootTag>>,
+    q_ss_root: Query<Entity, With<ScreenSpaceRoot>>,
 ) {
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_setup_selection_bounds").entered();
@@ -60,7 +60,7 @@ pub(super) fn sys_selection_bounds_handle_change(
         With<SelectionBoundsTag>,
     >,
     // To Calculate
-    q_ss_root: Query<&ScreenSpaceRootTag>,
+    q_ss_root: Query<&ScreenSpaceRoot>,
 ) {
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_selection_bounds_handle_change").entered();

@@ -1,34 +1,35 @@
 use std::ops::Div;
 
-use bevy::{prelude::*, render::view::RenderLayers, window::PrimaryWindow, core_pipeline::clear_color::ClearColorConfig};
+use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
 use bevy_prototype_lyon::{
     prelude::{Fill, GeometryBuilder, ShapeBundle},
     shapes::{self, RectangleOrigin},
 };
 
 use crate::{
-    constants::BB_LAYER_UI, editor::EditorSet, systems::camera::CameraTag, utils::coordinates,
+    editor::EditorSet, msgs::sys_msg_handler, systems::camera::CameraTag, utils::coordinates,
 };
 
-#[derive(Component, Default)]
-pub struct ScreenSpaceCameraTag;
-#[derive(Component, Default)]
+#[derive(Component, Reflect, Default, Debug, Copy, Clone, PartialEq)]
+#[reflect(Component)]
 /// Component marking the entity that is the screenspace root.
 /// Also has helper methods to convert from world coordinates to screen coordinates.
 ///
 /// * `window_size`:
 /// * `proj_rect`:
-pub struct ScreenSpaceRootTag {
+pub struct ScreenSpaceRoot {
     window_size: Vec2,
-    proj_rect: Rect,
+    world_bounds: Rect,
+    projection_area: Rect,
 }
+
 #[allow(dead_code)]
-impl ScreenSpaceRootTag {
+impl ScreenSpaceRoot {
     pub fn world_to_screen(&self, world: impl Into<Vec2>) -> Vec2 {
-        coordinates::world_to_screen(world.into(), self.window_size, self.proj_rect)
+        coordinates::world_to_screen(world.into(), self.window_size, self.world_bounds)
     }
     pub fn screen_to_world(&self, screen: impl Into<Vec2>) -> Vec2 {
-        coordinates::screen_to_world(screen.into(), self.window_size, self.proj_rect)
+        coordinates::screen_to_world(screen.into(), self.window_size, self.world_bounds)
     }
     pub fn window_size(&self) -> Vec2 {
         self.window_size
@@ -36,8 +37,11 @@ impl ScreenSpaceRootTag {
     pub fn half_window_size(&self) -> Vec2 {
         self.window_size.div(2.)
     }
-    pub fn proj_rect(&self) -> Rect {
-        self.proj_rect
+    pub fn world_bounds(&self) -> Rect {
+        self.world_bounds
+    }
+    pub fn projection_area(&self) -> Rect {
+        self.projection_area
     }
 }
 
@@ -53,10 +57,7 @@ impl Plugin for ScreenSpaceRootPlugin {
         #[cfg(debug_assertions)]
         {
             app.add_systems(PostStartup, sys_setup_screenspace_test)
-                .add_systems(
-                    Update,
-                    sys_update_screenspace_test.in_set(EditorSet::PostMsgs),
-                );
+                .add_systems(Update, sys_update_screenspace_test.after(sys_msg_handler));
         }
     }
 }
@@ -64,59 +65,69 @@ impl Plugin for ScreenSpaceRootPlugin {
 /// Creates the screenspace root.
 fn sys_setup(
     mut commands: Commands,
+    r_assets: Res<AssetServer>,
     q_window: Query<&Window, With<PrimaryWindow>>,
-    q_camera: Query<&OrthographicProjection, With<CameraTag>>,
+    q_camera: Query<(Entity, &OrthographicProjection), With<CameraTag>>,
 ) {
-    let proj_rect = q_camera.single().area;
+    let (cam_entity, orth_proj) = q_camera.single();
     let window = q_window.single();
     let window_size = Vec2::new(window.width(), window.height());
 
-    commands.spawn((
-        Name::from("ScreenSpaceRootTag"),
-        ScreenSpaceRootTag {
-            window_size,
-            proj_rect,
-        },
-        SpatialBundle {
-            transform: Transform {
-                translation: Vec3::new(0., 0., 500.),
+    let e_ss_root = commands
+        .spawn((
+            Name::from("ScreenSpaceRootTag"),
+            ScreenSpaceRoot {
+                window_size,
+                world_bounds: orth_proj.area,
+                projection_area: orth_proj.area,
+            },
+            SpatialBundle {
+                transform: Transform {
+                    translation: Vec3::new(0., 0., 500.),
+                    ..Default::default()
+                },
                 ..Default::default()
             },
-            ..Default::default()
-        },
-    ));
+        ))
+        .set_parent(cam_entity)
+        .id();
 
-    commands.spawn((
-        Name::from("ScreenSpaceCamera"),
-        ScreenSpaceCameraTag,
-        Camera2dBundle {
-            camera: Camera {
-                order: 1,
-                ..Default::default()
-            },
-            camera_2d: Camera2d {
-                clear_color: ClearColorConfig::None,
-            },
+    let my_gltf = r_assets.load("2CylinderEngine.glb#Scene0");
+    commands
+        .spawn(SceneBundle {
+            scene: my_gltf,
+            transform: Transform::from_xyz(2.0, 0.0, -5.0),
             ..Default::default()
-        },
-        ComputedVisibility::default(),
-        RenderLayers::layer(BB_LAYER_UI),
-    ));
+        })
+        .set_parent(e_ss_root);
 }
 
 /// Updates the screenspace root in accordance with the camera projection
-fn sys_update_ss_root(
-    mut q_ss_root: Query<(&mut Transform, &mut ScreenSpaceRootTag)>,
+pub fn sys_update_ss_root(
+    mut q_ss_root: Query<(&mut Transform, &mut ScreenSpaceRoot)>,
     q_window: Query<&Window, With<PrimaryWindow>>,
-    q_camera: Query<&OrthographicProjection, With<CameraTag>>,
+    q_camera: Query<(&OrthographicProjection, &GlobalTransform), With<CameraTag>>,
 ) {
     let (mut ss_root_transform, mut ss_root) = q_ss_root.single_mut();
 
     let window = q_window.single();
     let window_size = Vec2::new(window.width(), window.height());
-    let proj_rect = q_camera.single().area;
-    ss_root.proj_rect = proj_rect;
-    ss_root.window_size = window_size;
+    let (ortho, global_trans) = q_camera.single();
+    let mut proj_rect = ortho.area;
+
+    let projection_area = Rect::from_corners(proj_rect.min, proj_rect.max);
+    proj_rect.min += global_trans.translation().xy();
+    proj_rect.max += global_trans.translation().xy();
+
+    let world_bounds = proj_rect;
+
+    let new_ss_root = ScreenSpaceRoot {
+        window_size,
+        world_bounds,
+        projection_area,
+    };
+    ss_root.set_if_neq(new_ss_root);
+
 
     let half_size = window_size.div(2.);
     ss_root_transform.translation.x = -half_size.x;
@@ -132,7 +143,7 @@ enum TestTagOrientation {
 }
 fn sys_setup_screenspace_test(
     mut commands: Commands,
-    q_ss_root: Query<Entity, With<ScreenSpaceRootTag>>,
+    q_ss_root: Query<Entity, With<ScreenSpaceRoot>>,
 ) {
     let root = q_ss_root.single();
 
@@ -166,7 +177,6 @@ fn sys_setup_screenspace_test(
                     ..default()
                 },
                 Fill::color(Color::rgba(0., 0., 0.5, 0.1)),
-                RenderLayers::layer(BB_LAYER_UI),
             ));
         }
     });

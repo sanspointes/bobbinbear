@@ -12,7 +12,7 @@ pub enum BBObject {
     Vector,
 }
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, Debug)]
 #[reflect(Component)]
 /// Component represents something that has an index associated with it.
 pub struct BBIndex(pub usize);
@@ -87,7 +87,7 @@ impl From<Event<Point2D<f32, UnknownUnit>, Point2D<f32, UnknownUnit>>> for BBPat
     }
 }
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, Debug, Copy, Clone)]
 #[reflect(Component)]
 pub enum BBNode {
     #[default]

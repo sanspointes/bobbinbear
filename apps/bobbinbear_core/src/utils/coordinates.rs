@@ -1,6 +1,11 @@
 use std::ops::{Div, Sub, Mul};
 
-use bevy::prelude::*;
+use bevy::{prelude::*, math::{Vec4Swizzles, Vec3Swizzles}};
+use bevy_prototype_lyon::prelude::tess::{geom::euclid::{Point2D, UnknownUnit}, math::Point};
+
+use crate::plugins::screen_space_root_plugin::ScreenSpaceRoot;
+
+use super::W;
 
 /// Converts from screen coordinates to world coordinates
 ///
@@ -28,13 +33,65 @@ pub fn normalized_screen_to_world(norm_pos: Vec2, proj_rect: Rect) -> Vec2 {
 /// * `window_size`: Window size in pixels
 /// * `proj_rect`: Projection bounds in world space
 pub fn world_to_screen(world_pos: Vec2, window_size: Vec2, proj_rect: Rect) -> Vec2 {
-    dbg!(world_pos, proj_rect);
     let norm_pos = world_pos.sub(proj_rect.min).div(proj_rect.size());
     normalized_proj_to_screen(norm_pos, window_size)
 }
 
 pub fn normalized_proj_to_screen(norm_pos: Vec2, window_size: Vec2) -> Vec2 {
     norm_pos.mul(window_size)
+}
+
+/// To world trait 
+pub trait LocalToScreen {
+    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self;
+}
+
+impl LocalToScreen for Vec2 {
+    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let world_pos = self.local_to_world(world_transform);
+        ss_root.world_to_screen(world_pos)
+    }
+}
+impl LocalToScreen for Vec3 {
+    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let world_pos = self.local_to_world(world_transform);
+        ss_root.world_to_screen(world_pos.xy()).extend(0.)
+    }
+}
+impl LocalToScreen for Vec4 {
+    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let world_pos = self.local_to_world(world_transform);
+        let sp = ss_root.world_to_screen(world_pos.xy());
+        Vec4::new(sp.x, sp.y, 0., 1.)
+    }
+}
+impl LocalToScreen for Point {
+    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let self_v2: Vec2 = W(*self).into();
+        let world_pos = self_v2.local_to_world(world_transform);
+        let sp = ss_root.world_to_screen(world_pos);
+        W(sp).into()
+    }
+}
+
+pub trait LocalToWorld {
+    fn local_to_world(&self, world_transform: &Mat4) -> Self;
+}
+
+impl LocalToWorld for Vec2 {
+    fn local_to_world(&self, world_matrix: &Mat4) -> Self {
+        world_matrix.mul_vec4(Vec4::new(self.x, self.y, 0., 1.)).xy()
+    }
+}
+impl LocalToWorld for Vec3 {
+    fn local_to_world(&self, world_matrix: &Mat4) -> Self {
+        world_matrix.mul_vec4(Vec4::new(self.x, self.y, self.z, 1.)).xyz()
+    }
+}
+impl LocalToWorld for Vec4 {
+    fn local_to_world(&self, world_matrix: &Mat4) -> Self {
+        world_matrix.mul_vec4(*self)
+    }
 }
 
 /// TESTS

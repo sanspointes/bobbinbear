@@ -25,7 +25,6 @@ pub fn sys_setup_camera(mut commands: Commands) {
             },
             ..Default::default()
         },
-        ComputedVisibility::default(),
-        RenderLayers::layer(BB_LAYER_SCENE),
+        VisibilityBundle::default(),
     ));
 }
