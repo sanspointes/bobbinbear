@@ -1,7 +1,5 @@
 use bevy::{prelude::*, core_pipeline::clear_color::ClearColorConfig, render::view::RenderLayers};
 
-use crate::constants::BB_LAYER_SCENE;
-
 #[derive(Component, Default)]
 pub struct CameraTag {
     pub min_x: Option<f32>,

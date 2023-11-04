@@ -19,7 +19,7 @@ use crate::{
     utils::{
         coordinates::LocalToScreen,
         vector::FromVec2,
-    },
+    }, constants::{Z_INDEX_BB_PATH_EVENT, Z_INDEX_BB_NODE},
 };
 
 use super::VectorResource;
@@ -100,7 +100,7 @@ pub fn spawn_bbpathevent_of_segment(
             ShapeBundle {
                 path: Path(seg_path),
                 transform: Transform {
-                    translation: Vec3::new(0., 0., 1.),
+                    translation: Vec3::new(0., 0., Z_INDEX_BB_PATH_EVENT),
                     ..Default::default()
                 },
                 ..Default::default()
@@ -153,7 +153,7 @@ pub fn spawn_bbnodes_of_segment(
                         BBNode::To => res.cached_paths.endpoint_node.clone(),
                     }),
                     transform: Transform {
-                        translation: screen_pos.extend(0.),
+                        translation: screen_pos.extend(Z_INDEX_BB_NODE),
                         ..Default::default()
                     },
                     ..Default::default()

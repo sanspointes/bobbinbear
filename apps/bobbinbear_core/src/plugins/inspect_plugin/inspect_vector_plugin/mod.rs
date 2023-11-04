@@ -29,7 +29,7 @@ use crate::{
         screen_space_root_plugin::ScreenSpaceRoot,
     },
     prelude::W,
-    utils::coordinates::LocalToScreen,
+    utils::coordinates::LocalToScreen, constants::Z_INDEX_BB_NODE,
 };
 
 use self::utils::make_path_of_pathevent;
@@ -231,25 +231,25 @@ fn sys_update_bb_nodes(
                 let local_pos: Vec2 = W(seg.from()).into();
                 transform.translation = local_pos
                     .local_to_screen(&global_matrix, ss_root)
-                    .extend(0.);
+                    .extend(Z_INDEX_BB_NODE);
             }
             (BBNode::Ctrl1, Event::Cubic { ctrl1: ctrl, .. } | Event::Quadratic { ctrl, .. }) => {
                 let local_pos: Vec2 = W(*ctrl).into();
                 transform.translation = local_pos
                     .local_to_screen(&global_matrix, ss_root)
-                    .extend(0.);
+                    .extend(Z_INDEX_BB_NODE);
             }
             (BBNode::Ctrl2, Event::Cubic { ctrl2, .. }) => {
                 let local_pos: Vec2 = W(*ctrl2).into();
                 transform.translation = local_pos
                     .local_to_screen(&global_matrix, ss_root)
-                    .extend(0.);
+                    .extend(Z_INDEX_BB_NODE);
             }
             (BBNode::To, seg) => {
                 let local_pos: Vec2 = W(seg.to()).into();
                 transform.translation = local_pos
                     .local_to_screen(&global_matrix, ss_root)
-                    .extend(0.);
+                    .extend(Z_INDEX_BB_NODE);
             }
             (bb_node, seg) => {
                 panic!("sys_update_bb_nodes: Unhandled BBNode/PathEvent combination: \n BBNode: {bb_node:?}\n PathEvent: {seg:?}.")
