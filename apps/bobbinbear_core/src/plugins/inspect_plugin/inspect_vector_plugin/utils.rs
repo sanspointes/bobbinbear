@@ -16,38 +16,28 @@ use crate::{
         inspect_plugin::InspectArtifact, screen_space_root_plugin::ScreenSpaceRoot,
         selection_plugin::SelectableBundle,
     },
-    prelude::*,
     utils::{
         coordinates::LocalToScreen,
-        vector::{FromPoint2, FromVec2},
+        vector::FromVec2,
     },
 };
 
 use super::VectorResource;
 
-pub fn spawn_bbpathevent_of_segment(
-    commands: &mut Commands,
-    inspecting_target: BBId,
-    segment: Event<Point<f32>, Point<f32>>,
-    segment_index: usize,
-    screen_space_entity: Entity,
+pub(super) fn make_path_of_pathevent(
+    segment: &Event<Point<f32>, Point<f32>>,
     ss_root: &ScreenSpaceRoot,
     world_transform: &Mat4,
-) -> (Entity, BBId) {
+) -> TessPath {
     let mut pb = TessPath::builder();
-
-    #[allow(unused_assignments)]
-    let mut name: Option<Name> = None;
 
     match segment {
         Event::Line { from, to } => {
-            name = Some(Name::from("BBPathEvent::Line"));
             pb.begin(from.local_to_screen(world_transform, ss_root));
             pb.line_to(to.local_to_screen(world_transform, ss_root));
             pb.end(false);
         }
         Event::Quadratic { from, ctrl, to } => {
-            name = Some(Name::from("BBPathEvent::Quadratic"));
             pb.begin(from.local_to_screen(world_transform, ss_root));
             pb.quadratic_bezier_to(
                 ctrl.local_to_screen(world_transform, ss_root),
@@ -61,8 +51,6 @@ pub fn spawn_bbpathevent_of_segment(
             ctrl2,
             to,
         } => {
-            name = Some(Name::from("BBPathEvent::Cubic"));
-
             pb.begin(from.local_to_screen(world_transform, ss_root));
             pb.cubic_bezier_to(
                 ctrl1.local_to_screen(world_transform, ss_root),
@@ -72,11 +60,9 @@ pub fn spawn_bbpathevent_of_segment(
             pb.end(false);
         }
         Event::Begin { at } => {
-            name = Some(Name::from("BBPathEvent::Begin"));
         }
         Event::End { last, first, close } => {
-            name = Some(Name::from("BBPathEvent::Close"));
-            if close {
+            if *close {
                 pb.begin(last.local_to_screen(world_transform, ss_root));
                 pb.line_to(first.local_to_screen(world_transform, ss_root));
                 pb.end(false);
@@ -84,16 +70,28 @@ pub fn spawn_bbpathevent_of_segment(
         }
     }
 
-    let name =
-        name.expect("sys_handle_enter_inspect_vector: Name is None, this should never happen.");
-    let seg_path = pb.build();
+    pb.build()
+}
+
+pub fn spawn_bbpathevent_of_segment(
+    commands: &mut Commands,
+    inspecting_target: BBId,
+    segment: &Event<Point<f32>, Point<f32>>,
+    segment_index: usize,
+    screen_space_entity: Entity,
+    ss_root: &ScreenSpaceRoot,
+    world_transform: &Mat4,
+) -> (Entity, BBId) {
+    #[allow(unused_assignments)]
+    let name = format!("{segment:?}");
 
     let path_seg_bbid = BBId::default();
+    let seg_path = make_path_of_pathevent(segment, ss_root, world_transform);
 
     let e = commands
         .spawn((
-            name,
-            BBPathEvent::from(segment),
+            Name::from(name),
+            BBPathEvent::from(*segment),
             Stroke::new(Color::BLACK, 2.),
             InspectArtifact(inspecting_target),
             BBIndex(segment_index),
@@ -126,15 +124,12 @@ pub fn spawn_bbnodes_of_segment(
     screen_space_entity: Entity,
     ss_root: &ScreenSpaceRoot,
 ) -> Vec<(Entity, BBId)> {
-    let mut temp_vec = Vec2::default();
     // Spawns a single BBNode
     let mut spawn_bbnode =
         |res: &Res<VectorResource>, bb_node: BBNode, local_p: &Point<f32>| -> (Entity, BBId) {
             let bbid = BBId::default();
 
-            let vec3 = temp_vec.copy_from_p2(*local_p).extend(0.);
-            let vec3 = parent_matrix.transform_vector3(vec3);
-            let ss_position = ss_root.world_to_screen(vec3.xy());
+            let screen_pos = local_p.local_to_screen(parent_matrix, ss_root).into_vec2();
 
             let bundle = (
                 BBId::default(),
@@ -158,7 +153,7 @@ pub fn spawn_bbnodes_of_segment(
                         BBNode::To => res.cached_paths.endpoint_node.clone(),
                     }),
                     transform: Transform {
-                        translation: ss_position.extend(0.),
+                        translation: screen_pos.extend(0.),
                         ..Default::default()
                     },
                     ..Default::default()

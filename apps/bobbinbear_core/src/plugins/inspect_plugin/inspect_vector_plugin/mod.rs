@@ -16,7 +16,7 @@ use bevy_prototype_lyon::{
 use crate::{
     components::{
         bbid::BBId,
-        scene::{BBIndex, BBNode, BBObject},
+        scene::{BBIndex, BBNode, BBObject, BBPathEvent},
     },
     msgs::{cmds::inspect_cmd::InspectingTag, sys_msg_handler},
     plugins::{
@@ -31,6 +31,8 @@ use crate::{
     prelude::W,
     utils::coordinates::LocalToScreen,
 };
+
+use self::utils::make_path_of_pathevent;
 
 use super::InspectState;
 
@@ -49,7 +51,10 @@ impl Plugin for InspectVectorPlugin {
             )
             .add_systems(
                 Update,
-                (sys_check_bb_node_needs_update.pipe(sys_update_bb_nodes))
+                (
+                    sys_check_needs_update.pipe(sys_update_bb_nodes),
+                    sys_check_needs_update.pipe(sys_update_bb_path_event),
+                )
                     .run_if(in_state(InspectState::InspectVector))
                     .after(sys_msg_handler),
             );
@@ -136,7 +141,7 @@ fn sys_handle_enter_inspect_vector(
         spawn_bbpathevent_of_segment(
             &mut commands,
             *bbid,
-            seg,
+            &seg,
             i,
             ss_root_entity,
             ss_root,
@@ -174,7 +179,7 @@ fn sys_handle_exit_inspect_vector(
     }
 }
 
-fn sys_check_bb_node_needs_update(
+fn sys_check_needs_update(
     q_inspected_vector: Query<
         Entity,
         (
@@ -250,5 +255,41 @@ fn sys_update_bb_nodes(
                 panic!("sys_update_bb_nodes: Unhandled BBNode/PathEvent combination: \n BBNode: {bb_node:?}\n PathEvent: {seg:?}.")
             }
         }
+    }
+}
+
+fn sys_update_bb_path_event(
+    In(needs_update): In<bool>,
+    q_inspected_vector: Query<
+        (Entity, &BBId, &mut Path, &GlobalTransform),
+        (With<BBObject>, With<InspectingTag>),
+    >,
+    q_ss_root: Query<&ScreenSpaceRoot>,
+    mut q_bb_path_event: Query<(&BBPathEvent, &BBIndex, &mut Path), Without<InspectingTag>>,
+) {
+    if !needs_update {
+        return;
+    }
+
+    let ss_root = q_ss_root.single();
+    let Ok((_entity, _bbid, path, global_transform)) = q_inspected_vector.get_single() else {
+        return;
+    };
+
+    let segments: Vec<_> = path.0.iter().collect();
+
+    let global_matrix = global_transform.compute_matrix();
+
+    for (bb_path_event, bb_index, mut path) in q_bb_path_event.iter_mut() {
+        let Some(segment) = segments.get(bb_index.0) else {
+            warn!(
+                "sys_handle_changed: Attempted to get segment at index {:?} but none found.",
+                bb_index.0
+            );
+            continue;
+        };
+
+        let seg_path = make_path_of_pathevent(segment, ss_root, &global_matrix);
+        *path = Path(seg_path);
     }
 }

@@ -65,7 +65,6 @@ impl Plugin for ScreenSpaceRootPlugin {
 /// Creates the screenspace root.
 fn sys_setup(
     mut commands: Commands,
-    r_assets: Res<AssetServer>,
     q_window: Query<&Window, With<PrimaryWindow>>,
     q_camera: Query<(Entity, &OrthographicProjection), With<CameraTag>>,
 ) {
@@ -91,15 +90,6 @@ fn sys_setup(
         ))
         .set_parent(cam_entity)
         .id();
-
-    let my_gltf = r_assets.load("2CylinderEngine.glb#Scene0");
-    commands
-        .spawn(SceneBundle {
-            scene: my_gltf,
-            transform: Transform::from_xyz(2.0, 0.0, -5.0),
-            ..Default::default()
-        })
-        .set_parent(e_ss_root);
 }
 
 /// Updates the screenspace root in accordance with the camera projection
