@@ -94,6 +94,53 @@ impl LocalToWorld for Vec4 {
     }
 }
 
+pub trait ScreenToWorld {
+    fn screen_to_world(&self, ss_root: &ScreenSpaceRoot) -> Self;
+}
+
+impl ScreenToWorld for Vec2 {
+    fn screen_to_world(&self, ss_root: &ScreenSpaceRoot) -> Self {
+        ss_root.screen_to_world(*self)
+    }
+}
+impl ScreenToWorld for Vec3 {
+    fn screen_to_world(&self, ss_root: &ScreenSpaceRoot) -> Self {
+        ss_root.screen_to_world(self.xy()).extend(0.)
+    }
+}
+impl ScreenToWorld for Vec4 {
+    fn screen_to_world(&self, ss_root: &ScreenSpaceRoot) -> Self {
+        let v = ss_root.screen_to_world(self.xy());
+        Vec4::new(v.x, v.y, 0., 1.)
+    }
+}
+
+pub trait ScreenToLocal {
+    fn screen_to_local(&self, inverse_world_matrix: &Mat4, ss_root: &ScreenSpaceRoot) -> Self;
+}
+
+impl ScreenToLocal for Vec2 {
+    fn screen_to_local(&self, inverse_world_matrix: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let wp = self.screen_to_world(ss_root);
+        inverse_world_matrix.mul_vec4(Vec4::new(wp.x, wp.y, 0., 1.)).xy()
+    }
+}
+impl ScreenToLocal for Vec3 {
+    fn screen_to_local(&self, inverse_world_matrix: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let wp = self.screen_to_world(ss_root);
+        inverse_world_matrix.mul_vec4(Vec4::new(wp.x, wp.y, wp.z, 1.)).xyz()
+    }
+}
+impl ScreenToLocal for Vec4 {
+    fn screen_to_local(&self, inverse_world_matrix: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let wp = self.screen_to_world(ss_root);
+        inverse_world_matrix.mul_vec4(wp)
+    }
+}
+
+
+
+
 /// TESTS
 
 #[test]

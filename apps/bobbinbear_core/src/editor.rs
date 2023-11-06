@@ -8,7 +8,7 @@ use bevy_debug_text_overlay::OverlayPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
-    components::{bbid::BBId, scene::{BBObject, BBPathEvent, BBNode}},
+    components::{bbid::BBId, scene::{BBObject, BBNode}, bbpath::{BBPathEvent, BBPath}},
     msgs::{cmds::CmdMsgPlugin, api::ApiMsg, sys_msg_handler, Msg, ToolMsgPlugin},
     plugins::{
         bounds_2d_plugin::Bounds2DPlugin,
@@ -103,7 +103,7 @@ impl Plugin for EditorPlugin {
 
             .register_type::<BBId>()
             .register_type::<BBObject>()
-            .register_type::<BBPathEvent>()
+            .register_type::<BBPath>()
             .register_type::<BBNode>()
             .register_type::<ScreenSpaceRoot>()
 

@@ -1,6 +1,9 @@
 mod utils;
 
-use bevy::{math::Vec4Swizzles, prelude::*};
+use bevy::{
+    math::{Vec3Swizzles, Vec4Swizzles},
+    prelude::*,
+};
 
 use bevy_prototype_lyon::{
     prelude::{
@@ -16,8 +19,10 @@ use bevy_prototype_lyon::{
 use crate::{
     components::{
         bbid::BBId,
-        scene::{BBIndex, BBNode, BBObject, BBPathEvent},
+        scene::{BBIndex, BBNode, BBObject},
+        bbpath::{BBPath, BBPathEvent}
     },
+    constants::Z_INDEX_BB_NODE,
     msgs::{cmds::inspect_cmd::InspectingTag, sys_msg_handler},
     plugins::{
         inspect_plugin::{
@@ -29,10 +34,10 @@ use crate::{
         screen_space_root_plugin::ScreenSpaceRoot,
     },
     prelude::W,
-    utils::coordinates::LocalToScreen, constants::Z_INDEX_BB_NODE,
+    utils::coordinates::{LocalToScreen, ScreenToLocal},
 };
 
-use self::utils::make_path_of_pathevent;
+use self::utils::make_path_of_bb_path_event;
 
 use super::InspectState;
 
@@ -52,16 +57,23 @@ impl Plugin for InspectVectorPlugin {
             .add_systems(
                 Update,
                 (
-                    sys_check_needs_update.pipe(sys_update_bb_nodes),
-                    sys_check_needs_update.pipe(sys_update_bb_path_event),
+                    (
+                        sys_check_needs_update.pipe(sys_update_bb_nodes),
+                        sys_check_needs_update.pipe(sys_update_bb_path_event),
+                    ),
+                    // sys_handle_bb_node_moved,
                 )
+                    .chain()
                     .run_if(in_state(InspectState::InspectVector))
                     .after(sys_msg_handler),
             );
     }
 }
 
-type TessEvent = Event<Point, Point>;
+#[derive(Component, Reflect, Debug, Default)]
+/// Tag that marks an entity as a segment of a BBObject::Vector, used with BBIndex to lookup a
+/// BBPathEvent.
+struct BBVectorSegmentTag;
 
 ///
 /// Vector Entity Resource
@@ -141,7 +153,7 @@ fn sys_handle_enter_inspect_vector(
         spawn_bbpathevent_of_segment(
             &mut commands,
             *bbid,
-            &seg,
+            BBPathEvent::from(seg),
             i,
             ss_root_entity,
             ss_root,
@@ -185,7 +197,7 @@ fn sys_check_needs_update(
         (
             With<BBObject>,
             With<InspectingTag>,
-            Or<(Changed<GlobalTransform>, Changed<Path>)>,
+            Or<(Changed<GlobalTransform>, Changed<BBPath>)>,
         ),
     >,
     q_ss_root: Query<Entity, Changed<ScreenSpaceRoot>>,
@@ -198,7 +210,7 @@ fn sys_check_needs_update(
 fn sys_update_bb_nodes(
     In(needs_update): In<bool>,
     q_inspected_vector: Query<
-        (Entity, &BBId, &Path, &GlobalTransform),
+        (Entity, &BBId, &BBPath, &GlobalTransform),
         (With<BBObject>, With<InspectingTag>),
     >,
     q_ss_root: Query<&ScreenSpaceRoot>,
@@ -209,16 +221,14 @@ fn sys_update_bb_nodes(
     }
 
     let ss_root = q_ss_root.single();
-    let Ok((_entity, _bbid, path, global_transform)) = q_inspected_vector.get_single() else {
+    let Ok((_entity, _bbid, bb_path, global_transform)) = q_inspected_vector.get_single() else {
         return;
     };
-
-    let segments: Vec<_> = path.0.iter().collect();
 
     let global_matrix = global_transform.compute_matrix();
 
     for (bb_node, bb_index, mut transform) in &mut q_bb_node {
-        let Some(segment) = segments.get(bb_index.0) else {
+        let Some(segment) = bb_path.get(bb_index.0) else {
             warn!(
                 "sys_handle_changed: Attempted to get segment at index {:?} but none found.",
                 bb_index.0
@@ -228,25 +238,25 @@ fn sys_update_bb_nodes(
 
         match (bb_node, segment) {
             (BBNode::From, seg) => {
-                let local_pos: Vec2 = W(seg.from()).into();
+                let local_pos = seg.from_position();
                 transform.translation = local_pos
                     .local_to_screen(&global_matrix, ss_root)
                     .extend(Z_INDEX_BB_NODE);
             }
-            (BBNode::Ctrl1, Event::Cubic { ctrl1: ctrl, .. } | Event::Quadratic { ctrl, .. }) => {
-                let local_pos: Vec2 = W(*ctrl).into();
+            (BBNode::Ctrl1, BBPathEvent::Cubic { ctrl1, .. } | BBPathEvent::Quadratic { ctrl1, .. }) => {
+                let local_pos = ctrl1;
                 transform.translation = local_pos
                     .local_to_screen(&global_matrix, ss_root)
                     .extend(Z_INDEX_BB_NODE);
             }
-            (BBNode::Ctrl2, Event::Cubic { ctrl2, .. }) => {
-                let local_pos: Vec2 = W(*ctrl2).into();
+            (BBNode::Ctrl2, BBPathEvent::Cubic { ctrl2, .. }) => {
+                let local_pos = ctrl2;
                 transform.translation = local_pos
                     .local_to_screen(&global_matrix, ss_root)
                     .extend(Z_INDEX_BB_NODE);
             }
             (BBNode::To, seg) => {
-                let local_pos: Vec2 = W(seg.to()).into();
+                let local_pos: Vec2 = seg.to_position();
                 transform.translation = local_pos
                     .local_to_screen(&global_matrix, ss_root)
                     .extend(Z_INDEX_BB_NODE);
@@ -260,28 +270,26 @@ fn sys_update_bb_nodes(
 
 fn sys_update_bb_path_event(
     In(needs_update): In<bool>,
-    q_inspected_vector: Query<
-        (Entity, &BBId, &mut Path, &GlobalTransform),
+    mut q_inspected_vector: Query<
+        (Entity, &BBId, &mut BBPath, &GlobalTransform),
         (With<BBObject>, With<InspectingTag>),
     >,
     q_ss_root: Query<&ScreenSpaceRoot>,
-    mut q_bb_path_event: Query<(&BBPathEvent, &BBIndex, &mut Path), Without<InspectingTag>>,
+    mut q_bb_path_event: Query<(&BBIndex, &mut Path), (With<BBVectorSegmentTag>, Without<InspectingTag>)>,
 ) {
     if !needs_update {
         return;
     }
 
     let ss_root = q_ss_root.single();
-    let Ok((_entity, _bbid, path, global_transform)) = q_inspected_vector.get_single() else {
+    let Ok((_entity, _bbid, mut bb_path, global_transform)) = q_inspected_vector.get_single_mut() else {
         return;
     };
 
-    let segments: Vec<_> = path.0.iter().collect();
-
     let global_matrix = global_transform.compute_matrix();
 
-    for (bb_path_event, bb_index, mut path) in q_bb_path_event.iter_mut() {
-        let Some(segment) = segments.get(bb_index.0) else {
+    for (bb_index, mut path) in q_bb_path_event.iter_mut() {
+        let Some(segment) = bb_path.get(bb_index.0) else {
             warn!(
                 "sys_handle_changed: Attempted to get segment at index {:?} but none found.",
                 bb_index.0
@@ -289,7 +297,97 @@ fn sys_update_bb_path_event(
             continue;
         };
 
-        let seg_path = make_path_of_pathevent(segment, ss_root, &global_matrix);
+        let seg_path = make_path_of_bb_path_event(&segment, ss_root, &global_matrix);
         *path = Path(seg_path);
     }
 }
+
+// /// When a BBNode moves, updates the cooresponding BBPathEvent entity
+// ///
+// /// * `q_ss_root`:
+// /// * `q_inspected_vector`:
+// /// * `param_set_bb_node`:
+// fn sys_handle_bb_node_moved(
+//     q_ss_root: Query<&ScreenSpaceRoot>,
+//     q_inspected_vector: Query<
+//         (Entity, &BBId, &mut BBPath, &GlobalTransform),
+//         (With<BBObject>, With<InspectingTag>),
+//     >,
+//     mut param_set_bb_node: ParamSet<(
+//         // Query for if a bbnode changed
+//         Query<
+//             (&BBNode, &BBIndex, &Transform, &InspectArtifact),
+//             (Changed<Transform>, With<InspectArtifact>),
+//         >,
+//         // Query for the BB Path Event objects.
+//         Query<(&BBVectorSegmentTag, &BBIndex), Without<InspectingTag>>,
+//     )>,
+// ) {
+//     let Ok((_entity, inspected_bbid, path, global_transform)) = q_inspected_vector.get_single()
+//     else {
+//         return;
+//     };
+//
+//     let ss_root = q_ss_root.single();
+//     let inverse_global_matrix = global_transform.compute_matrix().inverse();
+//
+//     let mut changed_bb_nodes: Vec<(BBNode, BBIndex, Vec3)> = param_set_bb_node
+//         .p0()
+//         .iter()
+//         .filter(|(_, _, _, inspect_artifact)| inspect_artifact.0.eq(inspected_bbid))
+//         .map(|(_1, _2, transform, _3)| (*_1, *_2, transform.translation))
+//         .collect();
+//
+//     for (mut bb_path_event, bb_index) in &mut param_set_bb_node.p1() {
+//         let bb_node = changed_bb_nodes.iter().find(|(_, i, _)| bb_index.eq(i));
+//
+//         let Some((bb_node, _, screen_pos)) = bb_node else {
+//             continue;
+//         };
+//
+//         let local_pos = screen_pos
+//             .screen_to_local(&inverse_global_matrix, ss_root)
+//             .xy();
+//
+//         bb_path_event.update_from_bb_node(*bb_node, local_pos);
+//     }
+// }
+//
+// /// When a BBPathEvent is updated, updated the inspected entity path
+// ///
+// /// * `q_ss_root`: 
+// /// * `q_inspected_vector`: 
+// /// * `param_set_bb_path_event`: 
+// fn sys_handle_bb_path_event_updated(
+//     q_ss_root: Query<&ScreenSpaceRoot>,
+//     q_inspected_vector: Query<
+//         (Entity, &BBId, &mut Path, &GlobalTransform),
+//         (With<BBObject>, With<InspectingTag>),
+//     >,
+//     mut param_set_bb_path_event: ParamSet<(
+//         // Query for changed bb_path_event
+//         Query<Entity, With<InspectArtifact>>,
+//         Query<(&BBVectorSegmentTag, &BBIndex, &InspectArtifact)>,
+//     )>,
+// ) {
+//     let some_changed = param_set_bb_path_event.p0().iter().next().is_some();
+//     if !some_changed {
+//         return;
+//     }
+//     let Ok((_entity, inspected_bbid, mut inspected_path, global_transform)) = q_inspected_vector.get_single()
+//     else {
+//         return;
+//     };
+//
+//     let ss_root = q_ss_root.single();
+//
+//     let mut ordered_bb_path_events: Vec<(BBPathEvent, BBIndex)> = param_set_bb_path_event
+//         .p1()
+//         .iter()
+//         .filter(|(_, _, inspect_artifact)| inspect_artifact.0.eq(inspected_bbid))
+//         .map(|(bb_path_event, bb_index, _)| (*bb_path_event, *bb_index))
+//         .collect();
+//     ordered_bb_path_events.sort_by(|a, b| a.1.cmp(&b.1))
+//
+//
+// }

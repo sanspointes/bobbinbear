@@ -1,29 +1,8 @@
-
-use bevy::prelude::*;
-// use bevy_prototype_lyon::prelude::{
-//     tess::{
-//         geom::euclid::{Point2D, UnknownUnit},
-//         path::{Event, Path as TessPath},
-//     },
-//     PathBuilder,
-// };
+// use bevy::prelude::*;
+// use bevy_prototype_lyon::prelude::tess::{math::Point, path::Event};
 //
-// use crate::utils::vector::{FromPoint2, FromVec2};
-
-#[derive(Component, Reflect, Default)]
-#[reflect(Component)]
-/// Represents a scene object that would show in the editor, i.e. a Vector shape, some text.
-pub enum BBObject {
-    // Scene Object type for a vector element
-    #[default]
-    Vector,
-}
-
-#[derive(Component, Reflect, Default, Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[reflect(Component)]
-/// Component represents something that has an index associated with it.
-pub struct BBIndex(pub usize);
-
+// use super::scene::BBNode;
+//
 // #[derive(Component, Reflect, Debug, Copy, Clone)]
 // #[reflect(Component)]
 // /// Stores the position of the segment in worldspace coordinates
@@ -123,8 +102,8 @@ pub struct BBIndex(pub usize);
 //     }
 // }
 //
-// impl From<Event<Point2D<f32, UnknownUnit>, Point2D<f32, UnknownUnit>>> for BBPathEvent {
-//     fn from(value: Event<Point2D<f32, UnknownUnit>, Point2D<f32, UnknownUnit>>) -> Self {
+// impl From<Event<Point, Point>> for BBPathEvent {
+//     fn from(value: Event<Point, Point>) -> Self {
 //         match value {
 //             Event::Begin { at } => BBPathEvent::Begin { at: at.into_vec2() },
 //             Event::Line { from, to } => BBPathEvent::Line {
@@ -155,7 +134,7 @@ pub struct BBIndex(pub usize);
 //         }
 //     }
 // }
-// impl From<BBPathEvent> for Event<Point2D<f32, UnknownUnit>, Point2D<f32, UnknownUnit>> {
+// impl From<BBPathEvent> for Event<Point, Point> {
 //     fn from(value: BBPathEvent) -> Self {
 //         match value {
 //             BBPathEvent::Begin { at } => Event::Begin { at: at.into_p2() },
@@ -187,54 +166,3 @@ pub struct BBIndex(pub usize);
 //         }
 //     }
 // }
-//
-// #[derive(Component, Reflect, Debug, Clone, Default)]
-// #[reflect(Component)]
-// pub struct BBPath(pub Vec<BBPathEvent>);
-//
-// impl From<&TessPath> for BBPath {
-//     fn from(value: &TessPath) -> Self {
-//         let events: Vec<BBPathEvent> = value.iter().map(|event| event.into()).collect();
-//         Self(events)
-//     }
-// }
-//
-// impl From<&BBPath> for TessPath {
-//     fn from(value: &BBPath) -> Self {
-//         let mut pb = PathBuilder::new();
-//         for event in &value.0 {
-//             match event {
-//                 BBPathEvent::Begin { at } => {
-//                     pb.move_to(*at);
-//                 }
-//                 BBPathEvent::Line { to, .. } => {
-//                     pb.line_to(*to);
-//                 }
-//                 BBPathEvent::Quadratic { ctrl, to, .. } => {
-//                     pb.quadratic_bezier_to(*ctrl, *to);
-//                 }
-//                 BBPathEvent::Cubic {
-//                     ctrl1, ctrl2, to, ..
-//                 } => {
-//                     pb.cubic_bezier_to(*ctrl1, *ctrl2, *to);
-//                 }
-//                 BBPathEvent::End { close, .. } => {
-//                     if *close {
-//                         pb.close()
-//                     }
-//                 }
-//             }
-//         }
-//         pb.build().0
-//     }
-// }
-
-#[derive(Component, Reflect, Default, Debug, Copy, Clone)]
-#[reflect(Component)]
-pub enum BBNode {
-    #[default]
-    From,
-    Ctrl1,
-    Ctrl2,
-    To,
-}

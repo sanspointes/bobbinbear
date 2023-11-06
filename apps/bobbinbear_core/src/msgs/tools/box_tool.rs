@@ -2,7 +2,7 @@ use std::ops::{Add, Sub};
 
 use bevy::{ecs::system::SystemState, prelude::*};
 use bevy_prototype_lyon::{
-    prelude::{Fill, GeometryBuilder, ShapeBundle},
+    prelude::{Fill, GeometryBuilder},
     shapes,
 };
 
@@ -19,6 +19,7 @@ use crate::{
         selection_plugin::SelectableBundle,
     },
     types::BBCursor,
+    utils::vector::BBObjectVectorBundle,
 };
 
 use super::{ToolFsmError, ToolFsmResult, ToolHandlerMessage};
@@ -204,14 +205,10 @@ pub fn msg_handler_box_tool_input(
                     Name::from("Box"),
                     bbid,
                     BBObject::Vector,
-                    ShapeBundle {
-                        path: GeometryBuilder::build_as(&shape),
-                        transform: Transform {
-                            translation: Vec3::new(cursor_origin_pos.x, cursor_origin_pos.y, 0.),
-                            ..Default::default()
-                        },
+                    BBObjectVectorBundle::from_shape(&shape).with_transform(Transform {
+                        translation: Vec3::new(cursor_origin_pos.x, cursor_origin_pos.y, 0.),
                         ..Default::default()
-                    },
+                    }),
                     GlobalBounds2D::default(),
                     SelectableBundle::default(),
                     Fill::color(Color::rgb_u8(50, 50, 50)),
@@ -245,14 +242,10 @@ pub fn msg_handler_box_tool_input(
                     Name::from("Box"),
                     bbid,
                     BBObject::Vector,
-                    ShapeBundle {
-                        path: GeometryBuilder::build_as(&shape),
-                        transform: Transform {
-                            translation: Vec3::new(box_origin_pos.x, box_origin_pos.y, 0.),
-                            ..Default::default()
-                        },
+                    BBObjectVectorBundle::from_shape(&shape).with_transform(Transform {
+                        translation: Vec3::new(box_origin_pos.x, box_origin_pos.y, 0.),
                         ..Default::default()
-                    },
+                    }),
                     GlobalBounds2D::default(),
                     SelectableBundle::default(),
                     Fill::color(Color::rgb_u8(50, 50, 50)),

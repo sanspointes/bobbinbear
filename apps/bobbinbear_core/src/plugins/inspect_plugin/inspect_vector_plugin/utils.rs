@@ -10,61 +10,59 @@ use bevy_prototype_lyon::prelude::{
 use crate::{
     components::{
         bbid::BBId,
-        scene::{BBIndex, BBNode, BBPathEvent},
+        scene::{BBIndex, BBNode}, bbpath::BBPathEvent,
     },
+    constants::{Z_INDEX_BB_NODE, Z_INDEX_BB_PATH_EVENT},
     plugins::{
         inspect_plugin::InspectArtifact, screen_space_root_plugin::ScreenSpaceRoot,
         selection_plugin::SelectableBundle,
     },
-    utils::{
-        coordinates::LocalToScreen,
-        vector::FromVec2,
-    }, constants::{Z_INDEX_BB_PATH_EVENT, Z_INDEX_BB_NODE},
+    prelude::W,
+    utils::{coordinates::LocalToScreen, vector::FromVec2},
 };
 
-use super::VectorResource;
+use super::{VectorResource, BBVectorSegmentTag};
 
-pub(super) fn make_path_of_pathevent(
-    segment: &Event<Point<f32>, Point<f32>>,
+pub(super) fn make_path_of_bb_path_event(
+    segment: &BBPathEvent,
     ss_root: &ScreenSpaceRoot,
     world_transform: &Mat4,
 ) -> TessPath {
     let mut pb = TessPath::builder();
 
     match segment {
-        Event::Line { from, to } => {
-            pb.begin(from.local_to_screen(world_transform, ss_root));
-            pb.line_to(to.local_to_screen(world_transform, ss_root));
+        BBPathEvent::Line { from, to } => {
+            pb.begin(W(from.local_to_screen(world_transform, ss_root)).into());
+            pb.line_to(W(to.local_to_screen(world_transform, ss_root)).into());
             pb.end(false);
         }
-        Event::Quadratic { from, ctrl, to } => {
-            pb.begin(from.local_to_screen(world_transform, ss_root));
+        BBPathEvent::Quadratic { from, ctrl1, to } => {
+            pb.begin(W(from.local_to_screen(world_transform, ss_root)).into());
             pb.quadratic_bezier_to(
-                ctrl.local_to_screen(world_transform, ss_root),
-                to.local_to_screen(world_transform, ss_root),
+                W(ctrl1.local_to_screen(world_transform, ss_root)).into(),
+                W(to.local_to_screen(world_transform, ss_root)).into(),
             );
             pb.end(false);
         }
-        Event::Cubic {
+        BBPathEvent::Cubic {
             from,
             ctrl1,
             ctrl2,
             to,
         } => {
-            pb.begin(from.local_to_screen(world_transform, ss_root));
+            pb.begin(W(from.local_to_screen(world_transform, ss_root)).into());
             pb.cubic_bezier_to(
-                ctrl1.local_to_screen(world_transform, ss_root),
-                ctrl2.local_to_screen(world_transform, ss_root),
-                to.local_to_screen(world_transform, ss_root),
+                W(ctrl1.local_to_screen(world_transform, ss_root)).into(),
+                W(ctrl2.local_to_screen(world_transform, ss_root)).into(),
+                W(to.local_to_screen(world_transform, ss_root)).into(),
             );
             pb.end(false);
         }
-        Event::Begin { at } => {
-        }
-        Event::End { last, first, close } => {
+        BBPathEvent::Begin { from } => {}
+        BBPathEvent::End { last, first, close } => {
             if *close {
-                pb.begin(last.local_to_screen(world_transform, ss_root));
-                pb.line_to(first.local_to_screen(world_transform, ss_root));
+                pb.begin(W(last.local_to_screen(world_transform, ss_root)).into());
+                pb.line_to(W(first.local_to_screen(world_transform, ss_root)).into());
                 pb.end(false);
             }
         }
@@ -76,22 +74,22 @@ pub(super) fn make_path_of_pathevent(
 pub fn spawn_bbpathevent_of_segment(
     commands: &mut Commands,
     inspecting_target: BBId,
-    segment: &Event<Point<f32>, Point<f32>>,
+    bb_path_event: BBPathEvent,
     segment_index: usize,
     screen_space_entity: Entity,
     ss_root: &ScreenSpaceRoot,
     world_transform: &Mat4,
 ) -> (Entity, BBId) {
     #[allow(unused_assignments)]
-    let name = format!("{segment:?}");
+    let name = format!("{bb_path_event:?}");
 
     let path_seg_bbid = BBId::default();
-    let seg_path = make_path_of_pathevent(segment, ss_root, world_transform);
+    let seg_path = make_path_of_bb_path_event(&bb_path_event, ss_root, world_transform);
 
     let e = commands
         .spawn((
             Name::from(name),
-            BBPathEvent::from(*segment),
+            BBVectorSegmentTag,
             Stroke::new(Color::BLACK, 2.),
             InspectArtifact(inspecting_target),
             BBIndex(segment_index),

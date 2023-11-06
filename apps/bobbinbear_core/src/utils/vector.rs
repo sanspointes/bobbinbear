@@ -1,5 +1,13 @@
-use bevy::prelude::*;
-use bevy_prototype_lyon::prelude::tess::geom::Point;
+use bevy::{prelude::*, sprite::Mesh2dHandle};
+use bevy_prototype_lyon::{
+    prelude::{
+        tess::{geom::Point, path::Path as TessPath},
+        Path, Geometry, GeometryBuilder,
+    },
+    render::ShapeMaterial,
+};
+
+use crate::components::bbpath::BBPath;
 
 use super::W;
 
@@ -52,5 +60,56 @@ impl From<W<Point<f32>>> for Vec2 {
 impl From<W<Vec2>> for Point<f32> {
     fn from(value: W<Vec2>) -> Self {
         unsafe { std::mem::transmute(value) }
+    }
+}
+
+#[derive(Bundle)]
+pub struct BBObjectVectorBundle {
+    pub path: Path,
+    pub bb_path: BBPath,
+    pub mesh: Mesh2dHandle,
+    pub material: Handle<ShapeMaterial>,
+    pub transform: Transform,
+    pub global_transform: GlobalTransform,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
+}
+impl Default for BBObjectVectorBundle {
+    fn default() -> Self {
+        Self {
+            path: Path(TessPath::new()),
+            bb_path: BBPath::default(),
+            mesh: Mesh2dHandle::default(),
+            material: Handle::<ShapeMaterial>::default(),
+            transform: Transform::default(),
+            global_transform: GlobalTransform::default(),
+            visibility: Visibility::default(),
+            computed_visibility: ComputedVisibility::default(),
+        }
+    }
+}
+#[allow(dead_code)]
+impl BBObjectVectorBundle {
+    pub fn from_shape(shape: &impl Geometry) -> Self {
+        let tess_path = GeometryBuilder::build_as(shape).0;
+        BBObjectVectorBundle::from_tess_path(tess_path)
+    }
+    pub fn from_tess_path(tess_path: TessPath) -> Self {
+        Self {
+            bb_path: (&tess_path).into(),
+            path: Path(tess_path),
+            ..Default::default()
+        }
+    }
+    pub fn from_bb_path(bb_path: BBPath) -> Self {
+        Self {
+            path: Path((&bb_path).into()),
+            bb_path,
+            ..Default::default()
+        }
+    }
+    pub fn with_transform(mut self, transform: Transform) -> Self {
+        self.transform = transform;
+        self
     }
 }
