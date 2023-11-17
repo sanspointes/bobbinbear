@@ -36,7 +36,7 @@ inspector = ["bevy-inspector-egui"]
 trace_bevy = []
 # Useful for tracing the system order of execution with tracy
 # NOTE: This does not debug the bevy systems.  Just our app.
-debug_trace = ["bevy/trace", "bevy/trace_tracy", "bevy_prototype_lyon/trace"]
+debug_trace = ["bevy/trace", "bevy/trace_tracy"]
 # Debug select tool / selection systems
 debug_select = []
 # Debug reflection/serialisation/deserialisation
@@ -55,7 +55,7 @@ wasm-bindgen = { version = "0.2.87", features = [ "serde", "serde-serialize" ] }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 bevy = { version = "0.11.3", default-features = false }
-bevy_prototype_lyon = { path = "../../packages/bevy_prototype_lyon", features = [ "trace" ] }
+bevy_prototype_lyon = { version = "0.10" }
 crossbeam-channel = "0.5.8"
 lazy_static = "1.4.0"
 bevy_mod_raycast = "0.14.1"

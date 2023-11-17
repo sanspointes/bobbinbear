@@ -3,5 +3,5 @@ resolver = "2"
 
 members = [
     "apps/bobbinbear_core",
-    "packages/bevy_prototype_lyon",
+    "packages/bb_vector_network",
 ]
