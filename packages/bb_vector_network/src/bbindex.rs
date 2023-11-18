@@ -1,4 +1,4 @@
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 // Represents a reference to an anchor node in the BBVectorNetwork
 pub struct BBAnchorIndex(pub usize);
 impl From<usize> for BBAnchorIndex {
@@ -30,7 +30,7 @@ impl std::ops::SubAssign<usize> for BBAnchorIndex {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
 /// Represents an index position of a BBVNLink, which are joins between two anchors.
 pub struct BBLinkIndex(pub usize);
 impl From<usize> for BBLinkIndex {

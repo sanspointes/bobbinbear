@@ -2,6 +2,7 @@ mod bbvectornetwork;
 mod bbvnlink;
 mod bbindex;
 mod bbvnregion;
+mod traits;
 
 pub fn add(left: usize, right: usize) -> usize {
     left + right
