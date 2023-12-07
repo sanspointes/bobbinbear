@@ -1,13 +1,19 @@
 #![allow(dead_code)]
 
-use std::ops::Sub;
+use std::ops::{Add, Sub};
 
+use comfy::{draw_text, Vec2Extensions, ORANGE, ORANGE_RED, PURPLE};
 use glam::Vec2;
 
-use crate::{bbindex::{BBAnchorIndex, BBLinkIndex}, bbvectornetwork::BBVectorNetwork};
+use crate::{
+    bbindex::{BBAnchorIndex, BBLinkIndex},
+    bbvectornetwork::BBVectorNetwork,
+    debug_draw::{draw_det_arc, draw_determinate},
+    traits::Determinate,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(super) enum BBVNLink {
+pub enum BBVNLink {
     Line {
         start: BBAnchorIndex,
         end: BBAnchorIndex,
@@ -35,6 +41,10 @@ impl BBVNLink {
         }
     }
 
+    pub fn start_point(&self, bbvn: &BBVectorNetwork) -> Vec2 {
+        *bbvn.anchor(self.start_index()).unwrap()
+    }
+
     /// Gets the index of the `end` anchor
     pub fn end_index(&self) -> BBAnchorIndex {
         match self {
@@ -44,25 +54,54 @@ impl BBVNLink {
         }
     }
 
+    pub fn end_point(&self, bbvn: &BBVectorNetwork) -> Vec2 {
+        *bbvn.anchor(self.end_index()).unwrap()
+    }
+
+    pub fn t_point(&self, bbvn: &BBVectorNetwork, t: f32) -> Vec2 {
+        match self {
+            BBVNLink::Line { .. } => Vec2::lerp(self.start_point(bbvn), self.end_point(bbvn), t),
+            BBVNLink::Quadratic { ctrl1, .. } => {
+                let p1 = Vec2::lerp(self.start_point(bbvn), *ctrl1, t);
+                let p2 = Vec2::lerp(*ctrl1, self.end_point(bbvn), t);
+                Vec2::lerp(p1, p2, t)
+            }
+            BBVNLink::Cubic { ctrl1, ctrl2, .. } => {
+                let p1 = Vec2::lerp(self.start_point(bbvn), *ctrl1, t);
+                let p2 = Vec2::lerp(*ctrl1, *ctrl2, t);
+                let p3 = Vec2::lerp(*ctrl2, self.end_point(bbvn), t);
+                Vec2::lerp(Vec2::lerp(p1, p2, t), Vec2::lerp(p2, p3, t), t)
+            }
+        }
+    }
+
     /// Calculates the tangent of the bezier/line at `t=0`
     ///
     /// * `bbvn`: The BBVectorNetwork to source the point data from
     pub fn calc_start_tangent(&self, bbvn: &BBVectorNetwork) -> Vec2 {
         match self {
             BBVNLink::Line { start, end } => {
-                let v_start = bbvn.anchor(*start).unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
-                let v_end = bbvn.anchor(*end).unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
-                
+                let v_start = bbvn
+                    .anchor(*start)
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
+                let v_end = bbvn
+                    .anchor(*end)
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
+
                 v_end.sub(*v_start)
             }
             BBVNLink::Quadratic { start, ctrl1, .. } => {
-                let v_start = bbvn.anchor(*start).unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
-                
+                let v_start = bbvn
+                    .anchor(*start)
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
+
                 ctrl1.sub(*v_start)
             }
             BBVNLink::Cubic { start, ctrl1, .. } => {
-                let v_start = bbvn.anchor(*start).unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
-                
+                let v_start = bbvn
+                    .anchor(*start)
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
+
                 ctrl1.sub(*v_start)
             }
         }
@@ -74,20 +113,28 @@ impl BBVNLink {
     pub fn calc_end_tangent(&self, bbvn: &BBVectorNetwork) -> Vec2 {
         match self {
             BBVNLink::Line { start, end } => {
-                let v_start = bbvn.anchor(*start).unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
-                let v_end = bbvn.anchor(*end).unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
+                let v_start = bbvn
+                    .anchor(*start)
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
+                let v_end = bbvn
+                    .anchor(*end)
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
 
                 v_end.sub(*v_start)
             }
             BBVNLink::Quadratic { end, ctrl1, .. } => {
-                let v_end = bbvn.anchor(*end).unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
+                let v_end = bbvn
+                    .anchor(*end)
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
 
                 v_end.sub(*ctrl1)
             }
-            BBVNLink::Cubic { end, ctrl1, .. } => {
-                let v_end = bbvn.anchor(*end).unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
-                
-                v_end.sub(*ctrl1)
+            BBVNLink::Cubic { end, ctrl2, .. } => {
+                let v_end = bbvn
+                    .anchor(*end)
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
+
+                v_end.sub(*ctrl2)
             }
         }
     }
@@ -119,7 +166,7 @@ impl BBVNLink {
     }
     /// Returns true if this BBVNLink references the given index.
     ///
-    /// * `index`: 
+    /// * `index`:
     pub fn references_index(&self, index: BBAnchorIndex) -> bool {
         self.start_index() == index || self.end_index() == index
     }
@@ -128,10 +175,10 @@ impl BBVNLink {
     /// references.
     /// Used for when a node is deleted and the indexes need to be shifted so everything is linked
     /// correctly.
-    pub fn deincrement_anchor_index_over(&mut self, index: BBAnchorIndex) {
+    pub fn deincrement_anchor_index_over_value(&mut self, index: BBAnchorIndex) {
         match self {
-            BBVNLink::Line { start, end } 
-            | BBVNLink::Quadratic { start, end, .. } 
+            BBVNLink::Line { start, end }
+            | BBVNLink::Quadratic { start, end, .. }
             | BBVNLink::Cubic { start, end, .. } => {
                 if *start > index {
                     *start -= 1;
@@ -141,5 +188,194 @@ impl BBVNLink {
                 }
             }
         }
+    }
+
+    /// Returns a clone of the BBVNLink but in the reversed direction
+    pub fn reversed(&self) -> Self {
+        match self {
+            BBVNLink::Line { start, end } => BBVNLink::Line {
+                start: *end,
+                end: *start,
+            },
+            BBVNLink::Quadratic { start, ctrl1, end } => BBVNLink::Quadratic {
+                start: *end,
+                ctrl1: *ctrl1,
+                end: *start,
+            },
+            BBVNLink::Cubic {
+                start,
+                ctrl1,
+                ctrl2,
+                end,
+            } => BBVNLink::Cubic {
+                start: *end,
+                ctrl1: *ctrl2,
+                ctrl2: *ctrl1,
+                end: *start,
+            },
+        }
+    }
+
+    pub fn translate(&mut self, translation: Vec2) {
+        match self {
+            BBVNLink::Quadratic { ctrl1, .. } => {
+                *ctrl1 = ctrl1.add(translation);
+            }
+            BBVNLink::Cubic { ctrl1, ctrl2, .. } => {
+                *ctrl1 = ctrl1.add(translation);
+                *ctrl2 = ctrl2.add(translation);
+            }
+            _ => (),
+        }
+    }
+
+    pub fn cw_most_next_link(
+        &self,
+        bbvn: &BBVectorNetwork,
+        next_links: &[BBLinkIndex],
+    ) -> Option<BBLinkIndex> {
+        let mut next_link_dirs: Vec<_> = next_links
+            .iter()
+            .map(|link_index| {
+                let link = bbvn.links.get(link_index.0).unwrap_or_else(|| {
+                panic!("BBVNRegion::from_link(..) Trying to get link {link_index:?} but not found.")
+            });
+                let tangent = link.calc_start_tangent(bbvn);
+                (*link_index, tangent)
+            })
+            .collect();
+
+        let prev_dir = self.calc_start_tangent(bbvn);
+
+        // CCW Most node
+        // 1. Try find link that is to left of current dir, else take first link
+        // 2. Iterate through links trying to find if a link is further to the left than the
+        //    current left most link.
+
+
+        let mut next: Option<(BBLinkIndex, Vec2)> = None;
+
+        for (i, (link, dir)) in next_link_dirs.into_iter().enumerate() {
+            let Some((_, next_dir)) = next else {
+                next = Some((link, dir));
+                draw_det_arc(
+                    self.end_point(bbvn),
+                    0.5 + (i as f32 * 0.5),
+                    prev_dir,
+                    dir,
+                    dir,
+                );
+                continue;
+            };
+
+            draw_det_arc(
+                self.end_point(bbvn),
+                0.5 + (i as f32 * 0.5),
+                prev_dir,
+                dir,
+                next_dir,
+            );
+            let el_det = prev_dir.determinate(dir);
+            let is_ccw_of_prev = el_det > 0.;
+            let next_det = next_dir.determinate(dir);
+
+            if !is_ccw_of_prev || next_det < 0. {
+                next = Some((link, dir));
+            }
+        }
+
+        next.map(|(v, _)| v)
+    }
+
+    #[cfg(feature = "debug_draw")]
+    pub fn debug_draw(&self, bbvn: &BBVectorNetwork) {
+        self.debug_draw_with_color_and_z_index(bbvn, comfy::Color::rgb8(0, 255, 0), 10);
+    }
+    #[cfg(feature = "debug_draw")]
+    pub fn debug_draw_with_color_and_z_index(
+        &self,
+        bbvn: &BBVectorNetwork,
+        color: comfy::Color,
+        z_index: i32,
+    ) {
+        match self {
+            BBVNLink::Line { .. } => {
+                let start_point = bbvn.anchor(self.start_index());
+                let end_point = bbvn.anchor(self.end_index());
+
+                if let (Some(start), Some(end)) = (start_point, end_point) {
+                    comfy::draw_arrow(*start, *end, 0.03, color, z_index);
+                }
+            }
+            link @ BBVNLink::Quadratic { .. } | link @ BBVNLink::Cubic { .. } => {
+                let mut p_prev = self.start_point(bbvn);
+                for i in 0..20 {
+                    let i = i + 1;
+                    let t = i as f32 / 20.;
+                    let p = self.t_point(bbvn, t);
+                    if i == 20 {
+                        comfy::draw_arrow(p_prev, p, 0.03, color, z_index);
+                    } else {
+                        comfy::draw_line(p_prev, p, 0.03, color, z_index);
+                    }
+                    p_prev = p;
+                }
+
+                match link {
+                    BBVNLink::Quadratic { ctrl1, .. } => {
+                        comfy::draw_line(self.start_point(bbvn), *ctrl1, 0.015, color, z_index);
+                        comfy::draw_line(*ctrl1, self.end_point(bbvn), 0.015, color, z_index);
+                    }
+                    BBVNLink::Cubic { ctrl1, ctrl2, .. } => {
+                        comfy::draw_line(self.start_point(bbvn), *ctrl1, 0.015, color, z_index);
+                        comfy::draw_line(*ctrl2, self.end_point(bbvn), 0.015, color, z_index);
+                    }
+                    BBVNLink::Line { .. } => (),
+                }
+            }
+        }
+
+        let p = self.start_point(bbvn);
+        comfy::draw_line(
+            p,
+            p + self.calc_start_tangent(bbvn).normalize(),
+            0.015,
+            comfy::GRAY,
+            z_index + 1,
+        );
+        let p = self.end_point(bbvn);
+        comfy::draw_line(
+            p,
+            p + self.calc_end_tangent(bbvn).normalize(),
+            0.015,
+            comfy::GRAY,
+            z_index + 1,
+        );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use glam::Vec2;
+
+    use crate::{bbindex::BBLinkIndex, bbvectornetwork::BBVectorNetwork};
+
+    #[test]
+    pub fn finds_ccw_simple_fork() {
+        let mut bbvn = BBVectorNetwork::new();
+        let join_node = bbvn.line(Vec2::new(10., 10.), Vec2::new(10., 20.));
+        let test_link_index = BBLinkIndex(0);
+        let test_link = bbvn.link(test_link_index).cloned().unwrap();
+
+        bbvn.line_from(join_node, Vec2::new(0., 30.));
+        let target_link = BBLinkIndex(1);
+
+        bbvn.line_from(join_node, Vec2::new(20., 30.));
+        let error_link = BBLinkIndex(2);
+
+        let next_links = vec![error_link, target_link];
+        let next_link = test_link.cw_most_next_link(&bbvn, &next_links[..]).unwrap();
+
+        assert_eq!(next_link, target_link)
     }
 }

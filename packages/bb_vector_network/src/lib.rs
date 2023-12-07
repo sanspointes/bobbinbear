@@ -3,18 +3,9 @@ mod bbvnlink;
 mod bbindex;
 mod bbvnregion;
 mod traits;
+mod debug_draw;
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+pub use bbvectornetwork::BBVectorNetwork;
+pub use bbindex::{BBLinkIndex, BBAnchorIndex};
+pub use bbvnlink::BBVNLink;
+pub use bbvnregion::{BBVNRegion, BBVNWindingRule};

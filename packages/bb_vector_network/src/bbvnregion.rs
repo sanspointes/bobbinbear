@@ -3,14 +3,13 @@
 use crate::{
     bbindex::{BBAnchorIndex, BBLinkIndex},
     bbvectornetwork::BBVectorNetwork,
-    traits::Determinate,
 };
 
 /// Maximum search iterations for trying to generate a BBVNRegion using the "Minimal Cycle Basis"
 /// method.
 const MCB_MAX_ITERS: usize = 5000;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BBVNWindingRule {
     Default,
     NonZero,
@@ -20,7 +19,7 @@ pub enum BBVNWindingRule {
 ///
 /// * `winding_rule`:
 /// * `loops`:
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct BBVNRegion {
     winding_rule: BBVNWindingRule,
     loops: Vec<Vec<BBLinkIndex>>,
@@ -76,18 +75,13 @@ impl BBVNRegion {
             }
 
             // Calculate the directions of all next links
-            let mut link_directions: Vec<_> = next_links.iter()
+            let next_links: Vec<_> = next_links.iter()
                 .filter(|link_index| !visited_links.contains(link_index))
-                .map(|link_index| {
-                    let link = bbvn.links.get(link_index.0).unwrap_or_else(|| {
-                        panic!("BBVNRegion::from_link(..) Trying to get link {link_index:?} but not found.")
-                    });
-                    let tangent = link.calc_start_tangent(bbvn);
-                    (*link_index, tangent)
-                }).collect();
+                .cloned()
+                .collect();
 
             // If there are no valid links to continue to, we walk back the graph traversal.
-            let Some(mut ccw_most_link) = link_directions.pop() else {
+            let Some(ccw_most_link) = curr_link.cw_most_next_link(bbvn, &next_links) else {
                 loop {
                     let Some(prev_link) = link_stack.pop() else {
                         panic!("Could not find a valid path back to start index.");
@@ -111,23 +105,10 @@ impl BBVNRegion {
                 continue;
             };
 
-            // Finds the most CCW link for the current link, done by checking if another link's
-            // tangent is to the left of the current ccw_most_link.
-            for (link_index, dir) in link_directions {
-                let current_ccw_dir = ccw_most_link.1;
-                let det = current_ccw_dir.determinate(dir);
-                if det > 0. {
-                    #[cfg(test)]
-                    println!("\t\t -> Found better link {link_index:?} with det: {det}.");
-
-                    ccw_most_link = (link_index, dir);
-                }
-            }
-
             println!("\t -> Traversing to {ccw_most_link:?}");
 
             // Traverse to the next link
-            curr_link_index = ccw_most_link.0;
+            curr_link_index = ccw_most_link;
             curr_link = bbvn.links.get(curr_link_index.0).unwrap_or_else(|| panic!("BBVNRegion::from_link(link_index: {link_index:?}) - Link for `link_index` does not exist."));
             link_stack.push((curr_link_index, curr_link.next_links(bbvn).clone()));
             if curr_iter != 0 {

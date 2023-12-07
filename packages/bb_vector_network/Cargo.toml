@@ -5,5 +5,11 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[features]
+# Adds debug drawing via comfy, required to run the `testbed_*` examples.
+# You'll never want to activate this usually
+debug_draw = []
+
 [dependencies]
 glam = "0.24.2"
+comfy = "0.2.0"

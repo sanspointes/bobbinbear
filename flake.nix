@@ -35,13 +35,19 @@
                 # To use the x11 feature
                 ];
             x86_64-darwin = [
+                # Rust deps
+                pkgs.clang
+                pkgs.iconv
+                pkgs.darwin.libobjc
+                pkgs.darwin.apple_sdk.frameworks.AppKit
+
+
+                # Monorepo build system
                 turbo.packages.${system}.default
                 pkgs.nodejs
                 pkgs.nodePackages.pnpm
                 pkgs.nodePackages.typescript
                 pkgs.nodePackages.typescript-language-server
-
-                pkgs.iconv
             ];
         };
       in {
