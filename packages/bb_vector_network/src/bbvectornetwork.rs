@@ -363,7 +363,9 @@ impl BBVectorNetwork {
             comfy::draw_circle(*anchor, 0.1, comfy::Color::rgb8(255, 0, 0), 1);
         }
 
-        for region in self.regions.iter() {}
+        for region in self.regions.values() {
+            region.debug_draw(self);
+        }
     }
 
     pub fn translate(&mut self, translation: Vec2) {

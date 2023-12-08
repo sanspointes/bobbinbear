@@ -106,8 +106,6 @@ fn debug_bbvn(bbvn: &BBVectorNetwork, source_link: BBLinkIndex) {
 fn setup(_state: &mut GameState, _c: &mut EngineContext) {}
 
 fn update(state: &mut GameState, _c: &mut EngineContext) {
-    #[cfg(not(feature = "debug_draw"))]
-    panic!("Testbeds require the `--features debug_draw` feature to be enabled.");
 
     if is_key_pressed(KeyCode::Left) {
         state.current_test = (state.current_test - 1) % state.tests.len() as i32;
@@ -129,62 +127,9 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
     );
 
     (test.executor)();
-    //
-    // draw_text(
-    //     "Straight lines",
-    //     Vec2::new(-10., 7.),
-    //     WHITE,
-    //     TextAlign::TopLeft,
-    // );
-    // {
-    // }
-    // {
-    // }
-    // {
-    //     let mut bbvn = BBVectorNetwork::new();
-    //
-    //     let endpoint = bbvn.line(Vec2::new(-2., 0.), Vec2::new(0., 0.));
-    //     bbvn.line_from(endpoint, mouse_world());
-    //     bbvn.line_from(endpoint, Vec2::new(0., 2.));
-    //
-    //     bbvn.translate(Vec2::new(-9., -6.));
-    //
-    //     let source = BBLinkIndex(0);
-    //     debug_bbvn(&bbvn, source);
-    // }
-    //
-    // {
-    //     let mut bbvn = BBVectorNetwork::new();
-    //
-    //     let endpoint = bbvn.line(Vec2::new(-2., 0.), Vec2::new(0., 0.));
-    //     bbvn.cubic_from(
-    //         endpoint,
-    //         Vec2::new(2., 1.),
-    //         Vec2::new(2., 2.),
-    //         mouse_world(),
-    //     );
-    //     bbvn.line_from(endpoint, Vec2::new(2., 0.));
-    //
-    //     bbvn.translate(Vec2::new(-0., -4.));
-    //
-    //     let source = BBLinkIndex(0);
-    //     debug_bbvn(&bbvn, source);
-    // }
-    // {
-    //     let mut bbvn = BBVectorNetwork::new();
-    //
-    //     let endpoint = bbvn.line(Vec2::new(-2., 0.), Vec2::new(0., 0.));
-    //     bbvn.cubic_from(
-    //         endpoint,
-    //         Vec2::new(2., -1.),
-    //         Vec2::new(2., 2.),
-    //         mouse_world(),
-    //     );
-    //     bbvn.line_from(endpoint, Vec2::new(2., 0.));
-    //
-    //     bbvn.translate(Vec2::new(-0., -0.));
-    //
-    //     let source = BBLinkIndex(0);
-    //     debug_bbvn(&bbvn, source);
-    // }
+}
+
+#[cfg(not(feature = "debug_draw"))]
+fn main() {
+    panic!("Testbeds require the `--features debug_draw` feature to be enabled.");
 }

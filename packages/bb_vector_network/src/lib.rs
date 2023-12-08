@@ -3,6 +3,7 @@ mod bbvnlink;
 mod bbindex;
 mod bbvnregion;
 mod traits;
+#[cfg(feature = "debug_draw")]
 mod debug_draw;
 
 pub use bbvectornetwork::BBVectorNetwork;

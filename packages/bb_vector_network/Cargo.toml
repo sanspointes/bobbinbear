@@ -7,9 +7,14 @@ edition = "2021"
 
 [features]
 # Adds debug drawing via comfy, required to run the `testbed_*` examples.
-# You'll never want to activate this usually
-debug_draw = []
+# You'd never want to activate this in a real project but it's used internally for visual
+# debugging.
+debug_draw = ["comfy", "lyon_path", "lyon_tessellation"]
 
 [dependencies]
 glam = "0.24.2"
-comfy = "0.2.0"
+
+# Optional deps for the debug_draw feature.
+comfy = { version = "0.2.0", optional = true }
+lyon_path = { version = "1.0.4", optional = true }
+lyon_tessellation = { version = "1.0.12", optional = true }
