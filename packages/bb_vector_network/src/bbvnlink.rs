@@ -245,46 +245,38 @@ impl BBVNLink {
             })
             .collect();
 
-        let prev_dir = self.calc_start_tangent(bbvn);
+        let curr_dir = self.calc_start_tangent(bbvn);
 
         // CCW Most node
         // 1. Try find link that is to left of current dir, else take first link
         // 2. Iterate through links trying to find if a link is further to the left than the
         //    current left most link.
 
+        let Some((mut next_link, mut next_dir)) = next_link_dirs.pop() else {
+            return None;
+        };
 
-        let mut next: Option<(BBLinkIndex, Vec2)> = None;
-
-        for (i, (link, dir)) in next_link_dirs.into_iter().enumerate() {
-            let Some((_, next_dir)) = next else {
-                next = Some((link, dir));
-                draw_det_arc(
-                    self.end_point(bbvn),
-                    0.5 + (i as f32 * 0.5),
-                    prev_dir,
-                    dir,
-                    dir,
-                );
-                continue;
-            };
-
+        for (i, (link, el_dir)) in next_link_dirs.into_iter().enumerate() {
             draw_det_arc(
                 self.end_point(bbvn),
                 0.5 + (i as f32 * 0.5),
-                prev_dir,
-                dir,
+                curr_dir,
+                el_dir,
                 next_dir,
             );
-            let el_det = prev_dir.determinate(dir);
-            let is_ccw_of_prev = el_det > 0.;
-            let next_det = next_dir.determinate(dir);
+            let is_convex = next_dir.determinate(curr_dir) > 0.;
+            let ccw_of_curr = curr_dir.determinate(el_dir) >= 0.;
+            let ccw_of_next = next_dir.determinate(el_dir) >= 0.;
 
-            if !is_ccw_of_prev || next_det < 0. {
-                next = Some((link, dir));
+            if (!is_convex && ccw_of_curr && ccw_of_next)
+                || (is_convex && (ccw_of_curr || ccw_of_next))
+            {
+                next_link = link;
+                next_dir = el_dir;
             }
         }
 
-        next.map(|(v, _)| v)
+        Some(next_link)
     }
 
     #[cfg(feature = "debug_draw")]

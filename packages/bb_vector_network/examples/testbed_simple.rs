@@ -24,13 +24,25 @@ impl GameState {
         Self {
             tests: vec![
                 Test {
+                    name: "Determinate 1".to_string(),
+                    executor: Box::new(|| {
+                        let mut bbvn = BBVectorNetwork::new();
+
+                        let endpoint = bbvn.line(Vec2::new(0., -5.), Vec2::new(0., 0.));
+                        bbvn.line_from(endpoint, Vec2::new(-3., 3.));
+                        bbvn.line_from(endpoint, Vec2::new(3., 3.));
+
+                        let source = BBLinkIndex(0);
+                        debug_bbvn(&bbvn, source);
+                    }),
+                },
+                Test {
                     name: "Prong 1".to_string(),
                     executor: Box::new(|| {
                         let mut bbvn = BBVectorNetwork::new();
 
                         let endpoint = bbvn.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
                         bbvn.line_from(endpoint, mouse_world());
-                        bbvn.line_from(endpoint, Vec2::new(-0., 5.));
                         bbvn.line_from(endpoint, Vec2::new(-5., 0.));
 
                         let source = BBLinkIndex(0);
@@ -58,6 +70,22 @@ impl GameState {
                         let endpoint = bbvn.line(Vec2::new(-5., 0.), Vec2::new(0., 0.));
                         bbvn.line_from(endpoint, mouse_world());
                         bbvn.line_from(endpoint, Vec2::new(0., 5.));
+
+                        let source = BBLinkIndex(0);
+                        debug_bbvn(&bbvn, source);
+                    }),
+                },
+                Test {
+                    name: "Prong 4".to_string(),
+                    executor: Box::new(|| {
+                        let mut bbvn = BBVectorNetwork::new();
+
+                        let endpoint = bbvn.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
+                        bbvn.line_from(endpoint, Vec2::new(-5., -5.));
+                        bbvn.line_from(endpoint, Vec2::new(0., -5.));
+                        bbvn.line_from(endpoint, Vec2::new(-5., 5.));
+                        bbvn.line_from(endpoint, Vec2::new(0., 5.));
+                        bbvn.line_from(endpoint, mouse_world());
 
                         let source = BBLinkIndex(0);
                         debug_bbvn(&bbvn, source);
