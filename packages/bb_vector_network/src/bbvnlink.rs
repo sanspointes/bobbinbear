@@ -229,7 +229,7 @@ impl BBVNLink {
         }
     }
 
-    pub fn cw_most_next_link(
+    pub fn ccw_most_next_link(
         &self,
         bbvn: &BBVectorNetwork,
         next_links: &[BBLinkIndex],
@@ -238,45 +238,57 @@ impl BBVNLink {
             .iter()
             .map(|link_index| {
                 let link = bbvn.links.get(link_index.0).unwrap_or_else(|| {
-                panic!("BBVNRegion::from_link(..) Trying to get link {link_index:?} but not found.")
-            });
+                    panic!("BBVNRegion::from_link(..) Trying to get link {link_index:?} but not found.")
+                });
                 let tangent = link.calc_start_tangent(bbvn);
-                (*link_index, tangent)
+                (*link_index, link, tangent)
             })
             .collect();
 
         let curr_dir = self.calc_start_tangent(bbvn);
+        let curr_p = self.start_point(bbvn);
 
         // CCW Most node
         // 1. Try find link that is to left of current dir, else take first link
         // 2. Iterate through links trying to find if a link is further to the left than the
         //    current left most link.
 
-        let Some((mut next_link, mut next_dir)) = next_link_dirs.pop() else {
+        let Some((mut next_index, mut next_link, mut next_dir)) = next_link_dirs.pop() else {
             return None;
         };
 
-        for (i, (link, el_dir)) in next_link_dirs.into_iter().enumerate() {
-            draw_det_arc(
-                self.end_point(bbvn),
-                0.5 + (i as f32 * 0.5),
-                curr_dir,
-                el_dir,
-                next_dir,
-            );
-            let is_convex = next_dir.determinate(curr_dir) > 0.;
-            let ccw_of_curr = curr_dir.determinate(el_dir) >= 0.;
-            let ccw_of_next = next_dir.determinate(el_dir) >= 0.;
+        for (i, (el_index, el_link, el_dir)) in next_link_dirs.into_iter().enumerate() {
+            // When lines a parallel we need to move our test points across the lines until we find
+            // one that isn't parallel.
+            let mut t = 0.;
+            let mut temp_el_dir = el_dir;
+            let mut temp_next_dir = next_dir;
 
-            if (!is_convex && ccw_of_curr && ccw_of_next)
-                || (is_convex && (ccw_of_curr || ccw_of_next))
-            {
-                next_link = link;
-                next_dir = el_dir;
+            loop {
+                let is_parrallel = temp_el_dir.determinate(temp_next_dir).abs() < 0.01;
+                if is_parrallel {
+                    t = t + 1. / 32.;
+                    temp_el_dir = el_link.t_point(bbvn, t).sub(curr_p);
+                    temp_next_dir = next_link.t_point(bbvn, t).sub(curr_p);
+                    continue;
+                }
+
+                let is_convex = temp_next_dir.determinate(curr_dir) > 0.;
+                let ccw_of_curr = curr_dir.determinate(temp_el_dir) >= 0.;
+                let ccw_of_next = temp_next_dir.determinate(temp_el_dir) >= 0.;
+
+                if (!is_convex && ccw_of_curr && ccw_of_next)
+                    || (is_convex && (ccw_of_curr || ccw_of_next))
+                {
+                    next_index = el_index;
+                    next_link = el_link;
+                    next_dir = temp_el_dir;
+                }
+                break;
             }
         }
 
-        Some(next_link)
+        Some(next_index)
     }
 
     #[cfg(feature = "debug_draw")]
@@ -366,7 +378,7 @@ mod tests {
         let error_link = BBLinkIndex(2);
 
         let next_links = vec![error_link, target_link];
-        let next_link = test_link.cw_most_next_link(&bbvn, &next_links[..]).unwrap();
+        let next_link = test_link.ccw_most_next_link(&bbvn, &next_links[..]).unwrap();
 
         assert_eq!(next_link, target_link)
     }

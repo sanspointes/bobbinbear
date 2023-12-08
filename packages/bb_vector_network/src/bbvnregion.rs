@@ -81,7 +81,7 @@ impl BBVNRegion {
                 .collect();
 
             // If there are no valid links to continue to, we walk back the graph traversal.
-            let Some(ccw_most_link) = curr_link.cw_most_next_link(bbvn, &next_links) else {
+            let Some(ccw_most_link) = curr_link.ccw_most_next_link(bbvn, &next_links) else {
                 loop {
                     let Some(prev_link) = link_stack.pop() else {
                         panic!("Could not find a valid path back to start index.");

@@ -91,6 +91,30 @@ impl GameState {
                         debug_bbvn(&bbvn, source);
                     }),
                 },
+                Test {
+                    name: "Parallel 1".to_string(),
+                    executor: Box::new(|| {
+                        let mut bbvn = BBVectorNetwork::new();
+
+                        let endpoint = bbvn.line(Vec2::new(-5., 0.), Vec2::new(0., 0.));
+                        bbvn.line_from(endpoint, Vec2::new(5., 0.));
+                        bbvn.cubic_from(endpoint, Vec2::new(5., 0.), Vec2::new(5., 2.), Vec2::new(5., 5.));
+                        bbvn.cubic_from(endpoint, Vec2::new(5., 0.), Vec2::new(5., -2.), Vec2::new(5., -5.));
+                        bbvn.translate(Vec2::new(8., 0.));
+
+                        let mut bbvn2 = BBVectorNetwork::new();
+
+                        let endpoint = bbvn2.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
+                        bbvn2.line_from(endpoint, Vec2::new(-5., 0.));
+                        bbvn2.cubic_from(endpoint, Vec2::new(-5., 0.), Vec2::new(-5., 2.), Vec2::new(-5., 5.));
+                        bbvn2.cubic_from(endpoint, Vec2::new(-5., 0.), Vec2::new(-5., -2.), Vec2::new(-5., -5.));
+                        bbvn2.translate(Vec2::new(-8., 0.));
+
+                        let source = BBLinkIndex(0);
+                        debug_bbvn(&bbvn, source);
+                        debug_bbvn(&bbvn2, source);
+                    }),
+                },
             ],
             current_test: 0,
         }
@@ -104,7 +128,7 @@ fn debug_bbvn(bbvn: &BBVectorNetwork, source_link: BBLinkIndex) {
     let first = *bbvn.link(source_link).unwrap();
     let next_links = first.next_links(bbvn);
 
-    let next = first.cw_most_next_link(bbvn, &next_links[..]);
+    let next = first.ccw_most_next_link(bbvn, &next_links[..]);
     let Some(next) = next else {
         comfy::draw_text("No next index", Vec2::ZERO, comfy::RED, TextAlign::Center);
         return;
