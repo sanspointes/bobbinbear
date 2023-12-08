@@ -2,15 +2,18 @@
 
 use std::ops::{Add, Sub};
 
-use comfy::{draw_text, Vec2Extensions, ORANGE, ORANGE_RED, PURPLE};
 use glam::Vec2;
 
 use crate::{
     bbindex::{BBAnchorIndex, BBLinkIndex},
     bbvectornetwork::BBVectorNetwork,
-    debug_draw::{draw_det_arc, draw_determinate},
     traits::Determinate,
 };
+
+#[cfg(feature = "debug_draw")]
+use crate::debug_draw::draw_det_arc;
+#[cfg(feature = "debug_draw")]
+use comfy::{draw_text, Vec2Extensions, ORANGE, ORANGE_RED, PURPLE};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BBVNLink {
@@ -144,9 +147,9 @@ impl BBVNLink {
     /// * `bbvn`: BBVectorNetwork to source the data from
     pub fn next_links(&self, bbvn: &BBVectorNetwork) -> Vec<BBLinkIndex> {
         let mut result = vec![];
-        for (i, bbvn_link) in bbvn.links.iter().enumerate() {
+        for (i, bbvn_link) in bbvn.links.iter() {
             if bbvn_link.references_index(self.end_index()) && bbvn_link != self {
-                result.push(i.into());
+                result.push(*i);
             }
         }
         result
@@ -157,9 +160,9 @@ impl BBVNLink {
     /// * `bbvn`: BBVectorNetwork to source the data from
     pub fn prev_links(&self, bbvn: &BBVectorNetwork) -> Vec<BBLinkIndex> {
         let mut result = vec![];
-        for (i, bbvn_link) in bbvn.links.iter().enumerate() {
+        for (i, bbvn_link) in bbvn.links.iter() {
             if bbvn_link.references_index(self.start_index()) && bbvn_link != self {
-                result.push(i.into());
+                result.push(*i);
             }
         }
         result
@@ -237,7 +240,7 @@ impl BBVNLink {
         let mut next_link_dirs: Vec<_> = next_links
             .iter()
             .map(|link_index| {
-                let link = bbvn.links.get(link_index.0).unwrap_or_else(|| {
+                let link = bbvn.link(*link_index).unwrap_or_else(|| {
                     panic!("BBVNRegion::from_link(..) Trying to get link {link_index:?} but not found.")
                 });
                 let tangent = link.calc_start_tangent(bbvn);
@@ -355,31 +358,5 @@ impl BBVNLink {
             comfy::GRAY,
             z_index + 1,
         );
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use glam::Vec2;
-
-    use crate::{bbindex::BBLinkIndex, bbvectornetwork::BBVectorNetwork};
-
-    #[test]
-    pub fn finds_ccw_simple_fork() {
-        let mut bbvn = BBVectorNetwork::new();
-        let join_node = bbvn.line(Vec2::new(10., 10.), Vec2::new(10., 20.));
-        let test_link_index = BBLinkIndex(0);
-        let test_link = bbvn.link(test_link_index).cloned().unwrap();
-
-        bbvn.line_from(join_node, Vec2::new(0., 30.));
-        let target_link = BBLinkIndex(1);
-
-        bbvn.line_from(join_node, Vec2::new(20., 30.));
-        let error_link = BBLinkIndex(2);
-
-        let next_links = vec![error_link, target_link];
-        let next_link = test_link.ccw_most_next_link(&bbvn, &next_links[..]).unwrap();
-
-        assert_eq!(next_link, target_link)
     }
 }

@@ -24,68 +24,16 @@ impl GameState {
         Self {
             tests: vec![
                 Test {
-                    name: "Determinate 1".to_string(),
-                    executor: Box::new(|| {
-                        let mut bbvn = BBVectorNetwork::new();
-
-                        let endpoint = bbvn.line(Vec2::new(0., -5.), Vec2::new(0., 0.));
-                        bbvn.line_from(endpoint, Vec2::new(-3., 3.));
-                        bbvn.line_from(endpoint, Vec2::new(3., 3.));
-
-                        let source = BBLinkIndex(0);
-                        debug_bbvn(&bbvn, source);
-                    }),
-                },
-                Test {
                     name: "Prong 1".to_string(),
                     executor: Box::new(|| {
                         let mut bbvn = BBVectorNetwork::new();
 
-                        let endpoint = bbvn.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
-                        bbvn.line_from(endpoint, mouse_world());
-                        bbvn.line_from(endpoint, Vec2::new(-5., 0.));
-
-                        let source = BBLinkIndex(0);
-                        debug_bbvn(&bbvn, source);
-                    }),
-                },
-                Test {
-                    name: "Prong 2".to_string(),
-                    executor: Box::new(|| {
-                        let mut bbvn = BBVectorNetwork::new();
-
-                        let endpoint = bbvn.line(Vec2::new(-0., 5.), Vec2::new(0., 0.));
-                        bbvn.line_from(endpoint, mouse_world());
-                        bbvn.line_from(endpoint, Vec2::new(-5., -0.));
-
-                        let source = BBLinkIndex(0);
-                        debug_bbvn(&bbvn, source);
-                    }),
-                },
-                Test {
-                    name: "Prong 3".to_string(),
-                    executor: Box::new(|| {
-                        let mut bbvn = BBVectorNetwork::new();
-
-                        let endpoint = bbvn.line(Vec2::new(-5., 0.), Vec2::new(0., 0.));
-                        bbvn.line_from(endpoint, mouse_world());
-                        bbvn.line_from(endpoint, Vec2::new(0., 5.));
-
-                        let source = BBLinkIndex(0);
-                        debug_bbvn(&bbvn, source);
-                    }),
-                },
-                Test {
-                    name: "Prong 4".to_string(),
-                    executor: Box::new(|| {
-                        let mut bbvn = BBVectorNetwork::new();
-
-                        let endpoint = bbvn.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
-                        bbvn.line_from(endpoint, Vec2::new(-5., -5.));
-                        bbvn.line_from(endpoint, Vec2::new(0., -5.));
-                        bbvn.line_from(endpoint, Vec2::new(-5., 5.));
-                        bbvn.line_from(endpoint, Vec2::new(0., 5.));
-                        bbvn.line_from(endpoint, mouse_world());
+                        let (_, root_link) = bbvn.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
+                        bbvn.line_from(root_link.end_index(), Vec2::new(-5., -5.));
+                        bbvn.line_from(root_link.end_index(), Vec2::new(0., -5.));
+                        bbvn.line_from(root_link.end_index(), Vec2::new(-5., 5.));
+                        bbvn.line_from(root_link.end_index(), Vec2::new(0., 5.));
+                        bbvn.line_from(root_link.end_index(), mouse_world());
 
                         let source = BBLinkIndex(0);
                         debug_bbvn(&bbvn, source);
@@ -96,23 +44,37 @@ impl GameState {
                     executor: Box::new(|| {
                         let mut bbvn = BBVectorNetwork::new();
 
-                        let endpoint = bbvn.line(Vec2::new(-5., 0.), Vec2::new(0., 0.));
-                        bbvn.line_from(endpoint, Vec2::new(5., 0.));
-                        bbvn.cubic_from(endpoint, Vec2::new(5., 0.), Vec2::new(5., 2.), Vec2::new(5., 5.));
-                        bbvn.cubic_from(endpoint, Vec2::new(5., 0.), Vec2::new(5., -2.), Vec2::new(5., -5.));
+                        let (_, root_link) = bbvn.line(Vec2::new(-5., 0.), Vec2::new(0., 0.));
+                        bbvn.line_from(root_link.end_index(), Vec2::new(5., 0.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(5., 0.), Vec2::new(5., 2.), Vec2::new(5., 5.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(5., 0.), Vec2::new(5., -2.), Vec2::new(5., -5.));
                         bbvn.translate(Vec2::new(8., 0.));
 
                         let mut bbvn2 = BBVectorNetwork::new();
 
-                        let endpoint = bbvn2.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
-                        bbvn2.line_from(endpoint, Vec2::new(-5., 0.));
-                        bbvn2.cubic_from(endpoint, Vec2::new(-5., 0.), Vec2::new(-5., 2.), Vec2::new(-5., 5.));
-                        bbvn2.cubic_from(endpoint, Vec2::new(-5., 0.), Vec2::new(-5., -2.), Vec2::new(-5., -5.));
+                        let (_, root_link) = bbvn2.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
+                        bbvn2.line_from(root_link.end_index(), Vec2::new(-5., 0.));
+                        bbvn2.cubic_from(root_link.end_index(), Vec2::new(-5., 0.), Vec2::new(-5., 2.), Vec2::new(-5., 5.));
+                        bbvn2.cubic_from(root_link.end_index(), Vec2::new(-5., 0.), Vec2::new(-5., -2.), Vec2::new(-5., -5.));
                         bbvn2.translate(Vec2::new(-8., 0.));
 
                         let source = BBLinkIndex(0);
                         debug_bbvn(&bbvn, source);
                         debug_bbvn(&bbvn2, source);
+                    }),
+                },
+                Test {
+                    name: "Shape 1".to_string(),
+                    executor: Box::new(|| {
+                        let mut bbvn = BBVectorNetwork::new();
+
+                        let (_, first_link) = bbvn.line(Vec2::new(-5., 0.), Vec2::new(0., 0.));
+                        let (_, last_link) = bbvn.line_from(first_link.end_index(), Vec2::new(0., 5.));
+                        let (_, last_link) = bbvn.line_from(last_link.end_index(), Vec2::new(-5., 5.));
+                        bbvn.line_from_to(last_link.end_index(), first_link.start_index());
+
+                        let source = BBLinkIndex(0);
+                        debug_bbvn(&bbvn, source);
                     }),
                 },
             ],
@@ -123,19 +85,22 @@ impl GameState {
 
 fn debug_bbvn(bbvn: &BBVectorNetwork, source_link: BBLinkIndex) {
     #[cfg(feature = "debug_draw")]
-    bbvn.debug_draw();
+    {
+        bbvn.debug_draw();
 
-    let first = *bbvn.link(source_link).unwrap();
-    let next_links = first.next_links(bbvn);
+        let first = *bbvn.link(source_link).unwrap();
+        let next_links = first.next_links(bbvn);
 
-    let next = first.ccw_most_next_link(bbvn, &next_links[..]);
-    let Some(next) = next else {
-        comfy::draw_text("No next index", Vec2::ZERO, comfy::RED, TextAlign::Center);
-        return;
-    };
-    let next = *bbvn.link(next).unwrap();
-    #[cfg(feature = "debug_draw")]
-    next.debug_draw_with_color_and_z_index(bbvn, comfy::Color::rgb8(100, 255, 100), 11);
+        comfy::draw_circle(first.end_point(bbvn), 0.1, WHITE, 11);
+
+        let next = first.ccw_most_next_link(bbvn, &next_links[..]);
+        let Some(next) = next else {
+            comfy::draw_text("No next index", Vec2::ZERO, comfy::RED, TextAlign::Center);
+            return;
+        };
+        let next = *bbvn.link(next).unwrap();
+        next.debug_draw_with_color_and_z_index(bbvn, comfy::Color::rgb8(100, 255, 100), 11);
+    }
 }
 
 fn setup(_state: &mut GameState, _c: &mut EngineContext) {}

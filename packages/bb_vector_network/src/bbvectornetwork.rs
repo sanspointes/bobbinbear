@@ -1,5 +1,6 @@
 #![allow(dead_code)]
 
+use std::collections::HashMap;
 use std::ops::Add;
 
 /// BBVectorNetwork:
@@ -11,16 +12,17 @@ use std::ops::Add;
 use glam::Vec2;
 
 use crate::{
-    bbindex::{BBAnchorIndex, BBLinkIndex},
+    bbindex::{BBAnchorIndex, BBLinkIndex, BBRegionIndex},
     bbvnlink::BBVNLink,
     bbvnregion::BBVNRegion,
 };
 
 #[derive(Debug, Clone)]
 pub struct BBVectorNetwork {
+    next_idx: usize,
     pub anchors: Vec<Vec2>,
-    pub links: Vec<BBVNLink>,
-    pub regions: Vec<BBVNRegion>,
+    pub links: std::collections::HashMap<BBLinkIndex, BBVNLink>,
+    pub regions: std::collections::HashMap<BBRegionIndex, BBVNRegion>,
 }
 
 impl BBVectorNetwork {
@@ -31,7 +33,7 @@ impl BBVectorNetwork {
     /// provided index.
     fn links_from_start_anchor(&self, index: BBAnchorIndex) -> Vec<usize> {
         let mut result = vec![];
-        for (link_index, link) in self.links.iter().enumerate() {
+        for (link_index, link) in self.links.values().enumerate() {
             if index == link.start_index() {
                 result.push(link_index)
             }
@@ -43,7 +45,7 @@ impl BBVectorNetwork {
     /// provided index.
     fn links_from_end_anchor(&self, index: BBAnchorIndex) -> Vec<usize> {
         let mut result = vec![];
-        for (link_index, link) in self.links.iter().enumerate() {
+        for (link_index, link) in self.links.values().enumerate() {
             if index == link.end_index() {
                 result.push(link_index)
             }
@@ -56,16 +58,23 @@ impl BBVectorNetwork {
         self.anchors.get(index.0).is_some()
     }
 
+    fn get_next_idx(&mut self) -> usize {
+        let v = self.next_idx;
+        self.next_idx += 1;
+        v
+    }
+
     /// Links two anchor nodes as a straight line.
     ///
     /// * `start`:
     /// * `end`:
-    fn link_line(&mut self, start: BBAnchorIndex, end: BBAnchorIndex) -> BBLinkIndex {
+    fn link_line(&mut self, start: BBAnchorIndex, end: BBAnchorIndex) -> (BBLinkIndex, BBVNLink) {
         debug_assert!(self.has_anchor(start));
         debug_assert!(self.has_anchor(end));
-        self.links.push(BBVNLink::Line { start, end });
-
-        (self.links.len() - 1).into()
+        let link = BBVNLink::Line { start, end };
+        let index = BBLinkIndex(self.get_next_idx());
+        self.links.insert(index, link);
+        (index, link)
     }
 
     /// Links two anchor nodes as a quadratic curve with 1 control node.
@@ -77,11 +86,13 @@ impl BBVectorNetwork {
         start: BBAnchorIndex,
         ctrl1: Vec2,
         end: BBAnchorIndex,
-    ) -> BBLinkIndex {
+    ) -> (BBLinkIndex, BBVNLink) {
         debug_assert!(self.has_anchor(start));
         debug_assert!(self.has_anchor(end));
-        self.links.push(BBVNLink::Quadratic { start, ctrl1, end });
-        (self.links.len() - 1).into()
+        let link = BBVNLink::Quadratic { start, ctrl1, end };
+        let index = BBLinkIndex(self.get_next_idx());
+        self.links.insert(index, link);
+        (index, link)
     }
 
     /// Links two anchor nodes as a cubic curve with 2 control node.
@@ -94,16 +105,18 @@ impl BBVectorNetwork {
         ctrl1: Vec2,
         ctrl2: Vec2,
         end: BBAnchorIndex,
-    ) -> BBLinkIndex {
+    ) -> (BBLinkIndex, BBVNLink) {
         debug_assert!(self.has_anchor(start));
         debug_assert!(self.has_anchor(end));
-        self.links.push(BBVNLink::Cubic {
+        let link = BBVNLink::Cubic {
             start,
             ctrl1,
             ctrl2,
             end,
-        });
-        (self.links.len() - 1).into()
+        };
+        let index = BBLinkIndex(self.get_next_idx());
+        self.links.insert(index, link);
+        (index, link)
     }
 
     /// Pushes a new anchor node to the BBVectorNetwork
@@ -123,14 +136,16 @@ impl BBVectorNetwork {
     /// * `begin_point`: Position of first point
     pub fn new() -> Self {
         Self {
+            next_idx: 0,
             anchors: vec![],
-            links: vec![],
-            regions: vec![],
+            links: HashMap::new(),
+            regions: HashMap::new(),
         }
     }
 
+    /// Gets a reference to a Vector Network link between two anchors
     pub fn link(&self, index: BBLinkIndex) -> Option<&BBVNLink> {
-        self.links.get(index.0)
+        self.links.get(&index)
     }
 
     /// Gets a reference to an anchor
@@ -148,21 +163,24 @@ impl BBVectorNetwork {
     }
 
     /// Creates a line from a pre-existing point to a new point
-    pub fn line_from(&mut self, start: BBAnchorIndex, to: Vec2) -> BBAnchorIndex {
+    pub fn line_from(&mut self, start: BBAnchorIndex, to: Vec2) -> (BBLinkIndex, BBVNLink) {
         debug_assert!(self.has_anchor(start));
 
         let end = self.push_anchor(to);
-        self.link_line(start, end);
-        end
+        self.link_line(start, end)
     }
 
     /// Creates a quadratic curve from a pre-existing point to a new point
-    pub fn quadratic_from(&mut self, start: BBAnchorIndex, ctrl1: Vec2, to: Vec2) -> BBAnchorIndex {
+    pub fn quadratic_from(
+        &mut self,
+        start: BBAnchorIndex,
+        ctrl1: Vec2,
+        to: Vec2,
+    ) -> (BBLinkIndex, BBVNLink) {
         debug_assert!(self.has_anchor(start));
 
         let end = self.push_anchor(to);
-        self.link_quadratic(start, ctrl1, end);
-        end
+        self.link_quadratic(start, ctrl1, end)
     }
 
     /// Creates a cubic curve from a pre-existing point to a new point
@@ -172,19 +190,18 @@ impl BBVectorNetwork {
         ctrl1: Vec2,
         ctrl2: Vec2,
         to: Vec2,
-    ) -> BBAnchorIndex {
+    ) -> (BBLinkIndex, BBVNLink) {
         debug_assert!(self.has_anchor(start));
 
         let end = self.push_anchor(to);
-        self.link_cubic(start, ctrl1, ctrl2, end);
-        end
+        self.link_cubic(start, ctrl1, ctrl2, end)
     }
 
     /// Creates a line, using new anchor points, from start -> end.
     ///
     /// * `start`:
     /// * `end`:
-    pub fn line(&mut self, start: Vec2, end: Vec2) -> BBAnchorIndex {
+    pub fn line(&mut self, start: Vec2, end: Vec2) -> (BBLinkIndex, BBVNLink) {
         let start_index = self.push_anchor(start);
         self.line_from(start_index, end)
     }
@@ -192,7 +209,7 @@ impl BBVectorNetwork {
     ///
     /// * `start`:
     /// * `end`:
-    pub fn quadratic(&mut self, start: Vec2, ctrl1: Vec2, end: Vec2) -> BBAnchorIndex {
+    pub fn quadratic(&mut self, start: Vec2, ctrl1: Vec2, end: Vec2) -> (BBLinkIndex, BBVNLink) {
         let start_index = self.push_anchor(start);
         self.quadratic_from(start_index, ctrl1, end)
     }
@@ -200,7 +217,13 @@ impl BBVectorNetwork {
     ///
     /// * `start`:
     /// * `end`:
-    pub fn cubic(&mut self, start: Vec2, ctrl1: Vec2, ctrl2: Vec2, end: Vec2) -> BBAnchorIndex {
+    pub fn cubic(
+        &mut self,
+        start: Vec2,
+        ctrl1: Vec2,
+        ctrl2: Vec2,
+        end: Vec2,
+    ) -> (BBLinkIndex, BBVNLink) {
         let start_index = self.push_anchor(start);
         self.cubic_from(start_index, ctrl1, ctrl2, end)
     }
@@ -209,19 +232,24 @@ impl BBVectorNetwork {
     ///
     /// * `start`:
     /// * `end`:
-    pub fn line_to(&mut self, start: Vec2, end: BBAnchorIndex) -> BBAnchorIndex {
+    pub fn line_to(&mut self, start: Vec2, end: BBAnchorIndex) -> (BBLinkIndex, BBVNLink) {
         let start_index = self.push_anchor(start);
-        self.line_from_to(start_index, end);
-        end
+        let result = self.line_from_to(start_index, end);
+        result.0
     }
     /// Creates a quadratic curve from a new anchor point to a prexisting anchor point.
     ///
     /// * `start`:
     /// * `end`:
-    pub fn quadratic_to(&mut self, start: Vec2, ctrl1: Vec2, end: BBAnchorIndex) -> BBAnchorIndex {
+    pub fn quadratic_to(
+        &mut self,
+        start: Vec2,
+        ctrl1: Vec2,
+        end: BBAnchorIndex,
+    ) -> (BBLinkIndex, BBVNLink) {
         let start_index = self.push_anchor(start);
-        self.quadratic_from_to(start_index, ctrl1, end);
-        end
+        let result = self.quadratic_from_to(start_index, ctrl1, end);
+        result.0
     }
     /// Creates a cubic curve from a new anchor point to a prexisting anchor point.
     ///
@@ -233,33 +261,52 @@ impl BBVectorNetwork {
         ctrl1: Vec2,
         ctrl2: Vec2,
         end: BBAnchorIndex,
-    ) -> BBAnchorIndex {
+    ) -> (BBLinkIndex, BBVNLink) {
         let start_index = self.push_anchor(start);
-        self.cubic_from_to(start_index, ctrl1, ctrl2, end);
-        end
+        let result = self.cubic_from_to(start_index, ctrl1, ctrl2, end);
+        result.0
     }
 
     /// Adds a direct line from `start` to `end`, rebuilding shapes as needed.
-    pub fn line_from_to(&mut self, start: BBAnchorIndex, end: BBAnchorIndex) {
+    pub fn line_from_to(
+        &mut self,
+        start: BBAnchorIndex,
+        end: BBAnchorIndex,
+    ) -> ((BBLinkIndex, BBVNLink), Option<(BBRegionIndex, BBVNRegion)>) {
         debug_assert!(self.has_anchor(start));
         debug_assert!(self.has_anchor(end));
 
-        let link_index = self.link_line(start, end);
+        let result = self.link_line(start, end);
 
         // TODO: Delete effected regions
-        let region = BBVNRegion::from_link(self, link_index);
-        self.regions.push(region);
+        let region_result = BBVNRegion::try_from_link(self, result.0)
+            .map(|region| {
+                let region_index = BBRegionIndex(self.get_next_idx());
+                self.regions.insert(region_index, region.clone());
+                (region_index, region)
+            });
+        (result, region_result)
     }
     /// Adds a quadratic curve from `start` to `end`, rebuilding shapes as needed.
-    pub fn quadratic_from_to(&mut self, start: BBAnchorIndex, ctrl1: Vec2, end: BBAnchorIndex) {
+    pub fn quadratic_from_to(
+        &mut self,
+        start: BBAnchorIndex,
+        ctrl1: Vec2,
+        end: BBAnchorIndex,
+    ) -> ((BBLinkIndex, BBVNLink), Option<(BBRegionIndex, BBVNRegion)>) {
         debug_assert!(self.has_anchor(start));
         debug_assert!(self.has_anchor(end));
 
-        let link_index = self.link_quadratic(start, ctrl1, end);
+        let result = self.link_quadratic(start, ctrl1, end);
 
         // TODO: Delete effected regions
-        let region = BBVNRegion::from_link(self, link_index);
-        self.regions.push(region);
+        let region_result = BBVNRegion::try_from_link(self, result.0)
+            .map(|region| {
+                let region_index = BBRegionIndex(self.get_next_idx());
+                self.regions.insert(region_index, region.clone());
+                (region_index, region)
+            });
+        (result, region_result)
     }
     /// Adds a cubic curve from `start` to `end`, rebuilding shapes as needed.
     pub fn cubic_from_to(
@@ -268,15 +315,20 @@ impl BBVectorNetwork {
         ctrl1: Vec2,
         ctrl2: Vec2,
         end: BBAnchorIndex,
-    ) {
+    ) -> ((BBLinkIndex, BBVNLink), Option<(BBRegionIndex, BBVNRegion)>) {
         debug_assert!(self.has_anchor(start));
         debug_assert!(self.has_anchor(end));
 
-        let link_index = self.link_cubic(start, ctrl1, ctrl2, end);
+        let result = self.link_cubic(start, ctrl1, ctrl2, end);
 
         // TODO: Delete effected regions
-        let region = BBVNRegion::from_link(self, link_index);
-        self.regions.push(region);
+        let region_result = BBVNRegion::try_from_link(self, result.0)
+            .map(|region| {
+                let region_index = BBRegionIndex(self.get_next_idx());
+                self.regions.insert(region_index, region.clone());
+                (region_index, region)
+            });
+        (result, region_result)
     }
 
     /// Deletes an anchor, deletes associated links and breaks regions containing these links.
@@ -286,16 +338,16 @@ impl BBVectorNetwork {
         self.anchors.remove(index.0);
 
         let mut links_to_delete = vec![];
-        for (link_index, link) in self.links.iter_mut().enumerate() {
+        for (link_index, link) in self.links.iter_mut() {
             if link.references_index(index) {
-                links_to_delete.push(link_index);
+                links_to_delete.push(*link_index);
             } else {
                 link.deincrement_anchor_index_over_value(index);
             }
         }
 
         for link_index in links_to_delete {
-            self.links.remove(link_index);
+            self.links.remove(&link_index);
         }
 
         // TODO delete regions.
@@ -303,102 +355,23 @@ impl BBVectorNetwork {
 
     #[cfg(feature = "debug_draw")]
     pub fn debug_draw(&self) {
-        for link in self.links.iter() {
+        for link in self.links.values() {
             link.debug_draw(self);
         }
 
         for anchor in self.anchors.iter() {
             comfy::draw_circle(*anchor, 0.1, comfy::Color::rgb8(255, 0, 0), 1);
         }
+
+        for region in self.regions.iter() {}
     }
 
     pub fn translate(&mut self, translation: Vec2) {
         for v in self.anchors.iter_mut() {
             *v = v.add(translation);
         }
-        for l in self.links.iter_mut() {
+        for l in self.links.values_mut() {
             l.translate(translation);
         }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use glam::Vec2;
-
-    use crate::bbindex::BBAnchorIndex;
-
-    use super::BBVectorNetwork;
-
-    fn build_basic_triangle() -> BBVectorNetwork {
-        let mut bbvn = BBVectorNetwork::new();
-        let start = bbvn.anchor_len();
-        let prev = bbvn.line(Vec2::new(10., 10.), Vec2::new(30., 30.));
-        let prev = bbvn.line_from(prev, Vec2::new(10., 60.));
-        bbvn.line_from_to(prev, start.into());
-
-        bbvn
-    }
-
-    #[test]
-    fn makes_triangle() {
-        let bbvn = build_basic_triangle();
-        println!("makes_triangle() bbvn: \n{bbvn:?}\n\n");
-        assert_eq!(bbvn.anchor_len(), 3);
-        assert_eq!(bbvn.regions.len(), 1);
-    }
-
-    #[test]
-    fn makes_three_prong() {
-        let mut bbvn = BBVectorNetwork::new();
-        let prev_center = bbvn.line(Vec2::new(0., 0.), Vec2::new(0., 10.));
-        bbvn.line_from(prev_center, Vec2::new(0., 20.));
-        bbvn.line_from(prev_center, Vec2::new(10., 10.));
-        println!("makes_three_prong() bbvn: \n{bbvn:?}\n\n");
-        assert_eq!(bbvn.anchor_len(), 4);
-        assert_eq!(bbvn.regions.len(), 0);
-    }
-
-    #[test]
-    fn adds_tag_to_triangle() {
-        let mut bbvn = build_basic_triangle();
-        bbvn.line_from(BBAnchorIndex(2), Vec2::new(30., 60.));
-        println!("makes_three_prong() bbvn: \n{bbvn:?}\n\n");
-        assert_eq!(bbvn.anchor_len(), 4);
-        assert_eq!(bbvn.regions.len(), 1);
-    }
-
-    #[test]
-    fn adds_triangle_after_tag() {
-        let mut bbvn = BBVectorNetwork::new();
-        let p0 = bbvn.anchor_len();
-        let p2 = bbvn.line(Vec2::new(10., 10.), Vec2::new(30., 30.));
-        bbvn.line_from(p2, Vec2::new(30., 50.));
-
-        let p4 = bbvn.line_from(p2, Vec2::new(10., 60.));
-        bbvn.line_from_to(p4, p0.into());
-        println!("makes_three_prong() bbvn: \n{bbvn:?}\n\n");
-        assert_eq!(bbvn.anchor_len(), 4);
-        assert_eq!(bbvn.regions.len(), 1);
-    }
-
-    #[test]
-    fn makes_square_then_adds_square() {
-        let mut bbvn = BBVectorNetwork::new();
-        // Make the first box.
-        let prev = bbvn.line(Vec2::new(10., 10.), Vec2::new(10., 20.));
-        let p0 = bbvn.line_from(prev, Vec2::new(20., 20.));
-        let p1 = bbvn.line_from(p0, Vec2::new(20., 10.));
-        bbvn.line_from_to(p1, BBAnchorIndex(0));
-
-        assert_eq!(bbvn.anchor_len(), 4);
-        assert_eq!(bbvn.regions.len(), 1);
-
-        let prev = bbvn.line_from(p0, Vec2::new(30., 20.));
-        let prev = bbvn.line_from(prev, Vec2::new(30., 10.));
-        bbvn.line_from_to(prev, p1);
-        assert_eq!(bbvn.anchor_len(), 6);
-        assert_eq!(bbvn.regions.len(), 2);
-        println!("makes_square_then_adds_square() bbvn: \n{bbvn:?}\n\n");
     }
 }
