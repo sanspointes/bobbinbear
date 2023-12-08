@@ -355,8 +355,9 @@ impl BBVectorNetwork {
 
     #[cfg(feature = "debug_draw")]
     pub fn debug_draw(&self) {
-        for link in self.links.values() {
+        for ( index, link ) in self.links.iter() {
             link.debug_draw(self);
+            comfy::draw_text(&format!("#{}", index.0), link.t_point(self, 0.5), comfy::WHITE, comfy::TextAlign::Center);
         }
 
         for anchor in self.anchors.iter() {
@@ -364,7 +365,13 @@ impl BBVectorNetwork {
         }
 
         for region in self.regions.values() {
-            region.debug_draw(self);
+            for ( loop_index, el ) in region.links(self).iter().enumerate() {
+                for ( el_index, link ) in el.iter().enumerate() {
+                    let pos = link.t_point(self, 0.5);
+                    comfy::draw_text(&format!("#{}:{}", loop_index, el_index), pos + Vec2::new(0., 1.), comfy::GRAY, comfy::TextAlign::Center);
+                }
+            }
+            // region.debug_draw(self);
         }
     }
 

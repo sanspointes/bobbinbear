@@ -113,10 +113,27 @@ impl BBVNRegion {
             winding_rule: BBVNWindingRule::NonZero,
         })
     }
+
+    pub fn links(&self, bbvn: &BBVectorNetwork) -> Vec<Vec<BBVNLink>> {
+        self.loops
+            .iter()
+            .map(|el| {
+                el.iter()
+                    .map(|index| {
+                        let v = *bbvn
+                            .link(*index)
+                            .expect("BBVNRegion.links() -> Could not get link for {index:?}");
+                        v
+                    })
+                    .collect()
+            })
+            .collect()
+    }
+
     /// Checks if a region contains an anchor index.
     ///
     /// * `index`:
-    fn contains_anchor(&self, bbvn: &BBVectorNetwork, index: BBAnchorIndex) -> bool {
+    pub fn contains_anchor(&self, bbvn: &BBVectorNetwork, index: BBAnchorIndex) -> bool {
         for region_loop in &self.loops {
             for link_index in region_loop {
                 let link = bbvn.link(*link_index).unwrap_or_else(|| panic!("BBVNRegion::contains_anchor(index: {index:?}) - Could not get link for link_index: {link_index:?}"));
@@ -128,7 +145,7 @@ impl BBVNRegion {
         false
     }
 
-    fn contains_link(&self, link: BBLinkIndex) -> bool {
+    pub fn contains_link(&self, link: BBLinkIndex) -> bool {
         for region_loop in &self.loops {
             for link_index in region_loop {
                 if link == *link_index {
@@ -143,10 +160,7 @@ impl BBVNRegion {
     pub fn debug_draw(&self, bbvn: &BBVectorNetwork) {
         use comfy::SpriteVertex;
         use glam::Vec3;
-        use lyon_tessellation::{
-            BuffersBuilder, FillOptions, FillVertex,
-            VertexBuffers,
-        };
+        use lyon_tessellation::{BuffersBuilder, FillOptions, FillVertex, VertexBuffers};
 
         for el in self.loops.iter() {
             let mut builder = lyon_path::Path::builder();
@@ -157,6 +171,8 @@ impl BBVNRegion {
                 .link(*first_index)
                 .expect("BBVNRegion.debug_draw() -> Can't get link {first_index:?}");
             builder.begin(v2_p2(first_link.start_point(bbvn)));
+            println!("Loop: {el:?}");
+            println!("Begin {first_link:?}");
 
             for link_index in el {
                 let link = bbvn
@@ -187,14 +203,19 @@ impl BBVNRegion {
 
             let mut tess = lyon_tessellation::FillTessellator::new();
             let mut buffers = VertexBuffers::<comfy::SpriteVertex, u32>::new();
-            let _ = tess.tessellate_path(
-                &path,
-                &FillOptions::default(),
-                &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| {
-                    return SpriteVertex::new(Vec3::new(vertex.position().x, vertex.position().y, 0.), glam::Vec2::ZERO, comfy::BLUE.alpha(0.5));
-                }),
-            )
-            .map_err(|reason| panic!("BBVNRegion.debug_draw() -> {reason:?}"));
+            let _ = tess
+                .tessellate_path(
+                    &path,
+                    &FillOptions::default(),
+                    &mut BuffersBuilder::new(&mut buffers, |vertex: FillVertex| {
+                        return SpriteVertex::new(
+                            Vec3::new(vertex.position().x, vertex.position().y, 0.),
+                            glam::Vec2::ZERO,
+                            comfy::BLUE.alpha(0.5),
+                        );
+                    }),
+                )
+                .map_err(|reason| panic!("BBVNRegion.debug_draw() -> {reason:?}"));
 
             comfy::draw_mesh(comfy::Mesh {
                 vertices: buffers.vertices.into(),

@@ -64,14 +64,73 @@ impl GameState {
                     }),
                 },
                 Test {
+                    name: "Parallel 2".to_string(),
+                    executor: Box::new(|| {
+                        let mut bbvn = BBVectorNetwork::new();
+
+                        let (_, root_link) = bbvn.line(Vec2::new(0., -5.), Vec2::new(0., 0.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., 5.), Vec2::new(-2., 5.), Vec2::new(-5., 5.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., 5.), Vec2::new(-2., 3.), Vec2::new(-5., 3.));
+                        bbvn.translate(Vec2::new(-8., 0.));
+
+                        let mut bbvn2 = BBVectorNetwork::new();
+
+                        let (_, root_link) = bbvn2.line(Vec2::new(0., -5.), Vec2::new(0., 0.));
+                        bbvn2.cubic_from(root_link.end_index(), Vec2::new(0., 5.), Vec2::new(2., 5.), Vec2::new(5., 5.));
+                        bbvn2.cubic_from(root_link.end_index(), Vec2::new(0., 5.), Vec2::new(2., 3.), Vec2::new(5., 3.));
+                        bbvn2.translate(Vec2::new(8., 0.));
+
+                        let source = BBLinkIndex(0);
+                        debug_bbvn(&bbvn, source);
+                        debug_bbvn(&bbvn2, source);
+                    }),
+                },
+                Test {
+                    name: "Parallel 3".to_string(),
+                    executor: Box::new(|| {
+                        let source = BBLinkIndex(0);
+
+                        let mut bbvn = BBVectorNetwork::new();
+                        let (_, root_link) = bbvn.line(Vec2::new(0., -3.), Vec2::new(0., 0.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., 3.), Vec2::new(-1., 3.), Vec2::new(-3., 3.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., -3.), Vec2::new(-1., -3.), Vec2::new(-3., -3.));
+                        bbvn.translate(Vec2::new(-8., 0.));
+                        debug_bbvn(&bbvn, source);
+
+                        let mut bbvn = BBVectorNetwork::new();
+                        let (_, root_link) = bbvn.line(Vec2::new(0., -3.), Vec2::new(0., 0.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., 3.), Vec2::new(-1., 3.), Vec2::new(-3., 3.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., -3.), Vec2::new(1., -3.), Vec2::new(3., -3.));
+                        bbvn.translate(Vec2::new(-4., 0.));
+                        debug_bbvn(&bbvn, source);
+
+                        let mut bbvn = BBVectorNetwork::new();
+                        let (_, root_link) = bbvn.line(Vec2::new(0., -3.), Vec2::new(0., 0.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., 3.), Vec2::new(1., 3.), Vec2::new(3., 3.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., -3.), Vec2::new(-1., -3.), Vec2::new(-3., -3.));
+                        bbvn.translate(Vec2::new(4., 0.));
+                        debug_bbvn(&bbvn, source);
+
+                        let mut bbvn = BBVectorNetwork::new();
+                        let (_, root_link) = bbvn.line(Vec2::new(0., -3.), Vec2::new(0., 0.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., 3.), Vec2::new(1., 3.), Vec2::new(3., 3.));
+                        bbvn.cubic_from(root_link.end_index(), Vec2::new(0., -3.), Vec2::new(1., -3.), Vec2::new(3., -3.));
+                        bbvn.translate(Vec2::new(8., 0.));
+                        debug_bbvn(&bbvn, source);
+                    }),
+                },
+                Test {
                     name: "Shape 1".to_string(),
                     executor: Box::new(|| {
                         let mut bbvn = BBVectorNetwork::new();
 
                         let (_, first_link) = bbvn.line(Vec2::new(-5., 0.), Vec2::new(0., 0.));
-                        let (_, last_link) = bbvn.line_from(first_link.end_index(), Vec2::new(0., 5.));
-                        let (_, last_link) = bbvn.line_from(last_link.end_index(), Vec2::new(-5., 5.));
+                        let (_, middle_link) = bbvn.line_from(first_link.end_index(), Vec2::new(0., 5.));
+                        let (_, last_link) = bbvn.line_from(middle_link.end_index(), Vec2::new(-5., 5.));
                         bbvn.line_from_to(last_link.end_index(), first_link.start_index());
+                        let (_, last_link) = bbvn.line_from(first_link.end_index(), Vec2::new(5., 0.));
+                        let (_, last_link) = bbvn.line_from(last_link.end_index(), Vec2::new(5., 5.));
+                        bbvn.line_from_to(last_link.end_index(), middle_link.end_index());
 
                         let source = BBLinkIndex(0);
                         debug_bbvn(&bbvn, source);

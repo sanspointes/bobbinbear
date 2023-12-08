@@ -243,6 +243,12 @@ impl BBVNLink {
                 let link = bbvn.link(*link_index).unwrap_or_else(|| {
                     panic!("BBVNRegion::from_link(..) Trying to get link {link_index:?} but not found.")
                 });
+                // Reverse links that are facing the wrong way
+                let link = if self.end_index() == link.end_index() || self.start_index() == link.end_index() {
+                    link.reversed()
+                } else {
+                    *link
+                };
                 let tangent = link.calc_start_tangent(bbvn);
                 (*link_index, link, tangent)
             })
@@ -330,12 +336,12 @@ impl BBVNLink {
 
                 match link {
                     BBVNLink::Quadratic { ctrl1, .. } => {
-                        comfy::draw_line(self.start_point(bbvn), *ctrl1, 0.015, color, z_index);
-                        comfy::draw_line(*ctrl1, self.end_point(bbvn), 0.015, color, z_index);
+                        comfy::draw_line(self.start_point(bbvn), *ctrl1, 0.025, color, z_index);
+                        comfy::draw_line(*ctrl1, self.end_point(bbvn), 0.025, color, z_index);
                     }
                     BBVNLink::Cubic { ctrl1, ctrl2, .. } => {
-                        comfy::draw_line(self.start_point(bbvn), *ctrl1, 0.015, color, z_index);
-                        comfy::draw_line(*ctrl2, self.end_point(bbvn), 0.015, color, z_index);
+                        comfy::draw_line(self.start_point(bbvn), *ctrl1, 0.025, color, z_index);
+                        comfy::draw_line(*ctrl2, self.end_point(bbvn), 0.025, color, z_index);
                     }
                     BBVNLink::Line { .. } => (),
                 }
