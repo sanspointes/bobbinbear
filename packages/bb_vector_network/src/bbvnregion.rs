@@ -33,6 +33,7 @@ impl BBVNRegion {
     /// Creates a new BBVNRegion within a BBVectorNetwork from a given BBVNLink using "Minimal Cycle
     /// Basis" method.
     /// This will assume that previous BBVNRegions (if any) will have been deleted already.
+    /// TODO: Make return Result<Self, ErrorType>
     ///
     /// * `bbvn`:
     /// * `bbvn_link`:
@@ -45,13 +46,6 @@ impl BBVNRegion {
         let mut curr_link_index = link_index;
         let mut curr_link = bbvn.link(link_index).unwrap_or_else(|| panic!("BBVNRegion::from_link(link_index: {link_index:?}) - Link for `link_index` does not exist."));
         let start_link_index = link_index;
-
-        #[cfg(test)]
-        {
-            println!("BBVNRegion::from_link(link_index: {link_index:?})");
-            println!("\tstart link: {:?}", start_link_index);
-            println!("\tlinks: {:?}", bbvn.links);
-        }
 
         // Traverse the vector network, trying to find Minimal Cycle Basis to reconnect with start.
         while curr_iter <= MCB_MAX_ITERS {
@@ -128,6 +122,9 @@ impl BBVNRegion {
                     .collect()
             })
             .collect()
+    }
+    pub fn link_indicies(&self) -> Vec<Vec<BBLinkIndex>> {
+        self.loops.clone()
     }
 
     /// Checks if a region contains an anchor index.

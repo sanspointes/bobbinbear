@@ -232,6 +232,75 @@ impl BBVNLink {
         }
     }
 
+    /// Given a list of `next_links` find the clockwise most next link
+    pub fn cw_most_next_link(
+        &self,
+        bbvn: &BBVectorNetwork,
+        next_links: &[BBLinkIndex],
+    ) -> Option<BBLinkIndex> {
+        let mut next_link_dirs: Vec<_> = next_links
+            .iter()
+            .map(|link_index| {
+                let link = bbvn.link(*link_index).unwrap_or_else(|| {
+                    panic!("BBVNRegion::from_link(..) Trying to get link {link_index:?} but not found.")
+                });
+                // Reverse links that are facing the wrong way
+                let link = if self.end_index() == link.end_index() || self.start_index() == link.start_index() {
+                    link.reversed()
+                } else {
+                    *link
+                };
+                let tangent = link.calc_start_tangent(bbvn);
+                (*link_index, link, tangent)
+            })
+            .collect();
+
+        let curr_dir = self.calc_start_tangent(bbvn);
+        let curr_p = self.start_point(bbvn);
+
+        let Some((mut next_index, mut next_link, mut next_dir)) = next_link_dirs.pop() else {
+            return None;
+        };
+
+        for (i, (el_index, el_link, el_dir)) in next_link_dirs.into_iter().enumerate() {
+            let mut temp_el_dir = el_dir;
+            let mut temp_next_dir = next_dir;
+
+            // #[cfg(feature = "debug_draw")]
+            // draw_det_arc(self.end_point(bbvn), 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
+
+            // When lines a parallel we need to move our test points across the lines until we find
+            // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
+            // no good option.
+            let mut t = 0.;
+            loop {
+                let is_parrallel = temp_el_dir.determinate(temp_next_dir).abs() < 0.01;
+                if is_parrallel {
+                    t = t + 1. / 32.;
+                    temp_el_dir = el_link.t_point(bbvn, t).sub(curr_p);
+                    temp_next_dir = next_link.t_point(bbvn, t).sub(curr_p);
+                    continue;
+                }
+
+                let is_convex = temp_next_dir.determinate(curr_dir) > 0.;
+                let ccw_of_curr = curr_dir.determinate(temp_el_dir) <= 0.;
+                let ccw_of_next = temp_next_dir.determinate(temp_el_dir) <= 0.;
+
+                if (!is_convex && ccw_of_curr && ccw_of_next)
+                    || (is_convex && (ccw_of_curr || ccw_of_next))
+                {
+                    next_index = el_index;
+                    next_link = el_link;
+                    next_dir = temp_el_dir;
+                }
+                break;
+            }
+        }
+
+        Some(next_index)
+    }
+
+    /// Given a list of `next_links` find the counter-clockwise most next link
     pub fn ccw_most_next_link(
         &self,
         bbvn: &BBVectorNetwork,
@@ -244,7 +313,7 @@ impl BBVNLink {
                     panic!("BBVNRegion::from_link(..) Trying to get link {link_index:?} but not found.")
                 });
                 // Reverse links that are facing the wrong way
-                let link = if self.end_index() == link.end_index() || self.start_index() == link.end_index() {
+                let link = if self.end_index() == link.end_index() || self.start_index() == link.start_index() {
                     link.reversed()
                 } else {
                     *link
@@ -267,12 +336,16 @@ impl BBVNLink {
         };
 
         for (i, (el_index, el_link, el_dir)) in next_link_dirs.into_iter().enumerate() {
-            // When lines a parallel we need to move our test points across the lines until we find
-            // one that isn't parallel.
-            let mut t = 0.;
             let mut temp_el_dir = el_dir;
             let mut temp_next_dir = next_dir;
 
+            // #[cfg(feature = "debug_draw")]
+            // draw_det_arc(self.end_point(bbvn), 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
+
+            // When lines a parallel we need to move our test points across the lines until we find
+            // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
+            // no good option.
+            let mut t = 0.;
             loop {
                 let is_parrallel = temp_el_dir.determinate(temp_next_dir).abs() < 0.01;
                 if is_parrallel {
