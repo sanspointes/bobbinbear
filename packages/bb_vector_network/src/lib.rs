@@ -1,3 +1,4 @@
+mod bbanchor;
 mod bbvectornetwork;
 mod bbvnlink;
 mod bbindex;

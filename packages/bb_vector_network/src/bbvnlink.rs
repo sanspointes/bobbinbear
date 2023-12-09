@@ -5,6 +5,7 @@ use std::ops::{Add, Sub};
 use glam::Vec2;
 
 use crate::{
+    bbanchor::BBAnchor,
     bbindex::{BBAnchorIndex, BBLinkIndex},
     bbvectornetwork::BBVectorNetwork,
     traits::Determinate,
@@ -43,9 +44,11 @@ impl BBVNLink {
             | BBVNLink::Cubic { start, .. } => *start,
         }
     }
-
-    pub fn start_point(&self, bbvn: &BBVectorNetwork) -> Vec2 {
-        *bbvn.anchor(self.start_index()).unwrap()
+    pub fn start(&self, bbvn: &BBVectorNetwork) -> BBAnchor {
+        bbvn.anchor(self.start_index()).unwrap().clone()
+    }
+    pub fn start_pos(&self, bbvn: &BBVectorNetwork) -> Vec2 {
+        self.start(bbvn).position()
     }
 
     /// Gets the index of the `end` anchor
@@ -56,23 +59,25 @@ impl BBVNLink {
             | BBVNLink::Cubic { end, .. } => *end,
         }
     }
-
-    pub fn end_point(&self, bbvn: &BBVectorNetwork) -> Vec2 {
-        *bbvn.anchor(self.end_index()).unwrap()
+    pub fn end(&self, bbvn: &BBVectorNetwork) -> BBAnchor {
+        bbvn.anchor(self.end_index()).unwrap().clone()
+    }
+    pub fn end_pos(&self, bbvn: &BBVectorNetwork) -> Vec2 {
+        self.end(bbvn).position()
     }
 
     pub fn t_point(&self, bbvn: &BBVectorNetwork, t: f32) -> Vec2 {
         match self {
-            BBVNLink::Line { .. } => Vec2::lerp(self.start_point(bbvn), self.end_point(bbvn), t),
+            BBVNLink::Line { .. } => Vec2::lerp(self.start_pos(bbvn), self.end_pos(bbvn), t),
             BBVNLink::Quadratic { ctrl1, .. } => {
-                let p1 = Vec2::lerp(self.start_point(bbvn), *ctrl1, t);
-                let p2 = Vec2::lerp(*ctrl1, self.end_point(bbvn), t);
+                let p1 = Vec2::lerp(self.start_pos(bbvn), *ctrl1, t);
+                let p2 = Vec2::lerp(*ctrl1, self.end_pos(bbvn), t);
                 Vec2::lerp(p1, p2, t)
             }
             BBVNLink::Cubic { ctrl1, ctrl2, .. } => {
-                let p1 = Vec2::lerp(self.start_point(bbvn), *ctrl1, t);
+                let p1 = Vec2::lerp(self.start_pos(bbvn), *ctrl1, t);
                 let p2 = Vec2::lerp(*ctrl1, *ctrl2, t);
-                let p3 = Vec2::lerp(*ctrl2, self.end_point(bbvn), t);
+                let p3 = Vec2::lerp(*ctrl2, self.end_pos(bbvn), t);
                 Vec2::lerp(Vec2::lerp(p1, p2, t), Vec2::lerp(p2, p3, t), t)
             }
         }
@@ -86,26 +91,30 @@ impl BBVNLink {
             BBVNLink::Line { start, end } => {
                 let v_start = bbvn
                     .anchor(*start)
-                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."))
+                    .position();
                 let v_end = bbvn
                     .anchor(*end)
-                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."))
+                    .position();
 
-                v_end.sub(*v_start)
+                v_end.sub(v_start)
             }
             BBVNLink::Quadratic { start, ctrl1, .. } => {
                 let v_start = bbvn
                     .anchor(*start)
-                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."))
+                    .position();
 
-                ctrl1.sub(*v_start)
+                ctrl1.sub(v_start)
             }
             BBVNLink::Cubic { start, ctrl1, .. } => {
                 let v_start = bbvn
                     .anchor(*start)
-                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."))
+                    .position();
 
-                ctrl1.sub(*v_start)
+                ctrl1.sub(v_start)
             }
         }
     }
@@ -118,24 +127,28 @@ impl BBVNLink {
             BBVNLink::Line { start, end } => {
                 let v_start = bbvn
                     .anchor(*start)
-                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."));
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing start index ({start:?})."))
+                    .position();
                 let v_end = bbvn
                     .anchor(*end)
-                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."))
+                    .position();
 
-                v_end.sub(*v_start)
+                v_end.sub(v_start)
             }
             BBVNLink::Quadratic { end, ctrl1, .. } => {
                 let v_end = bbvn
                     .anchor(*end)
-                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."))
+                    .position();
 
                 v_end.sub(*ctrl1)
             }
             BBVNLink::Cubic { end, ctrl2, .. } => {
                 let v_end = bbvn
                     .anchor(*end)
-                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."));
+                    .unwrap_or_else(|| panic!("BBVNLink: Missing end index ({end:?})."))
+                    .position();
 
                 v_end.sub(*ctrl2)
             }
@@ -256,7 +269,7 @@ impl BBVNLink {
             .collect();
 
         let curr_dir = self.calc_start_tangent(bbvn);
-        let curr_p = self.start_point(bbvn);
+        let curr_p = self.start_pos(bbvn);
 
         let Some((mut next_index, mut next_link, mut next_dir)) = next_link_dirs.pop() else {
             return None;
@@ -267,7 +280,7 @@ impl BBVNLink {
             let mut temp_next_dir = next_dir;
 
             // #[cfg(feature = "debug_draw")]
-            // draw_det_arc(self.end_point(bbvn), 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
+            // draw_det_arc(self.end_pos(bbvn), 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
 
             // When lines a parallel we need to move our test points across the lines until we find
             // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
@@ -324,7 +337,7 @@ impl BBVNLink {
             .collect();
 
         let curr_dir = self.calc_start_tangent(bbvn);
-        let curr_p = self.start_point(bbvn);
+        let curr_p = self.start_pos(bbvn);
 
         // CCW Most node
         // 1. Try find link that is to left of current dir, else take first link
@@ -340,7 +353,7 @@ impl BBVNLink {
             let mut temp_next_dir = next_dir;
 
             // #[cfg(feature = "debug_draw")]
-            // draw_det_arc(self.end_point(bbvn), 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
+            // draw_det_arc(self.end_pos(bbvn), 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
 
             // When lines a parallel we need to move our test points across the lines until we find
             // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
@@ -387,14 +400,14 @@ impl BBVNLink {
         match self {
             BBVNLink::Line { .. } => {
                 let start_point = bbvn.anchor(self.start_index());
-                let end_point = bbvn.anchor(self.end_index());
+                let end_pos = bbvn.anchor(self.end_index());
 
-                if let (Some(start), Some(end)) = (start_point, end_point) {
-                    comfy::draw_arrow(*start, *end, 0.03, color, z_index);
+                if let (Some(start), Some(end)) = (start_point, end_pos) {
+                    comfy::draw_arrow(start.position, end.position, 0.03, color, z_index);
                 }
             }
             link @ BBVNLink::Quadratic { .. } | link @ BBVNLink::Cubic { .. } => {
-                let mut p_prev = self.start_point(bbvn);
+                let mut p_prev = self.start_pos(bbvn);
                 for i in 0..20 {
                     let i = i + 1;
                     let t = i as f32 / 20.;
@@ -409,19 +422,19 @@ impl BBVNLink {
 
                 match link {
                     BBVNLink::Quadratic { ctrl1, .. } => {
-                        comfy::draw_line(self.start_point(bbvn), *ctrl1, 0.025, color, z_index);
-                        comfy::draw_line(*ctrl1, self.end_point(bbvn), 0.025, color, z_index);
+                        comfy::draw_line(self.start_pos(bbvn), *ctrl1, 0.025, color, z_index);
+                        comfy::draw_line(*ctrl1, self.end_pos(bbvn), 0.025, color, z_index);
                     }
                     BBVNLink::Cubic { ctrl1, ctrl2, .. } => {
-                        comfy::draw_line(self.start_point(bbvn), *ctrl1, 0.025, color, z_index);
-                        comfy::draw_line(*ctrl2, self.end_point(bbvn), 0.025, color, z_index);
+                        comfy::draw_line(self.start_pos(bbvn), *ctrl1, 0.025, color, z_index);
+                        comfy::draw_line(*ctrl2, self.end_pos(bbvn), 0.025, color, z_index);
                     }
                     BBVNLink::Line { .. } => (),
                 }
             }
         }
 
-        let p = self.start_point(bbvn);
+        let p = self.start_pos(bbvn);
         comfy::draw_line(
             p,
             p + self.calc_start_tangent(bbvn).normalize(),
@@ -429,7 +442,7 @@ impl BBVNLink {
             comfy::GRAY,
             z_index + 1,
         );
-        let p = self.end_point(bbvn);
+        let p = self.end_pos(bbvn);
         comfy::draw_line(
             p,
             p + self.calc_end_tangent(bbvn).normalize(),

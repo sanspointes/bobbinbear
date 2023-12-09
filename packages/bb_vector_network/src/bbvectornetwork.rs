@@ -12,6 +12,7 @@ use std::ops::Add;
 use glam::Vec2;
 
 use crate::{
+    bbanchor::BBAnchor,
     bbindex::{BBAnchorIndex, BBLinkIndex, BBRegionIndex},
     bbvnlink::BBVNLink,
     bbvnregion::BBVNRegion,
@@ -20,13 +21,12 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct BBVectorNetwork {
     next_idx: usize,
-    pub anchors: Vec<Vec2>,
+    pub anchors: Vec<BBAnchor>,
     pub links: std::collections::HashMap<BBLinkIndex, BBVNLink>,
     pub regions: std::collections::HashMap<BBRegionIndex, BBVNRegion>,
 }
 
 impl BBVectorNetwork {
-
     /// Creates a new BBVectorNetwork starting at a given point.
     ///
     /// * `begin_point`: Position of first point
@@ -46,51 +46,24 @@ impl BBVectorNetwork {
     }
 
     /*
-    * Public Getters
-    */
+     * Public Getters
+     */
 
     /// Gets a reference to a Vector Network link between two anchors
     pub fn link(&self, index: BBLinkIndex) -> Option<&BBVNLink> {
         self.links.get(&index)
     }
     /// Gets a reference to an anchor
-    pub fn anchor(&self, index: BBAnchorIndex) -> Option<&Vec2> {
+    pub fn anchor(&self, index: BBAnchorIndex) -> Option<&BBAnchor> {
         self.anchors.get(index.0)
     }
     /// Gets a mutable reference to an anchor
-    pub fn anchor_mut(&mut self, index: BBAnchorIndex) -> Option<&mut Vec2> {
+    pub fn anchor_mut(&mut self, index: BBAnchorIndex) -> Option<&mut BBAnchor> {
         self.anchors.get_mut(index.0)
-    }
-    fn anchor_unchecked(&self, index: BBAnchorIndex) -> Vec2 {
-        unsafe { *self.anchors.get_unchecked(index.0) }
     }
     /// Gets the number of anchors stored.
     pub fn anchor_len(&self) -> usize {
         self.anchors.len()
-    }
-    /// Returns the index of the BBPathLink that has `end/at` field that coresponds with the
-    /// provided index.
-    fn links_from_start_anchor(&self, index: BBAnchorIndex) -> Vec<usize> {
-        let mut result = vec![];
-        for (link_index, link) in self.links.values().enumerate() {
-            if index == link.start_index() {
-                result.push(link_index)
-            }
-        }
-
-        result
-    }
-    /// Returns the index of the BBPathLink that has `start/at` field that coresponds with the
-    /// provided index.
-    fn links_from_end_anchor(&self, index: BBAnchorIndex) -> Vec<usize> {
-        let mut result = vec![];
-        for (link_index, link) in self.links.values().enumerate() {
-            if index == link.end_index() {
-                result.push(link_index)
-            }
-        }
-
-        result
     }
 
     pub fn has_anchor(&self, index: BBAnchorIndex) -> bool {
@@ -98,12 +71,12 @@ impl BBVectorNetwork {
     }
 
     /*
-    * GRAPH BUILDING API - Anchor Methods
-    */
+     * GRAPH BUILDING API - Anchor Methods
+     */
 
     /// Pushes a new anchor node to the BBVectorNetwork
     fn add_anchor(&mut self, value: Vec2) -> BBAnchorIndex {
-        self.anchors.push(value);
+        self.anchors.push(BBAnchor::new(value));
         (self.anchors.len() - 1).into()
     }
     /// Deletes an anchor, deletes associated links and breaks regions containing these links.
@@ -129,16 +102,28 @@ impl BBVectorNetwork {
     }
 
     /*
-    * GRAPH BUILDING API - Link functions
-    */
+     * GRAPH BUILDING API - Link functions
+     */
 
     /// Links two anchor nodes as a straight line.
     fn link_line(&mut self, start: BBAnchorIndex, end: BBAnchorIndex) -> (BBLinkIndex, BBVNLink) {
-        debug_assert!(self.has_anchor(start));
-        debug_assert!(self.has_anchor(end));
-        let link = BBVNLink::Line { start, end };
         let index = BBLinkIndex(self.get_next_idx());
+        self.anchor_mut(start)
+            .expect(&format!(
+                "BBVectorNetwork::link_line() Could not get {start:?} anchor."
+            ))
+            .adjacents
+            .push(index);
+        self.anchor_mut(end)
+            .expect(&format!(
+                "BBVectorNetwork::link_line() Could not get {end:?} anchor."
+            ))
+            .adjacents
+            .push(index);
+
+        let link = BBVNLink::Line { start, end };
         self.links.insert(index, link);
+
         (index, link)
     }
     /// Links two anchor nodes as a quadratic curve with 1 control node.
@@ -300,22 +285,34 @@ impl BBVectorNetwork {
 
     #[cfg(feature = "debug_draw")]
     pub fn debug_draw(&self) {
-        for ( index, link ) in self.links.iter() {
+        for (index, link) in self.links.iter() {
             link.debug_draw(self);
-            comfy::draw_text(&format!("#{}", index.0), link.t_point(self, 0.5), comfy::WHITE, comfy::TextAlign::Center);
+            comfy::draw_text(
+                &format!("#{}", index.0),
+                link.t_point(self, 0.5),
+                comfy::WHITE,
+                comfy::TextAlign::Center,
+            );
         }
 
         for anchor in self.anchors.iter() {
-            comfy::draw_circle(*anchor, 0.1, comfy::Color::rgb8(255, 0, 0), 1);
+            comfy::draw_circle(anchor.position(), 0.1, comfy::Color::rgb8(255, 0, 0), 1);
         }
 
         for (region_index, region) in self.regions.values().enumerate() {
             for el in region.link_indicies().iter() {
                 println!("Loop {}: {:?}", region_index, el);
-                for  link_index  in el.iter() {
-                    let link = self.link(*link_index).expect("BBVectorNetwork::debug_draw() -> No link index for {link_index:?}");
+                for link_index in el.iter() {
+                    let link = self.link(*link_index).expect(
+                        "BBVectorNetwork::debug_draw() -> No link index for {link_index:?}",
+                    );
                     let pos = link.t_point(self, 0.5);
-                    comfy::draw_text(&format!("#{}:{}", region_index, link_index.0), pos + Vec2::new(0., 0.4 * (region_index + 1) as f32), comfy::GRAY, comfy::TextAlign::Center);
+                    comfy::draw_text(
+                        &format!("#{}:{}", region_index, link_index.0),
+                        pos + Vec2::new(0., 0.4 * (region_index + 1) as f32),
+                        comfy::GRAY,
+                        comfy::TextAlign::Center,
+                    );
                 }
             }
             // region.debug_draw(self);
@@ -324,7 +321,7 @@ impl BBVectorNetwork {
 
     pub fn translate(&mut self, translation: Vec2) {
         for v in self.anchors.iter_mut() {
-            *v = v.add(translation);
+            v.position = v.position.add(translation);
         }
         for l in self.links.values_mut() {
             l.translate(translation);

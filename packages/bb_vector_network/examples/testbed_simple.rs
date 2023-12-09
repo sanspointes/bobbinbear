@@ -262,7 +262,7 @@ fn debug_bbvn(bbvn: &BBVectorNetwork, source_link: BBLinkIndex) {
         let first = *bbvn.link(source_link).unwrap();
         let next_links = first.next_links(bbvn);
 
-        comfy::draw_circle(first.end_point(bbvn), 0.1, WHITE, 11);
+        comfy::draw_circle(first.end_pos(bbvn), 0.1, WHITE, 11);
 
         let next = first.ccw_most_next_link(bbvn, &next_links[..]);
         let Some(next) = next else {

@@ -167,7 +167,7 @@ impl BBVNRegion {
             let first_link = bbvn
                 .link(*first_index)
                 .expect("BBVNRegion.debug_draw() -> Can't get link {first_index:?}");
-            builder.begin(v2_p2(first_link.start_point(bbvn)));
+            builder.begin(v2_p2(first_link.start_pos(bbvn)));
             println!("Loop: {el:?}");
             println!("Begin {first_link:?}");
 
@@ -177,16 +177,16 @@ impl BBVNRegion {
                     .expect("BBVNRegion.debug_draw() -> Can't get link {link_index:?}");
                 match link {
                     BBVNLink::Line { .. } => {
-                        builder.line_to(v2_p2(link.end_point(bbvn)));
+                        builder.line_to(v2_p2(link.end_pos(bbvn)));
                     }
                     BBVNLink::Quadratic { ctrl1, .. } => {
-                        builder.quadratic_bezier_to(v2_p2(*ctrl1), v2_p2(link.end_point(bbvn)));
+                        builder.quadratic_bezier_to(v2_p2(*ctrl1), v2_p2(link.end_pos(bbvn)));
                     }
                     BBVNLink::Cubic { ctrl1, ctrl2, .. } => {
                         builder.cubic_bezier_to(
                             v2_p2(*ctrl1),
                             v2_p2(*ctrl2),
-                            v2_p2(link.end_point(bbvn)),
+                            v2_p2(link.end_pos(bbvn)),
                         );
                     }
                 }
