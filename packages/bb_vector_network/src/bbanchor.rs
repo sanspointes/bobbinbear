@@ -1,8 +1,8 @@
 use glam::Vec2;
 
-use crate::BBLinkIndex;
+use crate::{BBLinkIndex, BBVectorNetwork};
 
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 // Represents a reference to an anchor node in the BBVectorNetwork
 pub struct BBAnchorIndex(pub usize);
 impl From<usize> for BBAnchorIndex {

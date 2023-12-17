@@ -8,6 +8,6 @@ mod traits;
 mod debug_draw;
 
 pub use bbvectornetwork::BBVectorNetwork;
-pub use bbindex::{BBLinkIndex, BBAnchorIndex};
+pub use bbindex::BBLinkIndex;
 pub use bbvnlink::BBVNLink;
 pub use bbvnregion::{BBVNRegion, BBVNWindingRule};

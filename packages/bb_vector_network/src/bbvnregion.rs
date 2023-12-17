@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
 use crate::{
-    bbindex::{BBAnchorIndex, BBLinkIndex},
+    bbindex::BBLinkIndex,
     bbvectornetwork::BBVectorNetwork,
-    BBVNLink,
+    BBVNLink, bbanchor::BBAnchorIndex,
 };
 
 #[cfg(feature = "debug_draw")]

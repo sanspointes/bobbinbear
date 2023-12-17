@@ -5,8 +5,8 @@ use std::ops::{Add, Sub};
 use glam::Vec2;
 
 use crate::{
-    bbanchor::BBAnchor,
-    bbindex::{BBAnchorIndex, BBLinkIndex},
+    bbanchor::{BBAnchor, BBAnchorIndex},
+    bbindex::BBLinkIndex,
     bbvectornetwork::BBVectorNetwork,
     traits::Determinate,
 };
@@ -64,6 +64,37 @@ impl BBVNLink {
     }
     pub fn end_pos(&self, bbvn: &BBVectorNetwork) -> Vec2 {
         self.end(bbvn).position()
+    }
+
+    pub fn set_start_index(&mut self, start_idx: BBAnchorIndex) {
+        match self {
+            BBVNLink::Line { start, .. }
+            | BBVNLink::Quadratic { start, .. }
+            | BBVNLink::Cubic { start, .. } => *start = start_idx,
+        }
+    }
+    pub fn set_end_index(&mut self, end_idx: BBAnchorIndex) {
+        match self {
+            BBVNLink::Line { end, .. }
+            | BBVNLink::Quadratic { end, .. }
+            | BBVNLink::Cubic { end, .. } => *end = end_idx,
+        }
+    }
+
+    /// Returns the index on the other side, i.e if you provide the start index it will return the
+    /// end index and vice versa.
+    pub fn other_anchor_index(&self, idx: BBAnchorIndex) -> BBAnchorIndex {
+        match self {
+            BBVNLink::Line { end, start }
+            | BBVNLink::Quadratic { end, start, .. }
+            | BBVNLink::Cubic { end, start, .. } => {
+                    if idx == *end {
+                        *start
+                    } else {
+                        *end
+                    }
+                }
+        }
     }
 
     pub fn t_point(&self, bbvn: &BBVectorNetwork, t: f32) -> Vec2 {
