@@ -22,16 +22,76 @@ impl GameState {
         Self {
             tests: vec![
                 Test {
+                    name: "CCW Test".to_string(),
+                    executor: Box::new(|| {
+                        let p0 = Vec2::new(0., -5.);
+                        let p1 = Vec2::new(0., 0.);
+                        let p2 = Vec2::new(-3., 4.);
+                        let p3 = mouse_world();
+                        
+                        comfy::draw_line(p0, p1, 0.1, comfy::DARKGREEN, 1);
+                        comfy::draw_line(p1, p2, 0.1, comfy::DARKGREEN, 1);
+                        comfy::draw_line(p1, p3, 0.1, comfy::DARKGREEN, 1);
+
+                        comfy::draw_circle(p0, 0.2, comfy::WHITE, 2);
+                        comfy::draw_text("p0", p0 + 0.5, comfy::WHITE, comfy::TextAlign::Center);
+                        comfy::draw_circle(p1, 0.2, comfy::WHITE, 2);
+                        comfy::draw_text("p1", p1 + 0.5, comfy::WHITE, comfy::TextAlign::Center);
+                        comfy::draw_circle(p2, 0.2, comfy::WHITE, 2);
+                        comfy::draw_text("p2", p2 + 0.5, comfy::WHITE, comfy::TextAlign::Center);
+                        comfy::draw_circle(p3, 0.2, comfy::WHITE, 2);
+                        comfy::draw_text("p3", p3 + 0.5, comfy::WHITE, comfy::TextAlign::Center);
+
+                        let dcurr = p1 - p0;
+                        comfy::draw_text(&format!("dcurr: {dcurr}"), p0 + dcurr / 2., comfy::WHITE, comfy::TextAlign::Center);
+                        let da = p2 - p1;
+                        comfy::draw_text(&format!("da: {da}\ndet: {}", dcurr.determinate(da)), p1 + da / 2., comfy::WHITE, comfy::TextAlign::Center);
+                        let db = p3 - p1;
+                        comfy::draw_arrow(p1 + 0.5, p3 + 0.5, 0.05, comfy::PINK, 2);
+                        comfy::draw_text(&format!("da: {db}\ndet: {}", dcurr.determinate(db)), p1 + db / 2., comfy::WHITE, comfy::TextAlign::Center);
+
+                        let is_convex = dcurr.determinate(db);
+
+
+                    }),
+                },
+                Test {
+                    name: "Shape 0".to_string(),
+                    executor: Box::new(|| {
+                        let mut g = BBGraph::new();
+
+                        let (_, first_edge) = g.line(Vec2::new(-5., 0.), Vec2::new(-2., -2.));
+                        let (_, edge) = g.line_from(first_edge.end_idx(), Vec2::new(0., -4.));
+                        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(2., -2.));
+                        let (_, edge) = g.line_from_to(first_edge.end_idx(), edge.end_idx());
+                        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(5., 0.));
+                        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(3., 3.));
+                        let (_, fork_edge) = g.line_from(edge.end_idx(), Vec2::new(0., 1.));
+                        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(-3., 3.));
+                        g.line_from_to(fork_edge.end_idx(), edge.end_idx());
+                        g.line_from_to(edge.end_idx(), first_edge.start_idx());
+                        
+                        let source = BBEdgeIndex(0);
+                        debug_graph(&g, source);
+                    }),
+                },
+                Test {
                     name: "Prong 1".to_string(),
                     executor: Box::new(|| {
                         let mut g = BBGraph::new();
 
-                        let (_, root_link) = g.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
-                        g.line_from(root_link.end_idx(), Vec2::new(-5., -5.));
-                        g.line_from(root_link.end_idx(), Vec2::new(0., -5.));
-                        g.line_from(root_link.end_idx(), Vec2::new(-5., 5.));
-                        g.line_from(root_link.end_idx(), Vec2::new(0., 5.));
-                        g.line_from(root_link.end_idx(), mouse_world());
+                        let (_, first_edge) = g.line(Vec2::new(-5., 0.), Vec2::new(-2., 0.));
+                        let (_, fork_edge) = g.line_from(first_edge.end_idx(), Vec2::new(0., 0.));
+                        let (_, edge) = g.line_from(fork_edge.end_idx(), Vec2::new(2., -2.));
+                        let (_, edge) = g.line_from(fork_edge.end_idx(), mouse_world());
+                        
+                        
+                        // let (_, root_edge) = g.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
+                        // g.line_from(root_edge.end_idx(), Vec2::new(-5., -5.));
+                        // g.line_from(root_edge.end_idx(), Vec2::new(0., -5.));
+                        // g.line_from(root_edge.end_idx(), Vec2::new(-5., 5.));
+                        // g.line_from(root_edge.end_idx(), Vec2::new(0., 5.));
+                        // g.line_from(root_edge.end_idx(), mouse_world());
 
                         let source = BBEdgeIndex(0);
                         debug_graph(&g, source);

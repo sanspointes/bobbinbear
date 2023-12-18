@@ -1,8 +1,14 @@
+use std::ops::Mul;
+
 use crate::{BBEdgeIndex, BBGraph, BBNodeIndex};
 
 use super::errors::{BBError, BBResult};
 
-pub fn mcb(graph: &BBGraph) {}
+pub fn mcb(graph: &BBGraph) {
+    for mut graph in graph.get_detached_graphs() {
+        graph.remove_filaments();
+    }
+}
 
 pub type ClosedWalk = Vec<BBEdgeIndex>;
 pub const MIN_EDGES_FOR_CYCLE: usize = 3;
@@ -15,7 +21,7 @@ pub fn perform_closed_walk_from_node(
     graph: &BBGraph,
     node_idx: BBNodeIndex,
 ) -> BBResult<(BBEdgeIndex, ClosedWalk)> {
-    let first_link_idx = graph.get_ccw_edge_of_node(node_idx, glam::Vec2::new(0., -1.), None)?;
+    let first_link_idx = graph.get_cw_edge_of_node(node_idx, glam::Vec2::new(0., 1.), None)?;
     let mut closed_walk = vec![first_link_idx];
 
     let first_link = graph.edge(first_link_idx)?.directed_from(node_idx);
@@ -24,7 +30,7 @@ pub fn perform_closed_walk_from_node(
     comfy::draw_arrow(
         graph.node(first_link.start_idx())?.position() + 0.2,
         graph.node(first_link.end_idx())?.position() + 0.2,
-        0.05,
+        0.08,
         comfy::GRAY,
         100,
     );
@@ -32,7 +38,7 @@ pub fn perform_closed_walk_from_node(
     let mut edge_idx_curr = first_link_idx;
     let mut edge_curr = first_link;
     let mut node_curr = first_link.end_idx();
-    let mut dir_curr = first_link.calc_end_tangent(graph)?;
+    let mut dir_curr = first_link.calc_end_tangent(graph)?.mul(-1.);
 
     let mut iterations = 0;
 
@@ -63,7 +69,7 @@ pub fn perform_closed_walk_from_node(
 
         edge_curr = edge_next;
         node_curr = edge_next.other_node_idx(node_curr);
-        dir_curr = edge_next.calc_end_tangent(graph)?;
+        dir_curr = edge_next.calc_end_tangent(graph)?.mul(-1.);
     }
 
     let length = closed_walk.len();

@@ -255,7 +255,7 @@ impl BBEdge {
             BBEdge::Line { .. } => {
                 let start = graph.node(self.start_idx())?;
                 let end = graph.node(self.end_idx())?;
-                comfy::draw_arrow(start.position, end.position, 0.02, color, z_index);
+                comfy::draw_line(start.position, end.position, 0.02, color, z_index);
             }
             link @ BBEdge::Quadratic { .. } | link @ BBEdge::Cubic { .. } => {
                 let mut p_prev = self.start_pos(graph);
@@ -263,44 +263,11 @@ impl BBEdge {
                     let i = i + 1;
                     let t = i as f32 / 20.;
                     let p = self.t_point(graph, t);
-                    if i == 20 {
-                        comfy::draw_arrow(p_prev, p, 0.02, color, z_index);
-                    } else {
-                        comfy::draw_line(p_prev, p, 0.02, color, z_index);
-                    }
+                    comfy::draw_line(p_prev, p, 0.03, color, z_index);
                     p_prev = p;
-                }
-
-                match link {
-                    BBEdge::Quadratic { ctrl1, .. } => {
-                        comfy::draw_line(self.start_pos(graph), *ctrl1, 0.02, color, z_index);
-                        comfy::draw_line(*ctrl1, self.end_pos(graph), 0.02, color, z_index);
-                    }
-                    BBEdge::Cubic { ctrl1, ctrl2, .. } => {
-                        comfy::draw_line(self.start_pos(graph), *ctrl1, 0.02, color, z_index);
-                        comfy::draw_line(*ctrl2, self.end_pos(graph), 0.02, color, z_index);
-                    }
-                    BBEdge::Line { .. } => (),
                 }
             }
         }
-
-        let p = self.start_pos(graph);
-        comfy::draw_line(
-            p,
-            p + self.calc_start_tangent(graph)?.normalize(),
-            0.02,
-            comfy::GRAY,
-            z_index + 1,
-        );
-        let p = self.end_pos(graph);
-        comfy::draw_line(
-            p,
-            p + self.calc_end_tangent(graph)?.normalize(),
-            0.02,
-            comfy::GRAY,
-            z_index + 1,
-        );
 
         Ok(())
     }
