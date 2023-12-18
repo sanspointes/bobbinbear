@@ -1,0 +1,307 @@
+#![allow(dead_code)]
+
+use std::ops::{Add, Sub};
+
+use glam::Vec2;
+
+#[cfg(feature = "debug_draw")]
+use crate::debug_draw::draw_det_arc;
+#[cfg(feature = "debug_draw")]
+use comfy::{draw_text, Vec2Extensions, ORANGE, ORANGE_RED, PURPLE};
+
+use super::{
+    bb_graph::BBGraph,
+    bb_node::{BBNode, BBNodeIndex},
+    errors::BBResult,
+};
+
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+/// Represents an index position of a BBVNRegion, which are joins between two nodes.
+pub struct BBEdgeIndex(pub usize);
+impl From<usize> for BBEdgeIndex {
+    fn from(value: usize) -> Self {
+        Self(value)
+    }
+}
+impl From<BBEdgeIndex> for usize {
+    fn from(value: BBEdgeIndex) -> Self {
+        value.0
+    }
+}
+
+impl From<&mut BBEdgeIndex> for usize {
+    fn from(value: &mut BBEdgeIndex) -> Self {
+        value.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BBEdge {
+    Line {
+        start: BBNodeIndex,
+        end: BBNodeIndex,
+    },
+    Quadratic {
+        start: BBNodeIndex,
+        ctrl1: Vec2,
+        end: BBNodeIndex,
+    },
+    Cubic {
+        start: BBNodeIndex,
+        ctrl1: Vec2,
+        ctrl2: Vec2,
+        end: BBNodeIndex,
+    },
+}
+
+impl BBEdge {
+    /// Gets the index of the `start` node
+    pub fn start_idx(&self) -> BBNodeIndex {
+        match self {
+            BBEdge::Line { start, .. }
+            | BBEdge::Quadratic { start, .. }
+            | BBEdge::Cubic { start, .. } => *start,
+        }
+    }
+    pub fn start(&self, bbvn: &BBGraph) -> BBNode {
+        bbvn.node(self.start_idx()).unwrap().clone()
+    }
+    pub fn start_pos(&self, bbvn: &BBGraph) -> Vec2 {
+        self.start(bbvn).position()
+    }
+
+    /// Gets the index of the `end` node
+    pub fn end_idx(&self) -> BBNodeIndex {
+        match self {
+            BBEdge::Line { end, .. }
+            | BBEdge::Quadratic { end, .. }
+            | BBEdge::Cubic { end, .. } => *end,
+        }
+    }
+    pub fn end(&self, bbvn: &BBGraph) -> BBNode {
+        bbvn.node(self.end_idx()).unwrap().clone()
+    }
+    pub fn end_pos(&self, bbvn: &BBGraph) -> Vec2 {
+        self.end(bbvn).position()
+    }
+
+    pub fn set_start_idx(&mut self, start_idx: BBNodeIndex) {
+        match self {
+            BBEdge::Line { start, .. }
+            | BBEdge::Quadratic { start, .. }
+            | BBEdge::Cubic { start, .. } => *start = start_idx,
+        }
+    }
+    pub fn set_end_idx(&mut self, end_idx: BBNodeIndex) {
+        match self {
+            BBEdge::Line { end, .. }
+            | BBEdge::Quadratic { end, .. }
+            | BBEdge::Cubic { end, .. } => *end = end_idx,
+        }
+    }
+
+    /// Returns the index on the other side, i.e if you provide the start index it will return the
+    /// end index and vice versa.
+    pub fn other_node_idx(&self, idx: BBNodeIndex) -> BBNodeIndex {
+        match self {
+            BBEdge::Line { end, start }
+            | BBEdge::Quadratic { end, start, .. }
+            | BBEdge::Cubic { end, start, .. } => {
+                if idx == *end {
+                    *start
+                } else {
+                    *end
+                }
+            }
+        }
+    }
+
+    pub fn t_point(&self, bbvn: &BBGraph, t: f32) -> Vec2 {
+        match self {
+            BBEdge::Line { .. } => Vec2::lerp(self.start_pos(bbvn), self.end_pos(bbvn), t),
+            BBEdge::Quadratic { ctrl1, .. } => {
+                let p1 = Vec2::lerp(self.start_pos(bbvn), *ctrl1, t);
+                let p2 = Vec2::lerp(*ctrl1, self.end_pos(bbvn), t);
+                Vec2::lerp(p1, p2, t)
+            }
+            BBEdge::Cubic { ctrl1, ctrl2, .. } => {
+                let p1 = Vec2::lerp(self.start_pos(bbvn), *ctrl1, t);
+                let p2 = Vec2::lerp(*ctrl1, *ctrl2, t);
+                let p3 = Vec2::lerp(*ctrl2, self.end_pos(bbvn), t);
+                Vec2::lerp(Vec2::lerp(p1, p2, t), Vec2::lerp(p2, p3, t), t)
+            }
+        }
+    }
+
+    /// Calculates the tangent of the bezier/line at `t=0`
+    ///
+    /// * `bbvn`: The BBGraph to source the point data from
+    pub fn calc_start_tangent(&self, bbvn: &BBGraph) -> BBResult<Vec2> {
+        match self {
+            BBEdge::Line { start, end } => {
+                let v_start = bbvn.node(*start)?.position();
+                let v_end = bbvn.node(*end)?.position();
+
+                Ok(v_end - v_start)
+            }
+            BBEdge::Quadratic { start, ctrl1, .. } => {
+                let v_start = bbvn.node(*start)?.position();
+
+                Ok(*ctrl1 - v_start)
+            }
+            BBEdge::Cubic { start, ctrl1, .. } => {
+                let v_start = bbvn.node(*start)?.position();
+
+                Ok(*ctrl1 - v_start)
+            }
+        }
+    }
+
+    /// Calculates the tangent of the bezier/line at `t=1`
+    ///
+    /// * `bbvn`: The BBGraph to source the point data from
+    pub fn calc_end_tangent(&self, bbvn: &BBGraph) -> BBResult<Vec2> {
+        match self {
+            BBEdge::Line { start, end } => {
+                let v_start = bbvn.node(*start)?.position();
+                let v_end = bbvn.node(*end)?.position();
+
+                Ok(v_end - v_start)
+            }
+            BBEdge::Quadratic { end, ctrl1, .. } => {
+                let v_end = bbvn.node(*end)?.position();
+
+                Ok(v_end - *ctrl1)
+            }
+            BBEdge::Cubic { end, ctrl2, .. } => {
+                let v_end = bbvn.node(*end)?.position();
+
+                Ok(v_end - *ctrl2)
+            }
+        }
+    }
+    /// Returns true if this BBEdge references the given index.
+    ///
+    /// * `index`:
+    pub fn references_idx(&self, index: BBNodeIndex) -> bool {
+        self.start_idx() == index || self.end_idx() == index
+    }
+
+    /// Returns a clone of the BBEdge but in the reversed direction
+    pub fn reversed(&self) -> Self {
+        match self {
+            BBEdge::Line { start, end } => BBEdge::Line {
+                start: *end,
+                end: *start,
+            },
+            BBEdge::Quadratic { start, ctrl1, end } => BBEdge::Quadratic {
+                start: *end,
+                ctrl1: *ctrl1,
+                end: *start,
+            },
+            BBEdge::Cubic {
+                start,
+                ctrl1,
+                ctrl2,
+                end,
+            } => BBEdge::Cubic {
+                start: *end,
+                ctrl1: *ctrl2,
+                ctrl2: *ctrl1,
+                end: *start,
+            },
+        }
+    }
+
+    /// Returns the edge, redirected to start from the provided node and point to the other node. 
+    pub fn directed_from(self, from_node_idx: BBNodeIndex) -> BBEdge {
+        if self.start_idx() == from_node_idx {
+            self
+        } else {
+            self.reversed()
+        }
+    }
+
+    pub fn translate(&mut self, translation: Vec2) {
+        match self {
+            Self::Quadratic { ctrl1, .. } => {
+                *ctrl1 = ctrl1.add(translation);
+            }
+            Self::Cubic { ctrl1, ctrl2, .. } => {
+                *ctrl1 = ctrl1.add(translation);
+                *ctrl2 = ctrl2.add(translation);
+            }
+            _ => (),
+        }
+    }
+}
+
+/**
+ * Comfy debug drawing
+ */
+#[cfg(feature = "debug_draw")]
+impl BBEdge {
+    pub fn debug_draw(&self, graph: &BBGraph) {
+        self.debug_draw_with_color_and_z_index(graph, comfy::Color::rgb8(0, 255, 0), 10);
+    }
+
+    pub fn debug_draw_with_color_and_z_index(
+        &self,
+        graph: &BBGraph,
+        color: comfy::Color,
+        z_index: i32,
+    ) -> BBResult<()> {
+        match self {
+            BBEdge::Line { .. } => {
+                let start = graph.node(self.start_idx())?;
+                let end = graph.node(self.end_idx())?;
+                comfy::draw_arrow(start.position, end.position, 0.02, color, z_index);
+            }
+            link @ BBEdge::Quadratic { .. } | link @ BBEdge::Cubic { .. } => {
+                let mut p_prev = self.start_pos(graph);
+                for i in 0..20 {
+                    let i = i + 1;
+                    let t = i as f32 / 20.;
+                    let p = self.t_point(graph, t);
+                    if i == 20 {
+                        comfy::draw_arrow(p_prev, p, 0.02, color, z_index);
+                    } else {
+                        comfy::draw_line(p_prev, p, 0.02, color, z_index);
+                    }
+                    p_prev = p;
+                }
+
+                match link {
+                    BBEdge::Quadratic { ctrl1, .. } => {
+                        comfy::draw_line(self.start_pos(graph), *ctrl1, 0.02, color, z_index);
+                        comfy::draw_line(*ctrl1, self.end_pos(graph), 0.02, color, z_index);
+                    }
+                    BBEdge::Cubic { ctrl1, ctrl2, .. } => {
+                        comfy::draw_line(self.start_pos(graph), *ctrl1, 0.02, color, z_index);
+                        comfy::draw_line(*ctrl2, self.end_pos(graph), 0.02, color, z_index);
+                    }
+                    BBEdge::Line { .. } => (),
+                }
+            }
+        }
+
+        let p = self.start_pos(graph);
+        comfy::draw_line(
+            p,
+            p + self.calc_start_tangent(graph)?.normalize(),
+            0.02,
+            comfy::GRAY,
+            z_index + 1,
+        );
+        let p = self.end_pos(graph);
+        comfy::draw_line(
+            p,
+            p + self.calc_end_tangent(graph)?.normalize(),
+            0.02,
+            comfy::GRAY,
+            z_index + 1,
+        );
+
+        Ok(())
+    }
+}

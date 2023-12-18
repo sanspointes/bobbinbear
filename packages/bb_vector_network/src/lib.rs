@@ -1,13 +1,17 @@
-mod bbanchor;
-mod bbvectornetwork;
-mod bbvnlink;
-mod bbindex;
-mod bbvnregion;
+// mod bbanchor;
+// mod bbvectornetwork;
+// mod bbvnlink;
+// mod bbindex;
+// mod bbvnregion;
 mod traits;
 #[cfg(feature = "debug_draw")]
 mod debug_draw;
 
-pub use bbvectornetwork::BBVectorNetwork;
-pub use bbindex::BBLinkIndex;
-pub use bbvnlink::BBVNLink;
-pub use bbvnregion::{BBVNRegion, BBVNWindingRule};
+pub mod impl2;
+
+// pub use bbvectornetwork::BBVectorNetwork;
+// pub use bbvnlink::BBVNLink;
+// pub use bbvnregion::{BBVNRegion, BBVNWindingRule};
+pub use impl2::bb_graph::BBGraph;
+pub use impl2::bb_edge::{BBEdge, BBEdgeIndex};
+pub use impl2::bb_node::{BBNode, BBNodeIndex};
