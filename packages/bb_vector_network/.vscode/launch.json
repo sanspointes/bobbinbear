@@ -107,7 +107,7 @@
                     "build",
                     "--example=testbed_simple",
                     "--package=bb_vector_network",
-                    "--features=debug_draw"
+                    "--features=debug_draw",
                 ],
                 "filter": {
                     "name": "testbed_simple",

@@ -168,8 +168,6 @@ impl BBVNRegion {
                 .link(*first_index)
                 .expect("BBVNRegion.debug_draw() -> Can't get link {first_index:?}");
             builder.begin(v2_p2(first_link.start_pos(bbvn)));
-            println!("Loop: {el:?}");
-            println!("Begin {first_link:?}");
 
             for link_index in el {
                 let link = bbvn

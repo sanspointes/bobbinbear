@@ -16,3 +16,4 @@ pub use impl2::bb_graph::BBGraph;
 pub use impl2::bb_edge::{BBEdge, BBEdgeIndex};
 pub use impl2::bb_node::{BBNode, BBNodeIndex};
 pub use traits::Determinate;
+pub use impl2::prelude;

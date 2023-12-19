@@ -1,16 +1,17 @@
-use std::ops::Sub;
+use std::ops::{Mul, Sub};
 
-use comfy::Mul;
 use glam::Vec2;
 use std::collections::{HashMap, HashSet, VecDeque};
 
-use crate::{debug_draw::draw_det_arc, Determinate};
+#[cfg(feature = "debug_draw")]
+use crate::debug_draw::draw_det_arc;
+use crate::Determinate;
 
 use super::{
     bb_edge::{BBEdge, BBEdgeIndex},
     bb_node::{BBNode, BBNodeIndex},
     errors::{BBError, BBResult},
-    mcb::perform_closed_walk_from_node,
+    mcb::{perform_closed_walk_from_node, ClosedWalk},
 };
 
 #[derive(Debug, Clone)]
@@ -89,6 +90,29 @@ impl BBGraph {
     pub fn edge(&self, index: BBEdgeIndex) -> BBResult<&BBEdge> {
         self.edges.get(&index).ok_or(BBError::MissingEdge(index))
     }
+    /// Gets a reference to a Vector Network edge between two nodes
+    pub fn edge_mut(&mut self, index: BBEdgeIndex) -> BBResult<&mut BBEdge> {
+        self.edges.get_mut(&index).ok_or(BBError::MissingEdge(index))
+    }
+    /// Given a list of edge idxs (closed walk), returns them all directed
+    /// in the same direction.
+    pub fn edges_from_closed_walk(&self, closed_walk: &ClosedWalk) -> BBResult<Vec<(BBEdgeIndex, BBEdge)>> {
+        if closed_walk.len() == 0 {
+            return Err(BBError::ClosedWalkTooSmall(closed_walk.len()))
+        }
+        let first_edge_idx = closed_walk.first().unwrap();
+        let mut prev_edge = *self.edge(*first_edge_idx)?;
+
+        let mut directed_closed_walk = vec![(*first_edge_idx, prev_edge)];
+
+        for edge_idx in &closed_walk[1..] {
+            let edge = self.edge(*edge_idx)?.directed_from(prev_edge.end_idx());
+            directed_closed_walk.push((*edge_idx, edge));
+            prev_edge = edge;
+        }
+
+        Ok(directed_closed_walk)
+    }
     /// Gets a reference to an node
     pub fn node(&self, index: BBNodeIndex) -> BBResult<&BBNode> {
         self.nodes.get(index.0).ok_or(BBError::MissingNode(index))
@@ -126,7 +150,7 @@ impl BBGraph {
 
         let mut edges_to_delete = vec![];
         for (edge_idx, edge) in self.edges.iter_mut() {
-            if edge.references_idx(index) {
+            if edge.contains_node_idx(index) {
                 edges_to_delete.push(*edge_idx);
             } else {
                 match edge {
@@ -162,7 +186,7 @@ impl BBGraph {
         (index, edge)
     }
 
-    fn delete_edge(&mut self, edge_idx: BBEdgeIndex) {
+    pub fn delete_edge(&mut self, edge_idx: BBEdgeIndex) {
         let edge = *self.edge(edge_idx).unwrap();
 
         let start = self.node_mut(edge.start_idx()).unwrap();
@@ -348,7 +372,7 @@ impl BBGraph {
  * MCB related methods
  */
 impl BBGraph {
-    fn get_left_most_anchor_index(&self) -> Option<BBNodeIndex> {
+    pub fn get_left_most_anchor_index(&self) -> Option<BBNodeIndex> {
         let Some(mut result_pos) = self.nodes.first().map(|a| a.position) else {
             return None;
         };
@@ -374,7 +398,6 @@ impl BBGraph {
         prev_edge_idx: Option<BBEdgeIndex>,
     ) -> BBResult<Vec<(BBEdgeIndex, BBEdge, Vec2)>> {
         let node = self.node(node_idx).unwrap();
-        println!("Getting adjacents of {node_idx:?}. Filtering {prev_edge_idx:?} from {:?}", node.adjacents);
         // Get list of next edges, omitting the previous edge (if provided)
         node.adjacents()
             .iter()
@@ -463,8 +486,8 @@ impl BBGraph {
             let mut temp_el_dir = el_dir;
             let mut temp_next_dir = next_dir;
 
-            #[cfg(feature = "debug_draw")]
-            draw_det_arc(curr_p, 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
+            // #[cfg(feature = "debug_draw")]
+            // draw_det_arc(curr_p, 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
 
             // When lines a parallel we need to move our test points across the lines until we find
             // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
@@ -578,17 +601,17 @@ impl BBGraph {
         for (index, edge) in self.edges.iter() {
             edge.debug_draw(self);
             comfy::draw_text(
-                &format!("e{}", index.0),
+                &format!("{}:", index),
                 edge.t_point(self, 0.5),
                 comfy::WHITE,
                 comfy::TextAlign::Center,
             );
         }
 
-        for ( i, node ) in self.nodes.iter().enumerate() {
+        for (i, node) in self.nodes.iter().enumerate() {
             comfy::draw_circle(node.position(), 0.1, comfy::Color::rgb8(255, 0, 0), 1);
             comfy::draw_text(
-                &format!("n{}", i),
+                &format!("n{}\np{}", i, node.position()),
                 node.position(),
                 comfy::WHITE,
                 comfy::TextAlign::Center,
@@ -600,7 +623,13 @@ impl BBGraph {
             let node = self.node(left_most)?;
             let color = comfy::Color::rgb8(255, 100, 100);
             comfy::draw_circle(node.position(), 0.15, color, 1);
-            comfy::draw_line(node.position(), node.position() + Vec2::new(0., -1.), 0.05, color, 1);
+            comfy::draw_line(
+                node.position(),
+                node.position() + Vec2::new(0., -1.),
+                0.05,
+                color,
+                1,
+            );
 
             let closed_walk_result = perform_closed_walk_from_node(self, left_most);
             // match closed_walk_result {
@@ -621,7 +650,6 @@ impl BBGraph {
 
         // for (region_index, region) in self.regions.values().enumerate() {
         //     for el in region.edge_indicies().iter() {
-        //         println!("Loop {}: {:?}", region_index, el);
         //         for edge_index in el.iter() {
         //             let edge = self.edge(*edge_index).expect(
         //                 "BBVectorNetwork::debug_draw() -> No edge index for {edge_index:?}",

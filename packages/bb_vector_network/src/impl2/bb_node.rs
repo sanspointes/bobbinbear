@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use glam::Vec2;
 
 use super::bb_edge::BBEdgeIndex;
@@ -19,6 +21,11 @@ impl From<BBNodeIndex> for usize {
 impl From<&mut BBNodeIndex> for usize {
     fn from(value: &mut BBNodeIndex) -> Self {
         value.0
+    }
+}
+impl Display for BBNodeIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "n#{}", self.0)
     }
 }
 

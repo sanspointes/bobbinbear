@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::ops::{Add, Sub};
+use std::{ops::{Add, Sub}, fmt::Display};
 
 use glam::Vec2;
 
@@ -34,6 +34,11 @@ impl From<&mut BBEdgeIndex> for usize {
         value.0
     }
 }
+impl Display for BBEdgeIndex {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "e#{}", self.0)
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum BBEdge {
@@ -52,6 +57,21 @@ pub enum BBEdge {
         ctrl2: Vec2,
         end: BBNodeIndex,
     },
+}
+impl Display for BBEdge {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Line { start, end } => {
+                write!(f, "line: {} -> {}", start, end)
+            }
+            Self::Quadratic { start, ctrl1, end } => {
+                write!(f, "quad: {} -> {}", start, end)
+            }
+            Self::Cubic { start, ctrl1, ctrl2, end } => {
+                write!(f, "cubi: {} -> {}", start, end)
+            }
+        }
+    }
 }
 
 impl BBEdge {
@@ -183,8 +203,15 @@ impl BBEdge {
     /// Returns true if this BBEdge references the given index.
     ///
     /// * `index`:
-    pub fn references_idx(&self, index: BBNodeIndex) -> bool {
+    pub fn contains_node_idx(&self, index: BBNodeIndex) -> bool {
         self.start_idx() == index || self.end_idx() == index
+    }
+
+    /// Checks if another edge shares a node with self.
+    ///
+    /// * `other`: Other edge
+    pub fn shares_node_idx(&self, other: &BBEdge) -> bool {
+        self.contains_node_idx(other.start_idx()) || self.contains_node_idx(other.end_idx())
     }
 
     /// Returns a clone of the BBEdge but in the reversed direction

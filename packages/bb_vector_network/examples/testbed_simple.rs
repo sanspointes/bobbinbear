@@ -1,4 +1,4 @@
-use bb_vector_network::*;
+use bb_vector_network::impl2::prelude::*;
 use comfy::*;
 
 simple_game!("Simple Testbed", GameState, config, setup, update);
@@ -80,21 +80,23 @@ impl GameState {
                     executor: Box::new(|| {
                         let mut g = BBGraph::new();
 
-                        let (_, first_edge) = g.line(Vec2::new(-5., 0.), Vec2::new(-2., 0.));
-                        let (_, fork_edge) = g.line_from(first_edge.end_idx(), Vec2::new(0., 0.));
-                        let (_, edge) = g.line_from(fork_edge.end_idx(), Vec2::new(2., -2.));
-                        let (_, edge) = g.line_from(fork_edge.end_idx(), mouse_world());
-                        
-                        
-                        // let (_, root_edge) = g.line(Vec2::new(5., 0.), Vec2::new(0., 0.));
-                        // g.line_from(root_edge.end_idx(), Vec2::new(-5., -5.));
-                        // g.line_from(root_edge.end_idx(), Vec2::new(0., -5.));
-                        // g.line_from(root_edge.end_idx(), Vec2::new(-5., 5.));
-                        // g.line_from(root_edge.end_idx(), Vec2::new(0., 5.));
-                        // g.line_from(root_edge.end_idx(), mouse_world());
+                        let (_, first_edge) = g.line(Vec2::new(-5., -5.), Vec2::new(-4., 0.));
+                        let (_, fork_edge) = g.line_from(first_edge.end_idx(), Vec2::new(-0., 0.));
+                        let (_, edge) = g.line_from(fork_edge.end_idx(), Vec2::new(5., 0.));
+                        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(5., -5.));
+                        let (_, edge) = g.line_from_to(edge.end_idx(), first_edge.start_idx());
 
+
+                        let (_, edge) = g.line_from(fork_edge.end_idx(), Vec2::new(-2., -2.));
+                        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(2., -2.));
+                        let (_, edge) = g.line_from_to(edge.end_idx(), fork_edge.end_idx());
+                        
                         let source = BBEdgeIndex(0);
                         debug_graph(&g, source);
+
+                        // if let Ok(regions) = mcb(&g) {
+                        //     comfy::draw_text(&format!("{regions:?}"), Vec2::new(0., -4.), comfy::WHITE, TextAlign::Center);
+                        // }
                     }),
                 },
                 Test {
@@ -293,8 +295,8 @@ impl GameState {
                         let (_, edge) = g.line_from(first_edge.end_idx(), Vec2::new(5., 5.));
                         let (_, branch_edge) = g.line_from(edge.end_idx(), Vec2::new(0., 5.));
                         // Create the inner nested
-                        let (_, edge) = g.line_from(branch_edge.end_idx(), Vec2::new(1., 3.));
-                        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(2., 4.));
+                        let (_, edge) = g.line_from(branch_edge.end_idx(), Vec2::new(2., 4.));
+                        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(1., 3.));
                         g.line_from_to(edge.end_idx(), branch_edge.end_idx());
 
                         let (_, _) = g.line_from_to(branch_edge.end_idx(), first_edge.start_idx());

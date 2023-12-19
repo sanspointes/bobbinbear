@@ -1,13 +1,50 @@
 use std::ops::Mul;
 
-use crate::{BBEdgeIndex, BBGraph, BBNodeIndex};
+use crate::{impl2::bb_region::BBCycle, BBEdgeIndex, BBGraph, BBNodeIndex};
 
-use super::errors::{BBError, BBResult};
+use super::{
+    bb_region::BBRegion,
+    errors::{BBError, BBResult},
+};
 
-pub fn mcb(graph: &BBGraph) {
+pub fn mcb(graph: &BBGraph) -> BBResult<Vec<BBRegion>> {
+    let mut regions = vec![];
+
     for mut graph in graph.get_detached_graphs() {
-        graph.remove_filaments();
+        println!("Handling detached graph");
+        let mut cycles = vec![];
+        extract_cycles(&mut graph, &mut cycles)?;
+        regions.push(BBRegion::new(cycles));
     }
+
+    Ok(regions)
+}
+
+fn extract_cycles(graph: &mut BBGraph, cycles_out: &mut Vec<BBCycle>) -> BBResult<()> {
+    while graph.node_len() > 0 {
+        println!("Handling closed walk");
+        graph.remove_filaments();
+
+        let Some(left_most) = graph.get_left_most_anchor_index() else {
+            break;
+        };
+
+        let (outer_edge, closed_walk) = perform_closed_walk_from_node(graph, left_most)?;
+        let (parent_cycle, nested_walks) = extract_nested_from_closed_walk(graph, &closed_walk)?;
+        let mut parent_cycle = BBCycle::new(parent_cycle);
+
+        graph.delete_edge(outer_edge); // Needed to cleanup the cycle
+
+        for walk in nested_walks {
+            println!("Handling nested closed walk");
+            let mut nested_graph = BBGraph::new_from_other_edges(graph, &walk);
+            extract_cycles(&mut nested_graph, &mut parent_cycle.children)?;
+        }
+
+        cycles_out.push(parent_cycle);
+    }
+
+    todo!();
 }
 
 pub type ClosedWalk = Vec<BBEdgeIndex>;
@@ -45,13 +82,11 @@ pub fn perform_closed_walk_from_node(
     while iterations < 1000 {
         iterations += 1;
 
-        if iterations >= 3 && edge_curr.references_idx(node_idx) {
-            println!("Re-reached start, breaking");
+        if iterations >= 3 && edge_curr.contains_node_idx(node_idx) {
             break;
         }
 
         let edge_idx_next = graph.get_ccw_edge_of_node(node_curr, dir_curr, Some(edge_idx_curr))?;
-        println!("{iterations:?}: {edge_idx_curr:?} -> {edge_idx_next:?}");
 
         edge_idx_curr = edge_idx_next;
         closed_walk.push(edge_idx_next);
@@ -80,23 +115,82 @@ pub fn perform_closed_walk_from_node(
     }
 }
 
-pub fn extract_nested_from_closed_walk(graph: &BBGraph, closed_walk: &ClosedWalk) -> Vec<BBGraph> {
+pub fn extract_nested_from_closed_walk(
+    graph: &BBGraph,
+    closed_walk: &ClosedWalk,
+) -> BBResult<(ClosedWalk, Vec<ClosedWalk>)> {
     // let mut result = vec![];
+    // let cw_real: Vec<_> = closed_walk.iter().map(|edge_idx| graph.edge(*edge_idx)).collect();
+    // dbg!(cw_real);
+    //
+    // let node_first = graph
+    //     .edge(*closed_walk.first().unwrap())
+    //     .unwrap()
+    //     .start_idx();
+    // let mut node_prev_idx = node_first;
+    // let mut nodes = vec![node_first];
+    // for edge_idx in closed_walk.iter() {
+    //     let edge = graph.edge(*edge_idx).unwrap();
+    //     let node_next = (*edge).other_node_idx(node_prev_idx);
+    //     nodes.push(node_next);
+    //     node_prev_idx = node_next;
+    // }
 
-    let node_first = graph
-        .edge(*closed_walk.first().unwrap())
-        .unwrap()
-        .start_idx();
-    let mut node_prev_idx = node_first;
-    let mut nodes = vec![node_first];
-    for edge_idx in closed_walk.iter() {
-        let edge = graph.edge(*edge_idx).unwrap();
-        let node_next = (*edge).other_node_idx(node_prev_idx);
-        nodes.push(node_next);
-        node_prev_idx = node_next;
+    let mut closed_walk = graph.edges_from_closed_walk(closed_walk)?;
+    let mut nested_closed_walk = vec![];
+    for (i, (idx, edge)) in closed_walk.iter().enumerate() {
+        println!("{i}: {idx} {edge}");
     }
 
-    dbg!(nodes);
+    let mut next_i = 1;
+    while next_i < closed_walk.len() {
+        let i = next_i - 1;
+        let (edge_idx, edge) = closed_walk[i];
+
+        let mut nested_range = None;
+
+        for (end_i, (other_edge_idx, other_edge)) in closed_walk[next_i..]
+            .iter()
+            .enumerate()
+            .rev()
+        {
+            println!("{i}:{end_i} - {} vs {}", edge.start_idx(), other_edge.end_idx());
+
+            if edge.start_idx() == other_edge.end_idx() {
+                nested_range = Some(i..(end_i + next_i));
+                break;
+            }
+            // let shares_node = if is_first {
+            //     other_edge.contains_node_idx(edge.end_idx())
+            // } else if is_last {
+            //     edge.contains_node_idx(other_edge.start_idx())
+            // } else {
+            //     other_edge.shares_node_idx(&edge)
+            // };
+            //
+            // if shares_node {
+            //     break;
+            // }
+        }
+
+        if let Some(nested_range) = nested_range {
+
+            let nested_walk: Vec<_> = closed_walk.drain(nested_range).collect();
+
+            println!("Found nested closed_walk:");
+            for (i, (idx, edge)) in nested_walk.iter().enumerate() {
+                println!("\t{i}: {idx} {edge}");
+            }
+            println!("Original Walk:");
+            for (i, (idx, edge)) in closed_walk.iter().enumerate() {
+                println!("\t{i}: {idx} {edge}");
+            }
+
+            nested_closed_walk.push(nested_walk);
+        }
+
+        next_i += 1;
+    }
 
     // let mut next_i = 1;
     // while next_i < closed_walk.len() {
@@ -110,51 +204,5 @@ pub fn extract_nested_from_closed_walk(graph: &BBGraph, closed_walk: &ClosedWalk
     // }
     //
     // result
-    panic!("todo")
-}
-
-#[cfg(test)]
-mod tests {
-    use glam::Vec2;
-
-    use crate::{impl2::mcb::extract_nested_from_closed_walk, BBGraph};
-
-    use super::perform_closed_walk_from_node;
-
-    #[test]
-    fn test_basic_closed_walk() {
-        let mut g = BBGraph::new();
-        let (first_edge_idx, first_edge) = g.line(Vec2::ZERO, Vec2::new(5., 0.));
-        let (_, edge) = g.line_from(first_edge.end_idx(), Vec2::new(5., 5.));
-        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(0., 5.));
-        let (last_edge_idx, _) = g.line_from_to(edge.end_idx(), first_edge.start_idx());
-
-        let (outer_edge, closed_walk) =
-            perform_closed_walk_from_node(&g, first_edge.start_idx()).unwrap();
-
-        assert!(closed_walk.len() == 4);
-        assert_eq!(outer_edge, last_edge_idx);
-    }
-
-    #[test]
-    fn test_basic_extract_nested() {
-        let mut g = BBGraph::new();
-        let (first_edge_idx, first_edge) = g.line(Vec2::ZERO, Vec2::new(5., 0.));
-        let (_, edge) = g.line_from(first_edge.end_idx(), Vec2::new(5., 5.));
-        let (branch_edge_idx, branch_edge) = g.line_from(edge.end_idx(), Vec2::new(0., 5.));
-        // Create the inner nested
-        let (_, edge) = g.line_from(branch_edge.end_idx(), Vec2::new(1., 3.));
-        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(2., 4.));
-        g.line_from_to(edge.end_idx(), branch_edge.end_idx());
-
-        let (last_edge_idx, _) = g.line_from_to(branch_edge.end_idx(), first_edge.start_idx());
-
-        let (outer_edge, closed_walk) =
-            perform_closed_walk_from_node(&g, first_edge.start_idx()).unwrap();
-
-        assert_eq!(closed_walk.len(), 7, "Closed walk length");
-        assert_eq!(outer_edge, last_edge_idx, "Outer edge");
-
-        extract_nested_from_closed_walk(&g, &closed_walk);
-    }
+    Err(BBError::ClosedWalkDeadEnd)
 }
