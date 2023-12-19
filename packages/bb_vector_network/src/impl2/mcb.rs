@@ -23,8 +23,11 @@ pub fn mcb(graph: &BBGraph) -> BBResult<Vec<BBRegion>> {
 fn extract_cycles(graph: &mut BBGraph, cycles_out: &mut Vec<BBCycle>) -> BBResult<()> {
     println!("START extract_cycles");
     while graph.node_len() > 0 {
-        println!("Trying to extract with {} remaining nodes.", graph.node_len());
-        graph.remove_filaments();
+        println!(
+            "Trying to extract with {} remaining nodes.",
+            graph.node_len()
+        );
+        graph.remove_filaments()?;
         println!("Filaments removed, {} remaining nodes.", graph.node_len());
 
         if graph.nodes.len() <= 2 || graph.edges.len() <= 2 {
@@ -34,6 +37,7 @@ fn extract_cycles(graph: &mut BBGraph, cycles_out: &mut Vec<BBCycle>) -> BBResul
         let Some(left_most) = graph.get_left_most_anchor_index() else {
             break;
         };
+        println!("Left most anchor: {left_most}.");
 
         let (outer_edge, closed_walk) = perform_closed_walk_from_node(graph, left_most)?;
         println!("Performed closed walk {closed_walk:?}.");
@@ -41,12 +45,22 @@ fn extract_cycles(graph: &mut BBGraph, cycles_out: &mut Vec<BBCycle>) -> BBResul
 
         let mut parent_cycle = BBCycle::new(parent_cycle);
 
-        graph.delete_edge(outer_edge); // Needed to cleanup the cycle
+        graph.delete_edge(outer_edge)?; // Needed to cleanup the cycle
 
         for walk in nested_walks {
             println!("Handling nested closed walk on {walk:?}");
             let mut nested_graph = BBGraph::try_new_from_other_edges(graph, &walk)?;
-            extract_cycles(&mut nested_graph, &mut parent_cycle.children)?;
+            let result = extract_cycles(&mut nested_graph, &mut parent_cycle.children);
+
+            match result {
+                Ok(_) => (),
+                Err(reason) => match reason {
+                    critical @ BBError::MissingNode(_) | critical @ BBError::MissingEdge(_) => {
+                        return Err(critical)
+                    }
+                    _ => continue,
+                },
+            }
         }
 
         cycles_out.push(parent_cycle);
@@ -109,6 +123,7 @@ pub fn perform_closed_walk_from_node(
 
         node_curr = edge_next.other_node_idx(node_curr);
         dir_curr = edge_next.calc_end_tangent(graph)?.mul(-1.);
+        println!("Traversed to {node_curr}");
 
         iterations += 1;
     }
@@ -155,10 +170,7 @@ pub fn extract_nested_from_closed_walk(
 
         let mut nested_range = None;
 
-        for (end_i, (other_edge_idx, other_edge)) in closed_walk[next_i..]
-            .iter()
-            .enumerate()
-            .rev()
+        for (end_i, (other_edge_idx, other_edge)) in closed_walk[next_i..].iter().enumerate().rev()
         {
             if i != 0 && end_i != closed_walk.len() && edge.start_idx() == other_edge.end_idx() {
                 nested_range = Some(i..(end_i + next_i + 1));

@@ -3,7 +3,7 @@ mod mcb {
     use bb_vector_network::prelude::*;
     use glam::Vec2;
 
-    // #[test]
+    #[test]
     fn it_should_pass_smoke_test() {
         let mut g = BBGraph::new();
 
@@ -19,16 +19,9 @@ mod mcb {
         let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(5., -5.));
         let (_, edge) = g.line_from_to(edge.end_idx(), middle_edge.end_idx());
 
-
-        // let (e5, edge) = g.line_from(fork_edge.end_idx(), Vec2::new(-2., 2.));
-        // let (e6, edge) = g.line_from(edge.end_idx(), Vec2::new(2., 2.));
-        // let (e7, edge) = g.line_from_to(edge.end_idx(), fork_edge.end_idx());
-
-        let result = 
-        match mcb::mcb(&g) {
+        let result = match mcb::mcb(&g) {
             Ok(result) => {
                 println!("{result:?}");
-                todo!();
             }
             Err(reason) => {
                 panic!("FOUND ERROR: {reason:?}");
