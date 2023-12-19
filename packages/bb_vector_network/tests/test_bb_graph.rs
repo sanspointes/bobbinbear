@@ -79,12 +79,13 @@ mod remove_filaments {
         // Box
         let (_, first_edge) = g.line(Vec2::new(-6., 0.), Vec2::new(0., 0.));
         let (_, middle_edge) = g.line_from(first_edge.end_idx(), Vec2::new(0., -5.));
-        let (_, edge) = g.line_from(middle_edge.start_idx(), Vec2::new(-5., -5.));
+        let (_, edge) = g.line_from(middle_edge.end_idx(), Vec2::new(-5., -5.));
         g.line_from_to(edge.end_idx(), first_edge.start_idx());
 
         g.line_from(middle_edge.end_idx(), Vec2::new(5., -5.));
 
         assert_eq!(g.node_len(), 5);
+
         let _ = g.remove_filaments();
         assert_eq!(g.node_len(), 4);
     }
@@ -96,7 +97,7 @@ mod remove_filaments {
         // Box
         let (_, first_edge) = g.line(Vec2::new(-6., 0.), Vec2::new(0., 0.));
         let (_, middle_edge) = g.line_from(first_edge.end_idx(), Vec2::new(0., -5.));
-        let (_, edge) = g.line_from(middle_edge.start_idx(), Vec2::new(-5., -5.));
+        let (_, edge) = g.line_from(middle_edge.end_idx(), Vec2::new(-5., -5.));
         g.line_from_to(edge.end_idx(), first_edge.start_idx());
 
         let (_, edge) = g.line_from(middle_edge.end_idx(), Vec2::new(5., -5.));
@@ -122,7 +123,7 @@ mod delete_edge {
 
         let top_node_idx = edge.start_idx();
 
-        g.delete_edge(e0);
+        g.delete_edge(e0).unwrap();
 
         assert_eq!(g.node_len(), 3);
         assert_eq!(g.edge(e0).is_err(), true);
@@ -139,7 +140,7 @@ mod delete_edge {
 
         let left_node_idx = edge.end_idx();
 
-        g.delete_node(left_node_idx);
+        g.delete_node(left_node_idx).unwrap();
 
         assert_eq!(g.node_len(), 2);
         let remaining_edge = g.edge(e1).unwrap();
@@ -161,7 +162,7 @@ mod delete_node {
 
         let top_node_idx = edge.start_idx();
 
-        g.delete_node(top_node_idx);
+        g.delete_node(top_node_idx).unwrap();
 
         assert_eq!(g.node_len(), 2);
         assert_eq!(g.edge(e0).is_ok(), true);
@@ -182,7 +183,7 @@ mod delete_node {
         assert_eq!(edge.end(&g).adjacents().len(), 1);
 
         let right_most = edge.end_idx();
-        g.delete_node(right_most);
+        g.delete_node(right_most).unwrap();
 
         assert_eq!(edge.start(&g).adjacents().len(), 1);
     }

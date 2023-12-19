@@ -1,4 +1,8 @@
-use std::{ops::{Mul, Sub}, backtrace};
+use std::{
+    backtrace,
+    fmt::Display,
+    ops::{Mul, Sub},
+};
 
 use glam::Vec2;
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -17,16 +21,29 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct BBGraph {
     next_idx: usize,
-    pub nodes: Vec<BBNode>,
+    pub nodes: HashMap<BBNodeIndex, BBNode>,
     pub edges: HashMap<BBEdgeIndex, BBEdge>,
     // pub regions: std::collections::HashMap<BBRegionIndex, BBVNRegion>,
+}
+
+impl Display for BBGraph {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "BBGraph {{")?;
+        for (node_idx, node) in self.nodes.iter() {
+            writeln!(f, "\t{node_idx} {node}")?;
+        }
+        for (edge_idx, edge) in self.edges.iter() {
+            writeln!(f, "\t{edge_idx} {edge}")?;
+        }
+        writeln!(f, "}}")
+    }
 }
 
 impl BBGraph {
     pub fn new() -> Self {
         Self {
             next_idx: 0,
-            nodes: vec![],
+            nodes: HashMap::new(),
             edges: HashMap::new(),
         }
     }
@@ -39,45 +56,35 @@ impl BBGraph {
         other: &BBGraph,
         edge_indices: &[BBEdgeIndex],
     ) -> BBResult<Self> {
-        // Rename map from other -> new graph for node indices
-        let mut nodes_idx_map: HashMap<BBNodeIndex, BBNodeIndex> = HashMap::new();
-        let mut nodes: Vec<BBNode> = vec![];
-        let mut edges: Vec<(BBEdgeIndex, BBEdge)> = Vec::with_capacity(edge_indices.len());
+        let mut next_idx = 0;
+        let mut nodes = HashMap::new();
+        let mut edges = HashMap::new();
 
-        for (i, edge_idx) in edge_indices.into_iter().enumerate() {
-            let new_edge_idx = BBEdgeIndex(i);
-            let mut edge = other.edge(*edge_idx).unwrap().clone();
+        for edge_idx in edge_indices {
+            let edge = other.edge(*edge_idx)?;
+            edges.insert(*edge_idx, *edge);
 
-            let prev_node_idx = edge.start_idx();
-            if !nodes_idx_map.contains_key(&prev_node_idx) {
-                let new_node_idx = BBNodeIndex(nodes.len());
-                nodes_idx_map.insert(prev_node_idx, new_node_idx);
-                let node_pos = other.node(edge.start_idx())?.position();
-                nodes.push(BBNode::new(node_pos));
+            let start_idx = edge.start_idx();
+            if !nodes.contains_key(&start_idx) {
+                let node_pos = other.node(start_idx)?.position();
+                let node = BBNode::new(node_pos);
+                nodes.insert(start_idx, node);
             }
-            let new_node_idx = nodes_idx_map.get(&prev_node_idx).unwrap();
-            edge.set_start_idx(*new_node_idx);
-            nodes[new_node_idx.0].adjacents.push(new_edge_idx);
+            nodes.get_mut(&start_idx).unwrap().adjacents.push(*edge_idx);
 
-            let prev_node_idx = edge.end_idx();
-            if !nodes_idx_map.contains_key(&prev_node_idx) {
-                let new_node_idx = BBNodeIndex(nodes.len());
-                nodes_idx_map.insert(prev_node_idx, new_node_idx);
-                let node_pos = other.node(edge.end_idx())?.position();
-                nodes.push(BBNode::new(node_pos));
+            let end_idx = edge.end_idx();
+            if !nodes.contains_key(&end_idx) {
+                let node_pos = other.node(end_idx)?.position();
+                let node = BBNode::new(node_pos);
+                nodes.insert(end_idx, node);
             }
-            let new_node_idx = nodes_idx_map.get(&prev_node_idx).unwrap();
-            edge.set_end_idx(*new_node_idx);
-            nodes[new_node_idx.0].adjacents.push(new_edge_idx);
-
-            edges.push((new_edge_idx, edge));
+            nodes.get_mut(&end_idx).unwrap().adjacents.push(*edge_idx);
         }
-        let next_idx = edges.len();
 
         Ok(Self {
             next_idx,
             nodes,
-            edges: HashMap::from_iter(edges.into_iter()),
+            edges,
             // regions: HashMap::new(),
         })
     }
@@ -130,7 +137,7 @@ impl BBGraph {
     }
     /// Gets a reference to an node
     pub fn node(&self, index: BBNodeIndex) -> BBResult<&BBNode> {
-        match self.nodes.get(index.0) {
+        match self.nodes.get(&index) {
             Some(node) => Ok(node),
             None => Err(BBError::MissingNode(index)),
         }
@@ -138,7 +145,7 @@ impl BBGraph {
     /// Gets a mutable reference to an node
     pub fn node_mut(&mut self, index: BBNodeIndex) -> BBResult<&mut BBNode> {
         self.nodes
-            .get_mut(index.0)
+            .get_mut(&index)
             .ok_or(BBError::MissingNode(index))
     }
     /// Gets the number of nodes stored.
@@ -147,7 +154,7 @@ impl BBGraph {
     }
 
     pub fn has_node(&self, index: BBNodeIndex) -> bool {
-        self.nodes.get(index.0).is_some()
+        self.nodes.get(&index).is_some()
     }
 }
 
@@ -157,41 +164,23 @@ impl BBGraph {
 impl BBGraph {
     /// Pushes a new node node to the BBVectorNetwork
     fn add_node(&mut self, value: Vec2) -> BBNodeIndex {
-        self.nodes.push(BBNode::new(value));
-        (self.nodes.len() - 1).into()
+        let node_idx = BBNodeIndex(self.get_next_idx());
+        self.nodes.insert(node_idx, BBNode::new(value));
+        node_idx
     }
     /// Deletes an node, deletes associated edges and breaks regions containing these edges.
-    pub fn delete_node(&mut self, index: BBNodeIndex) {
-        let bt = backtrace::Backtrace::force_capture();
-        // debug_assert!(self.has_node(index));
+    pub fn delete_node(&mut self, index: BBNodeIndex) -> BBResult<()> {
+        debug_assert!(self.has_node(index));
 
-        let mut edges_to_delete = vec![];
-        for (edge_idx, edge) in self.edges.iter_mut() {
-            if edge.contains_node_idx(index) {
-                edges_to_delete.push(*edge_idx);
-            } else {
-                match edge {
-                    BBEdge::Line { start, end }
-                    | BBEdge::Quadratic { start, end, .. }
-                    | BBEdge::Cubic { start, end, .. } => {
-                        if *start > index {
-                            *start -= 1;
-                        }
-                        if *end > index {
-                            *end -= 1;
-                        }
-                    }
-                }
-            }
+        let adjacents = self.node(index)?.adjacents.clone();
+        self.nodes.remove(&index);
+
+        for adj in adjacents {
+            self.delete_edge(adj)?;
         }
-
-        for edge_idx in edges_to_delete {
-            self.delete_edge(edge_idx);
-        }
-
-        self.nodes.remove(index.0);
 
         // TODO delete regions.
+        Ok(())
     }
 
     fn add_edge(&mut self, edge: BBEdge) -> (BBEdgeIndex, BBEdge) {
@@ -205,21 +194,25 @@ impl BBGraph {
         (index, edge)
     }
 
-    pub fn delete_edge(&mut self, edge_idx: BBEdgeIndex) {
+    pub fn delete_edge(&mut self, edge_idx: BBEdgeIndex) -> BBResult<()> {
         let edge = *self.edge(edge_idx).unwrap();
         self.edges.remove(&edge_idx);
 
-        let start = self.node_mut(edge.start_idx()).unwrap();
-        start.adjacents.retain(|e_idx| *e_idx != edge_idx);
-        if start.adjacents().len() == 0 {
-            self.delete_node(edge.start_idx());
+        if let Ok(start) = self.node_mut(edge.start_idx()) {
+            start.adjacents.retain(|e_idx| *e_idx != edge_idx);
+            if start.adjacents().len() == 0 {
+                self.delete_node(edge.start_idx())?;
+            }
         }
 
-        let end = self.node_mut(edge.end_idx()).unwrap();
-        end.adjacents.retain(|e_idx| *e_idx != edge_idx);
-        if end.adjacents().len() == 0 {
-            self.delete_node(edge.end_idx());
+        if let Ok(end) = self.node_mut(edge.end_idx()) {
+            end.adjacents.retain(|e_idx| *e_idx != edge_idx);
+            if end.adjacents().len() == 0 {
+                self.delete_node(edge.end_idx())?;
+            }
         }
+
+        Ok(())
     }
 
     /*
@@ -379,7 +372,7 @@ impl BBGraph {
     }
 
     pub fn translate(&mut self, translation: Vec2) {
-        for v in self.nodes.iter_mut() {
+        for v in self.nodes.values_mut() {
             v.position = v.position + translation;
         }
         for l in self.edges.values_mut() {
@@ -393,19 +386,20 @@ impl BBGraph {
  */
 impl BBGraph {
     pub fn get_left_most_anchor_index(&self) -> Option<BBNodeIndex> {
-        let Some(mut result_pos) = self.nodes.first().map(|a| a.position) else {
+        let mut nodes_iter = self.nodes.iter().map(|(idx, node)| (idx, node.position()));
+
+        let Some((mut result_idx, mut result_pos)) = nodes_iter.next() else {
             return None;
         };
-        let mut result_index = BBNodeIndex(0);
-        for (i, anchor) in self.nodes.iter().enumerate() {
-            let pos = anchor.position;
-            if pos.x < result_pos.x || (pos.x == result_pos.x && result_pos.y < anchor.position.y) {
-                result_pos = anchor.position;
-                result_index = BBNodeIndex(i);
+
+        for (idx, pos) in nodes_iter {
+            if pos.x < result_pos.x || (pos.x == result_pos.x && result_pos.y < pos.y) {
+                result_pos = pos;
+                result_idx = idx;
             }
         }
 
-        Some(result_index)
+        Some(*result_idx)
     }
     /// Gets the next edges from a given point.
     /// Because the edges struct is directed, it reverses the edge if necessary.
@@ -587,14 +581,13 @@ impl BBGraph {
     }
 
     pub fn remove_filaments(&mut self) -> BBResult<()> {
-        while let Some((i, node)) = self
+        while let Some((node_idx, node)) = self
             .nodes
             .iter()
-            .enumerate()
             .find(|(_, node)| node.adjacents().len() == 1)
         {
-            println!("Deleting node {i}.");
-            self.delete_node(BBNodeIndex(i));
+            println!("Deleting node {node_idx}.");
+            self.delete_node(*node_idx);
         }
 
         Ok(())
@@ -617,7 +610,7 @@ impl BBGraph {
             );
         }
 
-        for (i, node) in self.nodes.iter().enumerate() {
+        for (i, node) in self.nodes.iter() {
             comfy::draw_circle(node.position(), 0.1, comfy::Color::rgb8(255, 0, 0), 1);
             comfy::draw_text(
                 &format!("n{}\np{}", i, node.position()),

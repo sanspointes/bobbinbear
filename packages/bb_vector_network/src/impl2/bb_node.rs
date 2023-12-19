@@ -48,6 +48,16 @@ pub struct BBNode {
     pub(crate) adjacents: Vec<BBEdgeIndex>, // TODO Convert this to a smallvec
 }
 
+impl Display for BBNode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} [", self.position())?;
+        for adj in self.adjacents.iter() {
+            write!(f, "{adj},")?;
+        }
+        write!(f, "]")
+    }
+}
+
 impl BBNode {
     pub fn new(position: Vec2) -> Self {
         Self {
