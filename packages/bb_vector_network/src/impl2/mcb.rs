@@ -10,7 +10,7 @@ use super::{
 pub fn mcb(graph: &BBGraph) -> BBResult<Vec<BBRegion>> {
     let mut regions = vec![];
 
-    for mut graph in graph.get_detached_graphs() {
+    for mut graph in graph.get_detached_graphs()? {
         println!("Handling detached graph");
         let mut cycles = vec![];
         extract_cycles(&mut graph, &mut cycles)?;
@@ -58,35 +58,31 @@ pub fn perform_closed_walk_from_node(
     graph: &BBGraph,
     node_idx: BBNodeIndex,
 ) -> BBResult<(BBEdgeIndex, ClosedWalk)> {
-    let first_link_idx = graph.get_cw_edge_of_node(node_idx, glam::Vec2::new(0., 1.), None)?;
-    let mut closed_walk = vec![first_link_idx];
+    let first_edge_idx = graph.get_cw_edge_of_node(node_idx, glam::Vec2::new(0., 1.), None)?;
+    let mut closed_walk = vec![first_edge_idx];
 
-    let first_link = graph.edge(first_link_idx)?.directed_from(node_idx);
+    let first_edge = graph.edge(first_edge_idx)?.directed_from(node_idx);
 
     #[cfg(feature = "debug_draw")]
     comfy::draw_arrow(
-        graph.node(first_link.start_idx())?.position() + 0.2,
-        graph.node(first_link.end_idx())?.position() + 0.2,
+        graph.node(first_edge.start_idx())?.position() + 0.2,
+        graph.node(first_edge.end_idx())?.position() + 0.2,
         0.08,
         comfy::GRAY,
         100,
     );
 
-    let mut edge_idx_curr = first_link_idx;
-    let mut edge_curr = first_link;
-    let mut node_curr = first_link.end_idx();
-    let mut dir_curr = first_link.calc_end_tangent(graph)?.mul(-1.);
+    let mut edge_idx_curr = first_edge_idx;
+    let mut node_curr = first_edge.end_idx();
+    let mut dir_curr = first_edge.calc_end_tangent(graph)?.mul(-1.);
 
     let mut iterations = 0;
 
     while iterations < 1000 {
-        iterations += 1;
-
-        if iterations >= 3 && edge_curr.contains_node_idx(node_idx) {
+        let edge_idx_next = graph.get_ccw_edge_of_node(node_curr, dir_curr, Some(edge_idx_curr))?;
+        if iterations >= 1 && edge_idx_next == first_edge_idx {
             break;
         }
-
-        let edge_idx_next = graph.get_ccw_edge_of_node(node_curr, dir_curr, Some(edge_idx_curr))?;
 
         edge_idx_curr = edge_idx_next;
         closed_walk.push(edge_idx_next);
@@ -102,14 +98,15 @@ pub fn perform_closed_walk_from_node(
             100,
         );
 
-        edge_curr = edge_next;
         node_curr = edge_next.other_node_idx(node_curr);
         dir_curr = edge_next.calc_end_tangent(graph)?.mul(-1.);
+
+        iterations += 1;
     }
 
     let length = closed_walk.len();
     if length >= MIN_EDGES_FOR_CYCLE {
-        Ok((first_link_idx, closed_walk))
+        Ok((first_edge_idx, closed_walk))
     } else {
         Err(BBError::ClosedWalkTooSmall(length))
     }
@@ -142,9 +139,9 @@ pub fn extract_nested_from_closed_walk(
         println!("{i}: {idx} {edge}");
     }
 
-    let mut next_i = 1;
+    let mut next_i = 2;
     while next_i < closed_walk.len() {
-        let i = next_i - 1;
+        let i = next_i - 2;
         let (edge_idx, edge) = closed_walk[i];
 
         let mut nested_range = None;
@@ -154,10 +151,8 @@ pub fn extract_nested_from_closed_walk(
             .enumerate()
             .rev()
         {
-            println!("{i}:{end_i} - {} vs {}", edge.start_idx(), other_edge.end_idx());
-
-            if edge.start_idx() == other_edge.end_idx() {
-                nested_range = Some(i..(end_i + next_i));
+            if i != 0 && end_i != closed_walk.len() && edge.start_idx() == other_edge.end_idx() {
+                nested_range = Some(i..(end_i + next_i + 1));
                 break;
             }
             // let shares_node = if is_first {
@@ -174,10 +169,11 @@ pub fn extract_nested_from_closed_walk(
         }
 
         if let Some(nested_range) = nested_range {
+            let start = nested_range.start;
+            let end = nested_range.end;
+            println!("Found nested closed_walk: {start}..{end}");
 
             let nested_walk: Vec<_> = closed_walk.drain(nested_range).collect();
-
-            println!("Found nested closed_walk:");
             for (i, (idx, edge)) in nested_walk.iter().enumerate() {
                 println!("\t{i}: {idx} {edge}");
             }
@@ -186,23 +182,12 @@ pub fn extract_nested_from_closed_walk(
                 println!("\t{i}: {idx} {edge}");
             }
 
-            nested_closed_walk.push(nested_walk);
+            nested_closed_walk.push(nested_walk.into_iter().map(|(idx, _)| idx).collect());
         }
 
         next_i += 1;
     }
 
-    // let mut next_i = 1;
-    // while next_i < closed_walk.len() {
-    //     let i = next_i - 1;
-    //     let edge_idx = closed_walk[i];
-    //     let maybe_nested_end = closed_walk[next_i..].iter().position(|el| *el == edge_idx);
-    //     if let Some(end_i) = maybe_nested_end {
-    //
-    //         result.push(BBGraph::new_from_other_edges())
-    //     }
-    // }
-    //
-    // result
-    Err(BBError::ClosedWalkDeadEnd)
+    let parent_closed_walk: Vec<_> = closed_walk.into_iter().map(|(idx, _)| idx).collect();
+    Ok((parent_closed_walk, nested_closed_walk))
 }

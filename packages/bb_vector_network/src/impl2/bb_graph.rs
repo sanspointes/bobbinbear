@@ -522,54 +522,48 @@ impl BBGraph {
 
     /// Performs a breadth first search over the graph to return a Vec of each detached graph
     /// within it.
-    pub fn get_detached_graphs(&self) -> Vec<BBGraph> {
+    pub fn get_detached_graphs(&self) -> BBResult<Vec<BBGraph>> {
         let mut result = vec![];
 
-        // BBNodeIndex -> Visited count
-        let mut visited_nodes: HashMap<BBNodeIndex, usize> = HashMap::new();
-        for idx in 0..self.nodes.len() {
-            visited_nodes.insert(BBNodeIndex(idx), 0);
-        }
+        let mut edges_to_visit: HashSet<BBEdgeIndex> = self.edges.keys().cloned().collect();
 
-        //
-        while let Some(idx) = visited_nodes
-            .iter()
-            .find(|(idx, visited_count)| **visited_count == 0)
-            .map(|(idx, _)| idx)
-        {
-            let mut queue: VecDeque<BBNodeIndex> = VecDeque::new();
-            let mut next_edges: HashSet<BBEdgeIndex> = HashSet::new();
-            queue.push_back(*idx);
-            while let Some(node_idx) = queue.pop_front() {
-                let prev_visited = visited_nodes.get(&node_idx).expect(&format!(
-                    "get_detached_graphs: Can't get visited node {:?}",
-                    node_idx
-                ));
-                visited_nodes.insert(node_idx, prev_visited + 1);
+        while edges_to_visit.len() != 0 {
+            let first = {
+                let mut edges_to_visit_queue: Vec<_> = edges_to_visit.iter().collect();
+                let Some(first) = edges_to_visit_queue.pop() else {
+                    break;
+                };
+                *first
+            };
 
-                let node = self.node(node_idx).expect(&format!(
-                    "get_detached_graphs: Can't get node {:?}.",
-                    node_idx
-                ));
+            edges_to_visit.remove(&first);
+            let mut detached_edges = vec![first];
+            let mut queue = VecDeque::from(vec![first]);
 
-                for edge_idx in node.adjacents().iter() {
-                    next_edges.insert(*edge_idx);
+            while let Some(edge_idx) = queue.pop_back() {
+                let edge = self.edge(edge_idx)?;
+                detached_edges.push(edge_idx);
 
-                    let edge = self
-                        .edge(*edge_idx)
-                        .expect(&format!("get_detached_graphs: Can't get edge index"));
-                    let other_node_idx = edge.other_node_idx(node_idx);
-                    queue.push_back(other_node_idx);
+                for adj in edge.start(self).adjacents() {
+                    if edges_to_visit.contains(adj) {
+                        queue.push_back(*adj);
+                        edges_to_visit.remove(adj);
+                    }
+                }
+
+                for adj in edge.end(self).adjacents() {
+                    if edges_to_visit.contains(adj) {
+                        queue.push_back(*adj);
+                        edges_to_visit.remove(adj);
+                    }
                 }
             }
 
-            let next_edges: Vec<_> = next_edges.into_iter().collect();
-
-            let graph = BBGraph::new_from_other_edges(self, &next_edges[..]);
+            let graph = BBGraph::new_from_other_edges(self, &detached_edges);
             result.push(graph);
         }
 
-        result
+        Ok(result)
     }
 
     pub fn remove_filaments(&mut self) {
