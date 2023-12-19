@@ -82,15 +82,15 @@ impl GameState {
 
 
                         let (e0, first_edge) = g.line(Vec2::new(-5., 5.), Vec2::new(-4., 0.));
-                        let (e1, edge) = g.line_from(first_edge.end_idx(), Vec2::new(-0., 0.));
-                        let (e2, edge) = g.line_from(edge.end_idx(), Vec2::new(5., 0.));
+                        let (e1, fork_edge) = g.line_from(first_edge.end_idx(), Vec2::new(-0., 0.));
+                        let (e2, edge) = g.line_from(fork_edge.end_idx(), Vec2::new(5., 0.));
                         let (e3, edge) = g.line_from(edge.end_idx(), Vec2::new(5., 5.));
                         let (e4, edge) = g.line_from_to(edge.end_idx(), first_edge.start_idx());
 
 
-                        let (e5, edge) = g.line_from(first_edge.start_idx(), Vec2::new(-3., 4.));
-                        let (e6, edge) = g.line_from(edge.end_idx(), Vec2::new(-3., 2.));
-                        let (e7, edge) = g.line_from_to(edge.end_idx(), first_edge.start_idx());
+                        let (e5, edge) = g.line_from(fork_edge.end_idx(), Vec2::new(-2., 2.));
+                        let (e6, edge) = g.line_from(edge.end_idx(), Vec2::new(2., 2.));
+                        let (e7, edge) = g.line_from_to(edge.end_idx(), fork_edge.end_idx());
                         
                         let source = BBEdgeIndex(0);
                         debug_graph(&g, source);

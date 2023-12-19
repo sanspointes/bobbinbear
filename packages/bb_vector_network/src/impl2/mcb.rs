@@ -21,30 +21,39 @@ pub fn mcb(graph: &BBGraph) -> BBResult<Vec<BBRegion>> {
 }
 
 fn extract_cycles(graph: &mut BBGraph, cycles_out: &mut Vec<BBCycle>) -> BBResult<()> {
+    println!("START extract_cycles");
     while graph.node_len() > 0 {
-        println!("Handling closed walk");
+        println!("Trying to extract with {} remaining nodes.", graph.node_len());
         graph.remove_filaments();
+        println!("Filaments removed, {} remaining nodes.", graph.node_len());
+
+        if graph.nodes.len() <= 2 || graph.edges.len() <= 2 {
+            break;
+        }
 
         let Some(left_most) = graph.get_left_most_anchor_index() else {
             break;
         };
 
         let (outer_edge, closed_walk) = perform_closed_walk_from_node(graph, left_most)?;
+        println!("Performed closed walk {closed_walk:?}.");
         let (parent_cycle, nested_walks) = extract_nested_from_closed_walk(graph, &closed_walk)?;
+
         let mut parent_cycle = BBCycle::new(parent_cycle);
 
         graph.delete_edge(outer_edge); // Needed to cleanup the cycle
 
         for walk in nested_walks {
-            println!("Handling nested closed walk");
-            let mut nested_graph = BBGraph::new_from_other_edges(graph, &walk);
+            println!("Handling nested closed walk on {walk:?}");
+            let mut nested_graph = BBGraph::try_new_from_other_edges(graph, &walk)?;
             extract_cycles(&mut nested_graph, &mut parent_cycle.children)?;
         }
 
         cycles_out.push(parent_cycle);
     }
 
-    todo!();
+    println!("END extract_cycles");
+    Ok(())
 }
 
 pub type ClosedWalk = Vec<BBEdgeIndex>;
@@ -91,8 +100,8 @@ pub fn perform_closed_walk_from_node(
 
         #[cfg(feature = "debug_draw")]
         comfy::draw_arrow(
-            graph.node(edge_next.start_idx())?.position() + 0.2,
-            graph.node(edge_next.end_idx())?.position() + 0.2,
+            graph.node(edge_next.start_idx())?.position() + (iterations as f32) * 0.1,
+            graph.node(edge_next.end_idx())?.position() + (iterations as f32) * 0.1,
             0.05,
             comfy::GRAY,
             100,
