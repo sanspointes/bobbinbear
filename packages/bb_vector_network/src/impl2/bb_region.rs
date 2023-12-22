@@ -1,6 +1,7 @@
 use crate::BBEdgeIndex;
 
 #[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 pub struct BBCycle {
     pub(crate) edges: Vec<BBEdgeIndex>,
     pub(crate) children: Vec<BBCycle>,
@@ -22,6 +23,7 @@ pub enum BBWindingRule {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct BBRegion {
     winding_rule: BBWindingRule,
     cycles: Vec<BBCycle>

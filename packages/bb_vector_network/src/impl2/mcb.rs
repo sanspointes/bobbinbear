@@ -50,6 +50,7 @@ fn extract_cycles(graph: &mut BBGraph, cycles_out: &mut Vec<BBCycle>) -> BBResul
         for walk in nested_walks {
             println!("Handling nested closed walk on {walk:?}");
             let mut nested_graph = BBGraph::try_new_from_other_edges(graph, &walk)?;
+            println!("Got nested graph {nested_graph}:?");
             let result = extract_cycles(&mut nested_graph, &mut parent_cycle.children);
 
             match result {
@@ -123,7 +124,7 @@ pub fn perform_closed_walk_from_node(
 
         node_curr = edge_next.other_node_idx(node_curr);
         dir_curr = edge_next.calc_end_tangent(graph)?.mul(-1.);
-        println!("Traversed to {node_curr}");
+        println!("Traversed to {node_curr} via {edge_idx_curr}");
 
         iterations += 1;
     }
@@ -166,11 +167,11 @@ pub fn extract_nested_from_closed_walk(
     let mut next_i = 2;
     while next_i < closed_walk.len() {
         let i = next_i - 2;
-        let (edge_idx, edge) = closed_walk[i];
+        let (_edge_idx, edge) = closed_walk[i];
 
         let mut nested_range = None;
 
-        for (end_i, (other_edge_idx, other_edge)) in closed_walk[next_i..].iter().enumerate().rev()
+        for (end_i, (_other_edge_idx, other_edge)) in closed_walk[next_i..].iter().enumerate().rev()
         {
             if i != 0 && end_i != closed_walk.len() && edge.start_idx() == other_edge.end_idx() {
                 nested_range = Some(i..(end_i + next_i + 1));

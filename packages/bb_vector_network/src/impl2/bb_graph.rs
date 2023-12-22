@@ -1,21 +1,24 @@
+#[allow(unused_imports)]
+
 use std::{
-    backtrace,
     fmt::Display,
     ops::{Mul, Sub},
+    collections::{HashMap, HashSet, VecDeque},
 };
 
 use glam::Vec2;
-use std::collections::{HashMap, HashSet, VecDeque};
+use crate::{prelude::mcb, Determinate};
 
+#[allow(unused_imports)]
 #[cfg(feature = "debug_draw")]
 use crate::debug_draw::draw_det_arc;
-use crate::{prelude::mcb, Determinate};
+
 
 use super::{
     bb_edge::{BBEdge, BBEdgeIndex},
     bb_node::{BBNode, BBNodeIndex},
     errors::{BBError, BBResult},
-    mcb::{perform_closed_walk_from_node, ClosedWalk},
+    mcb::ClosedWalk,
 };
 
 #[derive(Debug, Clone)]
@@ -56,7 +59,7 @@ impl BBGraph {
         other: &BBGraph,
         edge_indices: &[BBEdgeIndex],
     ) -> BBResult<Self> {
-        let mut next_idx = 0;
+        let next_idx = 0;
         let mut nodes = HashMap::new();
         let mut edges = HashMap::new();
 
@@ -92,6 +95,7 @@ impl BBGraph {
     fn get_next_idx(&mut self) -> usize {
         let v = self.next_idx;
         self.next_idx += 1;
+        println!("get_next_idx: {v}");
         v
     }
 }
@@ -166,6 +170,7 @@ impl BBGraph {
     fn add_node(&mut self, value: Vec2) -> BBNodeIndex {
         let node_idx = BBNodeIndex(self.get_next_idx());
         self.nodes.insert(node_idx, BBNode::new(value));
+        println!("Added {node_idx} at {value}");
         node_idx
     }
     /// Deletes an node, deletes associated edges and breaks regions containing these edges.
@@ -191,6 +196,7 @@ impl BBGraph {
             .adjacents
             .push(index);
         self.node_mut(edge.end_idx()).unwrap().adjacents.push(index);
+        println!("Adding edge {edge} with idx {index}");
         (index, edge)
     }
 
@@ -259,11 +265,13 @@ impl BBGraph {
 
     /// Creates a line, using new node points, from start -> end.
     pub fn line(&mut self, start: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
+        println!("line {start} {end}");
         let start_index = self.add_node(start);
         self.line_from(start_index, end)
     }
     /// Creates a quadratic curve, using new node points, from start -> end.
     pub fn quadratic(&mut self, start: Vec2, ctrl1: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
+        println!("quadratic {start} {end}");
         let start_index = self.add_node(start);
         self.quadratic_from(start_index, ctrl1, end)
     }
@@ -275,11 +283,13 @@ impl BBGraph {
         ctrl2: Vec2,
         end: Vec2,
     ) -> (BBEdgeIndex, BBEdge) {
+        println!("cubic {start} {end}");
         let start_index = self.add_node(start);
         self.cubic_from(start_index, ctrl1, ctrl2, end)
     }
     /// Creates a line from a pre-existing point to a new point
     pub fn line_from(&mut self, start: BBNodeIndex, to: Vec2) -> (BBEdgeIndex, BBEdge) {
+        println!("line_from {start} {to}");
         debug_assert!(self.has_node(start));
 
         let end = self.add_node(to);
@@ -292,6 +302,7 @@ impl BBGraph {
         ctrl1: Vec2,
         to: Vec2,
     ) -> (BBEdgeIndex, BBEdge) {
+        println!("quadratic_from {start} {to}");
         debug_assert!(self.has_node(start));
 
         let end = self.add_node(to);
@@ -306,6 +317,7 @@ impl BBGraph {
         ctrl2: Vec2,
         to: Vec2,
     ) -> (BBEdgeIndex, BBEdge) {
+        println!("cubic_from {start} {to}");
         debug_assert!(self.has_node(start));
 
         let end = self.add_node(to);
@@ -314,6 +326,7 @@ impl BBGraph {
 
     /// Creates a line from a new node point to a prexisting node point.
     pub fn line_to(&mut self, start: Vec2, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
+        println!("line_to {start} {end}");
         let start_index = self.add_node(start);
         self.line_from_to(start_index, end)
     }
@@ -324,6 +337,7 @@ impl BBGraph {
         ctrl1: Vec2,
         end: BBNodeIndex,
     ) -> (BBEdgeIndex, BBEdge) {
+        println!("quadratic_to {start} {end}");
         let start_index = self.add_node(start);
         self.quadratic_from_to(start_index, ctrl1, end)
     }
@@ -335,11 +349,13 @@ impl BBGraph {
         ctrl2: Vec2,
         end: BBNodeIndex,
     ) -> (BBEdgeIndex, BBEdge) {
+        println!("cubic_to {start} {end}");
         let start_index = self.add_node(start);
         self.cubic_from_to(start_index, ctrl1, ctrl2, end)
     }
     /// Adds a direct line from `start` to `end`, rebuilding shapes as needed.
     pub fn line_from_to(&mut self, start: BBNodeIndex, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
+        println!("line_from_to {start} {end}");
         debug_assert!(self.has_node(start));
         debug_assert!(self.has_node(end));
 
@@ -365,6 +381,7 @@ impl BBGraph {
         ctrl2: Vec2,
         end: BBNodeIndex,
     ) -> (BBEdgeIndex, BBEdge) {
+        println!("cubic_from_to {start} {end}");
         debug_assert!(self.has_node(start));
         debug_assert!(self.has_node(end));
 
@@ -417,6 +434,7 @@ impl BBGraph {
             .iter()
             .filter(|edge_idx| {
                 return prev_edge_idx.map_or(true, |prev_edge_idx: BBEdgeIndex| {
+                    println!("Comparing {edge_idx} {prev_edge_idx}");
                     **edge_idx != prev_edge_idx
                 });
             })
@@ -492,11 +510,14 @@ impl BBGraph {
         let node = self.node(node_idx)?;
         let curr_p = node.position();
 
+        let adjs: Vec<_> = next_edge_dirs.iter().map(|v| v.0).collect();
+        println!("get_ccw_edge_of_node of {node_idx} : {adjs:?}");
+
         let Some((mut next_index, mut next_edge, mut next_dir)) = next_edge_dirs.pop() else {
             return Err(BBError::ClosedWalkDeadEnd);
         };
 
-        for (i, (el_index, el_edge, el_dir)) in next_edge_dirs.into_iter().enumerate() {
+        for (el_index, el_edge, el_dir) in next_edge_dirs.into_iter() {
             let mut temp_el_dir = el_dir;
             let mut temp_next_dir = next_dir;
 
@@ -551,8 +572,8 @@ impl BBGraph {
             };
 
             edges_to_visit.remove(&first);
-            let mut detached_edges = vec![first];
             let mut queue = VecDeque::from(vec![first]);
+            let mut detached_edges = vec![];
 
             while let Some(edge_idx) = queue.pop_back() {
                 let edge = self.edge(edge_idx)?;
@@ -574,6 +595,7 @@ impl BBGraph {
             }
 
             let graph = BBGraph::try_new_from_other_edges(self, &detached_edges)?;
+            println!("Got detached graph {graph}\n");
             result.push(graph);
         }
 
@@ -581,13 +603,13 @@ impl BBGraph {
     }
 
     pub fn remove_filaments(&mut self) -> BBResult<()> {
-        while let Some((node_idx, node)) = self
+        while let Some((node_idx, _)) = self
             .nodes
             .iter()
             .find(|(_, node)| node.adjacents().len() == 1)
         {
             println!("Deleting node {node_idx}.");
-            self.delete_node(*node_idx);
+            self.delete_node(*node_idx)?;
         }
 
         Ok(())
@@ -601,7 +623,7 @@ impl BBGraph {
 impl BBGraph {
     pub fn debug_draw(&self) -> BBResult<()> {
         for (index, edge) in self.edges.iter() {
-            edge.debug_draw(self);
+            edge.debug_draw(self)?;
             comfy::draw_text(
                 &format!("{}:", index),
                 edge.t_point(self, 0.5),
@@ -627,7 +649,7 @@ impl BBGraph {
 
             while graph.node_len() > 0 {
                 println!("Handling closed walk");
-                graph.remove_filaments();
+                graph.remove_filaments()?;
 
                 let Some(left_most) = graph.get_left_most_anchor_index() else {
                     break;
@@ -687,7 +709,7 @@ impl BBGraph {
                 1,
             );
 
-            let closed_walk_result = perform_closed_walk_from_node(self, left_most);
+            // let closed_walk_result = perform_closed_walk_from_node(self, left_most);
             // match closed_walk_result {
             //     Ok((outer_edge, mut closed_walk)) => {
             //         while let Some(idx) = closed_walk.pop() {

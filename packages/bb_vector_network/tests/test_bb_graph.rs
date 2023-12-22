@@ -44,7 +44,8 @@ mod edges_from_closed_walk {
 }
 
 mod new_from_other_edges {
-    use bb_vector_network::BBGraph;
+    use bb_vector_network::{BBEdgeIndex, BBGraph};
+    use comfy::HashSet;
     use glam::Vec2;
     #[test]
     fn it_should_correct_indices_to_reference_copied_nodes() {
@@ -63,8 +64,12 @@ mod new_from_other_edges {
 
         assert_eq!(extracted.node_len(), 3);
         for edge in extracted.edges.values() {
-            extracted.node(edge.start_idx()).expect(&format!("Start idx not in graph on {edge}."));
-            extracted.node(edge.end_idx()).expect(&format!("Start idx not in graph on {edge}."));
+            extracted
+                .node(edge.start_idx())
+                .expect(&format!("Start idx not in graph on {edge}."));
+            extracted
+                .node(edge.end_idx())
+                .expect(&format!("Start idx not in graph on {edge}."));
         }
     }
 }
@@ -208,6 +213,7 @@ mod delete_node {
 
 mod get_detached_graphs {
     use bb_vector_network::prelude::*;
+    use comfy::HashSet;
     use glam::Vec2;
 
     #[test]
@@ -242,5 +248,33 @@ mod get_detached_graphs {
         assert_eq!(first.node_len(), 3);
         let second = graphs.pop().unwrap();
         assert_eq!(second.node_len(), 3);
+    }
+
+    #[test]
+    fn it_should_not_duplicate_nodes() {
+        let mut g = BBGraph::new();
+        let (_, first_edge) = g.line(Vec2::new(-5., 0.), Vec2::new(0., 0.));
+        let (_, edge) = g.line_from(first_edge.end_idx(), Vec2::new(-2.5, 2.5));
+        let (_, edge) = g.line_from_to(edge.end_idx(), first_edge.start_idx());
+
+        let (_, first_edge) = g.line(Vec2::new(2., 0.), Vec2::new(7., 0.));
+        let (_, edge) = g.line_from(first_edge.end_idx(), Vec2::new(5.5, 2.5));
+        let (_, edge) = g.line_from_to(edge.end_idx(), first_edge.start_idx());
+
+        let graphs = g.get_detached_graphs().unwrap();
+
+        for g in graphs {
+            for (node_idx, node) in g.nodes {
+                let mut hs: HashSet<BBEdgeIndex> = HashSet::new();
+                for adj in node.adjacents() {
+                    hs.insert(*adj);
+                }
+                assert_eq!(
+                    node.adjacents().len(),
+                    hs.len(),
+                    "{node_idx} has incorrect nodes after extraction."
+                );
+            }
+        }
     }
 }

@@ -1,11 +1,13 @@
 #![allow(dead_code)]
 
-use std::{ops::{Add, Sub}, fmt::Display};
+use std::{ops::Add, fmt::Display};
 
 use glam::Vec2;
 
+#[allow(unused_imports)]
 #[cfg(feature = "debug_draw")]
 use crate::debug_draw::draw_det_arc;
+#[allow(unused_imports)]
 #[cfg(feature = "debug_draw")]
 use comfy::{draw_text, Vec2Extensions, ORANGE, ORANGE_RED, PURPLE};
 
@@ -64,10 +66,10 @@ impl Display for BBEdge {
             Self::Line { start, end } => {
                 write!(f, "line: {} -> {}", start, end)
             }
-            Self::Quadratic { start, ctrl1, end } => {
+            Self::Quadratic { start, end, .. } => {
                 write!(f, "quad: {} -> {}", start, end)
             }
-            Self::Cubic { start, ctrl1, ctrl2, end } => {
+            Self::Cubic { start, end, .. } => {
                 write!(f, "cubi: {} -> {}", start, end)
             }
         }
@@ -268,8 +270,8 @@ impl BBEdge {
  */
 #[cfg(feature = "debug_draw")]
 impl BBEdge {
-    pub fn debug_draw(&self, graph: &BBGraph) {
-        self.debug_draw_with_color_and_z_index(graph, comfy::Color::rgb8(0, 255, 0), 10);
+    pub fn debug_draw(&self, graph: &BBGraph) -> BBResult<()> {
+        self.debug_draw_with_color_and_z_index(graph, comfy::Color::rgb8(0, 255, 0), 10)
     }
 
     pub fn debug_draw_with_color_and_z_index(
@@ -284,7 +286,7 @@ impl BBEdge {
                 let end = graph.node(self.end_idx())?;
                 comfy::draw_line(start.position, end.position, 0.02, color, z_index);
             }
-            link @ BBEdge::Quadratic { .. } | link @ BBEdge::Cubic { .. } => {
+            _link @ BBEdge::Quadratic { .. } | _link @ BBEdge::Cubic { .. } => {
                 let mut p_prev = self.start_pos(graph);
                 for i in 0..20 {
                     let i = i + 1;
