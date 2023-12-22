@@ -4,6 +4,10 @@ mod mcb {
     use glam::Vec2;
 
     #[test]
+    /// Simple 1 region 2 cycle example
+    ///  x--x--x
+    /// /   |  |
+    /// x---x..x
     fn it_should_pass_smoke_test() {
         let mut g = BBGraph::new();
 
@@ -20,10 +24,129 @@ mod mcb {
 
         let result = match mcb::mcb(&g) {
             Ok(result) => {
-                println!("{result:?}");
+                assert_eq!(result.len(), 1);
+                let first = result.first().unwrap();
+                assert_eq!(first.cycles.len(), 2);
             }
             Err(reason) => {
                 panic!("FOUND ERROR: {reason:?}");
+            }
+        };
+    }
+
+    #[test]
+    /// Parent cycle contains a nested cycle
+    ///  x-----x
+    /// / x-x  |
+    /// | \ /  |
+    /// x--x---x
+    fn it_should_pass_nested_cycle() {
+        let mut g = BBGraph::new();
+
+        // Parent outer cycle
+        let (_, first_edge) = g.line(Vec2::new(-5., -5.), Vec2::new(-6., 0.));
+        let (_, branch_at_end_edge) = g.line_from(first_edge.end_idx(), Vec2::new(-3., 0.));
+        let (_, edge) = g.line_from(branch_at_end_edge.end_idx(), Vec2::new(0., 0.));
+        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(0., -5.));
+        g.line_from_to(edge.end_idx(), first_edge.start_idx());
+        // Nested cycle
+        let (_, edge) = g.line_from(branch_at_end_edge.end_idx(), Vec2::new(-4., -3.));
+        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(-2., -3.));
+        g.line_from_to(edge.end_idx(), branch_at_end_edge.end_idx());
+
+        let result = match mcb::mcb(&g) {
+            Ok(result) => {
+                println!("{result:?}");
+                assert_eq!(result.len(), 1);
+                let region = result.first().unwrap();
+                assert_eq!(region.cycles.len(), 1);
+                let cycle = region.cycles.first().unwrap();
+                assert_eq!(cycle.edges.len(), 5);
+                assert_eq!(cycle.children.len(), 1);
+                let nested = cycle.children.first().unwrap();
+                assert_eq!(nested.edges.len(), 3);
+            }
+            Err(reason) => {
+                panic!("FOUND ERROR: {reason:?}");
+            }
+        };
+    }
+
+    #[test]
+    /// Parent cycle contains a nested cycle (connected via filament)
+    ///  x-----x
+    /// / x-x  |
+    /// | \ /  |
+    /// |  x   |
+    /// |  |   |
+    /// x--x---x
+    fn it_should_pass_nested_cycle_connected_via_filament() {
+        let mut g = BBGraph::new();
+
+        // Parent outer cycle
+        let (_, first_edge) = g.line(Vec2::new(-5., -5.), Vec2::new(-6., 0.));
+        let (_, branch_at_end_edge) = g.line_from(first_edge.end_idx(), Vec2::new(-3., 0.));
+        let (_, edge) = g.line_from(branch_at_end_edge.end_idx(), Vec2::new(0., 0.));
+        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(0., -5.));
+        g.line_from_to(edge.end_idx(), first_edge.start_idx());
+        // Nested cycle
+        let (_, filament_edge) = g.line_from(branch_at_end_edge.end_idx(), Vec2::new(-3., -1.));
+        let (_, edge) = g.line_from(filament_edge.end_idx(), Vec2::new(-4., -3.));
+        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(-2., -3.));
+        g.line_from_to(edge.end_idx(), filament_edge.end_idx());
+
+        let result = match mcb::mcb(&g) {
+            Ok(result) => {
+                println!("{result:?}");
+                assert_eq!(result.len(), 1);
+                let region = result.first().unwrap();
+                assert_eq!(region.cycles.len(), 1);
+                let cycle = region.cycles.first().unwrap();
+                assert_eq!(cycle.edges.len(), 5);
+                assert_eq!(cycle.children.len(), 1);
+                let nested = cycle.children.first().unwrap();
+                assert_eq!(nested.edges.len(), 3);
+            }
+            Err(reason) => {
+                panic!("FOUND ERROR: {reason:?}");
+            }
+        };
+    }
+
+    #[test]
+    /// Start point on left is not valid cycle, but there are two cycles 
+    ///       x
+    ///      / \
+    ///  x---x-x
+    /// /
+    /// x----x-x
+    ///      \ /
+    ///       x
+    fn it_should_pass_nested_no_parent_edge_case() {
+        let mut g = BBGraph::new();
+
+        let (_, first_edge) = g.line(Vec2::new(-6., 0.), Vec2::new(-5., -2.));
+        // Top Arm + Cycle
+        let (_, reconnect_edge) = g.line_from(first_edge.end_idx(), Vec2::new(-2., -2.));
+        let (_, edge) = g.line_from(reconnect_edge.end_idx(), Vec2::new(2., -2.));
+        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(0., -5.));
+        g.line_from_to(edge.end_idx(), reconnect_edge.end_idx());
+
+        // Bottom Arm + Cycle
+        let (_, reconnect_edge) = g.line_from(first_edge.start_idx(), Vec2::new(-2., 0.));
+        let (_, edge) = g.line_from(reconnect_edge.end_idx(), Vec2::new(2., 0.));
+        let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(0., 2.));
+        g.line_from_to(edge.end_idx(), reconnect_edge.end_idx());
+
+        let result = match mcb::mcb(&g) {
+            Ok(result) => {
+                println!("{result:?}");
+                assert_eq!(result.len(), 1);
+                let first = result.first().unwrap();
+                assert_eq!(first.cycles.len(), 2);
+            }
+            Err(reason) => {
+                panic!("FOUND ERROR: {reason:?} with {g}");
             }
         };
     }

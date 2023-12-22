@@ -3,8 +3,8 @@ use crate::BBEdgeIndex;
 #[derive(Debug, Clone, Default)]
 #[allow(dead_code)]
 pub struct BBCycle {
-    pub(crate) edges: Vec<BBEdgeIndex>,
-    pub(crate) children: Vec<BBCycle>,
+    pub edges: Vec<BBEdgeIndex>,
+    pub children: Vec<BBCycle>,
 }
 
 impl BBCycle {
@@ -26,7 +26,7 @@ pub enum BBWindingRule {
 #[allow(dead_code)]
 pub struct BBRegion {
     winding_rule: BBWindingRule,
-    cycles: Vec<BBCycle>
+    pub cycles: Vec<BBCycle>
 }
 
 impl BBRegion {
