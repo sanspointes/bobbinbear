@@ -1,8 +1,9 @@
+use std::thread;
+
 use bb_vector_network::prelude::*;
 use glam::Vec2;
 
-
-fn main() {
+fn test_bb_graph_mcb() {
     let mut g = BBGraph::new();
 
     // Left Cycle
@@ -20,10 +21,29 @@ fn main() {
 
     match mcb::mcb(&g) {
         Ok(result) => {
-            println!("{result:#?}");
+            println!("SUCCESS: {result:#?}");
         }
         Err(reason) => {
-            panic!("FOUND ERROR: {reason:?}");
+            println!("FOUND ERROR: {reason:?}");
         }
     };
+
+}
+
+fn main() {
+    let thread_handle = thread::spawn(|| {
+        println!("\n\n Attempt 1");
+        test_bb_graph_mcb();
+    });
+    thread_handle.join().unwrap();
+    let thread_handle = thread::spawn(|| {
+        println!("\n\n Attempt 2");
+        test_bb_graph_mcb();
+    });
+    thread_handle.join().unwrap();
+    let thread_handle = thread::spawn(|| {
+        println!("\n\n Attempt 3");
+        test_bb_graph_mcb();
+    });
+    thread_handle.join().unwrap();
 }
