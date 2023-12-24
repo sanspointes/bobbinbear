@@ -273,6 +273,52 @@ impl BBGraph {
         self.add_edge(edge)
     }
 
+    /// Creates a line from the start position to the end position, creating new nodes for both.
+    ///
+    /// * `start`: Position of the new start node
+    /// * `end`: Position of the new end node
+    pub fn line(&mut self, start: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
+        println!("line {start} {end}");
+        let start_index = self.add_node(start);
+        let end_index = self.add_node(end);
+        self.edge_line(start_index, end_index)
+    }
+
+    /// Creates a new node at `end` and adds a straight line edge between it and the start node.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the control point
+    /// * `end`: Position of the new end node
+    pub fn line_from(&mut self, start: BBNodeIndex, to: Vec2) -> (BBEdgeIndex, BBEdge) {
+        println!("line_from {start} {to}");
+        debug_assert!(self.has_node(start));
+
+        let end_index = self.add_node(to);
+        self.edge_line(start, end_index)
+    }
+
+    /// Creates a new node at `start` and adds a straight line edge between it and the end node.
+    ///
+    /// * `start`: Position of the start node
+    /// * `end`: ID of the new end node
+    pub fn line_to(&mut self, start: Vec2, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
+        println!("line_to {start} {end}");
+        let start_index = self.add_node(start);
+        self.edge_line(start_index, end)
+    }
+
+    /// Adds a straight line edge between two nodes.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the control node
+    /// * `end`: ID of the end node
+    pub fn line_from_to(&mut self, start: BBNodeIndex, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
+        println!("line_from_to {start} {end}");
+        debug_assert!(self.has_node(start));
+        debug_assert!(self.has_node(end));
+        self.edge_line(start, end)
+    }
+
     /// Adds a quadratic curve between two nodes. 
     ///
     /// Used internally by [quadratic()], [quadratic_from()],
@@ -292,6 +338,70 @@ impl BBGraph {
         let edge = BBEdge::Quadratic { start, ctrl1, end };
         self.add_edge(edge)
     }
+
+    /// Creates a quadratic curve from the start position to the end position, creating new nodes for both.
+    ///
+    /// * `start`: Position of the new start node
+    /// * `ctrl1` : Position of the control point
+    /// * `end`: Position of the new end node
+    pub fn quadratic(&mut self, start: Vec2, ctrl1: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
+        println!("quadratic {start} {end}");
+        let start_index = self.add_node(start);
+        let end_index = self.add_node(end);
+        self.edge_quadratic(start_index, ctrl1, end_index)
+    }
+
+    /// Creates a new node at `end` and adds a quadratic curve edge between it and the start node.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the control point
+    /// * `end`: Position of the new end node
+    pub fn quadratic_from(
+        &mut self,
+        start: BBNodeIndex,
+        ctrl1: Vec2,
+        to: Vec2,
+    ) -> (BBEdgeIndex, BBEdge) {
+        println!("quadratic_from {start} {to}");
+        debug_assert!(self.has_node(start));
+
+        let end = self.add_node(to);
+        self.edge_quadratic(start, ctrl1, end)
+    }
+
+    /// Creates a new node at `start` and adds a quadratic curve edge between it and the end node.
+    ///
+    /// * `start`: Position of the start node
+    /// * `ctrl1` : Position of the control node
+    /// * `end`: ID of the new end node
+    pub fn quadratic_to(
+        &mut self,
+        start: Vec2,
+        ctrl1: Vec2,
+        end: BBNodeIndex,
+    ) -> (BBEdgeIndex, BBEdge) {
+        println!("quadratic_to {start} {end}");
+        let start_index = self.add_node(start);
+        self.edge_quadratic(start_index, ctrl1, end)
+    }
+
+    /// Adds a quadratic curve edge between two nodes.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the control node
+    /// * `end`: ID of the end node
+    pub fn quadratic_from_to(
+        &mut self,
+        start: BBNodeIndex,
+        ctrl1: Vec2,
+        end: BBNodeIndex,
+    ) -> (BBEdgeIndex, BBEdge) {
+        debug_assert!(self.has_node(start));
+        debug_assert!(self.has_node(end));
+
+        self.edge_quadratic(start, ctrl1, end)
+    }
+
 
     /// Adds a cubic curve between two nodes. 
     ///
@@ -320,27 +430,6 @@ impl BBGraph {
         self.add_edge(edge)
     }
 
-    /// Creates a line from the start position to the end position, creating new nodes for both.
-    ///
-    /// * `start`: Position of the new start node
-    /// * `end`: Position of the new end node
-    pub fn line(&mut self, start: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
-        println!("line {start} {end}");
-        let start_index = self.add_node(start);
-        self.line_from(start_index, end)
-    }
-
-    /// Creates a quadratic curve from the start position to the end position, creating new nodes for both.
-    ///
-    /// * `start`: Position of the new start node
-    /// * `ctrl1` : Position of the control point
-    /// * `end`: Position of the new end node
-    pub fn quadratic(&mut self, start: Vec2, ctrl1: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
-        println!("quadratic {start} {end}");
-        let start_index = self.add_node(start);
-        self.quadratic_from(start_index, ctrl1, end)
-    }
-
     /// Creates a cubic curve from the start position to the end position, creating new nodes for both.
     ///
     /// * `start`: Position of the new start node
@@ -356,38 +445,8 @@ impl BBGraph {
     ) -> (BBEdgeIndex, BBEdge) {
         println!("cubic {start} {end}");
         let start_index = self.add_node(start);
-        self.cubic_from(start_index, ctrl1, ctrl2, end)
-    }
-
-    /// Creates a new node at `end` and adds a straight line edge between it and the start node.
-    ///
-    /// * `start`: ID of the start node
-    /// * `ctrl1` : Position of the control point
-    /// * `end`: Position of the new end node
-    pub fn line_from(&mut self, start: BBNodeIndex, to: Vec2) -> (BBEdgeIndex, BBEdge) {
-        println!("line_from {start} {to}");
-        debug_assert!(self.has_node(start));
-
-        let end = self.add_node(to);
-        self.edge_line(start, end)
-    }
-
-    /// Creates a new node at `end` and adds a quadratic curve edge between it and the start node.
-    ///
-    /// * `start`: ID of the start node
-    /// * `ctrl1` : Position of the control point
-    /// * `end`: Position of the new end node
-    pub fn quadratic_from(
-        &mut self,
-        start: BBNodeIndex,
-        ctrl1: Vec2,
-        to: Vec2,
-    ) -> (BBEdgeIndex, BBEdge) {
-        println!("quadratic_from {start} {to}");
-        debug_assert!(self.has_node(start));
-
-        let end = self.add_node(to);
-        self.edge_quadratic(start, ctrl1, end)
+        let end_index = self.add_node(end);
+        self.edge_cubic(start_index, ctrl1, ctrl2, end_index)
     }
 
     /// Creates a new node at `end` and adds a cubic curve edge between it and the start node.
@@ -405,35 +464,8 @@ impl BBGraph {
     ) -> (BBEdgeIndex, BBEdge) {
         println!("cubic_from {start} {to}");
         debug_assert!(self.has_node(start));
-
         let end = self.add_node(to);
         self.edge_cubic(start, ctrl1, ctrl2, end)
-    }
-
-    /// Creates a new node at `start` and adds a straight line edge between it and the end node.
-    ///
-    /// * `start`: Position of the start node
-    /// * `end`: ID of the new end node
-    pub fn line_to(&mut self, start: Vec2, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
-        println!("line_to {start} {end}");
-        let start_index = self.add_node(start);
-        self.line_from_to(start_index, end)
-    }
-
-    /// Creates a new node at `start` and adds a quadratic curve edge between it and the end node.
-    ///
-    /// * `start`: Position of the start node
-    /// * `ctrl1` : Position of the control node
-    /// * `end`: ID of the new end node
-    pub fn quadratic_to(
-        &mut self,
-        start: Vec2,
-        ctrl1: Vec2,
-        end: BBNodeIndex,
-    ) -> (BBEdgeIndex, BBEdge) {
-        println!("quadratic_to {start} {end}");
-        let start_index = self.add_node(start);
-        self.quadratic_from_to(start_index, ctrl1, end)
     }
 
     /// Creates a new node at `start` and adds a cubic curve edge between it and the end node.
@@ -451,36 +483,7 @@ impl BBGraph {
     ) -> (BBEdgeIndex, BBEdge) {
         println!("cubic_to {start} {end}");
         let start_index = self.add_node(start);
-        self.cubic_from_to(start_index, ctrl1, ctrl2, end)
-    }
-
-    /// Adds a straight line edge between two nodes.
-    ///
-    /// * `start`: ID of the start node
-    /// * `ctrl1` : Position of the control node
-    /// * `end`: ID of the end node
-    pub fn line_from_to(&mut self, start: BBNodeIndex, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
-        println!("line_from_to {start} {end}");
-        debug_assert!(self.has_node(start));
-        debug_assert!(self.has_node(end));
-
-        self.edge_line(start, end)
-    }
-    /// Adds a quadratic curve edge between two nodes.
-    ///
-    /// * `start`: ID of the start node
-    /// * `ctrl1` : Position of the control node
-    /// * `end`: ID of the end node
-    pub fn quadratic_from_to(
-        &mut self,
-        start: BBNodeIndex,
-        ctrl1: Vec2,
-        end: BBNodeIndex,
-    ) -> (BBEdgeIndex, BBEdge) {
-        debug_assert!(self.has_node(start));
-        debug_assert!(self.has_node(end));
-
-        self.edge_quadratic(start, ctrl1, end)
+        self.edge_cubic(start_index, ctrl1, ctrl2, end)
     }
 
     /// Adds a cubic curve edge between two nodes.
