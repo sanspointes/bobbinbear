@@ -111,61 +111,76 @@ impl BBGraph {
  * Node/Edge getters and setters
  */
 impl BBGraph {
-    /// Gets a reference to a Vector Network edge between two nodes
+    /// Gets a reference to a Vector Network edge by ID
+    ///
+    /// * `index`: ID of edge to get
     pub fn edge(&self, index: BBEdgeIndex) -> BBResult<&BBEdge> {
         match self.edges.get(&index) {
             Some(edge) => Ok(edge),
             None => Err(BBError::MissingEdge(index)),
         }
     }
-    /// Gets a reference to a Vector Network edge between two nodes
+    /// Gets a mutable reference to a Vector Network edge by ID
+    ///
+    /// * `index`: ID of edge to get
     pub fn edge_mut(&mut self, index: BBEdgeIndex) -> BBResult<&mut BBEdge> {
         self.edges
             .get_mut(&index)
             .ok_or(BBError::MissingEdge(index))
     }
-    /// Given a list of edge idxs (closed walk), returns them all directed
-    /// in the same direction.
-    pub fn edges_from_closed_walk(
+
+    /// Given a list of edge indices, returns the edges with all directions oriented in a
+    /// continuous direction.
+    ///
+    /// * `edges`: A slice of edges that you want to get the edge data of.
+    pub fn edges_directed(
         &self,
-        closed_walk: &ClosedWalk,
+        edges: &[BBEdgeIndex],
     ) -> BBResult<Vec<(BBEdgeIndex, BBEdge)>> {
-        if closed_walk.is_empty() {
-            return Err(BBError::ClosedWalkTooSmall(closed_walk.len()));
+        if edges.is_empty() {
+            return Err(BBError::ClosedWalkTooSmall(edges.len()));
         }
-        let first_edge_idx = closed_walk.first().unwrap();
+        let first_edge_idx = edges.first().unwrap();
         let mut prev_edge = *self.edge(*first_edge_idx)?;
 
-        let mut directed_closed_walk = vec![(*first_edge_idx, prev_edge)];
+        let mut directed = vec![(*first_edge_idx, prev_edge)];
 
-        for edge_idx in &closed_walk[1..] {
+        for edge_idx in &edges[1..] {
             let edge = self.edge(*edge_idx)?.directed_from(prev_edge.end_idx());
-            directed_closed_walk.push((*edge_idx, edge));
+            directed.push((*edge_idx, edge));
             prev_edge = edge;
         }
 
-        Ok(directed_closed_walk)
+        Ok(directed)
     }
-    /// Gets a reference to an node
+    /// Gets a reference to a node by ID
+    ///
+    /// * `index`: ID of node to get
     pub fn node(&self, index: BBNodeIndex) -> BBResult<&BBNode> {
         match self.nodes.get(&index) {
             Some(node) => Ok(node),
             None => Err(BBError::MissingNode(index)),
         }
     }
-    /// Gets a mutable reference to an node
+    /// Gets a mutable reference to a node by ID
+    ///
+    /// * `index`: ID of node to get
     pub fn node_mut(&mut self, index: BBNodeIndex) -> BBResult<&mut BBNode> {
         self.nodes
             .get_mut(&index)
             .ok_or(BBError::MissingNode(index))
     }
-    /// Gets the number of nodes stored.
-    pub fn node_len(&self) -> usize {
+
+    /// Returns the count of nodes in the graph
+    pub fn nodes_count(&self) -> usize {
         self.nodes.len()
     }
 
+    /// Returns true if the BBGraph contain a node at the given node ID
+    ///
+    /// * `index`: ID of node to check
     pub fn has_node(&self, index: BBNodeIndex) -> bool {
-        self.nodes.get(&index).is_some()
+        self.nodes.contains_key(&index)
     }
 }
 
@@ -174,13 +189,17 @@ impl BBGraph {
  */
 impl BBGraph {
     /// Pushes a new node node to the BBVectorNetwork
-    fn add_node(&mut self, value: Vec2) -> BBNodeIndex {
+    ///
+    /// * `value`: Position of the node
+    fn add_node(&mut self, position: Vec2) -> BBNodeIndex {
         let node_idx = BBNodeIndex(self.get_next_idx());
-        self.nodes.insert(node_idx, BBNode::new(value));
-        println!("Added {node_idx} at {value}");
+        self.nodes.insert(node_idx, BBNode::new(position));
+        println!("Added {node_idx} at {position}");
         node_idx
     }
-    /// Deletes an node, deletes associated edges and breaks regions containing these edges.
+    /// Removes a node from the graph by ID.  Will delete connected edges and regions.
+    ///
+    /// * `index`: Index of the node to delete
     pub fn delete_node(&mut self, index: BBNodeIndex) -> BBResult<()> {
         debug_assert!(self.has_node(index));
 
@@ -195,6 +214,10 @@ impl BBGraph {
         Ok(())
     }
 
+    /// Adds an edge to the graph.  This is used internally by the line/quadratic/cubic to/from API
+    /// to push the edges to the graph.  Returns the edge ID + edge struct itself.
+    ///
+    /// * `edge`: The edge data to add to the BBGraph
     fn add_edge(&mut self, edge: BBEdge) -> (BBEdgeIndex, BBEdge) {
         let index = BBEdgeIndex(self.get_next_idx());
         self.edges.insert(index, edge);
@@ -207,6 +230,10 @@ impl BBGraph {
         (index, edge)
     }
 
+    /// Removes an edge from the graph.  If necessary, will also delete the nodes this edge
+    /// connects.
+    ///
+    /// * `edge_idx`: ID of the edge to delete.
     pub fn delete_edge(&mut self, edge_idx: BBEdgeIndex) -> BBResult<()> {
         let edge = *self.edge(edge_idx).unwrap();
         self.edges.remove(&edge_idx);
@@ -232,14 +259,28 @@ impl BBGraph {
      * GRAPH BUILDING API - edge functions
      */
 
-    /// edges two node nodes as a straight line.
+    /// Adds a line between two nodes. 
+    ///
+    /// Used internallyedge by [line()], [line_from()],
+    /// [line_to()], and [line_from_to()]
+    ///
+    /// * `start`: ID of node to start at
+    /// * `end`: ID of node to end at
     fn edge_line(&mut self, start: BBNodeIndex, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
         debug_assert!(self.has_node(start));
         debug_assert!(self.has_node(end));
         let edge = BBEdge::Line { start, end };
         self.add_edge(edge)
     }
-    /// edges two node nodes as a quadratic curve with 1 control node.
+
+    /// Adds a quadratic curve between two nodes. 
+    ///
+    /// Used internally by [quadratic()], [quadratic_from()],
+    /// [quadratic_to()], and [quadratic_from_to()]
+    ///
+    /// * `start`: ID of the node to start at
+    /// * `ctrl1`: Position of the control point 
+    /// * `end`: ID of the node to end at
     fn edge_quadratic(
         &mut self,
         start: BBNodeIndex,
@@ -251,7 +292,16 @@ impl BBGraph {
         let edge = BBEdge::Quadratic { start, ctrl1, end };
         self.add_edge(edge)
     }
-    /// edges two node nodes as a cubic curve with 2 control node.
+
+    /// Adds a cubic curve between two nodes. 
+    ///
+    /// Used internally by [cubic()], [cubic_from()],
+    /// [cubic_to()], and [cubic_from_to()]
+    ///
+    /// * `start`: ID of the node to start at
+    /// * `ctrl1`: Position of the first control point
+    /// * `ctrl2`: Position of the second control point
+    /// * `end`: ID of the node to end at
     fn edge_cubic(
         &mut self,
         start: BBNodeIndex,
@@ -270,19 +320,33 @@ impl BBGraph {
         self.add_edge(edge)
     }
 
-    /// Creates a line, using new node points, from start -> end.
+    /// Creates a line from the start position to the end position, creating new nodes for both.
+    ///
+    /// * `start`: Position of the new start node
+    /// * `end`: Position of the new end node
     pub fn line(&mut self, start: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
         println!("line {start} {end}");
         let start_index = self.add_node(start);
         self.line_from(start_index, end)
     }
-    /// Creates a quadratic curve, using new node points, from start -> end.
+
+    /// Creates a quadratic curve from the start position to the end position, creating new nodes for both.
+    ///
+    /// * `start`: Position of the new start node
+    /// * `ctrl1` : Position of the control point
+    /// * `end`: Position of the new end node
     pub fn quadratic(&mut self, start: Vec2, ctrl1: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
         println!("quadratic {start} {end}");
         let start_index = self.add_node(start);
         self.quadratic_from(start_index, ctrl1, end)
     }
-    /// Creates a cubic curve, using new node points, from start -> end.
+
+    /// Creates a cubic curve from the start position to the end position, creating new nodes for both.
+    ///
+    /// * `start`: Position of the new start node
+    /// * `ctrl1` : Position of the first control point
+    /// * `ctrl2` : Position of the second control point
+    /// * `end`: Position of the new end node
     pub fn cubic(
         &mut self,
         start: Vec2,
@@ -294,7 +358,12 @@ impl BBGraph {
         let start_index = self.add_node(start);
         self.cubic_from(start_index, ctrl1, ctrl2, end)
     }
-    /// Creates a line from a pre-existing point to a new point
+
+    /// Creates a new node at `end` and adds a straight line edge between it and the start node.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the control point
+    /// * `end`: Position of the new end node
     pub fn line_from(&mut self, start: BBNodeIndex, to: Vec2) -> (BBEdgeIndex, BBEdge) {
         println!("line_from {start} {to}");
         debug_assert!(self.has_node(start));
@@ -302,7 +371,12 @@ impl BBGraph {
         let end = self.add_node(to);
         self.edge_line(start, end)
     }
-    /// Creates a quadratic curve from a pre-existing point to a new point
+
+    /// Creates a new node at `end` and adds a quadratic curve edge between it and the start node.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the control point
+    /// * `end`: Position of the new end node
     pub fn quadratic_from(
         &mut self,
         start: BBNodeIndex,
@@ -316,7 +390,12 @@ impl BBGraph {
         self.edge_quadratic(start, ctrl1, end)
     }
 
-    /// Creates a cubic curve from a pre-existing point to a new point
+    /// Creates a new node at `end` and adds a cubic curve edge between it and the start node.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the first control point
+    /// * `ctrl2` : Position of the second control point
+    /// * `end`: Position of the new end node
     pub fn cubic_from(
         &mut self,
         start: BBNodeIndex,
@@ -331,13 +410,21 @@ impl BBGraph {
         self.edge_cubic(start, ctrl1, ctrl2, end)
     }
 
-    /// Creates a line from a new node point to a prexisting node point.
+    /// Creates a new node at `start` and adds a straight line edge between it and the end node.
+    ///
+    /// * `start`: Position of the start node
+    /// * `end`: ID of the new end node
     pub fn line_to(&mut self, start: Vec2, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
         println!("line_to {start} {end}");
         let start_index = self.add_node(start);
         self.line_from_to(start_index, end)
     }
-    /// Creates a quadratic curve from a new node point to a prexisting node point.
+
+    /// Creates a new node at `start` and adds a quadratic curve edge between it and the end node.
+    ///
+    /// * `start`: Position of the start node
+    /// * `ctrl1` : Position of the control node
+    /// * `end`: ID of the new end node
     pub fn quadratic_to(
         &mut self,
         start: Vec2,
@@ -348,7 +435,13 @@ impl BBGraph {
         let start_index = self.add_node(start);
         self.quadratic_from_to(start_index, ctrl1, end)
     }
-    /// Creates a cubic curve from a new node point to a prexisting node point.
+
+    /// Creates a new node at `start` and adds a cubic curve edge between it and the end node.
+    ///
+    /// * `start`: Position of the start node
+    /// * `ctrl1` : Position of the first control node
+    /// * `ctrl2` : Position of the second control node
+    /// * `end`: ID of the new end node
     pub fn cubic_to(
         &mut self,
         start: Vec2,
@@ -360,7 +453,12 @@ impl BBGraph {
         let start_index = self.add_node(start);
         self.cubic_from_to(start_index, ctrl1, ctrl2, end)
     }
-    /// Adds a direct line from `start` to `end`, rebuilding shapes as needed.
+
+    /// Adds a straight line edge between two nodes.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the control node
+    /// * `end`: ID of the end node
     pub fn line_from_to(&mut self, start: BBNodeIndex, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
         println!("line_from_to {start} {end}");
         debug_assert!(self.has_node(start));
@@ -368,7 +466,11 @@ impl BBGraph {
 
         self.edge_line(start, end)
     }
-    /// Adds a quadratic curve from `start` to `end`, rebuilding shapes as needed.
+    /// Adds a quadratic curve edge between two nodes.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the control node
+    /// * `end`: ID of the end node
     pub fn quadratic_from_to(
         &mut self,
         start: BBNodeIndex,
@@ -380,7 +482,13 @@ impl BBGraph {
 
         self.edge_quadratic(start, ctrl1, end)
     }
-    /// Adds a cubic curve from `start` to `end`, rebuilding shapes as needed.
+
+    /// Adds a cubic curve edge between two nodes.
+    ///
+    /// * `start`: ID of the start node
+    /// * `ctrl1` : Position of the first control node
+    /// * `ctrl2` : Position of the second control node
+    /// * `end`: ID of the end node
     pub fn cubic_from_to(
         &mut self,
         start: BBNodeIndex,
@@ -409,7 +517,10 @@ impl BBGraph {
  * MCB related methods
  */
 impl BBGraph {
-    pub fn get_left_most_anchor_index(&self) -> Option<BBNodeIndex> {
+    /// Tries to return the index left most node.  
+    ///
+    /// If two nodes have the same `x` value, it will pick the one with the lower `y` value.
+    pub fn get_left_most_node_index(&self) -> Option<BBNodeIndex> {
         let mut nodes_iter = self.nodes.iter().map(|(idx, node)| (idx, node.position()));
 
         let Some((mut result_idx, mut result_pos)) = nodes_iter.next() else {
@@ -425,6 +536,7 @@ impl BBGraph {
 
         Some(*result_idx)
     }
+
     /// Gets the next edges from a given point.
     /// Because the edges struct is directed, it reverses the edge if necessary.
     ///
@@ -609,6 +721,7 @@ impl BBGraph {
         Ok(result)
     }
 
+    /// Removes all dead-end paths from self. 
     pub fn remove_filaments(&mut self) -> BBResult<()> {
         while let Some((node_idx, _)) = self
             .nodes
