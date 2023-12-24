@@ -1,3 +1,4 @@
+use std::collections::hash_map::{self};
 #[allow(unused_imports)]
 
 use std::{
@@ -42,6 +43,12 @@ impl Display for BBGraph {
     }
 }
 
+impl Default for BBGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BBGraph {
     pub fn new() -> Self {
         Self {
@@ -68,18 +75,18 @@ impl BBGraph {
             edges.insert(*edge_idx, *edge);
 
             let start_idx = edge.start_idx();
-            if !nodes.contains_key(&start_idx) {
+            if let hash_map::Entry::Vacant(e) = nodes.entry(start_idx) {
                 let node_pos = other.node(start_idx)?.position();
                 let node = BBNode::new(node_pos);
-                nodes.insert(start_idx, node);
+                e.insert(node);
             }
             nodes.get_mut(&start_idx).unwrap().adjacents.push(*edge_idx);
 
             let end_idx = edge.end_idx();
-            if !nodes.contains_key(&end_idx) {
+            if let hash_map::Entry::Vacant(e) = nodes.entry(end_idx) {
                 let node_pos = other.node(end_idx)?.position();
                 let node = BBNode::new(node_pos);
-                nodes.insert(end_idx, node);
+                e.insert(node);
             }
             nodes.get_mut(&end_idx).unwrap().adjacents.push(*edge_idx);
         }
@@ -123,7 +130,7 @@ impl BBGraph {
         &self,
         closed_walk: &ClosedWalk,
     ) -> BBResult<Vec<(BBEdgeIndex, BBEdge)>> {
-        if closed_walk.len() == 0 {
+        if closed_walk.is_empty() {
             return Err(BBError::ClosedWalkTooSmall(closed_walk.len()));
         }
         let first_edge_idx = closed_walk.first().unwrap();
@@ -206,14 +213,14 @@ impl BBGraph {
 
         if let Ok(start) = self.node_mut(edge.start_idx()) {
             start.adjacents.retain(|e_idx| *e_idx != edge_idx);
-            if start.adjacents().len() == 0 {
+            if start.adjacents().is_empty() {
                 self.delete_node(edge.start_idx())?;
             }
         }
 
         if let Ok(end) = self.node_mut(edge.end_idx()) {
             end.adjacents.retain(|e_idx| *e_idx != edge_idx);
-            if end.adjacents().len() == 0 {
+            if end.adjacents().is_empty() {
                 self.delete_node(edge.end_idx())?;
             }
         }
@@ -390,7 +397,7 @@ impl BBGraph {
 
     pub fn translate(&mut self, translation: Vec2) {
         for v in self.nodes.values_mut() {
-            v.position = v.position + translation;
+            v.position += translation;
         }
         for l in self.edges.values_mut() {
             l.translate(translation);
@@ -433,10 +440,10 @@ impl BBGraph {
         node.adjacents()
             .iter()
             .filter(|edge_idx| {
-                return prev_edge_idx.map_or(true, |prev_edge_idx: BBEdgeIndex| {
+                prev_edge_idx.map_or(true, |prev_edge_idx: BBEdgeIndex| {
                     println!("Comparing {edge_idx} {prev_edge_idx}");
                     **edge_idx != prev_edge_idx
-                });
+                })
             })
             .map(|edge_idx| {
                 let edge = self.edge(*edge_idx)?.directed_from(node_idx);
@@ -475,7 +482,7 @@ impl BBGraph {
             loop {
                 let is_parrallel = temp_el_dir.dot(temp_next_dir).abs() < 0.01;
                 if is_parrallel && t < 1. {
-                    t = t + 1. / 32.;
+                    t += 1. / 32.;
                     temp_el_dir = el_edge.t_point(self, t) - curr_p;
                     temp_next_dir = next_edge.t_point(self, t) - curr_p;
                     continue;
@@ -531,7 +538,7 @@ impl BBGraph {
             loop {
                 let is_parrallel = temp_el_dir.dot(temp_next_dir).abs() < 0.01;
                 if is_parrallel && t < 1. {
-                    t = t + 1. / 32.;
+                    t += 1. / 32.;
                     temp_el_dir = el_edge.t_point(self, t) - curr_p;
                     temp_next_dir = next_edge.t_point(self, t) - curr_p;
                     continue;
@@ -562,7 +569,7 @@ impl BBGraph {
 
         let mut edges_to_visit: HashSet<BBEdgeIndex> = self.edges.keys().cloned().collect();
 
-        while edges_to_visit.len() != 0 {
+        while !edges_to_visit.is_empty() {
             let first = {
                 let mut edges_to_visit_queue: Vec<_> = edges_to_visit.iter().collect();
                 let Some(first) = edges_to_visit_queue.pop() else {
@@ -642,7 +649,7 @@ impl BBGraph {
             );
         }
 
-        let colors = vec![comfy::SEA_GREEN, comfy::LIME_GREEN, comfy::YELLOW_GREEN];
+        let colors = [comfy::SEA_GREEN, comfy::LIME_GREEN, comfy::YELLOW_GREEN];
 
         for (i, mut graph) in self.get_detached_graphs()?.into_iter().enumerate() {
             let color = colors[i % colors.len()];

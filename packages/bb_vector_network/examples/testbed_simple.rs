@@ -49,10 +49,6 @@ impl GameState {
                         let db = p3 - p1;
                         comfy::draw_arrow(p1 + 0.5, p3 + 0.5, 0.05, comfy::PINK, 2);
                         comfy::draw_text(&format!("da: {db}\ndet: {}", dcurr.determinate(db)), p1 + db / 2., comfy::WHITE, comfy::TextAlign::Center);
-
-                        let is_convex = dcurr.determinate(db);
-
-
                     }),
                 },
                 Test {

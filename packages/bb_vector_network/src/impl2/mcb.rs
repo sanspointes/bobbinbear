@@ -141,22 +141,6 @@ pub fn extract_nested_from_closed_walk(
     graph: &BBGraph,
     closed_walk: &ClosedWalk,
 ) -> BBResult<(ClosedWalk, Vec<ClosedWalk>)> {
-    // let mut result = vec![];
-    // let cw_real: Vec<_> = closed_walk.iter().map(|edge_idx| graph.edge(*edge_idx)).collect();
-    // dbg!(cw_real);
-    //
-    // let node_first = graph
-    //     .edge(*closed_walk.first().unwrap())
-    //     .unwrap()
-    //     .start_idx();
-    // let mut node_prev_idx = node_first;
-    // let mut nodes = vec![node_first];
-    // for edge_idx in closed_walk.iter() {
-    //     let edge = graph.edge(*edge_idx).unwrap();
-    //     let node_next = (*edge).other_node_idx(node_prev_idx);
-    //     nodes.push(node_next);
-    //     node_prev_idx = node_next;
-    // }
 
     let mut closed_walk = graph.edges_from_closed_walk(closed_walk)?;
     let mut nested_closed_walk = vec![];
@@ -177,17 +161,6 @@ pub fn extract_nested_from_closed_walk(
                 nested_range = Some(i..(end_i + next_i + 1));
                 break;
             }
-            // let shares_node = if is_first {
-            //     other_edge.contains_node_idx(edge.end_idx())
-            // } else if is_last {
-            //     edge.contains_node_idx(other_edge.start_idx())
-            // } else {
-            //     other_edge.shares_node_idx(&edge)
-            // };
-            //
-            // if shares_node {
-            //     break;
-            // }
         }
 
         if let Some(nested_range) = nested_range {
