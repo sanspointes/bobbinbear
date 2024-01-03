@@ -1,4 +1,7 @@
-use std::{collections::hash_map::{self}, result};
+use std::{
+    collections::hash_map::{self},
+    result,
+};
 
 #[allow(unused_imports)]
 use std::{
@@ -17,7 +20,8 @@ use crate::debug_draw::draw_det_arc;
 use super::{
     bb_edge::{BBEdge, BBEdgeIndex},
     bb_node::{BBNode, BBNodeIndex},
-    errors::{BBError, BBResult}
+    bb_region::{BBCycle, BBRegion, BBRegionIndex},
+    errors::{BBError, BBResult},
 };
 
 #[derive(Debug, Clone)]
@@ -25,7 +29,7 @@ pub struct BBGraph {
     next_idx: usize,
     pub nodes: HashMap<BBNodeIndex, BBNode>,
     pub edges: HashMap<BBEdgeIndex, BBEdge>,
-    // pub regions: std::collections::HashMap<BBRegionIndex, BBVNRegion>,
+    pub regions: HashMap<BBRegionIndex, BBRegion>,
 }
 
 impl Display for BBGraph {
@@ -53,6 +57,7 @@ impl BBGraph {
             next_idx: 0,
             nodes: HashMap::new(),
             edges: HashMap::new(),
+            regions: HashMap::new(),
         }
     }
 
@@ -93,7 +98,7 @@ impl BBGraph {
             next_idx,
             nodes,
             edges,
-            // regions: HashMap::new(),
+            regions: HashMap::new(),
         })
     }
 
@@ -148,6 +153,12 @@ impl BBGraph {
 
         Ok(directed)
     }
+
+    /// Returns the count of edges in the graph
+    pub fn edges_count(&self) -> usize {
+        self.edges.len()
+    }
+
     /// Gets a reference to a node by ID
     ///
     /// * `index`: ID of node to get
@@ -511,7 +522,7 @@ impl BBGraph {
 }
 
 /**
- * MCB related methods
+ * MCB helper methods
  */
 impl BBGraph {
     /// Tries to return the index left most node.  
@@ -765,10 +776,10 @@ pub enum TraverseAction {
 }
 
 impl BBGraph {
-    /// General graph traversal helper to make data 
+    /// General graph traversal helper to make data
     ///
-    /// * `initial_model`: 
-    /// * `strategy`: 
+    /// * `initial_model`:
+    /// * `strategy`:
     pub fn traverse_with_model<TModel: Sized, TResult: From<TModel>>(
         &self,
         initial_model: TModel,
@@ -780,7 +791,7 @@ impl BBGraph {
             let action = strategy(&mut model)?;
 
             if let TraverseAction::Stop = action {
-                break
+                break;
             }
         }
 
@@ -796,8 +807,11 @@ impl BBGraph {
     /// direction.
     ///
     /// * `node_idx`: Node ID that you want to start this walk from.
-    pub fn closed_walk_with_ccw_start_and_ccw_traverse(&self, node_idx: BBNodeIndex) -> BBResult<ClosedWalkResult> {
-        // Get the clockwise most edge of the start node 
+    pub fn closed_walk_with_ccw_start_and_ccw_traverse(
+        &self,
+        node_idx: BBNodeIndex,
+    ) -> BBResult<ClosedWalkResult> {
+        // Get the clockwise most edge of the start node
         let first_edge_idx = self.get_ccw_edge_of_node(node_idx, vec2(0., 1.), None)?;
         let first_edge = self.edge(first_edge_idx)?.directed_from(node_idx);
 
@@ -812,7 +826,11 @@ impl BBGraph {
         let result = self.traverse_with_model(model, |model| {
             // let ClosedWalkModel { curr_node_idx, curr_edge_idx, curr_dir } = model;
 
-            let next_edge_idx = self.get_ccw_edge_of_node(model.curr_node_idx, model.curr_dir, Some(model.curr_edge_idx))?;
+            let next_edge_idx = self.get_ccw_edge_of_node(
+                model.curr_node_idx,
+                model.curr_dir,
+                Some(model.curr_edge_idx),
+            )?;
             if first_edge_idx == next_edge_idx {
                 return Ok(TraverseAction::Stop);
             }
@@ -837,8 +855,11 @@ impl BBGraph {
     /// the left most node and perfomr the traverse, then process nested graphs, if any).
     ///
     /// * `node_idx`: Node ID that you want to start this walk from.
-    pub fn closed_walk_with_cw_start_and_ccw_traverse(&self, node_idx: BBNodeIndex) -> BBResult<ClosedWalkResult> {
-        // Get the clockwise most edge of the start node 
+    pub fn closed_walk_with_cw_start_and_ccw_traverse(
+        &self,
+        node_idx: BBNodeIndex,
+    ) -> BBResult<ClosedWalkResult> {
+        // Get the clockwise most edge of the start node
         let first_edge_idx = self.get_cw_edge_of_node(node_idx, vec2(0., 1.), None)?;
         let first_edge = self.edge(first_edge_idx)?.directed_from(node_idx);
 
@@ -853,7 +874,11 @@ impl BBGraph {
         let result = self.traverse_with_model(model, |model| {
             // let ClosedWalkModel { curr_node_idx, curr_edge_idx, curr_dir } = model;
 
-            let next_edge_idx = self.get_ccw_edge_of_node(model.curr_node_idx, model.curr_dir, Some(model.curr_edge_idx))?;
+            let next_edge_idx = self.get_ccw_edge_of_node(
+                model.curr_node_idx,
+                model.curr_dir,
+                Some(model.curr_edge_idx),
+            )?;
             if first_edge_idx == next_edge_idx {
                 return Ok(TraverseAction::Stop);
             }
@@ -868,6 +893,117 @@ impl BBGraph {
         })?;
 
         Ok(result)
+    }
+}
+
+/**
+ * Region calculation via MCB
+ */
+impl BBGraph {
+    /// Adds a region to the BBGraph returning its BBRegionIndex
+    ///
+    /// * `region`: The region to add
+    fn add_region(&mut self, region: BBRegion) -> BBRegionIndex {
+        let index = BBRegionIndex(self.get_next_idx());
+        self.regions.insert(index, region);
+        index
+    }
+
+    /// Recalculates all of the regions for the bb_graph.  This will make any pre-existing `BBRegionIndex` invalid.
+    pub fn update_regions(&mut self) -> BBResult<Vec<BBRegionIndex>> {
+        self.regions.clear();
+
+        let mut region_indices = vec![];
+
+        for mut graph in self.get_detached_graphs()? {
+            let mut cycles = vec![];
+            graph.extract_cycles(&mut cycles)?;
+
+            let region = BBRegion::new(cycles);
+            region_indices.push(self.add_region(region));
+        }
+
+        Ok(region_indices)
+    }
+
+    fn extract_cycles(&mut self, cycles_out: &mut Vec<BBCycle>) -> BBResult<()> {
+        while self.nodes_count() > 0 {
+            // Need to cleanup filaments as it can prevent closed walks
+            self.remove_filaments()?;
+            if self.nodes_count() <= 2 || self.edges_count() <= 2 {
+                break;
+            }
+
+            let Some(left_most) = self.get_left_most_node_index() else {
+                break;
+            };
+            let ClosedWalkResult { outer_edge, edges } =
+                self.closed_walk_with_cw_start_and_ccw_traverse(left_most)?;
+
+            let (parent_cycle, nested_walks) =
+                self.extract_nested_cycle_from_closed_walk(&edges)?;
+
+            let mut parent_cycle = BBCycle::new(parent_cycle);
+            for walk in nested_walks {
+                let mut nested_graph = BBGraph::try_new_from_other_edges(self, &walk)?;
+                let result = nested_graph.extract_cycles(&mut parent_cycle.children);
+
+                // We will not throw all errors, only if they're critical (of the missing variant).
+                if let Err(reason) = result {
+                    if reason.is_missing_variant() {
+                        return Err(reason);
+                    }
+                }
+            }
+
+            self.delete_edge(outer_edge)?;
+
+            cycles_out.push(parent_cycle);
+        }
+
+        Ok(())
+    }
+
+    fn extract_nested_cycle_from_closed_walk(
+        &self,
+        closed_walk: &[BBEdgeIndex],
+    ) -> BBResult<(Vec<BBEdgeIndex>, Vec<Vec<BBEdgeIndex>>)> {
+        let mut closed_walk = self.edges_directed(closed_walk)?;
+        let mut nested_closed_walk = vec![];
+
+        let mut next_i = 2;
+        while next_i < closed_walk.len() {
+            let i = next_i - 2;
+            let (_, edge) = closed_walk[i];
+
+            // Need to find nodes that are traversed twice as this indicates a nested cycle.
+            let mut nested_range = None;
+            for (end_i, (other_edge_idx, other_edge)) in
+                closed_walk[next_i..].iter().enumerate().rev()
+            {
+                let is_not_first_el = i != 0;
+                let is_not_last_el = end_i != closed_walk.len();
+                let is_traversed_twice = edge.start_idx() == other_edge.end_idx();
+                if is_not_first_el && is_not_last_el && is_traversed_twice {
+                    nested_range = Some(i..(end_i + next_i + 1));
+                    break;
+                }
+            }
+
+            if let Some(nested_range) = nested_range {
+                let start = nested_range.start;
+                let end = nested_range.end;
+
+                // Need to delete the nested from the parent cycle.
+                let nested_walk: Vec<_> = closed_walk.drain(nested_range).collect();
+                nested_closed_walk.push(nested_walk.into_iter().map(|(idx, _)| idx).collect());
+            }
+
+            next_i += 1;
+        }
+
+        let parent_closed_walk: Vec<_> = closed_walk.into_iter().map(|(idx, _)| idx).collect();
+        Ok((parent_closed_walk, nested_closed_walk))
     }
 }
 

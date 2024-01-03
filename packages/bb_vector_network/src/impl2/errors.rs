@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::{BBNodeIndex, BBEdgeIndex};
+use crate::{BBEdgeIndex, BBNodeIndex};
 
 #[derive(Error, Debug)]
 pub enum BBError {
@@ -14,6 +14,13 @@ pub enum BBError {
     ClosedWalkDeadEnd,
     #[error("Closed walk found too few links to be a valid cycle. Expected")]
     ClosedWalkTooSmall(usize),
+}
+
+impl BBError {
+    /// Returns true if this error variant is of missing node / edge / region.
+    pub fn is_missing_variant(&self) -> bool {
+        matches!(self, BBError::MissingNode(_) | BBError::MissingEdge(_))
+    }
 }
 
 pub type BBResult<T> = Result<T, BBError>;
