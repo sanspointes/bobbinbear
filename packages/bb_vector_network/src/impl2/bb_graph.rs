@@ -733,6 +733,143 @@ impl BBGraph {
     }
 }
 
+/**
+ * Graph traversal helper methods.
+ */
+struct ClosedWalkModel {
+    curr_node_idx: BBNodeIndex,
+    curr_edge_idx: BBEdgeIndex,
+    curr_dir: Vec2,
+    outer_edge: BBEdgeIndex,
+    edges: Vec<BBEdgeIndex>,
+}
+
+#[derive(Debug)]
+pub struct ClosedWalkResult {
+    pub outer_edge: BBEdgeIndex,
+    pub edges: Vec<BBEdgeIndex>,
+}
+
+impl From<ClosedWalkModel> for ClosedWalkResult {
+    fn from(value: ClosedWalkModel) -> Self {
+        Self {
+            outer_edge: value.outer_edge,
+            edges: value.edges,
+        }
+    }
+}
+
+pub enum TraverseAction {
+    Continue,
+    Stop,
+}
+
+impl BBGraph {
+    /// General graph traversal helper to make data 
+    ///
+    /// * `initial_model`: 
+    /// * `strategy`: 
+    pub fn traverse_with_model<TModel: Sized, TResult: From<TModel>>(
+        &self,
+        initial_model: TModel,
+        strategy: impl Fn(&mut TModel) -> BBResult<TraverseAction>,
+    ) -> BBResult<TResult> {
+        let mut model = initial_model;
+
+        loop {
+            let action = strategy(&mut model)?;
+
+            if let TraverseAction::Stop = action {
+                break
+            }
+        }
+
+        Ok(model.into())
+    }
+
+    /// Peforms a closed walk from a given node.  Firstly finds the counterclockwise most edge and
+    /// then traverses around the next counterclockwise most edges until returning to the starting
+    /// node and returning.
+    ///
+    /// This walk is useful for finding the outer perimiter of a shape, if you start from the left
+    /// most edge and perform the walk, it will traverse the perimiter of the graph in a clockwise
+    /// direction.
+    ///
+    /// * `node_idx`: Node ID that you want to start this walk from.
+    pub fn closed_walk_with_ccw_start_and_ccw_traverse(&self, node_idx: BBNodeIndex) -> BBResult<ClosedWalkResult> {
+        // Get the clockwise most edge of the start node 
+        let first_edge_idx = self.get_ccw_edge_of_node(node_idx, vec2(0., 1.), None)?;
+        let first_edge = self.edge(first_edge_idx)?.directed_from(node_idx);
+
+        let model = ClosedWalkModel {
+            curr_node_idx: first_edge.end_idx(),
+            curr_dir: first_edge.calc_end_tangent(self)?.mul(-1.),
+            curr_edge_idx: first_edge_idx,
+            edges: vec![first_edge_idx],
+            outer_edge: first_edge_idx,
+        };
+        // Walk around the graph finding the counterclockwise most edges until returning to start.
+        let result = self.traverse_with_model(model, |model| {
+            // let ClosedWalkModel { curr_node_idx, curr_edge_idx, curr_dir } = model;
+
+            let next_edge_idx = self.get_ccw_edge_of_node(model.curr_node_idx, model.curr_dir, Some(model.curr_edge_idx))?;
+            if first_edge_idx == next_edge_idx {
+                return Ok(TraverseAction::Stop);
+            }
+            let next_edge = self.edge(next_edge_idx)?;
+
+            model.curr_edge_idx = next_edge_idx;
+            model.curr_node_idx = next_edge.other_node_idx(model.curr_node_idx);
+            model.curr_dir = next_edge.calc_end_tangent(self)? * -1.;
+            model.edges.push(next_edge_idx);
+
+            Ok(TraverseAction::Continue)
+        })?;
+
+        Ok(result)
+    }
+
+    /// Peforms a closed walk from a given node.  Firstly finds the clockwise most edge and then
+    /// traverses around the next counterclockwise most edges until returning to the starting
+    /// node and returning.
+    ///
+    /// This walk is useful for finding minimal cycle bases within the graph (to do so, start from
+    /// the left most node and perfomr the traverse, then process nested graphs, if any).
+    ///
+    /// * `node_idx`: Node ID that you want to start this walk from.
+    pub fn closed_walk_with_cw_start_and_ccw_traverse(&self, node_idx: BBNodeIndex) -> BBResult<ClosedWalkResult> {
+        // Get the clockwise most edge of the start node 
+        let first_edge_idx = self.get_cw_edge_of_node(node_idx, vec2(0., 1.), None)?;
+        let first_edge = self.edge(first_edge_idx)?.directed_from(node_idx);
+
+        let model = ClosedWalkModel {
+            curr_node_idx: first_edge.end_idx(),
+            curr_dir: first_edge.calc_end_tangent(self)?.mul(-1.),
+            curr_edge_idx: first_edge_idx,
+            edges: vec![first_edge_idx],
+            outer_edge: first_edge_idx,
+        };
+        // Walk around the graph finding the counterclockwise most edges until returning to start.
+        let result = self.traverse_with_model(model, |model| {
+            // let ClosedWalkModel { curr_node_idx, curr_edge_idx, curr_dir } = model;
+
+            let next_edge_idx = self.get_ccw_edge_of_node(model.curr_node_idx, model.curr_dir, Some(model.curr_edge_idx))?;
+            if first_edge_idx == next_edge_idx {
+                return Ok(TraverseAction::Stop);
+            }
+            let next_edge = self.edge(next_edge_idx)?;
+
+            model.curr_edge_idx = next_edge_idx;
+            model.curr_node_idx = next_edge.end_idx();
+            model.curr_dir = next_edge.calc_end_tangent(self)? * -1.;
+            model.edges.push(next_edge_idx);
+
+            Ok(TraverseAction::Continue)
+        })?;
+
+        Ok(result)
+    }
+}
 
 /**
  * Debug drawing methods
