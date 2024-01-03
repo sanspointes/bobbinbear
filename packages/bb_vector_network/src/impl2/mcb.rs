@@ -22,19 +22,19 @@ pub fn mcb(graph: &BBGraph) -> BBResult<Vec<BBRegion>> {
 
 fn extract_cycles(graph: &mut BBGraph, cycles_out: &mut Vec<BBCycle>) -> BBResult<()> {
     println!("START extract_cycles");
-    while graph.node_len() > 0 {
+    while graph.nodes_count() > 0 {
         println!(
             "Trying to extract with {} remaining nodes.",
-            graph.node_len()
+            graph.nodes_count()
         );
         graph.remove_filaments()?;
-        println!("Filaments removed, {} remaining nodes.", graph.node_len());
+        println!("Filaments removed, {} remaining nodes.", graph.nodes_count());
 
         if graph.nodes.len() <= 2 || graph.edges.len() <= 2 {
             break;
         }
 
-        let Some(left_most) = graph.get_left_most_anchor_index() else {
+        let Some(left_most) = graph.get_left_most_node_index() else {
             break;
         };
         println!("Left most anchor: {left_most}.");
@@ -142,7 +142,7 @@ pub fn extract_nested_from_closed_walk(
     closed_walk: &ClosedWalk,
 ) -> BBResult<(ClosedWalk, Vec<ClosedWalk>)> {
 
-    let mut closed_walk = graph.edges_from_closed_walk(closed_walk)?;
+    let mut closed_walk = graph.edges_directed(closed_walk)?;
     let mut nested_closed_walk = vec![];
     for (i, (idx, edge)) in closed_walk.iter().enumerate() {
         println!("{i}: {idx} {edge}");

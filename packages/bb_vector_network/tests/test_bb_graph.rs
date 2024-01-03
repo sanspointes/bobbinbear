@@ -23,7 +23,7 @@ mod edges_from_closed_walk {
         let (e3, _) = g.line_from_to(edge.end_idx(), first_edge.start_idx());
 
         let closed_walk = vec![e0, e1, e2, e3];
-        let result = g.edges_from_closed_walk(&closed_walk).unwrap();
+        let result = g.edges_directed(&closed_walk).unwrap();
         assert_closed_walk_directionality(&g, result);
     }
 
@@ -38,7 +38,7 @@ mod edges_from_closed_walk {
 
         let closed_walk = vec![e0, e1, e2, e3];
 
-        let result = g.edges_from_closed_walk(&closed_walk).unwrap();
+        let result = g.edges_directed(&closed_walk).unwrap();
         assert_closed_walk_directionality(&g, result);
     }
 }
@@ -62,7 +62,7 @@ mod new_from_other_edges {
 
         let extracted = BBGraph::try_new_from_other_edges(&g, &vec![e0, e3, e4]).unwrap();
 
-        assert_eq!(extracted.node_len(), 3);
+        assert_eq!(extracted.nodes_count(), 3);
         for edge in extracted.edges.values() {
             extracted
                 .node(edge.start_idx())
@@ -89,10 +89,10 @@ mod remove_filaments {
 
         g.line_from(middle_edge.end_idx(), Vec2::new(5., -5.));
 
-        assert_eq!(g.node_len(), 5);
+        assert_eq!(g.nodes_count(), 5);
 
         let _ = g.remove_filaments();
-        assert_eq!(g.node_len(), 4);
+        assert_eq!(g.nodes_count(), 4);
     }
 
     #[test]
@@ -109,9 +109,9 @@ mod remove_filaments {
         let (_, edge) = g.line_from(edge.end_idx(), Vec2::new(10., -5.));
         g.line_from(edge.end_idx(), Vec2::new(15., -5.));
 
-        assert_eq!(g.node_len(), 7);
+        assert_eq!(g.nodes_count(), 7);
         let _ = g.remove_filaments();
-        assert_eq!(g.node_len(), 4);
+        assert_eq!(g.nodes_count(), 4);
     }
 }
 
@@ -130,7 +130,7 @@ mod delete_edge {
 
         g.delete_edge(e0).unwrap();
 
-        assert_eq!(g.node_len(), 3);
+        assert_eq!(g.nodes_count(), 3);
         assert_eq!(g.edge(e0).is_err(), true);
         assert_eq!(g.edge(e1).is_ok(), true);
         assert_eq!(g.edge(e2).is_ok(), true);
@@ -147,7 +147,7 @@ mod delete_edge {
 
         g.delete_node(left_node_idx).unwrap();
 
-        assert_eq!(g.node_len(), 2);
+        assert_eq!(g.nodes_count(), 2);
         let remaining_edge = g.edge(e1).unwrap();
         assert_eq!(remaining_edge.start_pos(&g), Vec2::new(0., 0.));
         assert_eq!(remaining_edge.end_pos(&g), Vec2::new(-2.5, 2.5));
@@ -169,7 +169,7 @@ mod delete_node {
 
         g.delete_node(top_node_idx).unwrap();
 
-        assert_eq!(g.node_len(), 2);
+        assert_eq!(g.nodes_count(), 2);
         assert_eq!(g.edge(e0).is_ok(), true);
         assert_eq!(g.edge(e1).is_err(), true);
         assert_eq!(g.edge(e2).is_err(), true);
@@ -204,7 +204,7 @@ mod delete_node {
 
         g.delete_node(left_node_idx);
 
-        assert_eq!(g.node_len(), 2);
+        assert_eq!(g.nodes_count(), 2);
         let remaining_edge = g.edge(e1).unwrap();
         assert_eq!(remaining_edge.start_pos(&g), Vec2::new(0., 0.));
         assert_eq!(remaining_edge.end_pos(&g), Vec2::new(-2.5, 2.5));
@@ -227,7 +227,7 @@ mod get_detached_graphs {
 
         assert_eq!(graphs.len(), 1);
         let first = graphs.pop().unwrap();
-        assert_eq!(first.node_len(), 3);
+        assert_eq!(first.nodes_count(), 3);
     }
 
     #[test]
@@ -245,9 +245,9 @@ mod get_detached_graphs {
 
         assert_eq!(graphs.len(), 2);
         let first = graphs.pop().unwrap();
-        assert_eq!(first.node_len(), 3);
+        assert_eq!(first.nodes_count(), 3);
         let second = graphs.pop().unwrap();
-        assert_eq!(second.node_len(), 3);
+        assert_eq!(second.nodes_count(), 3);
     }
 
     #[test]
@@ -276,5 +276,56 @@ mod get_detached_graphs {
                 );
             }
         }
+    }
+}
+
+mod closed_walk_with_cw_start_and_ccw_traverse {
+    use bb_vector_network::impl2::bb_graph;
+    use glam::vec2;
+
+    #[test]
+    fn it_should_generate_closed_walk_on_simple_cycle() {
+        let mut g = bb_graph::BBGraph::new();
+
+        let (e0, first_edge) = g.line(vec2(0., 0.), vec2(1., 0.));
+        let (e1, middle_edge) = g.line_from(first_edge.end_idx(), vec2(1., 1.));
+        let (e2, e) = g.line_from(middle_edge.end_idx(), vec2(0., 1.));
+        let (outer_edge, _) = g.line_from_to(e.end_idx(), first_edge.start_idx());
+
+        let (_, e) = g.line_from(middle_edge.start_idx(), vec2(2., 0.));
+        let (_, e) = g.line_from(e.end_idx(), vec2(2., 1.));
+        g.line_from_to(e.end_idx(), middle_edge.end_idx());
+
+        let node_idx = g.get_left_most_node_index().unwrap();
+        let v = g.closed_walk_with_cw_start_and_ccw_traverse(node_idx).unwrap();
+
+        assert_eq!(v.outer_edge, outer_edge);
+        assert_eq!(v.edges.len(), 4);
+        assert_eq!(v.edges, vec![outer_edge, e0, e1, e2]);
+    }
+}
+
+mod closed_walk_with_ccw_start_and_ccw_traverse {
+    use bb_vector_network::impl2::bb_graph;
+    use glam::vec2;
+
+    #[test]
+    fn it_should_walk_perimiter_on_simple_cycle() {
+        let mut g = bb_graph::BBGraph::new();
+
+        let (e2, first_edge) = g.line(vec2(0., 0.), vec2(1., 0.));
+        let (e4, middle_edge) = g.line_from(first_edge.end_idx(), vec2(1., 1.));
+        let (e6, e) = g.line_from(middle_edge.end_idx(), vec2(0., 1.));
+        let (e7, _) = g.line_from_to(e.end_idx(), first_edge.start_idx());
+
+        let (e9, e) = g.line_from(middle_edge.start_idx(), vec2(2., 0.));
+        let (e11, e) = g.line_from(e.end_idx(), vec2(2., 1.));
+        let (e12, _) = g.line_from_to(e.end_idx(), middle_edge.end_idx());
+
+        let node_idx = g.get_left_most_node_index().unwrap();
+        let v = g.closed_walk_with_ccw_start_and_ccw_traverse(node_idx).unwrap();
+
+        assert_eq!(v.edges.len(), 6);
+        assert_eq!(v.edges, vec![e6, e12, e11, e9, e2, e7]);
     }
 }

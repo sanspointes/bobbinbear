@@ -4,6 +4,8 @@ use crate::{BBNodeIndex, BBEdgeIndex};
 
 #[derive(Error, Debug)]
 pub enum BBError {
+    #[error("The graph does not contain any nodes or edges.")]
+    EmptyGraph,
     #[error("Missing referenced node {0:?}.")]
     MissingNode(BBNodeIndex),
     #[error("Missing referenced edge {0:?}.")]

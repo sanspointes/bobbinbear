@@ -1,25 +1,23 @@
-use std::collections::hash_map::{self};
-#[allow(unused_imports)]
+use std::{collections::hash_map::{self}, result};
 
+#[allow(unused_imports)]
 use std::{
+    collections::{HashMap, HashSet, VecDeque},
     fmt::Display,
     ops::{Mul, Sub},
-    collections::{HashMap, HashSet, VecDeque},
 };
 
-use glam::Vec2;
 use crate::{prelude::mcb, Determinate};
+use glam::{vec2, Vec2};
 
 #[allow(unused_imports)]
 #[cfg(feature = "debug_draw")]
 use crate::debug_draw::draw_det_arc;
 
-
 use super::{
     bb_edge::{BBEdge, BBEdgeIndex},
     bb_node::{BBNode, BBNodeIndex},
-    errors::{BBError, BBResult},
-    mcb::ClosedWalk,
+    errors::{BBError, BBResult}
 };
 
 #[derive(Debug, Clone)]
@@ -133,10 +131,7 @@ impl BBGraph {
     /// continuous direction.
     ///
     /// * `edges`: A slice of edges that you want to get the edge data of.
-    pub fn edges_directed(
-        &self,
-        edges: &[BBEdgeIndex],
-    ) -> BBResult<Vec<(BBEdgeIndex, BBEdge)>> {
+    pub fn edges_directed(&self, edges: &[BBEdgeIndex]) -> BBResult<Vec<(BBEdgeIndex, BBEdge)>> {
         if edges.is_empty() {
             return Err(BBError::ClosedWalkTooSmall(edges.len()));
         }
@@ -259,7 +254,7 @@ impl BBGraph {
      * GRAPH BUILDING API - edge functions
      */
 
-    /// Adds a line between two nodes. 
+    /// Adds a line between two nodes.
     ///
     /// Used internallyedge by [line()], [line_from()],
     /// [line_to()], and [line_from_to()]
@@ -319,13 +314,13 @@ impl BBGraph {
         self.edge_line(start, end)
     }
 
-    /// Adds a quadratic curve between two nodes. 
+    /// Adds a quadratic curve between two nodes.
     ///
     /// Used internally by [quadratic()], [quadratic_from()],
     /// [quadratic_to()], and [quadratic_from_to()]
     ///
     /// * `start`: ID of the node to start at
-    /// * `ctrl1`: Position of the control point 
+    /// * `ctrl1`: Position of the control point
     /// * `end`: ID of the node to end at
     fn edge_quadratic(
         &mut self,
@@ -402,8 +397,7 @@ impl BBGraph {
         self.edge_quadratic(start, ctrl1, end)
     }
 
-
-    /// Adds a cubic curve between two nodes. 
+    /// Adds a cubic curve between two nodes.
     ///
     /// Used internally by [cubic()], [cubic_from()],
     /// [cubic_to()], and [cubic_from_to()]
@@ -660,8 +654,8 @@ impl BBGraph {
                 }
 
                 let is_convex = curr_dir.determinate(temp_next_dir) > 0.;
-                let ccw_of_curr = curr_dir.determinate(temp_el_dir) < 0.;
-                let ccw_of_next = temp_el_dir.determinate(temp_next_dir) < 0.;
+                let ccw_of_curr = curr_dir.determinate(temp_el_dir) <= 0.;
+                let ccw_of_next = temp_el_dir.determinate(temp_next_dir) <= 0.;
 
                 if (!is_convex && ccw_of_curr && ccw_of_next)
                     || (is_convex && (ccw_of_curr || ccw_of_next))
@@ -724,7 +718,7 @@ impl BBGraph {
         Ok(result)
     }
 
-    /// Removes all dead-end paths from self. 
+    /// Removes all dead-end paths from self.
     pub fn remove_filaments(&mut self) -> BBResult<()> {
         while let Some((node_idx, _)) = self
             .nodes
@@ -738,6 +732,7 @@ impl BBGraph {
         Ok(())
     }
 }
+
 
 /**
  * Debug drawing methods
@@ -770,11 +765,11 @@ impl BBGraph {
         for (i, mut graph) in self.get_detached_graphs()?.into_iter().enumerate() {
             let color = colors[i % colors.len()];
 
-            while graph.node_len() > 0 {
+            while graph.nodes_count() > 0 {
                 println!("Handling closed walk");
                 graph.remove_filaments()?;
 
-                let Some(left_most) = graph.get_left_most_anchor_index() else {
+                let Some(left_most) = graph.get_left_most_node_index() else {
                     break;
                 };
                 let node = self.node(left_most)?;
@@ -819,7 +814,7 @@ impl BBGraph {
             }
         }
 
-        let left_most = self.get_left_most_anchor_index();
+        let left_most = self.get_left_most_node_index();
         if let Some(left_most) = left_most {
             let node = self.node(left_most)?;
             let color = comfy::Color::rgb8(255, 100, 100);
