@@ -5,3 +5,7 @@ members = [
     "apps/bobbinbear_core",
     "packages/bb_vector_network",
 ]
+
+exclude = [
+    "packages/bb_vector_network/examples/editor"
+]
