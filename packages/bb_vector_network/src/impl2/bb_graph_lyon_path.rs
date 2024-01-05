@@ -84,7 +84,7 @@ impl BBGraph {
             builder,
         };
 
-        let _ =
+        let traversal =
             self.traverse_with_model::<StrokeTraverseModel, StrokeTraverseModel>(model, |model| {
                 let n = self.node(model.curr_node_idx)?;
                 // // If the next edge we're tesselating is not connected to the previous, we'll need
@@ -162,16 +162,18 @@ impl BBGraph {
                     model.curr_node_idx =
                         self.edge(next_edge)?.other_node_idx(model.curr_node_idx);
                 } else {
+                    model.builder.end(false);
                     return Ok(TraverseAction::Stop)
                 }
 
                 if model.visited.len() == self.edges.len() {
+                    model.builder.end(false);
                     Ok(TraverseAction::Stop)
                 } else {
                     Ok(TraverseAction::Continue)
                 }
-            });
+            })?;
 
-        todo!()
+        Ok(traversal.builder.build())
     }
 }
