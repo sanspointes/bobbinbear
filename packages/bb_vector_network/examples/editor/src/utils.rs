@@ -17,6 +17,9 @@ impl ColorUtils for Color {
 pub fn screen_top_left_world() -> Vec2 {
     screen_to_world(vec2(0., 0.))
 }
+pub fn screen_bottom_left_world() -> Vec2 {
+    screen_to_world(vec2(0., screen_height()))
+}
 
 pub static TEXT_PARAMS: Lazy<TextParams> = Lazy::new(|| TextParams {
     color: WHITE,

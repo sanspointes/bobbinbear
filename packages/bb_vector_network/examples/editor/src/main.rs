@@ -7,8 +7,8 @@ use comfy::*;
 use bb_vector_network::prelude::*;
 use entities::Node;
 use tesselation::{tessellate_fill, tessellate_stroke};
-use tools::{Tool, SelectTool, ToolTrait, ToolUpdateResult};
-use utils::{screen_top_left_world, TEXT_PARAMS};
+use tools::{Tool, SelectTool, ToolTrait, ToolUpdateResult, PenTool, InputHelper};
+use utils::{screen_top_left_world, TEXT_PARAMS, screen_bottom_left_world};
 
 simple_game!("BB Vector Network :: Editor", GameState, config, setup, update);
 
@@ -22,7 +22,9 @@ fn config(config: GameConfig) -> GameConfig {
 
 pub struct GameState {
     tool: Tool,
+    input_helper: InputHelper,
     select_tool: SelectTool,
+    pen_tool: PenTool,
 
     nodes: Vec<Node>,
     graph: BBGraph,
@@ -41,7 +43,9 @@ impl GameState {
             nodes: vec![],
             graph: g,
             tool: Tool::Select,
+            input_helper: InputHelper::default(),
             select_tool: SelectTool::default(),
+            pen_tool: PenTool::default(),
         };
 
         gs.rebuild_game_nodes();
@@ -82,17 +86,37 @@ fn setup(state: &mut GameState, c: &mut EngineContext) {
 }
 
 fn update(state: &mut GameState, _c: &mut EngineContext) {
-        draw_text_ex(
-            "bb_vector_network: [1]: Select tool, [2]: Pen tool",
-            screen_top_left_world() - vec2(-0.1, 0.1),
-            comfy::TextAlign::TopLeft,
-            TEXT_PARAMS.clone(),
-        );
+    draw_text_ex(
+        "bb_vector_network: [1]: Select tool, [2]: Pen tool",
+        screen_top_left_world() - vec2(-0.1, 0.1),
+        comfy::TextAlign::TopLeft,
+        TEXT_PARAMS.clone(),
+    );
 
+    if is_key_released(KeyCode::Num1) {
+        state.tool = Tool::Select;
+    } else if is_key_released(KeyCode::Num2) {
+        state.tool = Tool::Pen;
+    }
+
+    let mouse_events = state.input_helper.compute_mouse_events();
+    draw_text_ex(
+        &format!("Mouse events: {:?}", mouse_events),
+        screen_bottom_left_world() - vec2(-0.1, -0.1),
+        comfy::TextAlign::BottomLeft,
+        TextParams {
+            color: WHITE,
+            font: egui::FontId::new(8.0, egui::FontFamily::Name("comfy-font".into())),
+            ..Default::default()
+        },
+    );
 
     let update_result = match state.tool {
         Tool::Select => {
-            SelectTool::update(state)
+            SelectTool::update(state, &mouse_events)
+        }
+        Tool::Pen => {
+            PenTool::update(state, &mouse_events)
         }
     };
 
