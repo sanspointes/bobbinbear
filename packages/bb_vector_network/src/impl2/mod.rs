@@ -5,4 +5,6 @@ pub mod bb_region;
 pub mod mcb;
 pub mod errors;
 
+pub mod bb_graph_lyon_path;
+
 pub mod prelude;

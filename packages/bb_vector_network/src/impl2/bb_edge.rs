@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 
-use std::{ops::Add, fmt::Display};
+use std::{fmt::Display, ops::Add};
 
 use glam::Vec2;
 
@@ -216,6 +216,19 @@ impl BBEdge {
         self.contains_node_idx(other.start_idx()) || self.contains_node_idx(other.end_idx())
     }
 
+    /// Returns the node that two edges share (are linked by) otherwise None.
+    ///
+    /// * `other`: The other edge that you want to compare.
+    pub fn shared_node(&self, other: &BBEdge) -> Option<BBNodeIndex> {
+        if self.contains_node_idx(other.start_idx()) {
+            Some(other.start_idx())
+        } else if self.contains_node_idx(other.end_idx()) {
+            Some(other.end_idx())
+        } else {
+            None
+        }
+    }
+
     /// Returns a clone of the BBEdge but in the reversed direction
     pub fn reversed(&self) -> Self {
         match self {
@@ -242,7 +255,7 @@ impl BBEdge {
         }
     }
 
-    /// Returns the edge, redirected to start from the provided node and point to the other node. 
+    /// Returns the edge, redirected to start from the provided node and point to the other node.
     pub fn directed_from(self, from_node_idx: BBNodeIndex) -> BBEdge {
         if self.start_idx() == from_node_idx {
             self
@@ -262,6 +275,17 @@ impl BBEdge {
             }
             _ => (),
         }
+    }
+
+    pub fn adjacents(&self, graph: &BBGraph) -> BBResult<Vec<BBEdgeIndex>> {
+        let start_adjs = graph.node(self.start_idx())?.adjacents();
+        let end_adjs = graph.node(self.end_idx())?.adjacents();
+        let mut adjs = vec![];
+        adjs.extend_from_slice(start_adjs);
+        adjs.extend_from_slice(end_adjs);
+        // adjs.push();
+        // adjs.push(graph.node(self.end_idx())?.adjacents());
+        Ok(adjs)
     }
 }
 

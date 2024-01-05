@@ -6,11 +6,23 @@
   inputs.turbo.inputs.nixpkgs.follows = "nixpkgs";
   
   inputs.utils.url = "github:numtide/flake-utils";
+  inputs.fenix = {
+    url = "github:nix-community/fenix";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
 
-  outputs = { self, nixpkgs, turbo, utils }:
+  outputs = { self, nixpkgs, turbo, utils, fenix }:
     utils.lib.eachDefaultSystem (system:
       let
         pkgs = nixpkgs.legacyPackages.${system};
+
+        rustToolchain = fenix.packages.${system}.fromToolchainFile {
+          file = ./rust-toolchain.toml;
+          sha256 = "sha256-Q9UgzzvxLi4x9aWUJTn+/5EXekC98ODRU1TwhUs9RnY=";
+        };
+        rustPlatform = pkgs.makeRustPlatform.override { stdenv = pkgs.clangStdenv; }  {
+          inherit (rustToolchain) cargo rustc;
+        };
 
         platformBuildInputs = {
             x86_64-linux = [ 
@@ -40,6 +52,7 @@
                 pkgs.iconv
                 pkgs.darwin.libobjc
                 pkgs.darwin.apple_sdk.frameworks.AppKit
+                rustPlatform.bindgenHook
 
 
                 # Monorepo build system

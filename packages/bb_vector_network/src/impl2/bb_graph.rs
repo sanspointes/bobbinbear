@@ -776,7 +776,9 @@ pub enum TraverseAction {
 }
 
 impl BBGraph {
-    /// General graph traversal helper to make data
+    /// Helper method to make custom iterations/traversals on the graph easier.
+    /// Will call the traversal `strategy()` closure over and over until `TraverseAction::Stop`
+    /// is returned.  It will then return the model used during the traversal.
     ///
     /// * `initial_model`:
     /// * `strategy`:
