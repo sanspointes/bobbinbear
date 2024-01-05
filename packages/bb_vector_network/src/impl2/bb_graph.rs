@@ -141,10 +141,22 @@ impl BBGraph {
             return Err(BBError::ClosedWalkTooSmall(edges.len()));
         }
         let first_edge_idx = edges.first().unwrap();
-        let mut prev_edge = *self.edge(*first_edge_idx)?;
+        let mut first_edge = *self.edge(*first_edge_idx)?;
 
-        let mut directed = vec![(*first_edge_idx, prev_edge)];
+        if edges.len() == 1 {
+            return Ok(vec![(*first_edge_idx, first_edge)]);
+        }
 
+        // Reverse first edge if it isn't continuous w second
+        let second_edge = self.edge(edges[1])?;
+        let first_second_shared_node = first_edge.shared_node(second_edge).unwrap();
+        if first_edge.start_idx() == first_second_shared_node {
+            first_edge = first_edge.reversed();
+        }
+
+        // Iterate over vec
+        let mut prev_edge = first_edge;
+        let mut directed = vec![(*first_edge_idx, first_edge)];
         for edge_idx in &edges[1..] {
             let edge = self.edge(*edge_idx)?.directed_from(prev_edge.end_idx());
             directed.push((*edge_idx, edge));
@@ -748,6 +760,7 @@ impl BBGraph {
  * Graph traversal helper methods.
  */
 struct ClosedWalkModel {
+    traversals: usize,
     curr_node_idx: BBNodeIndex,
     curr_edge_idx: BBEdgeIndex,
     curr_dir: Vec2,
@@ -818,6 +831,7 @@ impl BBGraph {
         let first_edge = self.edge(first_edge_idx)?.directed_from(node_idx);
 
         let model = ClosedWalkModel {
+            traversals: 0,
             curr_node_idx: first_edge.end_idx(),
             curr_dir: first_edge.calc_end_tangent(self)?.mul(-1.),
             curr_edge_idx: first_edge_idx,
@@ -826,7 +840,9 @@ impl BBGraph {
         };
         // Walk around the graph finding the counterclockwise most edges until returning to start.
         let result = self.traverse_with_model(model, |model| {
-            // let ClosedWalkModel { curr_node_idx, curr_edge_idx, curr_dir } = model;
+            if model.traversals > 1000 {
+                return Err(BBError::TraversalLimit(model.edges.clone()))
+            }
 
             let next_edge_idx = self.get_ccw_edge_of_node(
                 model.curr_node_idx,
@@ -838,6 +854,7 @@ impl BBGraph {
             }
             let next_edge = self.edge(next_edge_idx)?;
 
+            model.traversals += 1;
             model.curr_edge_idx = next_edge_idx;
             model.curr_node_idx = next_edge.other_node_idx(model.curr_node_idx);
             model.curr_dir = next_edge.calc_end_tangent(self)? * -1.;
@@ -866,6 +883,7 @@ impl BBGraph {
         let first_edge = self.edge(first_edge_idx)?.directed_from(node_idx);
 
         let model = ClosedWalkModel {
+            traversals: 0,
             curr_node_idx: first_edge.end_idx(),
             curr_dir: first_edge.calc_end_tangent(self)?.mul(-1.),
             curr_edge_idx: first_edge_idx,
@@ -874,7 +892,9 @@ impl BBGraph {
         };
         // Walk around the graph finding the counterclockwise most edges until returning to start.
         let result = self.traverse_with_model(model, |model| {
-            // let ClosedWalkModel { curr_node_idx, curr_edge_idx, curr_dir } = model;
+            if model.traversals > 1000 {
+                return Err(BBError::TraversalLimit(model.edges.clone()))
+            }
 
             let next_edge_idx = self.get_ccw_edge_of_node(
                 model.curr_node_idx,
@@ -886,6 +906,7 @@ impl BBGraph {
             }
             let next_edge = self.edge(next_edge_idx)?;
 
+            model.traversals += 1;
             model.curr_edge_idx = next_edge_idx;
             model.curr_node_idx = next_edge.end_idx();
             model.curr_dir = next_edge.calc_end_tangent(self)? * -1.;

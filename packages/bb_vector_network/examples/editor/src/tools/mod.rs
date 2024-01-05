@@ -1,11 +1,11 @@
 mod input;
-mod select_tool;
 mod pen_tool;
+mod select_tool;
 
 use bb_vector_network::prelude::BBResult;
-pub use select_tool::*;
-pub use pen_tool::*;
 pub use input::*;
+pub use pen_tool::*;
+pub use select_tool::*;
 
 use crate::GameState;
 
@@ -20,6 +20,21 @@ pub enum ToolUpdateResult {
     RegenerateMesh, // The shape of the graph has mutated, need to regenerate the mesh
     RegenerateAll,  // Both the shape of the graph and the nodes/edges in the graph have been
                     // mutated.  Need to rebuild the node representation + regenerate mesh.
+}
+
+impl ToolUpdateResult {
+    pub fn should_update_mesh(&self) -> bool {
+        match self {
+            ToolUpdateResult::RegenerateMesh | ToolUpdateResult::RegenerateAll => true,
+            _ => false,
+        }
+    }
+    pub fn should_update_entities(&self) -> bool {
+        match self {
+            ToolUpdateResult::RegenerateAll => true,
+            _ => false,
+        }
+    }
 }
 
 pub trait ToolTrait {

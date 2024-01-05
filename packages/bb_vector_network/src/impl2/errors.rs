@@ -14,6 +14,8 @@ pub enum BBError {
     ClosedWalkDeadEnd,
     #[error("Closed walk found too few links to be a valid cycle. Expected")]
     ClosedWalkTooSmall(usize),
+    #[error("Hit the limits on traversals, edges: {0:?}.")]
+    TraversalLimit(Vec<BBEdgeIndex>),
 }
 
 impl BBError {

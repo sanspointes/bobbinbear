@@ -1,16 +1,22 @@
-mod tesselation;
 mod entities;
+mod tesselation;
 mod tools;
 mod utils;
 
-use comfy::*;
 use bb_vector_network::prelude::*;
+use comfy::*;
 use entities::Node;
 use tesselation::{tessellate_fill, tessellate_stroke};
-use tools::{Tool, SelectTool, ToolTrait, ToolUpdateResult, PenTool, InputHelper};
-use utils::{screen_top_left_world, TEXT_PARAMS, screen_bottom_left_world};
+use tools::{InputHelper, PenTool, SelectTool, Tool, ToolTrait, ToolUpdateResult};
+use utils::{screen_bottom_left_world, screen_top_left_world, ERR_TEXT_PARAMS, TEXT_PARAMS, draw_bb_error};
 
-simple_game!("BB Vector Network :: Editor", GameState, config, setup, update);
+simple_game!(
+    "BB Vector Network :: Editor",
+    GameState,
+    config,
+    setup,
+    update
+);
 
 fn config(config: GameConfig) -> GameConfig {
     GameConfig {
@@ -28,6 +34,8 @@ pub struct GameState {
 
     nodes: Vec<Node>,
     graph: BBGraph,
+
+    show_graph_annotations: bool,
 }
 
 impl GameState {
@@ -46,6 +54,8 @@ impl GameState {
             input_helper: InputHelper::default(),
             select_tool: SelectTool::default(),
             pen_tool: PenTool::default(),
+
+            show_graph_annotations: false,
         };
 
         gs.rebuild_game_nodes();
@@ -54,11 +64,16 @@ impl GameState {
     }
 
     pub fn rebuild_game_nodes(&mut self) {
-        self.nodes = self.graph.nodes.keys().map(|node_idx| {
-            let mut n = Node::new(*node_idx, 0.3);
-            let _ = n.update_from_graph(&self.graph);
-            n
-        }).collect();
+        self.nodes = self
+            .graph
+            .nodes
+            .keys()
+            .map(|node_idx| {
+                let mut n = Node::new(*node_idx, 0.3);
+                let _ = n.update_from_graph(&self.graph);
+                n
+            })
+            .collect();
     }
 
     pub fn node(&self, node_idx: BBNodeIndex) -> Option<&Node> {
@@ -93,34 +108,32 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
         TEXT_PARAMS.clone(),
     );
 
+    // Keybinds
     if is_key_released(KeyCode::Num1) {
         state.tool = Tool::Select;
     } else if is_key_released(KeyCode::Num2) {
         state.tool = Tool::Pen;
     }
 
-    let mouse_events = state.input_helper.compute_mouse_events();
     draw_text_ex(
-        &format!("Mouse events: {:?}", mouse_events),
+        "[d]: Toggle dbg annotations",
         screen_bottom_left_world() - vec2(-0.1, -0.1),
-        comfy::TextAlign::BottomLeft,
-        TextParams {
-            color: WHITE,
-            font: egui::FontId::new(8.0, egui::FontFamily::Name("comfy-font".into())),
-            ..Default::default()
-        },
+        comfy::TextAlign::TopLeft,
+        TEXT_PARAMS.clone(),
     );
+    if is_key_released(KeyCode::D) {
+        state.show_graph_annotations = !state.show_graph_annotations;
+    }
 
+    // Perform Tool updates
+    let mouse_events = state.input_helper.compute_mouse_events();
     let update_result = match state.tool {
-        Tool::Select => {
-            SelectTool::update(state, &mouse_events)
-        }
-        Tool::Pen => {
-            PenTool::update(state, &mouse_events)
-        }
+        Tool::Select => SelectTool::update(state, &mouse_events),
+        Tool::Pen => PenTool::update(state, &mouse_events),
     };
 
     let mut needs_update_regions = false;
+
     match update_result {
         Ok(ToolUpdateResult::Noop) => (),
         Ok(ToolUpdateResult::RegenerateMesh) => {
@@ -130,17 +143,13 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
             state.rebuild_game_nodes();
             needs_update_regions = true;
         }
-        Err(reason) => {
-            draw_text(&format!("{:?} tool error: {:?}", state.tool, reason), Vec2::ZERO, RED, TextAlign::Center);
-        }
+        Err(reason) => draw_bb_error(&format!("TOOL: {:?}", state.tool), state, &reason),
     }
 
     if needs_update_regions {
         match state.graph.update_regions() {
             Ok(_) => (),
-            Err(reason) => {
-                draw_text(&format!("Error updating regions: {reason}"), Vec2::ZERO, RED, TextAlign::Center);
-            }
+            Err(reason) => draw_bb_error(&format!("REGIONS:"), state, &reason),
         }
     }
 
@@ -152,15 +161,43 @@ fn draw(state: &GameState, _c: &mut EngineContext) {
         node.draw(state, 50);
     }
 
-
     match tessellate_fill(&state.graph) {
         Ok(mesh) => draw_mesh(mesh),
-        Err(reason) => {
-            draw_text(&format!("Fill failed: {reason}"), Vec2::ZERO, PINK, TextAlign::Center)
-        },
+        Err(reason) => draw_text(
+            &format!("Fill failed: {reason}"),
+            Vec2::ZERO,
+            PINK,
+            TextAlign::Center,
+        ),
     }
     match tessellate_stroke(&state.graph) {
         Ok(mesh) => draw_mesh(mesh),
-        Err(reason) => draw_text(&format!("Stroke failed: {reason}"), Vec2::ZERO, PINK, TextAlign::Center),
+        Err(reason) => draw_text(
+            &format!("Stroke failed: {reason}"),
+            Vec2::ZERO,
+            PINK,
+            TextAlign::Center,
+        ),
+    }
+
+    if state.show_graph_annotations {
+        for node in state.nodes.iter() {
+            draw_text_ex(
+                &format!("{}", node.node_idx),
+                node.position + vec2(0.1, 0.1),
+                TextAlign::BottomLeft,
+                TEXT_PARAMS.clone(),
+            );
+        }
+
+        for (idx, edge) in state.graph.edges.iter() {
+            draw_arrow(edge.start_pos(&state.graph), edge.end_pos(&state.graph), 0.1, BLUE, 100);
+            draw_text_ex(
+                &format!("{}", idx),
+                edge.t_point(&state.graph, 0.5) + vec2(0.1, 0.1),
+                TextAlign::BottomLeft,
+                TEXT_PARAMS.clone(),
+            );
+        }
     }
 }
