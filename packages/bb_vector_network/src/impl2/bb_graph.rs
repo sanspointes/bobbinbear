@@ -105,7 +105,7 @@ impl BBGraph {
     fn get_next_idx(&mut self) -> usize {
         let v = self.next_idx;
         self.next_idx += 1;
-        println!("get_next_idx: {v}");
+        // println!("get_next_idx: {v}");
         v
     }
 }
@@ -200,7 +200,7 @@ impl BBGraph {
     fn add_node(&mut self, position: Vec2) -> BBNodeIndex {
         let node_idx = BBNodeIndex(self.get_next_idx());
         self.nodes.insert(node_idx, BBNode::new(position));
-        println!("Added {node_idx} at {position}");
+        // println!("Added {node_idx} at {position}");
         node_idx
     }
     /// Removes a node from the graph by ID.  Will delete connected edges and regions.
@@ -232,7 +232,7 @@ impl BBGraph {
             .adjacents
             .push(index);
         self.node_mut(edge.end_idx()).unwrap().adjacents.push(index);
-        println!("Adding edge {edge} with idx {index}");
+        // println!("Adding edge {edge} with idx {index}");
         (index, edge)
     }
 
@@ -284,7 +284,7 @@ impl BBGraph {
     /// * `start`: Position of the new start node
     /// * `end`: Position of the new end node
     pub fn line(&mut self, start: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
-        println!("line {start} {end}");
+        // println!("line {start} {end}");
         let start_index = self.add_node(start);
         let end_index = self.add_node(end);
         self.edge_line(start_index, end_index)
@@ -296,7 +296,7 @@ impl BBGraph {
     /// * `ctrl1` : Position of the control point
     /// * `end`: Position of the new end node
     pub fn line_from(&mut self, start: BBNodeIndex, to: Vec2) -> (BBEdgeIndex, BBEdge) {
-        println!("line_from {start} {to}");
+        // println!("line_from {start} {to}");
         debug_assert!(self.has_node(start));
 
         let end_index = self.add_node(to);
@@ -308,7 +308,7 @@ impl BBGraph {
     /// * `start`: Position of the start node
     /// * `end`: ID of the new end node
     pub fn line_to(&mut self, start: Vec2, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
-        println!("line_to {start} {end}");
+        // println!("line_to {start} {end}");
         let start_index = self.add_node(start);
         self.edge_line(start_index, end)
     }
@@ -319,7 +319,7 @@ impl BBGraph {
     /// * `ctrl1` : Position of the control node
     /// * `end`: ID of the end node
     pub fn line_from_to(&mut self, start: BBNodeIndex, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
-        println!("line_from_to {start} {end}");
+        // println!("line_from_to {start} {end}");
         debug_assert!(self.has_node(start));
         debug_assert!(self.has_node(end));
         self.edge_line(start, end)
@@ -351,7 +351,7 @@ impl BBGraph {
     /// * `ctrl1` : Position of the control point
     /// * `end`: Position of the new end node
     pub fn quadratic(&mut self, start: Vec2, ctrl1: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
-        println!("quadratic {start} {end}");
+        // println!("quadratic {start} {end}");
         let start_index = self.add_node(start);
         let end_index = self.add_node(end);
         self.edge_quadratic(start_index, ctrl1, end_index)
@@ -368,7 +368,7 @@ impl BBGraph {
         ctrl1: Vec2,
         to: Vec2,
     ) -> (BBEdgeIndex, BBEdge) {
-        println!("quadratic_from {start} {to}");
+        // println!("quadratic_from {start} {to}");
         debug_assert!(self.has_node(start));
 
         let end = self.add_node(to);
@@ -386,7 +386,7 @@ impl BBGraph {
         ctrl1: Vec2,
         end: BBNodeIndex,
     ) -> (BBEdgeIndex, BBEdge) {
-        println!("quadratic_to {start} {end}");
+        // println!("quadratic_to {start} {end}");
         let start_index = self.add_node(start);
         self.edge_quadratic(start_index, ctrl1, end)
     }
@@ -448,7 +448,7 @@ impl BBGraph {
         ctrl2: Vec2,
         end: Vec2,
     ) -> (BBEdgeIndex, BBEdge) {
-        println!("cubic {start} {end}");
+        // println!("cubic {start} {end}");
         let start_index = self.add_node(start);
         let end_index = self.add_node(end);
         self.edge_cubic(start_index, ctrl1, ctrl2, end_index)
@@ -467,7 +467,7 @@ impl BBGraph {
         ctrl2: Vec2,
         to: Vec2,
     ) -> (BBEdgeIndex, BBEdge) {
-        println!("cubic_from {start} {to}");
+        // println!("cubic_from {start} {to}");
         debug_assert!(self.has_node(start));
         let end = self.add_node(to);
         self.edge_cubic(start, ctrl1, ctrl2, end)
@@ -486,7 +486,7 @@ impl BBGraph {
         ctrl2: Vec2,
         end: BBNodeIndex,
     ) -> (BBEdgeIndex, BBEdge) {
-        println!("cubic_to {start} {end}");
+        // println!("cubic_to {start} {end}");
         let start_index = self.add_node(start);
         self.edge_cubic(start_index, ctrl1, ctrl2, end)
     }
@@ -504,7 +504,7 @@ impl BBGraph {
         ctrl2: Vec2,
         end: BBNodeIndex,
     ) -> (BBEdgeIndex, BBEdge) {
-        println!("cubic_from_to {start} {end}");
+        // println!("cubic_from_to {start} {end}");
         debug_assert!(self.has_node(start));
         debug_assert!(self.has_node(end));
 
@@ -561,7 +561,7 @@ impl BBGraph {
             .iter()
             .filter(|edge_idx| {
                 prev_edge_idx.map_or(true, |prev_edge_idx: BBEdgeIndex| {
-                    println!("Comparing {edge_idx} {prev_edge_idx}");
+                    // println!("Comparing {edge_idx} {prev_edge_idx}");
                     **edge_idx != prev_edge_idx
                 })
             })
@@ -638,7 +638,7 @@ impl BBGraph {
         let curr_p = node.position();
 
         let adjs: Vec<_> = next_edge_dirs.iter().map(|v| v.0).collect();
-        println!("get_ccw_edge_of_node of {node_idx} : {adjs:?}");
+        // println!("get_ccw_edge_of_node of {node_idx} : {adjs:?}");
 
         let Some((mut next_index, mut next_edge, mut next_dir)) = next_edge_dirs.pop() else {
             return Err(BBError::ClosedWalkDeadEnd);
@@ -722,7 +722,7 @@ impl BBGraph {
             }
 
             let graph = BBGraph::try_new_from_other_edges(self, &detached_edges)?;
-            println!("Got detached graph {graph}\n");
+            // println!("Got detached graph {graph}\n");
             result.push(graph);
         }
 
@@ -736,7 +736,7 @@ impl BBGraph {
             .iter()
             .find(|(_, node)| node.adjacents().len() == 1)
         {
-            println!("Deleting node {node_idx}.");
+            // println!("Deleting node {node_idx}.");
             self.delete_node(*node_idx)?;
         }
 
@@ -1041,7 +1041,7 @@ impl BBGraph {
             let color = colors[i % colors.len()];
 
             while graph.nodes_count() > 0 {
-                println!("Handling closed walk");
+                // println!("Handling closed walk");
                 graph.remove_filaments()?;
 
                 let Some(left_most) = graph.get_left_most_node_index() else {

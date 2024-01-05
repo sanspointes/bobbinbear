@@ -69,6 +69,10 @@ impl BBNode {
         self.position
     }
 
+    pub fn set_position(&mut self, position: Vec2) {
+        self.position = position;
+    }
+
     pub fn adjacents(&self) -> &[BBEdgeIndex] {
         &self.adjacents
     }
