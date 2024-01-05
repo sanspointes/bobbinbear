@@ -17,3 +17,9 @@ impl ColorUtils for Color {
 pub fn screen_top_left_world() -> Vec2 {
     screen_to_world(vec2(0., 0.))
 }
+
+pub static TEXT_PARAMS: Lazy<TextParams> = Lazy::new(|| TextParams {
+    color: WHITE,
+    font: egui::FontId::new(12.0, egui::FontFamily::Name("comfy-font".into())),
+    ..Default::default()
+});

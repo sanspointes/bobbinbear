@@ -7,7 +7,8 @@ use comfy::*;
 use bb_vector_network::prelude::*;
 use entities::Node;
 use tesselation::{tessellate_fill, tessellate_stroke};
-use tools::{Tool, SelectTool};
+use tools::{Tool, SelectTool, ToolTrait, ToolUpdateResult};
+use utils::{screen_top_left_world, TEXT_PARAMS};
 
 simple_game!("BB Vector Network :: Editor", GameState, config, setup, update);
 
@@ -68,22 +69,54 @@ impl GameState {
     }
 }
 
-fn setup(_state: &mut GameState, c: &mut EngineContext) {
+fn setup(state: &mut GameState, c: &mut EngineContext) {
     c.load_fonts_from_bytes(&[(
         "comfy-font",
         include_bytes!(concat!(
             env!("CARGO_MANIFEST_DIR"),
             "/assets/Roboto-Regular.ttf"
         )),
-    )])
+    )]);
+
+    state.graph.update_regions().unwrap();
 }
 
 fn update(state: &mut GameState, _c: &mut EngineContext) {
-    let _ = state.graph.update_regions();
+        draw_text_ex(
+            "bb_vector_network: [1]: Select tool, [2]: Pen tool",
+            screen_top_left_world() - vec2(-0.1, 0.1),
+            comfy::TextAlign::TopLeft,
+            TEXT_PARAMS.clone(),
+        );
 
-    match state.tool {
+
+    let update_result = match state.tool {
         Tool::Select => {
-            SelectTool::update(state);
+            SelectTool::update(state)
+        }
+    };
+
+    let mut needs_update_regions = false;
+    match update_result {
+        Ok(ToolUpdateResult::Noop) => (),
+        Ok(ToolUpdateResult::RegenerateMesh) => {
+            needs_update_regions = true;
+        }
+        Ok(ToolUpdateResult::RegenerateAll) => {
+            state.rebuild_game_nodes();
+            needs_update_regions = true;
+        }
+        Err(reason) => {
+            draw_text(&format!("{:?} tool error: {:?}", state.tool, reason), Vec2::ZERO, RED, TextAlign::Center);
+        }
+    }
+
+    if needs_update_regions {
+        match state.graph.update_regions() {
+            Ok(_) => (),
+            Err(reason) => {
+                draw_text(&format!("Error updating regions: {reason}"), Vec2::ZERO, RED, TextAlign::Center);
+            }
         }
     }
 
@@ -98,7 +131,9 @@ fn draw(state: &GameState, _c: &mut EngineContext) {
 
     match tessellate_fill(&state.graph) {
         Ok(mesh) => draw_mesh(mesh),
-        Err(reason) => draw_text(&format!("Fill failed: {reason}"), Vec2::ZERO, PINK, TextAlign::Center),
+        Err(reason) => {
+            draw_text(&format!("Fill failed: {reason}"), Vec2::ZERO, PINK, TextAlign::Center)
+        },
     }
     match tessellate_stroke(&state.graph) {
         Ok(mesh) => draw_mesh(mesh),

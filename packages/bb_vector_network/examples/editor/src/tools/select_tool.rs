@@ -1,17 +1,9 @@
 use bb_vector_network::{prelude::BBResult, BBNodeIndex};
 use comfy::*;
 
-use crate::{utils::screen_top_left_world, GameState};
+use crate::{utils::{screen_top_left_world, TEXT_PARAMS}, GameState};
 
-static TEXT_PARAMS: Lazy<TextParams> = Lazy::new(|| TextParams {
-    color: WHITE,
-    font: egui::FontId::new(16.0, egui::FontFamily::Name("comfy-font".into())),
-    ..Default::default()
-});
-
-pub enum Tool {
-    Select,
-}
+use super::{ToolTrait, ToolUpdateResult};
 
 pub struct SelectedNodeModel {
     original_pos: Vec2,
@@ -33,19 +25,21 @@ impl SelectTool {
             .selected_nodes
             .insert(node_idx, SelectedNodeModel { original_pos });
     }
+}
 
-    pub fn update(state: &mut GameState) -> BBResult<()> {
+impl ToolTrait for SelectTool {
+    fn update(state: &mut GameState) -> BBResult<ToolUpdateResult> {
         state.select_tool.hovered_node = state.intersect_nodes(mouse_world()).map(|n| n.node_idx);
+
+        let mut update_result = ToolUpdateResult::Noop;
 
         let lm_start_pos = state.select_tool.mouse_start_pos;
         let lm_down = is_mouse_button_down(MouseButton::Left);
         let is_dragging = state.select_tool.is_dragging;
 
-        let top_left_pos = screen_top_left_world();
-
         draw_text_ex(
             "Select: click to select, hold [ctrl/cmd] to select multiple, right click to delete.",
-            top_left_pos - vec2(0., 0.6),
+            screen_top_left_world() - vec2(-0.1, 1.),
             comfy::TextAlign::TopLeft,
             TEXT_PARAMS.clone(),
         );
@@ -112,6 +106,7 @@ impl SelectTool {
                 for (node_idx, new_position) in changeset {
                     state.graph.node_mut(node_idx)?.set_position(new_position);
                     state.node_mut(node_idx).unwrap().position = new_position;
+                    update_result = ToolUpdateResult::RegenerateMesh;
                 }
             }
 
@@ -125,10 +120,10 @@ impl SelectTool {
                 state.graph.delete_node(hovered)?;
                 state.select_tool.selected_nodes.remove(&hovered);
                 state.select_tool.hovered_node = None;
-                state.rebuild_game_nodes();
+                update_result = ToolUpdateResult::RegenerateAll;
             }
         }
 
-        Ok(())
+        Ok(update_result)
     }
 }
