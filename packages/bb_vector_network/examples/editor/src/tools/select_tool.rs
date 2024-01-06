@@ -1,4 +1,4 @@
-use bb_vector_network::{prelude::BBResult, BBNodeIndex};
+use bb_vector_network::prelude::*;
 use comfy::*;
 
 use crate::{

@@ -44,8 +44,7 @@ mod edges_from_closed_walk {
 }
 
 mod new_from_other_edges {
-    use bb_vector_network::{BBEdgeIndex, BBGraph};
-    use comfy::HashSet;
+    use bb_vector_network::prelude::*;
     use glam::Vec2;
     #[test]
     fn it_should_correct_indices_to_reference_copied_nodes() {
@@ -75,7 +74,7 @@ mod new_from_other_edges {
 }
 
 mod remove_filaments {
-    use bb_vector_network::BBGraph;
+    use bb_vector_network::prelude::*;
     use glam::Vec2;
     #[test]
     fn it_should_remove_single_filament() {
@@ -212,9 +211,10 @@ mod delete_node {
 }
 
 mod get_detached_graphs {
-    use bb_vector_network::prelude::*;
-    use comfy::HashSet;
+    use std::collections::HashSet;
     use glam::Vec2;
+
+    use bb_vector_network::prelude::*;
 
     #[test]
     fn it_should_return_single_if_no_detached() {
@@ -279,13 +279,83 @@ mod get_detached_graphs {
     }
 }
 
+mod get_cw_edge_of_node {
+    use bb_vector_network::prelude::*;
+    use glam::vec2;
+
+    #[test]
+    fn test_simple() {
+        let mut g = BBGraph::new();
+        let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+        let (e1, e) = g.line_from(f.end_idx(), vec2(5., 0.));
+        let (e2, e) = g.line_from(f.end_idx(), vec2(5., 5.));
+        let (e3, e) = g.line_from(f.end_idx(), vec2(5., -5.));
+
+        let edge = g.get_cw_edge_of_node(f.end_idx(), f.calc_end_tangent(&g).unwrap(), Some(e0)).unwrap();
+
+        println!("{}", g);
+
+        assert_eq!(edge, e2);
+    }
+
+    #[test]
+    fn test_simple_sharp_angle() {
+        let mut g = BBGraph::new();
+        let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+        let (e1, e) = g.line_from(f.end_idx(), vec2(-5., 0.));
+        let (e2, e) = g.line_from(f.end_idx(), vec2(5., 5.));
+        let (e3, e) = g.line_from(f.end_idx(), vec2(-5., -5.));
+
+        let edge = g.get_cw_edge_of_node(f.end_idx(), f.calc_end_tangent(&g).unwrap(), Some(e0)).unwrap();
+
+        println!("{}", g);
+
+        assert_eq!(edge, e2);
+    }
+}
+
+mod get_ccw_edge_of_node {
+    use bb_vector_network::prelude::*;
+    use glam::vec2;
+
+    #[test]
+    fn test_simple() {
+        let mut g = BBGraph::new();
+        let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+        let (e1, _) = g.line_from(f.end_idx(), vec2(5., 0.));
+        let (e2, _) = g.line_from(f.end_idx(), vec2(5., 5.));
+        let (e3, _) = g.line_from(f.end_idx(), vec2(5., -5.));
+
+        let edge = g.get_ccw_edge_of_node(f.end_idx(), f.calc_end_tangent(&g).unwrap(), Some(e0)).unwrap();
+
+        println!("{}", g);
+
+        assert_eq!(edge, e1);
+    }
+
+    #[test]
+    fn test_simple_sharp_angle() {
+        let mut g = BBGraph::new();
+        let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+        let (e1, _) = g.line_from(f.end_idx(), vec2(-5., 0.));
+        let (e2, _) = g.line_from(f.end_idx(), vec2(5., 5.));
+        let (e3, _) = g.line_from(f.end_idx(), vec2(-5., -5.));
+
+        let edge = g.get_ccw_edge_of_node(f.end_idx(), f.calc_end_tangent(&g).unwrap(), Some(e0)).unwrap();
+
+        println!("{}", g);
+
+        assert_eq!(edge, e1);
+    }
+}
+
 mod closed_walk_with_cw_start_and_ccw_traverse {
-    use bb_vector_network::impl2::bb_graph;
+    use bb_vector_network::prelude::*;
     use glam::vec2;
 
     #[test]
     fn it_should_generate_closed_walk_on_simple_cycle() {
-        let mut g = bb_graph::BBGraph::new();
+        let mut g = BBGraph::new();
 
         let (e0, first_edge) = g.line(vec2(0., 0.), vec2(1., 0.));
         let (e1, middle_edge) = g.line_from(first_edge.end_idx(), vec2(1., 1.));
@@ -306,12 +376,12 @@ mod closed_walk_with_cw_start_and_ccw_traverse {
 }
 
 mod closed_walk_with_ccw_start_and_ccw_traverse {
-    use bb_vector_network::impl2::bb_graph;
+    use bb_vector_network::prelude::*;
     use glam::vec2;
 
     #[test]
     fn it_should_walk_perimiter_on_simple_cycle() {
-        let mut g = bb_graph::BBGraph::new();
+        let mut g = BBGraph::new();
 
         let (e2, first_edge) = g.line(vec2(0., 0.), vec2(1., 0.));
         let (e4, middle_edge) = g.line_from(first_edge.end_idx(), vec2(1., 1.));

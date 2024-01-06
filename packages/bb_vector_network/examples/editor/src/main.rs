@@ -2,13 +2,15 @@ mod entities;
 mod tesselation;
 mod tools;
 mod utils;
+mod debug_draw;
 
 use bb_vector_network::prelude::*;
 use comfy::*;
+use debug_draw::{DebugDrawConfig, draw_debug_controls, handle_debug_controls};
 use entities::Node;
 use tesselation::{tessellate_fill, tessellate_stroke};
 use tools::{InputHelper, PenTool, SelectTool, Tool, ToolTrait, ToolUpdateResult};
-use utils::{screen_bottom_left_world, screen_top_left_world, ERR_TEXT_PARAMS, TEXT_PARAMS, draw_bb_error};
+use utils::{screen_bottom_left_world, screen_top_left_world, TEXT_PARAMS, draw_bb_error};
 
 simple_game!(
     "BB Vector Network :: Editor",
@@ -35,7 +37,7 @@ pub struct GameState {
     nodes: Vec<Node>,
     graph: BBGraph,
 
-    show_graph_annotations: bool,
+    debug_draw_config: DebugDrawConfig,
 }
 
 impl GameState {
@@ -55,7 +57,7 @@ impl GameState {
             select_tool: SelectTool::default(),
             pen_tool: PenTool::default(),
 
-            show_graph_annotations: false,
+            debug_draw_config: DebugDrawConfig::default(),
         };
 
         gs.rebuild_game_nodes();
@@ -121,9 +123,8 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
         comfy::TextAlign::TopLeft,
         TEXT_PARAMS.clone(),
     );
-    if is_key_released(KeyCode::D) {
-        state.show_graph_annotations = !state.show_graph_annotations;
-    }
+
+    handle_debug_controls(state);
 
     // Perform Tool updates
     let mouse_events = state.input_helper.compute_mouse_events();
@@ -180,24 +181,5 @@ fn draw(state: &GameState, _c: &mut EngineContext) {
         ),
     }
 
-    if state.show_graph_annotations {
-        for node in state.nodes.iter() {
-            draw_text_ex(
-                &format!("{}", node.node_idx),
-                node.position + vec2(0.1, 0.1),
-                TextAlign::BottomLeft,
-                TEXT_PARAMS.clone(),
-            );
-        }
-
-        for (idx, edge) in state.graph.edges.iter() {
-            draw_arrow(edge.start_pos(&state.graph), edge.end_pos(&state.graph), 0.1, BLUE, 100);
-            draw_text_ex(
-                &format!("{}", idx),
-                edge.t_point(&state.graph, 0.5) + vec2(0.1, 0.1),
-                TextAlign::BottomLeft,
-                TEXT_PARAMS.clone(),
-            );
-        }
-    }
+    draw_debug_controls(state);
 }

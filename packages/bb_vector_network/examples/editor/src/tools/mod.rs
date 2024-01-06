@@ -29,6 +29,7 @@ impl ToolUpdateResult {
             _ => false,
         }
     }
+
     pub fn should_update_entities(&self) -> bool {
         match self {
             ToolUpdateResult::RegenerateAll => true,

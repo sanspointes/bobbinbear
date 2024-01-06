@@ -1,6 +1,6 @@
 use comfy::*;
 
-pub const DRAG_THRESHOLD: f32 = 0.02;
+pub const DRAG_THRESHOLD: f32 = 0.05;
 
 #[derive(Default)]
 pub struct InputHelper {

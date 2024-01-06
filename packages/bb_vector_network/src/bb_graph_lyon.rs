@@ -1,11 +1,10 @@
 use std::collections::HashSet;
 
 use glam::Vec2;
+
 use lyon_path::{builder::NoAttributes, math::Point, path::BuilderImpl, Path};
 
-use crate::{
-    impl2::bb_graph::TraverseAction, prelude::BBResult, BBEdge, BBEdgeIndex, BBGraph, BBNodeIndex,
-};
+use crate::{bb_graph::TraverseAction, prelude::*};
 
 trait ToPoint {
     fn to_p2(&self) -> Point;
@@ -159,11 +158,10 @@ impl BBGraph {
                     }
 
                     model.visited.insert(next_edge);
-                    model.curr_node_idx =
-                        self.edge(next_edge)?.other_node_idx(model.curr_node_idx);
+                    model.curr_node_idx = self.edge(next_edge)?.other_node_idx(model.curr_node_idx);
                 } else {
                     model.builder.end(false);
-                    return Ok(TraverseAction::Stop)
+                    return Ok(TraverseAction::Stop);
                 }
 
                 if model.visited.len() == self.edges.len() {

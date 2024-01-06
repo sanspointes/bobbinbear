@@ -1,4 +1,4 @@
-use bb_vector_network::{BBNodeIndex, BBGraph, prelude::BBResult};
+use bb_vector_network::prelude::*;
 use comfy::*;
 
 use crate::{GameState, utils::ColorUtils};

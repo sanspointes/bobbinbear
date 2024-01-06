@@ -6,9 +6,6 @@ use glam::Vec2;
 
 #[allow(unused_imports)]
 #[cfg(feature = "debug_draw")]
-use crate::debug_draw::draw_det_arc;
-#[allow(unused_imports)]
-#[cfg(feature = "debug_draw")]
 use comfy::{draw_text, Vec2Extensions, ORANGE, ORANGE_RED, PURPLE};
 
 use super::{
@@ -286,42 +283,5 @@ impl BBEdge {
         // adjs.push();
         // adjs.push(graph.node(self.end_idx())?.adjacents());
         Ok(adjs)
-    }
-}
-
-/**
- * Comfy debug drawing
- */
-#[cfg(feature = "debug_draw")]
-impl BBEdge {
-    pub fn debug_draw(&self, graph: &BBGraph) -> BBResult<()> {
-        self.debug_draw_with_color_and_z_index(graph, comfy::Color::rgb8(0, 255, 0), 10)
-    }
-
-    pub fn debug_draw_with_color_and_z_index(
-        &self,
-        graph: &BBGraph,
-        color: comfy::Color,
-        z_index: i32,
-    ) -> BBResult<()> {
-        match self {
-            BBEdge::Line { .. } => {
-                let start = graph.node(self.start_idx())?;
-                let end = graph.node(self.end_idx())?;
-                comfy::draw_line(start.position, end.position, 0.02, color, z_index);
-            }
-            _link @ BBEdge::Quadratic { .. } | _link @ BBEdge::Cubic { .. } => {
-                let mut p_prev = self.start_pos(graph);
-                for i in 0..20 {
-                    let i = i + 1;
-                    let t = i as f32 / 20.;
-                    let p = self.t_point(graph, t);
-                    comfy::draw_line(p_prev, p, 0.03, color, z_index);
-                    p_prev = p;
-                }
-            }
-        }
-
-        Ok(())
     }
 }

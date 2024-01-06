@@ -1,0 +1,8 @@
+{
+    "lspconfig": {
+        "rust_analyzer": {
+            "rust-analyzer.cargo.features": ["debug_draw", "lyon_path"],
+            "rust-analyzer.check.command": "clippy"
+        }
+    }
+}

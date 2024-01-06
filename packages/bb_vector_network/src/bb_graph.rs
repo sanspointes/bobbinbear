@@ -1,7 +1,4 @@
-use std::{
-    collections::hash_map::{self},
-    result,
-};
+use std::collections::hash_map::{self};
 
 #[allow(unused_imports)]
 use std::{
@@ -10,12 +7,8 @@ use std::{
     ops::{Mul, Sub},
 };
 
-use crate::{prelude::mcb, Determinate};
+use crate::traits::AngleBetween;
 use glam::{vec2, Vec2};
-
-#[allow(unused_imports)]
-#[cfg(feature = "debug_draw")]
-use crate::debug_draw::draw_det_arc;
 
 use super::{
     bb_edge::{BBEdge, BBEdgeIndex},
@@ -105,7 +98,6 @@ impl BBGraph {
     fn get_next_idx(&mut self) -> usize {
         let v = self.next_idx;
         self.next_idx += 1;
-        // println!("get_next_idx: {v}");
         v
     }
 }
@@ -212,7 +204,6 @@ impl BBGraph {
     fn add_node(&mut self, position: Vec2) -> BBNodeIndex {
         let node_idx = BBNodeIndex(self.get_next_idx());
         self.nodes.insert(node_idx, BBNode::new(position));
-        // println!("Added {node_idx} at {position}");
         node_idx
     }
     /// Removes a node from the graph by ID.  Will delete connected edges and regions.
@@ -244,7 +235,6 @@ impl BBGraph {
             .adjacents
             .push(index);
         self.node_mut(edge.end_idx()).unwrap().adjacents.push(index);
-        // println!("Adding edge {edge} with idx {index}");
         (index, edge)
     }
 
@@ -296,7 +286,6 @@ impl BBGraph {
     /// * `start`: Position of the new start node
     /// * `end`: Position of the new end node
     pub fn line(&mut self, start: Vec2, end: Vec2) -> (BBEdgeIndex, BBEdge) {
-        // println!("line {start} {end}");
         let start_index = self.add_node(start);
         let end_index = self.add_node(end);
         self.edge_line(start_index, end_index)
@@ -308,7 +297,6 @@ impl BBGraph {
     /// * `ctrl1` : Position of the control point
     /// * `end`: Position of the new end node
     pub fn line_from(&mut self, start: BBNodeIndex, to: Vec2) -> (BBEdgeIndex, BBEdge) {
-        // println!("line_from {start} {to}");
         debug_assert!(self.has_node(start));
 
         let end_index = self.add_node(to);
@@ -320,7 +308,6 @@ impl BBGraph {
     /// * `start`: Position of the start node
     /// * `end`: ID of the new end node
     pub fn line_to(&mut self, start: Vec2, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
-        // println!("line_to {start} {end}");
         let start_index = self.add_node(start);
         self.edge_line(start_index, end)
     }
@@ -331,7 +318,6 @@ impl BBGraph {
     /// * `ctrl1` : Position of the control node
     /// * `end`: ID of the end node
     pub fn line_from_to(&mut self, start: BBNodeIndex, end: BBNodeIndex) -> (BBEdgeIndex, BBEdge) {
-        // println!("line_from_to {start} {end}");
         debug_assert!(self.has_node(start));
         debug_assert!(self.has_node(end));
         self.edge_line(start, end)
@@ -585,58 +571,173 @@ impl BBGraph {
             .collect()
     }
 
+    fn next_edges_of_node_2(
+        &self,
+        node_idx: BBNodeIndex,
+        prev_edge_idx: Option<BBEdgeIndex>,
+    ) -> BBResult<Vec<(BBEdgeIndex, BBEdge)>> {
+        let node = self.node(node_idx)?;
+        // Get list of next edges, omitting the previous edge (if provided)
+        node.adjacents()
+            .iter()
+            .filter(|edge_idx| {
+                prev_edge_idx.map_or(true, |prev_edge_idx: BBEdgeIndex| {
+                    **edge_idx != prev_edge_idx
+                })
+            })
+            .map(|edge_idx| {
+                let edge = self.edge(*edge_idx)?.directed_from(node_idx);
+                Ok((*edge_idx, edge))
+            })
+            .collect()
+    }
+
     pub fn get_cw_edge_of_node(
         &self,
         node_idx: BBNodeIndex,
         curr_dir: Vec2,
         prev_edge_idx: Option<BBEdgeIndex>,
     ) -> BBResult<BBEdgeIndex> {
-        let mut next_edge_dirs = self.next_edges_of_node(node_idx, prev_edge_idx)?;
+        let mut next_edge_dirs = self.next_edges_of_node_2(node_idx, prev_edge_idx)?;
 
-        let node = self.node(node_idx)?;
-        let curr_p = node.position();
-
-        let Some((mut next_index, mut next_edge, mut next_dir)) = next_edge_dirs.pop() else {
+        let Some((first_idx, first_edge)) = next_edge_dirs.pop() else {
             return Err(BBError::ClosedWalkDeadEnd);
         };
+        if next_edge_dirs.is_empty() {
+            return Ok(first_idx);
+        }
 
-        for (el_index, el_edge, el_dir) in next_edge_dirs.into_iter() {
-            let mut temp_el_dir = el_dir;
-            let mut temp_next_dir = next_dir;
+        let inv_dir = curr_dir.mul(-1.);
 
-            // #[cfg(feature = "debug_draw")]
-            // draw_det_arc(self.end_pos(bbvn), 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
+        let mut next_edge_idx = first_idx;
+        let mut next_edge_angle = inv_dir.angle_between_cw(first_edge.calc_start_tangent(self)?);
 
-            // When lines a parallel we need to move our test points across the lines until we find
-            // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
-            // no good option.
-            let mut t = 0.;
-            loop {
-                let is_parrallel = temp_el_dir.dot(temp_next_dir).abs() < 0.01;
-                if is_parrallel && t < 1. {
-                    t += 1. / 32.;
-                    temp_el_dir = el_edge.t_point(self, t) - curr_p;
-                    temp_next_dir = next_edge.t_point(self, t) - curr_p;
-                    continue;
-                }
-
-                let is_convex = curr_dir.determinate(temp_next_dir) < 0.;
-                let ccw_of_curr = curr_dir.determinate(temp_el_dir) > 0.;
-                let ccw_of_next = temp_el_dir.determinate(temp_next_dir) > 0.;
-
-                if (!is_convex && ccw_of_curr && ccw_of_next)
-                    || (is_convex && (ccw_of_curr || ccw_of_next))
-                {
-                    next_index = el_index;
-                    next_edge = el_edge;
-                    next_dir = temp_el_dir;
-                }
-                break;
+        for (idx, edge) in next_edge_dirs.iter() {
+            let angle = inv_dir.angle_between_cw(edge.calc_start_tangent(self)?);
+            if angle > next_edge_angle {
+                next_edge_idx = *idx;
+                next_edge_angle = angle;
             }
         }
 
-        Ok(next_index)
+        #[cfg(feature = "debug_draw")]
+        {
+            use crate::debug_draw::*;
+            use std::ops::Deref;
+
+            if *DEBUG_DRAW_CCW.deref().borrow() {
+                let p1 = self.node(node_idx)?.position();
+
+                let next_edge = self.edge(next_edge_idx)?;
+                let next_dir = next_edge.calc_start_tangent(self)?;
+
+                comfy::draw_arrow(p1 - curr_dir.normalize() * 3., p1, 0.1, comfy::BLUE, 500);
+                comfy::draw_arrow(
+                    p1,
+                    p1 + next_dir.normalize() * 2.,
+                    0.1,
+                    comfy::DARKBLUE,
+                    500,
+                );
+                curr_dir
+                    .mul(-1.)
+                    .draw_angle_between_cw(next_dir, self.node(node_idx)?.position());
+
+                if let Some(idx) = prev_edge_idx {
+                    comfy::draw_text_ex(
+                        &format!("From {idx}"),
+                        p1,
+                        comfy::TextAlign::TopRight,
+                        DBG_TEXT_PARAMS.clone(),
+                    );
+                }
+            }
+        }
+
+        Ok(next_edge_idx)
     }
+
+    // pub fn get_cw_edge_of_node(
+    //     &self,
+    //     node_idx: BBNodeIndex,
+    //     curr_dir: Vec2,
+    //     prev_edge_idx: Option<BBEdgeIndex>,
+    // ) -> BBResult<BBEdgeIndex> {
+    //     let mut next_edge_dirs = self.next_edges_of_node(node_idx, prev_edge_idx)?;
+    //
+    //     let node = self.node(node_idx)?;
+    //     let curr_p = node.position();
+    //
+    //     let Some((mut next_index, mut next_edge, mut next_dir)) = next_edge_dirs.pop() else {
+    //         return Err(BBError::ClosedWalkDeadEnd);
+    //     };
+    //
+    //     for (el_index, el_edge, el_dir) in next_edge_dirs.into_iter() {
+    //         let mut temp_el_dir = el_dir;
+    //         let mut temp_next_dir = next_dir;
+    //
+    //         // When lines a parallel we need to move our test points across the lines until we find
+    //         // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
+    //         // no good option.
+    //         let mut t = 0.;
+    //         loop {
+    //             let is_parrallel = temp_el_dir.dot(temp_next_dir).abs() < 0.01;
+    //             if is_parrallel && t < 1. {
+    //                 t += 1. / 32.;
+    //                 temp_el_dir = el_edge.t_point(self, t) - curr_p;
+    //                 temp_next_dir = next_edge.t_point(self, t) - curr_p;
+    //                 continue;
+    //             }
+    //
+    //             let is_convex = curr_dir.determinate(temp_next_dir) > 0.;
+    //             let ccw_of_curr = curr_dir.determinate(temp_el_dir) >= 0.;
+    //             let ccw_of_next = temp_el_dir.determinate(temp_next_dir) >= 0.;
+    //
+    //             if (!is_convex && ccw_of_curr && ccw_of_next)
+    //                 || (is_convex && (ccw_of_curr || ccw_of_next))
+    //             {
+    //                 next_index = el_index;
+    //                 next_edge = el_edge;
+    //                 next_dir = temp_el_dir;
+    //             }
+    //             break;
+    //         }
+    //     }
+    //
+    //     #[cfg(feature = "debug_draw")]
+    //     {
+    //         use crate::debug_draw::*;
+    //         use std::ops::Deref;
+    //
+    //         if *DEBUG_DRAW_CCW.deref().borrow() {
+    //             let p1 = self.node(node_idx)?.position();
+    //
+    //             let next_edge = self.edge(next_index)?;
+    //             let next_dir = next_edge.calc_start_tangent(self)?;
+    //
+    //             comfy::draw_arrow(p1 - curr_dir.normalize() * 3., p1, 0.1, comfy::BLUE, 500);
+    //             comfy::draw_arrow(
+    //                 p1,
+    //                 p1 + next_dir.normalize() * 2.,
+    //                 0.1,
+    //                 comfy::DARKBLUE,
+    //                 500,
+    //             );
+    //             curr_dir.mul(-1.).draw_angle_between_cw(next_dir, curr_p);
+    //
+    //             if let Some(idx) = prev_edge_idx {
+    //                 comfy::draw_text_ex(
+    //                     &format!("From {idx}"),
+    //                     p1,
+    //                     comfy::TextAlign::TopRight,
+    //                     DBG_TEXT_PARAMS.clone(),
+    //                 );
+    //             }
+    //         }
+    //     }
+    //
+    //     Ok(next_index)
+    // }
 
     pub fn get_ccw_edge_of_node(
         &self,
@@ -644,55 +745,156 @@ impl BBGraph {
         curr_dir: Vec2,
         prev_edge_idx: Option<BBEdgeIndex>,
     ) -> BBResult<BBEdgeIndex> {
-        let mut next_edge_dirs = self.next_edges_of_node(node_idx, prev_edge_idx)?;
+        let mut next_edge_dirs = self.next_edges_of_node_2(node_idx, prev_edge_idx)?;
 
-        let node = self.node(node_idx)?;
-        let curr_p = node.position();
-
-        let adjs: Vec<_> = next_edge_dirs.iter().map(|v| v.0).collect();
-        // println!("get_ccw_edge_of_node of {node_idx} : {adjs:?}");
-
-        let Some((mut next_index, mut next_edge, mut next_dir)) = next_edge_dirs.pop() else {
+        #[cfg(feature = "debug_draw")]
+        {
+            use comfy::*;
+            let p = self.node(node_idx)?.position();
+            for (_, edge) in next_edge_dirs.iter() {
+                draw_arrow(p, p + edge.calc_start_tangent(self)?.normalize(), 0.1, WHITE.alpha(0.5), 500);
+            }
+        }
+        let Some((first_idx, first_edge)) = next_edge_dirs.pop() else {
             return Err(BBError::ClosedWalkDeadEnd);
         };
+        if next_edge_dirs.is_empty() {
+            return Ok(first_idx);
+        }
 
-        for (el_index, el_edge, el_dir) in next_edge_dirs.into_iter() {
-            let mut temp_el_dir = el_dir;
-            let mut temp_next_dir = next_dir;
+        let inv_dir = curr_dir.mul(-1.);
 
-            // #[cfg(feature = "debug_draw")]
-            // draw_det_arc(curr_p, 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
+        let mut next_edge_idx = first_idx;
+        let mut next_edge_angle = inv_dir.angle_between_ccw(first_edge.calc_start_tangent(self)?);
 
-            // When lines a parallel we need to move our test points across the lines until we find
-            // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
-            // no good option.
-            let mut t = 0.;
-            loop {
-                let is_parrallel = temp_el_dir.dot(temp_next_dir).abs() < 0.01;
-                if is_parrallel && t < 1. {
-                    t += 1. / 32.;
-                    temp_el_dir = el_edge.t_point(self, t) - curr_p;
-                    temp_next_dir = next_edge.t_point(self, t) - curr_p;
-                    continue;
-                }
-
-                let is_convex = curr_dir.determinate(temp_next_dir) > 0.;
-                let ccw_of_curr = curr_dir.determinate(temp_el_dir) <= 0.;
-                let ccw_of_next = temp_el_dir.determinate(temp_next_dir) <= 0.;
-
-                if (!is_convex && ccw_of_curr && ccw_of_next)
-                    || (is_convex && (ccw_of_curr || ccw_of_next))
-                {
-                    next_index = el_index;
-                    next_edge = el_edge;
-                    next_dir = temp_el_dir;
-                }
-                break;
+        for (idx, edge) in next_edge_dirs.iter() {
+            let angle = inv_dir.angle_between_ccw(edge.calc_start_tangent(self)?);
+            if angle > next_edge_angle {
+                next_edge_idx = *idx;
+                next_edge_angle = angle;
             }
         }
 
-        Ok(next_index)
+        #[cfg(feature = "debug_draw")]
+        {
+            use crate::debug_draw::*;
+            use std::ops::Deref;
+
+            if *DEBUG_DRAW_CCW.deref().borrow() {
+                let p1 = self.node(node_idx)?.position();
+
+                let next_edge = self.edge(next_edge_idx)?;
+                let next_dir = next_edge.calc_start_tangent(self)?;
+
+                comfy::draw_arrow(p1 - curr_dir.normalize() * 3., p1, 0.1, comfy::BLUE, 500);
+                comfy::draw_arrow(
+                    p1,
+                    p1 + next_dir.normalize() * 2.,
+                    0.1,
+                    comfy::DARKBLUE,
+                    500,
+                );
+                curr_dir
+                    .mul(-1.)
+                    .draw_angle_between_ccw(next_dir, self.node(node_idx)?.position());
+
+                if let Some(idx) = prev_edge_idx {
+                    comfy::draw_text_ex(
+                        &format!("From {idx}"),
+                        p1,
+                        comfy::TextAlign::TopRight,
+                        DBG_TEXT_PARAMS.clone(),
+                    );
+                }
+            }
+        }
+
+        Ok(next_edge_idx)
     }
+    // pub fn get_ccw_edge_of_node(
+    //     &self,
+    //     node_idx: BBNodeIndex,
+    //     curr_dir: Vec2,
+    //     prev_edge_idx: Option<BBEdgeIndex>,
+    // ) -> BBResult<BBEdgeIndex> {
+    //     let mut next_edge_dirs = self.next_edges_of_node(node_idx, prev_edge_idx)?;
+    //
+    //     let node = self.node(node_idx)?;
+    //     let curr_p = node.position();
+    //
+    //     let Some((mut next_index, mut next_edge, mut next_dir)) = next_edge_dirs.pop() else {
+    //         return Err(BBError::ClosedWalkDeadEnd);
+    //     };
+    //
+    //     for (el_index, el_edge, el_dir) in next_edge_dirs.into_iter() {
+    //         let mut temp_el_dir = el_dir;
+    //         let mut temp_next_dir = next_dir;
+    //
+    //         // #[cfg(feature = "debug_draw")]
+    //         // draw_det_arc(curr_p, 0.5 + (i as f32) * 0.5, curr_dir, el_dir, next_dir);
+    //
+    //         // When lines a parallel we need to move our test points across the lines until we find
+    //         // one that isn't parallel.  This loop starts at 0 but will iterate forward if there's
+    //         // no good option.
+    //         let mut t = 0.;
+    //         loop {
+    //             let is_parrallel = temp_el_dir.dot(temp_next_dir).abs() < 0.01;
+    //             if is_parrallel && t < 1. {
+    //                 t += 1. / 32.;
+    //                 temp_el_dir = el_edge.t_point(self, t) - curr_p;
+    //                 temp_next_dir = next_edge.t_point(self, t) - curr_p;
+    //                 continue;
+    //             }
+    //
+    //             let is_convex = curr_dir.determinate(temp_next_dir) < 0.;
+    //             let ccw_of_curr = curr_dir.determinate(temp_el_dir) < 0.;
+    //             let ccw_of_next = temp_el_dir.determinate(temp_next_dir) < 0.;
+    //
+    //             if (!is_convex && ccw_of_curr && ccw_of_next)
+    //                 || (is_convex && (ccw_of_curr || ccw_of_next))
+    //             {
+    //                 next_index = el_index;
+    //                 next_edge = el_edge;
+    //                 next_dir = temp_el_dir;
+    //             }
+    //             break;
+    //         }
+    //     }
+    //
+    //     #[cfg(feature = "debug_draw")]
+    //     {
+    //         use crate::debug_draw::*;
+    //         use std::ops::Deref;
+    //
+    //         if *DEBUG_DRAW_CCW.deref().borrow() {
+    //             let p1 = self.node(node_idx)?.position();
+    //
+    //             let next_edge = self.edge(next_index)?;
+    //             let next_dir = next_edge.calc_start_tangent(self)?;
+    //
+    //             comfy::draw_arrow(p1 - curr_dir.normalize() * 3., p1, 0.1, comfy::BLUE, 500);
+    //             comfy::draw_arrow(
+    //                 p1,
+    //                 p1 + next_dir.normalize() * 2.,
+    //                 0.1,
+    //                 comfy::DARKBLUE,
+    //                 500,
+    //             );
+    //             curr_dir.mul(-1.).draw_angle_between_ccw(next_dir, curr_p);
+    //
+    //             if let Some(idx) = prev_edge_idx {
+    //                 comfy::draw_text_ex(
+    //                     &format!("From {idx}"),
+    //                     p1,
+    //                     comfy::TextAlign::TopRight,
+    //                     DBG_TEXT_PARAMS.clone(),
+    //                 );
+    //             }
+    //         }
+    //     }
+    //
+    //     Ok(next_index)
+    // }
 
     /// Performs a breadth first search over the graph to return a Vec of each detached graph
     /// within it.
@@ -734,7 +936,6 @@ impl BBGraph {
             }
 
             let graph = BBGraph::try_new_from_other_edges(self, &detached_edges)?;
-            // println!("Got detached graph {graph}\n");
             result.push(graph);
         }
 
@@ -748,7 +949,6 @@ impl BBGraph {
             .iter()
             .find(|(_, node)| node.adjacents().len() == 1)
         {
-            // println!("Deleting node {node_idx}.");
             self.delete_node(*node_idx)?;
         }
 
@@ -833,7 +1033,7 @@ impl BBGraph {
         let model = ClosedWalkModel {
             traversals: 0,
             curr_node_idx: first_edge.end_idx(),
-            curr_dir: first_edge.calc_end_tangent(self)?.mul(-1.),
+            curr_dir: first_edge.calc_end_tangent(self)?,
             curr_edge_idx: first_edge_idx,
             edges: vec![first_edge_idx],
             outer_edge: first_edge_idx,
@@ -841,7 +1041,7 @@ impl BBGraph {
         // Walk around the graph finding the counterclockwise most edges until returning to start.
         let result = self.traverse_with_model(model, |model| {
             if model.traversals > 1000 {
-                return Err(BBError::TraversalLimit(model.edges.clone()))
+                return Err(BBError::TraversalLimit(model.edges.clone()));
             }
 
             let next_edge_idx = self.get_ccw_edge_of_node(
@@ -852,13 +1052,36 @@ impl BBGraph {
             if first_edge_idx == next_edge_idx {
                 return Ok(TraverseAction::Stop);
             }
-            let next_edge = self.edge(next_edge_idx)?;
+            let next_edge = self.edge(next_edge_idx)?.directed_from(model.curr_node_idx);
 
             model.traversals += 1;
             model.curr_edge_idx = next_edge_idx;
             model.curr_node_idx = next_edge.other_node_idx(model.curr_node_idx);
-            model.curr_dir = next_edge.calc_end_tangent(self)? * -1.;
+            model.curr_dir = next_edge.calc_end_tangent(self)?;
             model.edges.push(next_edge_idx);
+
+            #[cfg(feature = "debug_draw")]
+            {
+                use crate::debug_draw::*;
+                use comfy::*;
+                use std::ops::Deref;
+
+                if *DEBUG_DRAW_TRAVERSAL.deref().borrow() {
+                    comfy::draw_arrow(
+                        next_edge.t_point(self, 0.49),
+                        next_edge.t_point(self, 0.51),
+                        0.1,
+                        LIME_GREEN,
+                        500,
+                    );
+                    comfy::draw_text_ex(
+                        &format!("w{}", model.traversals),
+                        next_edge.t_point(self, 0.5),
+                        comfy::TextAlign::TopLeft,
+                        DBG_TEXT_PARAMS.clone(),
+                    );
+                }
+            }
 
             Ok(TraverseAction::Continue)
         })?;
@@ -885,15 +1108,15 @@ impl BBGraph {
         let model = ClosedWalkModel {
             traversals: 0,
             curr_node_idx: first_edge.end_idx(),
-            curr_dir: first_edge.calc_end_tangent(self)?.mul(-1.),
+            curr_dir: first_edge.calc_end_tangent(self)?,
             curr_edge_idx: first_edge_idx,
             edges: vec![first_edge_idx],
             outer_edge: first_edge_idx,
         };
         // Walk around the graph finding the counterclockwise most edges until returning to start.
-        let result = self.traverse_with_model(model, |model| {
+        let result: ClosedWalkResult = self.traverse_with_model(model, |model| {
             if model.traversals > 1000 {
-                return Err(BBError::TraversalLimit(model.edges.clone()))
+                return Err(BBError::TraversalLimit(model.edges.clone()));
             }
 
             let next_edge_idx = self.get_ccw_edge_of_node(
@@ -904,16 +1127,44 @@ impl BBGraph {
             if first_edge_idx == next_edge_idx {
                 return Ok(TraverseAction::Stop);
             }
-            let next_edge = self.edge(next_edge_idx)?;
+            let next_edge = self.edge(next_edge_idx)?.directed_from(model.curr_node_idx);
 
             model.traversals += 1;
             model.curr_edge_idx = next_edge_idx;
             model.curr_node_idx = next_edge.end_idx();
-            model.curr_dir = next_edge.calc_end_tangent(self)? * -1.;
+            model.curr_dir = next_edge.calc_end_tangent(self)?;
             model.edges.push(next_edge_idx);
 
             Ok(TraverseAction::Continue)
         })?;
+
+        // Visualise the traversal with comfy when debug_draw feature flag enabled.
+        #[cfg(feature = "debug_draw")]
+        {
+            use crate::debug_draw::*;
+            use comfy::*;
+            use std::ops::Deref;
+
+            if *DEBUG_DRAW_TRAVERSAL.deref().borrow() {
+                let directed = self.edges_directed(&result.edges)?;
+                for (i, (idx, edge)) in directed.iter().enumerate() {
+                    let t = (i as f32 / directed.len() as f32) * 0.79 + 0.2;
+                    draw_arrow(
+                        edge.t_point(self, t),
+                        edge.t_point(self, t + 0.01),
+                        0.1,
+                        LIME_GREEN,
+                        500,
+                    );
+                    draw_text_ex(
+                        &format!("{i}{idx}"),
+                        edge.t_point(self, t),
+                        comfy::TextAlign::TopLeft,
+                        DBG_TEXT_PARAMS.clone(),
+                    );
+                }
+            }
+        }
 
         Ok(result)
     }
@@ -1027,135 +1278,5 @@ impl BBGraph {
 
         let parent_closed_walk: Vec<_> = closed_walk.into_iter().map(|(idx, _)| idx).collect();
         Ok((parent_closed_walk, nested_closed_walk))
-    }
-}
-
-/**
- * Debug drawing methods
- */
-#[cfg(feature = "debug_draw")]
-impl BBGraph {
-    pub fn debug_draw(&self) -> BBResult<()> {
-        for (index, edge) in self.edges.iter() {
-            edge.debug_draw(self)?;
-            comfy::draw_text(
-                &format!("{}:", index),
-                edge.t_point(self, 0.5),
-                comfy::WHITE,
-                comfy::TextAlign::Center,
-            );
-        }
-
-        for (i, node) in self.nodes.iter() {
-            comfy::draw_circle(node.position(), 0.1, comfy::Color::rgb8(255, 0, 0), 1);
-            comfy::draw_text(
-                &format!("n{}\np{}", i, node.position()),
-                node.position(),
-                comfy::WHITE,
-                comfy::TextAlign::Center,
-            );
-        }
-
-        let colors = [comfy::SEA_GREEN, comfy::LIME_GREEN, comfy::YELLOW_GREEN];
-
-        for (i, mut graph) in self.get_detached_graphs()?.into_iter().enumerate() {
-            let color = colors[i % colors.len()];
-
-            while graph.nodes_count() > 0 {
-                // println!("Handling closed walk");
-                graph.remove_filaments()?;
-
-                let Some(left_most) = graph.get_left_most_node_index() else {
-                    break;
-                };
-                let node = self.node(left_most)?;
-                comfy::draw_circle(node.position(), 0.15, color, 1);
-
-                let (outer_edge_idx, closed_walk) =
-                    mcb::perform_closed_walk_from_node(&graph, left_most)?;
-                let outer_edge = self.edge(outer_edge_idx)?;
-                comfy::draw_line(
-                    outer_edge.start_pos(self),
-                    outer_edge.end_pos(self),
-                    0.08,
-                    color,
-                    1,
-                );
-
-                let (parent_cycle, nested_walks) =
-                    mcb::extract_nested_from_closed_walk(&graph, &closed_walk)?;
-                for edge_idx in parent_cycle {
-                    let edge = self.edge(edge_idx)?;
-                    comfy::draw_arrow(
-                        edge.t_point(self, 0.25),
-                        edge.t_point(self, 0.75),
-                        0.05,
-                        color,
-                        50,
-                    );
-                }
-                let nested_color = color * 0.75;
-                for closed_walk in nested_walks {
-                    for edge_idx in closed_walk {
-                        let edge = self.edge(edge_idx)?;
-                        comfy::draw_arrow(
-                            edge.t_point(self, 0.25),
-                            edge.t_point(self, 0.75),
-                            0.05,
-                            nested_color,
-                            50,
-                        );
-                    }
-                }
-            }
-        }
-
-        let left_most = self.get_left_most_node_index();
-        if let Some(left_most) = left_most {
-            let node = self.node(left_most)?;
-            let color = comfy::Color::rgb8(255, 100, 100);
-            comfy::draw_circle(node.position(), 0.15, color, 1);
-            comfy::draw_line(
-                node.position(),
-                node.position() + Vec2::new(0., -1.),
-                0.05,
-                color,
-                1,
-            );
-
-            // let closed_walk_result = perform_closed_walk_from_node(self, left_most);
-            // match closed_walk_result {
-            //     Ok((outer_edge, mut closed_walk)) => {
-            //         while let Some(idx) = closed_walk.pop() {
-            //             let link = self.edge(idx)?;
-            //             let thickness = if idx == outer_edge { 0.08 } else { 0.04 };
-            //             comfy::draw_arrow(link.start_pos(self), link.end_pos(self), thickness, color, 1);
-            //         }
-            //     }
-            //     Err(reason) => {
-            //         comfy::draw_text(&format!("Error: {reason:?}"), node.position, comfy::RED, comfy::TextAlign::Center);
-            //     }
-            // }
-        }
-
-        Ok(())
-
-        // for (region_index, region) in self.regions.values().enumerate() {
-        //     for el in region.edge_indicies().iter() {
-        //         for edge_index in el.iter() {
-        //             let edge = self.edge(*edge_index).expect(
-        //                 "BBVectorNetwork::debug_draw() -> No edge index for {edge_index:?}",
-        //             );
-        //             let pos = edge.t_point(self, 0.5);
-        //             comfy::draw_text(
-        //                 &format!("#{}:{}", region_index, edge_index.0),
-        //                 pos + Vec2::new(0., 0.4 * (region_index + 1) as f32),
-        //                 comfy::GRAY,
-        //                 comfy::TextAlign::Center,
-        //             );
-        //         }
-        //     }
-        //     // region.debug_draw(self);
-        // }
     }
 }

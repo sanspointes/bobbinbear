@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::BBEdgeIndex;
+use crate::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 /// Represents an index position of a BBVNRegion, which are joins between two nodes.

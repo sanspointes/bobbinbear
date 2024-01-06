@@ -1,6 +1,6 @@
 use thiserror::Error;
 
-use crate::{BBEdgeIndex, BBNodeIndex};
+use crate::prelude::*;
 
 #[derive(Error, Debug)]
 pub enum BBError {

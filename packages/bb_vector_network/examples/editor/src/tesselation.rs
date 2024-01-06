@@ -1,4 +1,4 @@
-use bb_vector_network::{BBGraph, prelude::BBResult};
+use bb_vector_network::prelude::*;
 use comfy::*;
 use lyon_tessellation::{FillVertexConstructor, FillVertex, VertexBuffers, BuffersBuilder, FillTessellator, FillOptions, StrokeVertexConstructor, StrokeVertex, StrokeTessellator, StrokeOptions};
 
@@ -26,7 +26,7 @@ pub fn tessellate_fill(graph: &BBGraph) -> BBResult<Mesh> {
 
     let mut buffers: VertexBuffers<SpriteVertex, u32> = VertexBuffers::new();
     // let mut vertex_builder = simple_builder(&mut buffers);
-    let mut vertex_builder = BuffersBuilder::new(&mut buffers, ComfyFillVertexConstructor(GRAY));
+    let mut vertex_builder = BuffersBuilder::new(&mut buffers, ComfyFillVertexConstructor(DARK_GRAY));
     let mut tess = FillTessellator::new();
 
 
@@ -75,7 +75,7 @@ pub fn tessellate_stroke(graph: &BBGraph) -> BBResult<Mesh> {
 
     let result = tess.tessellate(
             &path,          // PositionStore
-            &StrokeOptions::default().with_line_width(0.2),
+            &StrokeOptions::default().with_line_width(0.08),
             &mut vertex_builder
         );
 
