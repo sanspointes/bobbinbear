@@ -3,6 +3,7 @@ use std::fmt::Display;
 use crate::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Represents an index position of a BBVNRegion, which are joins between two nodes.
 pub struct BBRegionIndex(pub usize);
 impl From<usize> for BBRegionIndex {
@@ -29,6 +30,7 @@ impl Display for BBRegionIndex {
 
 
 #[derive(Debug, Clone, Default)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(dead_code)]
 pub struct BBCycle {
     pub filled: bool,
@@ -47,12 +49,14 @@ impl BBCycle {
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BBWindingRule {
     Default,
     NonZero,
 }
 
 #[derive(Debug, Clone)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(dead_code)]
 pub struct BBRegion {
     winding_rule: BBWindingRule,

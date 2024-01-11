@@ -18,10 +18,15 @@ use super::{
 };
 
 #[derive(Debug, Clone)]
+#[cfg_attr( feature = "serde", serde_with::serde_as)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BBGraph {
     next_idx: usize,
+    #[cfg_attr( feature = "serde", serde_as(as = "Vec<(_, _)>") )]
     pub nodes: HashMap<BBNodeIndex, BBNode>,
+    #[cfg_attr( feature = "serde", serde_as(as = "Vec<(_, _)>") )]
     pub edges: HashMap<BBEdgeIndex, BBEdge>,
+    #[cfg_attr( feature = "serde", serde_as(as = "Vec<(_, _)>") )]
     pub regions: HashMap<BBRegionIndex, BBRegion>,
 }
 

@@ -3,11 +3,13 @@ mod tesselation;
 mod tools;
 mod utils;
 mod debug_draw;
+mod save_load;
 
 use bb_vector_network::prelude::*;
 use comfy::*;
 use debug_draw::{DebugDrawConfig, draw_debug_controls, handle_debug_controls};
 use entities::Node;
+use save_load::SaveLoad;
 use tesselation::{tessellate_fill, tessellate_stroke};
 use tools::{InputHelper, PenTool, SelectTool, Tool, ToolTrait, ToolUpdateResult};
 use utils::{screen_bottom_left_world, screen_top_left_world, TEXT_PARAMS, draw_bb_error};
@@ -34,6 +36,7 @@ pub struct GameState {
     select_tool: SelectTool,
     pen_tool: PenTool,
 
+    save_load: SaveLoad,
     nodes: Vec<Node>,
     graph: BBGraph,
 
@@ -50,12 +53,14 @@ impl GameState {
         let (_, _) = g.line_from(edge.start_idx(), Vec2::new(-5., 5.));
 
         let mut gs = Self {
-            nodes: vec![],
-            graph: g,
             tool: Tool::Select,
             input_helper: InputHelper::default(),
             select_tool: SelectTool::default(),
             pen_tool: PenTool::default(),
+
+            save_load: SaveLoad::default(),
+            nodes: vec![],
+            graph: g,
 
             debug_draw_config: DebugDrawConfig::default(),
         };
@@ -115,6 +120,18 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
         state.tool = Tool::Select;
     } else if is_key_released(KeyCode::Num2) {
         state.tool = Tool::Pen;
+    }
+
+    if is_key_released(KeyCode::S) {
+        state.save_load.save(&state.graph);
+    } else if is_key_released(KeyCode::L) {
+        match state.save_load.try_load() {
+            Ok(graph) => {
+                state.graph = graph;
+                state.rebuild_game_nodes();
+            },
+            Err(reason) => println!("{reason}"),
+        }
     }
 
     draw_text_ex(

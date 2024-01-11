@@ -5,6 +5,7 @@ use glam::Vec2;
 use super::bb_edge::BBEdgeIndex;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 // Represents a reference to an anchor node in the BBVectorNetwork
 pub struct BBNodeIndex(pub usize);
 impl From<usize> for BBNodeIndex {
@@ -43,6 +44,7 @@ impl std::ops::SubAssign<usize> for BBNodeIndex {
 
 
 #[derive(Clone, Debug)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub struct BBNode {
     pub(crate) position: Vec2,
     pub(crate) adjacents: Vec<BBEdgeIndex>, // TODO Convert this to a smallvec

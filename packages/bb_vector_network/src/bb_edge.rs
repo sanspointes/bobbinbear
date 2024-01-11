@@ -15,6 +15,7 @@ use super::{
 };
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Represents an index position of a BBVNRegion, which are joins between two nodes.
 pub struct BBEdgeIndex(pub usize);
 impl From<usize> for BBEdgeIndex {
@@ -40,6 +41,7 @@ impl Display for BBEdgeIndex {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 pub enum BBEdge {
     Line {
         start: BBNodeIndex,
