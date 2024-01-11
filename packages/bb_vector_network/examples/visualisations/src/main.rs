@@ -62,5 +62,16 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
         TextAlign::Center,
     );
 
-    (scenario.executor)();
+    let v = (scenario.executor)();
+    match v {
+        Ok(_) => (),
+        Err(reason) => {
+            draw_text(
+                &format!("Scenario Error {}", reason),
+                Vec2::new(0., -10.),
+                RED,
+                TextAlign::Center,
+            );
+        }
+    }
 }

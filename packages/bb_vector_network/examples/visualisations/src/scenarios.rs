@@ -8,16 +8,42 @@ use bb_vector_network::prelude::*;
 use comfy::*;
 
 use crate::draw::assert_edge;
-use crate::draw::draw_error;
 use crate::draw::draw_graph;
+
+pub enum ScenarioOutcome {
+    Pass,
+    Fail,
+}
 
 pub struct Scenario {
     pub name: String,
-    pub executor: Box<dyn Fn() -> BBResult<()>>,
+    pub executor: Box<dyn Fn() -> BBResult<ScenarioOutcome>>,
 }
 
 pub fn build_scenerios() -> Vec<Scenario> {
     vec![
+        Scenario {
+            name: "graph_fill".to_string(),
+            executor: Box::new(|| {
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = true;
+
+                let mut g = BBGraph::new();
+
+                let (e0, f) = g.line(vec2(0., 5.), vec2(0., 0.));
+                let (e1, e) = g.line_from(f.end_idx(), vec2(5., 0.));
+                let (e2, m) = g.line_from_to(e.end_idx(), f.start_idx());
+
+                let (e3, e) = g.line_from(m.end_idx(), vec2(6., 5.));
+                let (e4, _) = g.line_from_to(e.end_idx(), m.start_idx());
+
+                g.update_regions()?;
+                println!("{:?}", g.regions);
+                draw_graph(&g)?;
+
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
+                Ok(ScenarioOutcome::Pass)
+            }),
+        },
         Scenario {
             name: "get_cw_edge_of_node:1a".to_string(),
             executor: Box::new(|| {
@@ -32,10 +58,9 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 draw_graph(&g)?;
 
                 let next = g.get_cw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
-                assert_edge(next, e1);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, e1))
             }),
         },
         Scenario {
@@ -52,10 +77,9 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 draw_graph(&g)?;
 
                 let next = g.get_cw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
-                assert_edge(next, e1);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, e1))
             }),
         },
         Scenario {
@@ -77,10 +101,9 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 } else {
                     e2
                 };
-                assert_edge(next, expected_edge);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, expected_edge))
             }),
         },
         Scenario {
@@ -102,10 +125,9 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 } else {
                     e2
                 };
-                assert_edge(next, expected_edge);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, expected_edge))
             }),
         },
         Scenario {
@@ -129,10 +151,94 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 } else {
                     e4
                 };
-                assert_edge(next, expected_edge);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, expected_edge))
+            }),
+        },
+        Scenario {
+            name: "get_cw_edge_of_node:4a".to_string(),
+            executor: Box::new(|| {
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = true;
+
+                let mut g = BBGraph::new();
+
+                let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+                let (e1, _) = g.cubic_from(f.end_idx(), vec2(5., 0.), vec2(5., 0.), vec2(5., 5.));
+                let (e2, _) = g.cubic_from(f.end_idx(), vec2(5., 0.), vec2(5., 0.), vec2(5., -5.));
+
+
+                draw_graph(&g)?;
+
+                let next = g.get_cw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
+                let expected_edge = e2;
+
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
+                Ok(assert_edge(next, expected_edge))
+            }),
+        },
+        Scenario {
+            name: "get_cw_edge_of_node:4b".to_string(),
+            executor: Box::new(|| {
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = true;
+
+                let mut g = BBGraph::new();
+
+                let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+                let (e2, _) = g.cubic_from(f.end_idx(), vec2(5., 0.), vec2(5., 0.), vec2(5., -5.));
+                let (e1, _) = g.cubic_from(f.end_idx(), vec2(5., 0.), vec2(5., 0.), vec2(5., 5.));
+
+
+                draw_graph(&g)?;
+
+                let next = g.get_cw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
+                let expected_edge = e2;
+                ;
+
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
+                Ok(assert_edge(next, expected_edge))
+            }),
+        },
+        Scenario {
+            name: "get_cw_edge_of_node:5a".to_string(),
+            executor: Box::new(|| {
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = true;
+
+                let mut g = BBGraph::new();
+
+                let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+                let (e2, _) = g.cubic_from(f.end_idx(), vec2(3., 3.), vec2(3., 3.), vec2(5., -5.));
+                let (e1, _) = g.cubic_from(f.end_idx(), vec2(3., -3.), vec2(3., -3.), vec2(5., 5.));
+
+
+                draw_graph(&g)?;
+
+                let next = g.get_cw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
+                let expected_edge = e2;
+
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
+                Ok(assert_edge(next, expected_edge))
+            }),
+        },
+        Scenario {
+            name: "get_cw_edge_of_node:6a".to_string(),
+            executor: Box::new(|| {
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = true;
+
+                let mut g = BBGraph::new();
+
+                let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+                let (e2, _) = g.cubic_from(f.end_idx(), vec2(3., 3.), vec2(-3., 3.), vec2(-2., -5.));
+                let (e1, _) = g.cubic_from(f.end_idx(), vec2(3., -3.), vec2(3., -3.), vec2(5., 5.));
+
+
+                draw_graph(&g)?;
+
+                let next = g.get_cw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
+                let expected_edge = e2;
+
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
+                Ok(assert_edge(next, expected_edge))
             }),
         },
         Scenario {
@@ -149,10 +255,9 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 draw_graph(&g)?;
 
                 let next = g.get_ccw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
-                assert_edge(next, e2);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, e2))
             }),
         },
         Scenario {
@@ -169,10 +274,9 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 draw_graph(&g)?;
 
                 let next = g.get_ccw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
-                assert_edge(next, e2);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, e2))
             }),
         },
         Scenario {
@@ -195,10 +299,9 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 } else {
                     e4
                 };
-                assert_edge(next, expected_edge);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, expected_edge))
             }),
         },
         Scenario {
@@ -223,10 +326,30 @@ pub fn build_scenerios() -> Vec<Scenario> {
                 } else {
                     e2
                 };
-                assert_edge(next, expected_edge);
 
                 *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
-                Ok(())
+                Ok(assert_edge(next, expected_edge))
+            }),
+        },
+        Scenario {
+            name: "get_ccw_edge_of_node:4".to_string(),
+            executor: Box::new(|| {
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = true;
+
+                let mut g = BBGraph::new();
+
+                let (e0, f) = g.line(vec2(-5., 0.), vec2(0., 0.));
+                let (e1, _) = g.cubic_from(f.end_idx(), vec2(5., 0.), vec2(5., 0.), vec2(5., 5.));
+                let (e2, _) = g.cubic_from(f.end_idx(), vec2(5., 0.), vec2(5., 0.), vec2(5., -5.));
+
+
+                draw_graph(&g)?;
+
+                let next = g.get_cw_edge_of_node(f.end_idx(), vec2(1., 0.), Some(e0))?;
+                let expected_edge = e2;
+
+                *DEBUG_DRAW_CCW.deref().borrow_mut() = false;
+                Ok(assert_edge(next, expected_edge))
             }),
         },
         Scenario {
@@ -263,7 +386,7 @@ pub fn build_scenerios() -> Vec<Scenario> {
                     draw_arrow(edge.t_point(&g, 0.49), edge.t_point(&g, 0.51), 0.1, RED, 500);
                 }
 
-                Ok(())
+                Ok(ScenarioOutcome::Pass)
             }),
         },
         Scenario {
@@ -300,7 +423,7 @@ pub fn build_scenerios() -> Vec<Scenario> {
                     draw_arrow(edge.t_point(&g, 0.49), edge.t_point(&g, 0.51), 0.1, RED, 500);
                 }
 
-                Ok(())
+                Ok(ScenarioOutcome::Pass)
             }),
         },
     ]

@@ -4,6 +4,8 @@ use bb_vector_network::{
 };
 use comfy::*;
 
+use crate::scenarios::ScenarioOutcome;
+
 pub static ERR_TEXT_PARAMS: Lazy<TextParams> = Lazy::new(|| TextParams {
     color: ORANGE_RED,
     font: egui::FontId::new(12.0, egui::FontFamily::Name("comfy-font".into())),
@@ -32,11 +34,13 @@ pub fn draw_success(message: &str) {
     )
 }
 
-pub fn assert_edge(received: BBEdgeIndex, expected: BBEdgeIndex) {
+pub fn assert_edge(received: BBEdgeIndex, expected: BBEdgeIndex) -> ScenarioOutcome {
     if received == expected {
         draw_success(&format!("Successfully traverses to expected edge {expected}"));
+        ScenarioOutcome::Pass
     } else {
         draw_error(&format!("Incorrect next edge.\nEXPECTED: {expected}\nRECEIVED {received}"));
+        ScenarioOutcome::Fail
     }
 
 }
