@@ -60,6 +60,7 @@ crossbeam-channel = "0.5.8"
 lazy_static = "1.4.0"
 bevy_mod_raycast = "0.14.1"
 bevy-inspector-egui = { version = "0.19.0", optional = true }
+bb_vector_network = { path = "../../packages/bb_vector_network/", features = [ "serde", "lyon_path" ] }
 # Serialisation
 serde_json = "1.0.107"
 serde = { version = "1.0.188", features = [ "derive" ] }
@@ -69,6 +70,7 @@ anyhow = "1.0.75"
 serde-wasm-bindgen = "0.6.0"
 tsify = "0.4.5"
 bevy-debug-text-overlay = { version = "6.0.0", default-features = false, features = ["builtin-font"] }
+lyon_tessellation = { version = "1.0.13", optional = true }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"

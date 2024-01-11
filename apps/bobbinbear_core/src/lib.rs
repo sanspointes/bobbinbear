@@ -9,6 +9,7 @@ mod systems;
 mod types;
 mod utils;
 mod prelude;
+mod serialisation;
 
 use api::{ApiToEditorReceiver, EditorApi, EditorToApiSender};
 use crossbeam_channel::unbounded;
