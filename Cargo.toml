@@ -4,9 +4,6 @@ resolver = "2"
 members = [
     "apps/bobbinbear_core",
     "packages/bb_vector_network",
-]
-
-exclude = [
     "packages/bb_vector_network/examples/editor",
-    "packages/bb_vector_network/examples/visualisation",
+    "packages/bb_vector_network/examples/visualisations",
 ]

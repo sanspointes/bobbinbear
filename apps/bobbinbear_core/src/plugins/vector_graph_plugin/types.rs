@@ -37,8 +37,6 @@ pub struct Stroke {
     pub color: Color,
 }
 
-
-
 #[derive(Debug, Clone, Component, serde::Serialize, serde::Deserialize)]
 /// Second type wrapping the BBGraph struct
 pub struct VectorGraph(pub BBGraph);

@@ -1,8 +1,8 @@
 {
     "lspconfig": {
         "rust_analyzer": {
-            "rust-analyzer.cargo.features": ["debug_draw", "lyon_path", "serde"],
-            "rust-analyzer.check.command": "clippy"
+            "rust-analyzer.cargo.features": ["debug_draw", "lyon_path", "serde", "desktop", "linux"],
+            "rust-analyzer.check.command": "check"
         }
     }
 }

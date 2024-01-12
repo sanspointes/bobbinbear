@@ -2,10 +2,14 @@
 //!
 //! Contains a serlisable definition of a component.
 
-use bevy::{prelude::*, math::Affine3A};
+use bevy::{prelude::*, sprite::Mesh2dHandle};
 use bevy_mod_raycast::RaycastMesh;
 
-use crate::plugins::{bounds_2d_plugin::GlobalBounds2D, selection_plugin::{Selectable, Selected}};
+use crate::plugins::{
+    bounds_2d_plugin::GlobalBounds2D,
+    selection_plugin::{Selectable, Selected},
+    vector_graph_plugin::{Fill, Stroke, VectorGraph},
+};
 
 /// NameDef
 ///
@@ -50,7 +54,6 @@ impl From<TransformDef> for Transform {
         }
     }
 }
-
 
 /// GlobalTransformDef
 ///
@@ -115,18 +118,66 @@ impl From<ComputedVisibilityDef> for ComputedVisibility {
     }
 }
 
+/// Mesh2dHandleDef
+///
+/// Serialisable representation of `Mesh2dHandle` component
+///
+/// Because this data is computed we'll just inject a default one into the scene and let bevy set
+/// the correct values.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct Mesh2dHandleDef;
+impl From<Mesh2dHandle> for Mesh2dHandleDef {
+    fn from(value: Mesh2dHandle) -> Self {
+        Mesh2dHandleDef
+    }
+}
+impl From<Mesh2dHandleDef> for Mesh2dHandle {
+    fn from(value: Mesh2dHandleDef) -> Self {
+        Mesh2dHandle::default()
+    }
+}
+
+/// ColorMaterialHandleDef
+///
+/// Serialisable representation of `ColorMaterialHandle` component
+///
+/// Because the component is a Handle<ColorMaterial> we'll need a from/to method that mutates the
+/// world.
+///
+/// TODO: Same material detection for faster rendering.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct ColorMaterialHandleDef {
+    pub color: Color,
+}
+impl ColorMaterialHandleDef {
+    pub fn to_world_and_handle(&self, world: &mut World) -> Handle<ColorMaterial> {
+        let mut color_mat_assets = world.resource_mut::<Assets<ColorMaterial>>();
+        let handle = color_mat_assets.add(ColorMaterial::from(self.color));
+        handle
+    }
+    pub fn from_world_and_handle(world: &World, handle: Handle<ColorMaterial>) -> Self {
+        let color_mat_assets = world.resource::<Assets<ColorMaterial>>();
+        let material = color_mat_assets
+            .get(&handle)
+            .expect("from_world_and_handle(). No material {handle:?}");
+        Self {
+            color: material.color,
+        }
+    }
+}
+
 /// RaycastMeshDef
 ///
 /// Serialisable representation of `RaycastMesh<Selectable>` component
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub struct RaycastMeshDef;
-impl From<RaycastMesh<Selectable>> for RaycastMeshDef {
+pub struct RaycastMeshSelectableDef;
+impl From<RaycastMesh<Selectable>> for RaycastMeshSelectableDef {
     fn from(value: RaycastMesh<Selectable>) -> Self {
-        RaycastMeshDef
+        RaycastMeshSelectableDef
     }
 }
-impl From<RaycastMeshDef> for RaycastMesh<Selectable> {
-    fn from(value: RaycastMeshDef) -> Self {
+impl From<RaycastMeshSelectableDef> for RaycastMesh<Selectable> {
+    fn from(value: RaycastMeshSelectableDef) -> Self {
         RaycastMesh::<Selectable>::default()
     }
 }
@@ -197,23 +248,30 @@ impl From<GlobalBounds2DDef> for GlobalBounds2D {
     }
 }
 
-
 /// SerialisedComponent
-/// 
+///
 /// Generic Serialisable representation of a component.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub enum SerialisedComponent {
+    // Builtins
     Name(NameDef),
     Transform(TransformDef),
     GlobalTransform(GlobalTransformDef),
     Visibility(VisibilityDef),
     ComputedVisibility(ComputedVisibilityDef),
+    Mesh2dHandle(Mesh2dHandleDef),
+    ColorMaterial(ColorMaterialHandleDef),
 
-    RaycastMesh(RaycastMeshDef),
+    // App
+    RaycastMeshSelectable(RaycastMeshSelectableDef),
     Selectable(SelectableDef),
     Selected(SelectedDef),
-
     GlobalBounds2D(GlobalBounds2DDef),
+
+    // bb_vector_network_related
+    VectorGraph(VectorGraph),
+    Fill(Fill),
+    Stroke(Stroke),
 }
 
 impl From<Name> for SerialisedComponent {
@@ -246,7 +304,7 @@ impl From<ComputedVisibility> for SerialisedComponent {
 
 impl From<RaycastMesh<Selectable>> for SerialisedComponent {
     fn from(value: RaycastMesh<Selectable>) -> Self {
-        SerialisedComponent::RaycastMesh(value.into())
+        SerialisedComponent::RaycastMeshSelectable(value.into())
     }
 }
 
@@ -259,6 +317,22 @@ impl From<Selectable> for SerialisedComponent {
 impl From<Selected> for SerialisedComponent {
     fn from(value: Selected) -> Self {
         SerialisedComponent::Selected(value.into())
+    }
+}
+
+impl From<Fill> for SerialisedComponent {
+    fn from(value: Fill) -> Self {
+        SerialisedComponent::Fill(value)
+    }
+}
+impl From<Stroke> for SerialisedComponent {
+    fn from(value: Stroke) -> Self {
+        SerialisedComponent::Stroke(value)
+    }
+}
+impl From<VectorGraph> for SerialisedComponent {
+    fn from(value: VectorGraph) -> Self {
+        SerialisedComponent::VectorGraph(value)
     }
 }
 

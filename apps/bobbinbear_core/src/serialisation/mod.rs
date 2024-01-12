@@ -1,13 +1,20 @@
 mod serialised_component;
 
-use bevy::{prelude::*, reflect::List};
+use bevy::{prelude::*, reflect::List, sprite::Mesh2dHandle};
 
 use bevy_mod_raycast::RaycastMesh;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{components::bbid::BBId, plugins::{selection_plugin::{Selectable, Selected}, bounds_2d_plugin::GlobalBounds2D}};
+use crate::{
+    components::bbid::BBId,
+    plugins::{
+        bounds_2d_plugin::GlobalBounds2D,
+        selection_plugin::{Selectable, Selected},
+        vector_graph_plugin::{Fill, Stroke, VectorGraph},
+    },
+};
 
-use self::serialised_component::SerialisedComponent;
+use self::serialised_component::{SerialisedComponent, ColorMaterialHandleDef};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerialisableEntity {
@@ -50,11 +57,27 @@ impl SerialisableEntity {
         if let Some(value) = world.get::<RaycastMesh<Selectable>>(entity) {
             serialised.components.push((value.clone()).into())
         }
+
+        if let Some(value) = world.get::<Handle<ColorMaterial>>(entity) {
+            let def = ColorMaterialHandleDef::from_world_and_handle(&world, value.clone()).into();
+            serialised.components.push(SerialisedComponent::ColorMaterial(def));
+        }
+
+
         if let Some(value) = world.get::<Selectable>(entity) {
             serialised.components.push((*value).into())
         }
         if let Some(value) = world.get::<Selected>(entity) {
             serialised.components.push((*value).into())
+        }
+        if let Some(value) = world.get::<Fill>(entity) {
+            serialised.components.push((*value).into())
+        }
+        if let Some(value) = world.get::<Stroke>(entity) {
+            serialised.components.push((*value).into())
+        }
+        if let Some(value) = world.get::<VectorGraph>(entity) {
+            serialised.components.push((value.clone()).into())
         }
         if let Some(value) = world.get::<GlobalBounds2D>(entity) {
             serialised.components.push((*value).into())
@@ -77,13 +100,32 @@ impl SerialisableEntity {
             match comp {
                 SerialisedComponent::Name(value) => e.insert(Name::from(value.clone())),
                 SerialisedComponent::Transform(value) => e.insert(Transform::from(value.clone())),
-                SerialisedComponent::GlobalTransform(value) => e.insert(GlobalTransform::from(value.clone())),
+                SerialisedComponent::GlobalTransform(value) => {
+                    e.insert(GlobalTransform::from(value.clone()))
+                }
                 SerialisedComponent::Visibility(value) => e.insert(Visibility::from(value.clone())),
-                SerialisedComponent::ComputedVisibility(value) => e.insert(ComputedVisibility::from(value.clone())),
-                SerialisedComponent::RaycastMesh(value) => e.insert(RaycastMesh::<Selectable>::from(value.clone())),
+                SerialisedComponent::ComputedVisibility(value) => {
+                    e.insert(ComputedVisibility::from(value.clone()))
+                }
+
+                SerialisedComponent::ColorMaterial(def) => {
+                    e.insert(def.to_world_and_handle(world))
+                }
+                SerialisedComponent::Mesh2dHandle(def) => {
+                    e.insert(Mesh2dHandle::from(def.clone()))
+                }
+
+                SerialisedComponent::RaycastMeshSelectable(value) => {
+                    e.insert(RaycastMesh::<Selectable>::from(value.clone()))
+                }
                 SerialisedComponent::Selectable(value) => e.insert(Selectable::from(value.clone())),
                 SerialisedComponent::Selected(value) => e.insert(Selected::from(value.clone())),
-                SerialisedComponent::GlobalBounds2D(value) => e.insert(GlobalBounds2D::from(value.clone())),
+                SerialisedComponent::Fill(value) => e.insert(value.clone()),
+                SerialisedComponent::Stroke(value) => e.insert(value.clone()),
+                SerialisedComponent::VectorGraph(value) => e.insert(value.clone()),
+                SerialisedComponent::GlobalBounds2D(value) => {
+                    e.insert(GlobalBounds2D::from(value.clone()))
+                }
             };
         }
 
