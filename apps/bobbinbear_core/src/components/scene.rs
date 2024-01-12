@@ -1,13 +1,5 @@
 
 use bevy::prelude::*;
-// use bevy_prototype_lyon::prelude::{
-//     tess::{
-//         geom::euclid::{Point2D, UnknownUnit},
-//         path::{Event, Path as TessPath},
-//     },
-//     PathBuilder,
-// };
-//
 // use crate::utils::vector::{FromPoint2, FromVec2};
 
 #[derive(Component, Reflect, Default)]
@@ -233,8 +225,7 @@ pub struct BBIndex(pub usize);
 #[reflect(Component)]
 pub enum BBNode {
     #[default]
-    From,
+    Endpoint,
     Ctrl1,
     Ctrl2,
-    To,
 }

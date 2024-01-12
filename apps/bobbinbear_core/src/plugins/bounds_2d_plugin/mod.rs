@@ -2,7 +2,7 @@ use bevy::{math::Vec3A, prelude::*, sprite::Mesh2dHandle};
 
 use crate::editor::EditorSet;
 
-#[derive(Component, Default, Debug, Reflect)]
+#[derive(Component, Default, Debug, Reflect, Copy, Clone)]
 /// Gets the global coords AABB of an entity
 #[reflect(Component)]
 pub enum GlobalBounds2D {

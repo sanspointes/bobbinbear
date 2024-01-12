@@ -1,7 +1,6 @@
 use std::ops::{Div, Sub, Mul};
 
 use bevy::{prelude::*, math::{Vec4Swizzles, Vec3Swizzles}};
-use bevy_prototype_lyon::prelude::tess::{geom::euclid::{Point2D, UnknownUnit}, math::Point};
 
 use crate::plugins::screen_space_root_plugin::ScreenSpaceRoot;
 
@@ -63,14 +62,6 @@ impl LocalToScreen for Vec4 {
         let world_pos = self.local_to_world(world_transform);
         let sp = ss_root.world_to_screen(world_pos.xy());
         Vec4::new(sp.x, sp.y, 0., 1.)
-    }
-}
-impl LocalToScreen for Point {
-    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
-        let self_v2: Vec2 = W(*self).into();
-        let world_pos = self_v2.local_to_world(world_transform);
-        let sp = ss_root.world_to_screen(world_pos);
-        W(sp).into()
     }
 }
 

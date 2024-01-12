@@ -1,26 +1,24 @@
 mod systems;
 mod types;
 
-pub use self::types::*;
 pub use self::systems::*;
+pub use self::types::{Fill, Stroke, VectorGraph};
+use self::types::{FillTessellator, StrokeTessellator};
 
 use bevy::prelude::*;
-
-use lyon_tesselation::{FillOptions, StrokeOptions};
 
 pub struct VectorGraphPlugin;
 impl Plugin for VectorGraphPlugin {
     fn build(&self, app: &mut App) {
-        let fill_tess = FillTessellator::new();
-        let stroke_tess = StrokeTessellator::new();
+        let fill_tess = lyon_tessellation::FillTessellator::new();
+        let stroke_tess = lyon_tessellation::StrokeTessellator::new();
         app.insert_resource(FillTessellator(fill_tess))
             .insert_resource(StrokeTessellator(stroke_tess));
 
-        app.configure_sets(
-                PostUpdate,
-                BuildShapes.after(bevy::transform::TransformSystem::TransformPropagate),
-            )
-            .add_systems(PostUpdate, sys_mesh_vector_graph.in_set(BuildShapes));
+        app.add_systems(
+            PostUpdate,
+            sys_mesh_vector_graph.after(bevy::transform::TransformSystem::TransformPropagate),
+        );
         // app.add_systems(PostStartup, sys_setup_selection_bounds)
         //     .add_systems(PostUpdate, sys_selection_bounds_handle_change.after(sys_update_global_bounds_2d).in_set(EditorSet::PostPlugins));
         //

@@ -26,7 +26,7 @@ name = "bobbinbear_core"
 path = "src/main.rs"
 
 [features]
-default = ["bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "bevy/webgl2"]
+default = ["bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "bevy/webgl2", "lyon_tessellation/serialization"]
 desktop = ["bevy/dynamic_linking"]
 linux = ["bevy/x11"]
 debug_text = ["bevy-debug-text-overlay/debug"]
@@ -55,7 +55,6 @@ wasm-bindgen = { version = "0.2.87", features = [ "serde", "serde-serialize" ] }
 # all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
 # code size when deploying.
 bevy = { version = "0.11.3", default-features = false }
-bevy_prototype_lyon = { version = "0.10" }
 crossbeam-channel = "0.5.8"
 lazy_static = "1.4.0"
 bevy_mod_raycast = "0.14.1"
@@ -70,7 +69,7 @@ anyhow = "1.0.75"
 serde-wasm-bindgen = "0.6.0"
 tsify = "0.4.5"
 bevy-debug-text-overlay = { version = "6.0.0", default-features = false, features = ["builtin-font"] }
-lyon_tessellation = { version = "1.0.13", optional = true }
+lyon_tessellation = { version = "1.0.13" }
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"

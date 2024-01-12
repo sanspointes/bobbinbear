@@ -13,7 +13,7 @@ use self::{
 
 use super::bounds_2d_plugin::sys_update_global_bounds_2d;
 
-#[derive(Debug, Default, Component, Reflect)]
+#[derive(Debug, Default, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]
 /// Contains the state for whether this component is selected.
 pub enum Selected {
@@ -22,7 +22,7 @@ pub enum Selected {
     Yes,
 }
 
-#[derive(Debug, Default, Component, Reflect)]
+#[derive(Debug, Default, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]
 /// Contains the state of this entity relating to interaction.
 /// Locked entities cannot be selected.

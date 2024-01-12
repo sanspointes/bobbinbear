@@ -1,10 +1,6 @@
 use std::ops::Div;
 
-use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
-use bevy_prototype_lyon::{
-    prelude::{Fill, GeometryBuilder, ShapeBundle},
-    shapes::{self, RectangleOrigin},
-};
+use bevy::{math::{Vec3Swizzles, vec2}, prelude::*, window::PrimaryWindow, sprite::MaterialMesh2dBundle};
 
 use crate::{
     editor::EditorSet, msgs::sys_msg_handler, systems::camera::CameraTag, utils::coordinates,
@@ -133,21 +129,18 @@ enum TestTagOrientation {
 }
 fn sys_setup_screenspace_test(
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     q_ss_root: Query<Entity, With<ScreenSpaceRoot>>,
 ) {
     let root = q_ss_root.single();
+
+    let mat_handle = materials.add(ColorMaterial::from(Color::rgba(0., 0., 0.5, 0.1)));
 
     commands.entity(root).with_children(|builder| {
         use TestTagOrientation::*;
         let to_build = vec![TopLeft, TopRight, BottomLeft, BottomRight];
         for orientation in to_build {
-            let origin = match orientation {
-                BottomRight => RectangleOrigin::BottomRight,
-                BottomLeft => RectangleOrigin::BottomLeft,
-                TopRight => RectangleOrigin::TopRight,
-                TopLeft => RectangleOrigin::TopLeft,
-            };
-
             let name = match orientation {
                 BottomRight => "BottomRightTest",
                 BottomLeft => "BottomLeftTest",
@@ -155,18 +148,15 @@ fn sys_setup_screenspace_test(
                 TopLeft => "TopLeftTest",
             };
 
-            let tl_shape = shapes::Rectangle {
-                extents: Vec2::new(50., 50.),
-                origin,
-            };
+            let handle = meshes.add(Mesh::from(shape::Quad::new(vec2(10., 10.))).into());
             builder.spawn((
                 Name::from(name),
                 orientation,
-                ShapeBundle {
-                    path: GeometryBuilder::build_as(&tl_shape),
+                MaterialMesh2dBundle {
+                    mesh: handle.into(),
+                    material: mat_handle.clone(),
                     ..default()
                 },
-                Fill::color(Color::rgba(0., 0., 0.5, 0.1)),
             ));
         }
     });

@@ -2,54 +2,53 @@ use std::{fmt::{Debug, Display}, mem, sync::Arc};
 
 use anyhow::anyhow;
 use bevy::prelude::*;
-use bevy_prototype_lyon::prelude::{tess::path::Path as TessPath, Path};
 
-use crate::components::bbid::{BBId, BBIdUtils};
+use crate::{components::bbid::{BBId, BBIdUtils}, plugins::vector_graph_plugin::VectorGraph};
 
 use super::{Cmd, CmdError, CmdType, CmdMsg, CmdUpdateTreatment};
 
-pub struct UpdatePathCmd {
+pub struct UpdateVectorGraphCmd {
     name: String,
     pub target_bbid: BBId,
-    path: TessPath,
+    vector_graph: VectorGraph,
 }
-impl From<UpdatePathCmd> for CmdType {
-    fn from(value: UpdatePathCmd) -> Self {
-        Self::UpdatePath(value)
+impl From<UpdateVectorGraphCmd> for CmdType {
+    fn from(value: UpdateVectorGraphCmd) -> Self {
+        Self::UpdateVectorGraph(value)
     }
 }
-impl From<UpdatePathCmd> for CmdMsg {
-    fn from(value: UpdatePathCmd) -> Self {
+impl From<UpdateVectorGraphCmd> for CmdMsg {
+    fn from(value: UpdateVectorGraphCmd) -> Self {
         let cmd_type: CmdType = value.into();
         CmdMsg::Execute(Arc::new(cmd_type))
     }
 }
 
-impl Display for UpdatePathCmd {
+impl Display for UpdateVectorGraphCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "UpdatePathComponentCmd on {}",
+            "UpdateVectorGraphCmd on {}",
             self.target_bbid,
         )
     }
 }
 
-impl Debug for UpdatePathCmd {
+impl Debug for UpdateVectorGraphCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("UpdatePathCmd")
+        f.debug_struct("UpdateVectorGraphCmd")
             .field("target_bbid", &self.target_bbid)
-            .field("path", &self.path)
+            .field("vector_graph", &self.vector_graph)
             .finish()
     }
 }
 
-impl UpdatePathCmd {
-    pub fn new(target_bbid: BBId, path: TessPath) -> Self {
+impl UpdateVectorGraphCmd {
+    pub fn new(target_bbid: BBId, vector_graph: VectorGraph) -> Self {
         Self {
-            name: format!("Update path on \"{}\"", target_bbid),
+            name: format!("Update vector_graph on \"{}\"", target_bbid),
             target_bbid,
-            path,
+            vector_graph,
         }
     }
 
@@ -62,19 +61,19 @@ impl UpdatePathCmd {
             .get_entity_id_by_bbid(target_bbid)
             .ok_or(anyhow!("Can't find entity entity with {target_bbid:?}."))?;
 
-        let mut path = world
-            .query::<&mut Path>()
+        let mut vector_graph = world
+            .query::<&mut VectorGraph>()
             .get_mut(world, target_entity)
             .map_err(|err| anyhow!("Error getting path of {target_entity:?}.\n - Reason: {err:?}."))?;
 
-        mem::swap(&mut path.0, &mut self.path);
-        path.set_changed();
+        mem::swap(&mut vector_graph.0, &mut self.vector_graph.0);
+        vector_graph.set_changed();
 
         Ok(())
     }
 }
 
-impl Cmd for UpdatePathCmd {
+impl Cmd for UpdateVectorGraphCmd {
     fn execute(&mut self, world: &mut bevy::prelude::World) -> Result<(), CmdError> {
         self.swap_path(world, self.target_bbid)
     }
@@ -84,7 +83,7 @@ impl Cmd for UpdatePathCmd {
 
     fn try_update_from_prev(&mut self, other: &CmdType) -> super::CmdUpdateTreatment {
         match other {
-            CmdType::UpdatePath(cmd) => {
+            CmdType::UpdateVectorGraph(cmd) => {
                 CmdUpdateTreatment::AsRepeat
             }
             _ => CmdUpdateTreatment::AsSeperate,

@@ -4,16 +4,12 @@ use std::{default, mem::discriminant, ops::Sub};
 
 use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
-    math::Vec3Swizzles,
+    math::{Vec3Swizzles, vec2},
     prelude::*,
-    utils::HashSet,
+    utils::HashSet, sprite::MaterialMesh2dBundle,
 };
 use bevy_mod_raycast::{
     DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
-};
-use bevy_prototype_lyon::{
-    prelude::{Fill, GeometryBuilder, ShapeBundle},
-    shapes,
 };
 use js_sys::Reflect::construct_with_new_target;
 
@@ -374,27 +370,28 @@ pub struct InputHitPlaneTag;
 /// Spawns a Raycaster hit plane for world coordinate mouse inputs + attaches the raycast
 /// source to the camera.
 ///
-fn sys_setup_input_plugin(mut commands: Commands, q_camera: Query<Entity, With<CameraTag>>) {
+fn sys_setup_input_plugin(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    q_camera: Query<Entity, With<CameraTag>>
+) {
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_setup_input_plugin").entered();
 
-    let shape = shapes::Rectangle {
-        extents: Vec2::new(10000., 10000.),
-        ..Default::default()
-    };
+    let handle = meshes.add(Mesh::from(shape::Quad::new(vec2(10000., 10000.))).into());
     commands.spawn((
         Name::from("BgHitPlane"),
         InputHitPlaneTag,
-        ShapeBundle {
-            path: GeometryBuilder::build_as(&shape),
+        MaterialMesh2dBundle {
+            mesh: handle.into(),
             transform: Transform {
                 translation: Vec3::new(0., 0., BG_HIT_Z_INDEX),
                 ..Default::default()
             },
-
+            material: materials.add(ColorMaterial::from(Color::rgb(0.8, 0.8, 0.8))),
             ..Default::default()
         },
-        Fill::color(Color::rgb_u8(200, 200, 200)),
         RaycastMesh::<RaycastRawInput>::default(),
     ));
 

@@ -2,9 +2,8 @@ use std::ops::Sub;
 
 use bevy::{
     prelude::*,
-    window::PrimaryWindow,
+    window::PrimaryWindow, sprite::{MaterialMesh2dBundle, Mesh2dHandle}, math::vec2,
 };
-use bevy_prototype_lyon::{prelude::*, shapes};
 
 use crate::{
     constants::{SELECTION_BOUNDS_STROKE_WIDTH, SELECT_COLOR},
@@ -22,6 +21,8 @@ pub(super) struct SelectionBoundsTag;
 
 pub(super) fn sys_setup_selection_bounds(
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     q_ss_root: Query<Entity, With<ScreenSpaceRoot>>,
 ) {
     #[cfg(feature = "debug_trace")]
@@ -29,24 +30,24 @@ pub(super) fn sys_setup_selection_bounds(
 
     let ss_root = q_ss_root.single();
 
-    let shape = shapes::Rectangle {
-        ..Default::default()
-    };
+    let handle = meshes.add(Mesh::from(shape::Quad::new(vec2(10000., 10000.))).into());
     commands
         .spawn((
             Name::from("Selection bounds"),
             SelectionBoundsTag,
-            ShapeBundle {
-                path: GeometryBuilder::build_as(&shape),
+            MaterialMesh2dBundle {
+                mesh: handle.into(),
+                material: materials.add(ColorMaterial::from(SELECT_COLOR)),
                 // visibility: Visibility::Hidden,
                 ..default()
             },
-            Stroke::new(SELECT_COLOR, SELECTION_BOUNDS_STROKE_WIDTH),
         ))
         .set_parent(ss_root);
 }
 
 pub(super) fn sys_selection_bounds_handle_change(
+    mut meshes: ResMut<Assets<Mesh>>,
+
     mut system_set: ParamSet<(
         // Query for selection or bounds changes
         Query<Entity, Or<(Changed<Selected>, Changed<GlobalBounds2D>)>>,
@@ -56,7 +57,7 @@ pub(super) fn sys_selection_bounds_handle_change(
 
     // To Mutate
     mut q_selection_bounds: Query<
-        (&mut Path, &mut Transform, &mut Visibility),
+        (&Mesh2dHandle, &mut Transform, &mut Visibility),
         With<SelectionBoundsTag>,
     >,
     // To Calculate
@@ -93,7 +94,7 @@ pub(super) fn sys_selection_bounds_handle_change(
     #[cfg(feature = "debug_bounds")]
     debug!("Recalculated selection bounds (global min max: {min:?} {max:?})");
 
-    let (mut path, mut transform, mut visibility) = q_selection_bounds.single_mut();
+    let (handle, mut transform, mut visibility) = q_selection_bounds.single_mut();
     *visibility = match any_selected {
         true => Visibility::Visible,
         false => Visibility::Hidden,
@@ -117,12 +118,16 @@ pub(super) fn sys_selection_bounds_handle_change(
         transform.translation.x = screen_min.x;
         transform.translation.y = screen_min.y;
 
-        let shape = shapes::Rectangle {
-            extents,
-            origin: RectangleOrigin::BottomLeft,
-        };
+        if let Some(mut mesh) = meshes.get_mut(&handle.0) {
+            *mesh = Mesh::from(shape::Quad::new(extents)).into()
+        }
 
-        *path = GeometryBuilder::build_as(&shape);
+        // let shape = shapes::Rectangle {
+        //     extents,
+        //     origin: RectangleOrigin::BottomLeft,
+        // };
+        //
+        // *handle = GeometryBuilder::build_as(&shape);
 
         #[cfg(feature = "debug_bounds")]
         debug!("Updated bounds to {transform:?} {extents:?}");
