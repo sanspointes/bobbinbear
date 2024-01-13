@@ -1,5 +1,5 @@
 use bevy::prelude::*;
-use bevy_mod_raycast::{RaycastSource, RaycastMethod};
+use bevy_mod_raycast::prelude::{RaycastSource, RaycastMethod};
 
 use crate::systems::camera::CameraTag;
 
@@ -24,7 +24,7 @@ pub fn sys_selection_raycast_update_ray(
     let _span = info_span!("sys_selection_raycast_update_ray").entered();
 
     let mut source = q_raycast_source.single_mut();
-    for ev in &mut ev_cursor_moved {
+    for ev in ev_cursor_moved.read() {
         source.cast_method = RaycastMethod::Screenspace(ev.position);
     }
 }

@@ -1,8 +1,8 @@
 mod serialised_component;
 
-use bevy::{prelude::*, reflect::List, sprite::Mesh2dHandle};
+use bevy::{prelude::*, sprite::Mesh2dHandle};
 
-use bevy_mod_raycast::RaycastMesh;
+use bevy_mod_raycast::prelude::RaycastMesh;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use self::serialised_component::{SerialisedComponent, ColorMaterialHandleDef};
+use self::serialised_component::{ColorMaterialHandleDef, SerialisedComponent};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerialisableEntity {
@@ -51,7 +51,10 @@ impl SerialisableEntity {
         if let Some(value) = world.get::<Visibility>(entity) {
             serialised.components.push((*value).into())
         }
-        if let Some(value) = world.get::<ComputedVisibility>(entity) {
+        if let Some(value) = world.get::<ViewVisibility>(entity) {
+            serialised.components.push((value.clone()).into())
+        }
+        if let Some(value) = world.get::<InheritedVisibility>(entity) {
             serialised.components.push((value.clone()).into())
         }
         if let Some(value) = world.get::<RaycastMesh<Selectable>>(entity) {
@@ -60,9 +63,10 @@ impl SerialisableEntity {
 
         if let Some(value) = world.get::<Handle<ColorMaterial>>(entity) {
             let def = ColorMaterialHandleDef::from_world_and_handle(&world, value.clone()).into();
-            serialised.components.push(SerialisedComponent::ColorMaterial(def));
+            serialised
+                .components
+                .push(SerialisedComponent::ColorMaterial(def));
         }
-
 
         if let Some(value) = world.get::<Selectable>(entity) {
             serialised.components.push((*value).into())
@@ -96,43 +100,73 @@ impl SerialisableEntity {
     pub fn to_entity_recursive(&self, world: &mut World) -> Entity {
         let mut e = world.spawn(self.bbid);
 
+        // Handle components that don't require mutable world access.
         for comp in &self.components {
             match comp {
-                SerialisedComponent::Name(value) => e.insert(Name::from(value.clone())),
-                SerialisedComponent::Transform(value) => e.insert(Transform::from(value.clone())),
-                SerialisedComponent::GlobalTransform(value) => {
-                    e.insert(GlobalTransform::from(value.clone()))
+                SerialisedComponent::Name(value) => {
+                    e.insert(Name::from(value.clone()));
                 }
-                SerialisedComponent::Visibility(value) => e.insert(Visibility::from(value.clone())),
-                SerialisedComponent::ComputedVisibility(value) => {
-                    e.insert(ComputedVisibility::from(value.clone()))
+                SerialisedComponent::Transform(value) => {
+                    e.insert(Transform::from(value.clone()));
+                }
+                SerialisedComponent::GlobalTransform(value) => {
+                    e.insert(GlobalTransform::from(value.clone()));
+                }
+                SerialisedComponent::Visibility(value) => {
+                    e.insert(Visibility::from(value.clone()));
+                }
+                SerialisedComponent::ViewVisibility(value) => {
+                    e.insert(ViewVisibility::from(value.clone()));
+                }
+                SerialisedComponent::InheritedVisibility(value) => {
+                    e.insert(InheritedVisibility::from(value.clone()));
                 }
 
-                SerialisedComponent::ColorMaterial(def) => {
-                    e.insert(def.to_world_and_handle(world))
-                }
                 SerialisedComponent::Mesh2dHandle(def) => {
-                    e.insert(Mesh2dHandle::from(def.clone()))
+                    e.insert(Mesh2dHandle::from(def.clone()));
                 }
 
                 SerialisedComponent::RaycastMeshSelectable(value) => {
-                    e.insert(RaycastMesh::<Selectable>::from(value.clone()))
+                    e.insert(RaycastMesh::<Selectable>::from(value.clone()));
                 }
-                SerialisedComponent::Selectable(value) => e.insert(Selectable::from(value.clone())),
-                SerialisedComponent::Selected(value) => e.insert(Selected::from(value.clone())),
-                SerialisedComponent::Fill(value) => e.insert(value.clone()),
-                SerialisedComponent::Stroke(value) => e.insert(value.clone()),
-                SerialisedComponent::VectorGraph(value) => e.insert(value.clone()),
+                SerialisedComponent::Selectable(value) => {
+                    e.insert(Selectable::from(value.clone()));
+                }
+                SerialisedComponent::Selected(value) => {
+                    e.insert(Selected::from(value.clone()));
+                }
+                SerialisedComponent::Fill(value) => {
+                    e.insert(*value);
+                }
+                SerialisedComponent::Stroke(value) => {
+                    e.insert(*value);
+                }
+                SerialisedComponent::VectorGraph(value) => {
+                    e.insert(value.clone());
+                }
                 SerialisedComponent::GlobalBounds2D(value) => {
-                    e.insert(GlobalBounds2D::from(value.clone()))
+                    e.insert(GlobalBounds2D::from(value.clone()));
                 }
+                _ => {}
             };
         }
 
         let parent_e = e.id();
 
+        // Handle components that require mutable world access.
+        for comp in &self.components {
+            #[allow(clippy::single_match)]
+            match comp {
+                SerialisedComponent::ColorMaterial(def) => {
+                    let handle = def.to_world_and_handle(world);
+                    world.entity_mut(parent_e).insert(handle);
+                }
+                _ => {}
+            }
+        }
+
         for child in &self.children {
-            let mut child_e = Self::to_entity_recursive(child, world);
+            let child_e = Self::to_entity_recursive(child, world);
             world.entity_mut(parent_e).add_child(child_e);
         }
 

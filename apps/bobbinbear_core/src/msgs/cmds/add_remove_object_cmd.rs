@@ -5,7 +5,7 @@ use std::{
 
 use anyhow::anyhow;
 use bevy::{
-    ecs::{entity::EntityMap, world::EntityMut},
+    ecs::{world::EntityMut},
     prelude::*,
 };
 
@@ -64,7 +64,7 @@ impl Debug for AddObjectCmd {
 }
 
 impl AddObjectCmd {
-    pub fn from_builder<F: FnMut(&mut EntityMut<'_>)>(
+    pub fn from_builder<F: FnMut(&mut EntityWorldMut<'_>)>(
         world: &mut World,
         parent: Option<BBId>,
         mut builder: F,

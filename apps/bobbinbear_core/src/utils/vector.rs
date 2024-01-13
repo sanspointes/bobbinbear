@@ -1,9 +1,6 @@
-use bb_vector_network::bb_graph::BBGraph;
 use bevy::{prelude::*, sprite::Mesh2dHandle};
 
 use crate::plugins::vector_graph_plugin::VectorGraph;
-
-use super::W;
 
 #[derive(Bundle)]
 pub struct BBObjectVectorBundle {
@@ -13,7 +10,8 @@ pub struct BBObjectVectorBundle {
     pub transform: Transform,
     pub global_transform: GlobalTransform,
     pub visibility: Visibility,
-    pub computed_visibility: ComputedVisibility,
+    pub view_visibility: ViewVisibility,
+    pub inherited_visibility: InheritedVisibility,
 }
 impl Default for BBObjectVectorBundle {
     fn default() -> Self {
@@ -24,7 +22,8 @@ impl Default for BBObjectVectorBundle {
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
             visibility: Visibility::default(),
-            computed_visibility: ComputedVisibility::default(),
+            view_visibility: ViewVisibility::default(),
+            inherited_visibility: InheritedVisibility::default(),
         }
     }
 }

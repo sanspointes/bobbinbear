@@ -3,7 +3,7 @@
 //! Contains a serlisable definition of a component.
 
 use bevy::{prelude::*, sprite::Mesh2dHandle};
-use bevy_mod_raycast::RaycastMesh;
+use bevy_mod_raycast::prelude::RaycastMesh;
 
 use crate::plugins::{
     bounds_2d_plugin::GlobalBounds2D,
@@ -99,22 +99,40 @@ impl From<VisibilityDef> for Visibility {
     }
 }
 
-/// ComputedVisibilityDef
+/// ViewVisibilityDef
 ///
-/// Serialisable representation of `ComputedVisibility` component
+/// Serialisable representation of `ViewVisibility` component
 ///
 /// Because this data is computed we'll just inject a default one into the scene and let bevy set
 /// the correct values.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
-pub struct ComputedVisibilityDef;
-impl From<ComputedVisibility> for ComputedVisibilityDef {
-    fn from(value: ComputedVisibility) -> Self {
-        ComputedVisibilityDef
+pub struct ViewVisibilityDef;
+impl From<ViewVisibility> for ViewVisibilityDef {
+    fn from(value: ViewVisibility) -> Self {
+        ViewVisibilityDef
     }
 }
-impl From<ComputedVisibilityDef> for ComputedVisibility {
-    fn from(value: ComputedVisibilityDef) -> Self {
-        ComputedVisibility::default()
+impl From<ViewVisibilityDef> for ViewVisibility {
+    fn from(value: ViewVisibilityDef) -> Self {
+        ViewVisibility::default()
+    }
+}
+/// InheritedVisibilityDef
+///
+/// Serialisable representation of `InheritedVisibility` component
+///
+/// Because this data is computed we'll just inject a default one into the scene and let bevy set
+/// the correct values.
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct InheritedVisibilityDef;
+impl From<InheritedVisibility> for InheritedVisibilityDef {
+    fn from(value: InheritedVisibility) -> Self {
+        InheritedVisibilityDef
+    }
+}
+impl From<InheritedVisibilityDef> for InheritedVisibility {
+    fn from(value: InheritedVisibilityDef) -> Self {
+        InheritedVisibility::default()
     }
 }
 
@@ -258,7 +276,8 @@ pub enum SerialisedComponent {
     Transform(TransformDef),
     GlobalTransform(GlobalTransformDef),
     Visibility(VisibilityDef),
-    ComputedVisibility(ComputedVisibilityDef),
+    ViewVisibility(ViewVisibilityDef),
+    InheritedVisibility(InheritedVisibilityDef),
     Mesh2dHandle(Mesh2dHandleDef),
     ColorMaterial(ColorMaterialHandleDef),
 
@@ -296,9 +315,14 @@ impl From<Visibility> for SerialisedComponent {
         SerialisedComponent::Visibility(value.into())
     }
 }
-impl From<ComputedVisibility> for SerialisedComponent {
-    fn from(value: ComputedVisibility) -> Self {
-        SerialisedComponent::ComputedVisibility(value.into())
+impl From<ViewVisibility> for SerialisedComponent {
+    fn from(value: ViewVisibility) -> Self {
+        SerialisedComponent::ViewVisibility(value.into())
+    }
+}
+impl From<InheritedVisibility> for SerialisedComponent {
+    fn from(value: InheritedVisibility) -> Self {
+        SerialisedComponent::InheritedVisibility(value.into())
     }
 }
 

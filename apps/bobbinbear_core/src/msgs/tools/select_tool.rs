@@ -5,7 +5,7 @@ use bevy::{
     prelude::*,
     utils::{HashMap, HashSet},
 };
-use bevy_mod_raycast::RaycastSource;
+use bevy_mod_raycast::prelude::RaycastSource;
 
 use crate::{
     components::bbid::BBId,
