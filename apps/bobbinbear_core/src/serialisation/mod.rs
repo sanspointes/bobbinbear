@@ -6,7 +6,7 @@ use bevy_mod_raycast::prelude::RaycastMesh;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    components::bbid::BBId,
+    components::{bbid::BBId, scene::BBObject},
     plugins::{
         bounds_2d_plugin::GlobalBounds2D,
         selection_plugin::{Selectable, Selected},
@@ -14,7 +14,7 @@ use crate::{
     },
 };
 
-use self::serialised_component::{ColorMaterialHandleDef, SerialisedComponent};
+use self::serialised_component::{ColorMaterialHandleDef, SerialisedComponent, Mesh2dHandleDef};
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerialisableEntity {
@@ -52,20 +52,31 @@ impl SerialisableEntity {
             serialised.components.push((*value).into())
         }
         if let Some(value) = world.get::<ViewVisibility>(entity) {
-            serialised.components.push((value.clone()).into())
+            serialised.components.push((*value).into())
         }
         if let Some(value) = world.get::<InheritedVisibility>(entity) {
-            serialised.components.push((value.clone()).into())
+            serialised.components.push((*value).into())
         }
         if let Some(value) = world.get::<RaycastMesh<Selectable>>(entity) {
             serialised.components.push((value.clone()).into())
         }
 
+        if let Some(value) = world.get::<Mesh2dHandle>(entity) {
+            let def = Mesh2dHandleDef::from(value.clone());
+            serialised
+                .components
+                .push(SerialisedComponent::Mesh2dHandle(def));
+        }
+
         if let Some(value) = world.get::<Handle<ColorMaterial>>(entity) {
-            let def = ColorMaterialHandleDef::from_world_and_handle(&world, value.clone()).into();
+            let def = ColorMaterialHandleDef::from_world_and_handle(world, value.clone());
             serialised
                 .components
                 .push(SerialisedComponent::ColorMaterial(def));
+        }
+
+        if let Some(value) = world.get::<BBObject>(entity) {
+            serialised.components.push((*value).into())
         }
 
         if let Some(value) = world.get::<Selectable>(entity) {
@@ -124,6 +135,10 @@ impl SerialisableEntity {
 
                 SerialisedComponent::Mesh2dHandle(def) => {
                     e.insert(Mesh2dHandle::from(def.clone()));
+                }
+
+                SerialisedComponent::BBObject(def) => {
+                    e.insert(*def);
                 }
 
                 SerialisedComponent::RaycastMeshSelectable(value) => {

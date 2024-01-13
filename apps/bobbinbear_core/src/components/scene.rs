@@ -2,8 +2,7 @@
 use bevy::prelude::*;
 // use crate::utils::vector::{FromPoint2, FromVec2};
 
-#[derive(Component, Reflect, Default)]
-#[reflect(Component)]
+#[derive(Component, Reflect, Default, serde::Serialize, serde::Deserialize, Clone, Copy)]
 /// Represents a scene object that would show in the editor, i.e. a Vector shape, some text.
 pub enum BBObject {
     // Scene Object type for a vector element
@@ -11,8 +10,14 @@ pub enum BBObject {
     Vector,
 }
 
+#[derive(Copy, Clone, Default, Component)]
+pub enum VectorGraphDirty {
+    #[default]
+    Default,
+    Dirty,
+}
+
 #[derive(Component, Reflect, Default, Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
-#[reflect(Component)]
 /// Component represents something that has an index associated with it.
 pub struct BBIndex(pub usize);
 

@@ -193,12 +193,11 @@ pub fn msg_handler_box_tool_input(
         Ok((BoxFsm::PointerDown { cursor_origin_pos }, BoxFsm::Default)) => {
             let bbid = BBId::default();
             let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
-                let vector_graph = build_vector_graph_box(vec2(0., 0.), vec2(10., 10.));
+                let vector_graph = build_vector_graph_box(vec2(0., 0.), vec2(100., 100.));
 
                 entity.insert((
                     Name::from("Box"),
                     bbid,
-                    BBObject::Vector,
                     BBObjectVectorBundle::from_vector_graph(vector_graph).with_transform(Transform {
                         translation: Vec3::new(cursor_origin_pos.x, cursor_origin_pos.y, 0.),
                         ..Default::default()

@@ -1,4 +1,3 @@
-use bb_vector_network::bb_graph::BBGraph;
 use bevy::{
     prelude::*,
     render::{mesh::Indices, render_resource::PrimitiveTopology},
@@ -19,16 +18,20 @@ pub fn sys_mesh_vector_graph(
         (
             Option<&Fill>,
             Option<&Stroke>,
-            &VectorGraph,
+            &mut VectorGraph,
             &mut Mesh2dHandle,
         ),
         Or<(Changed<VectorGraph>, Changed<Fill>, Changed<Stroke>)>,
     >,
 ) {
-    for (maybe_fill_mode, maybe_stroke_mode, vector_graph, mut mesh) in &mut query {
+    for (maybe_fill_mode, maybe_stroke_mode, mut vector_graph, mut mesh) in &mut query {
         let mut buffers = VertexBuffers::new();
 
         if let Some(fill_mode) = maybe_fill_mode {
+            match vector_graph.0.update_regions() {
+                Ok(_) => {},
+                Err(reason) => println!("sys_mesh_vector_graph: Error updating BBGraph.\nReason: {reason:?}"),
+            };
             fill(&mut fill_tess, &vector_graph, fill_mode, &mut buffers);
         }
 

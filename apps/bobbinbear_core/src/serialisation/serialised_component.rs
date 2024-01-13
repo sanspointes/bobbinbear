@@ -5,11 +5,11 @@
 use bevy::{prelude::*, sprite::Mesh2dHandle};
 use bevy_mod_raycast::prelude::RaycastMesh;
 
-use crate::plugins::{
+use crate::{plugins::{
     bounds_2d_plugin::GlobalBounds2D,
     selection_plugin::{Selectable, Selected},
     vector_graph_plugin::{Fill, Stroke, VectorGraph},
-};
+}, components::scene::BBObject};
 
 /// NameDef
 ///
@@ -281,11 +281,14 @@ pub enum SerialisedComponent {
     Mesh2dHandle(Mesh2dHandleDef),
     ColorMaterial(ColorMaterialHandleDef),
 
-    // App
+    // App State
     RaycastMeshSelectable(RaycastMeshSelectableDef),
     Selectable(SelectableDef),
     Selected(SelectedDef),
     GlobalBounds2D(GlobalBounds2DDef),
+
+    // Object Types
+    BBObject(BBObject),
 
     // bb_vector_network_related
     VectorGraph(VectorGraph),
@@ -329,6 +332,12 @@ impl From<InheritedVisibility> for SerialisedComponent {
 impl From<RaycastMesh<Selectable>> for SerialisedComponent {
     fn from(value: RaycastMesh<Selectable>) -> Self {
         SerialisedComponent::RaycastMeshSelectable(value.into())
+    }
+}
+
+impl From<BBObject> for SerialisedComponent {
+    fn from(value: BBObject) -> Self {
+        SerialisedComponent::BBObject(value)
     }
 }
 
