@@ -50,11 +50,11 @@ impl Plugin for SelectionPlugin {
         app.add_systems(PostStartup, sys_setup_selection_bounds)
             .add_systems(PostUpdate, sys_selection_bounds_handle_change.after(sys_update_global_bounds_2d).in_set(EditorSet::PostPlugins));
 
-        app.add_systems(PostStartup, sys_setup_selection_raycast)
+        app.add_plugins(DeferredRaycastingPlugin::<Selectable>::default())
+            .add_systems(PostStartup, sys_setup_selection_raycast)
             .add_systems(
                 First,
                 sys_selection_raycast_update_ray.before(RaycastSystem::BuildRays::<Selectable>),
-
             );
 
         app.register_type::<Selected>()

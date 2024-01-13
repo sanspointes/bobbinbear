@@ -148,7 +148,7 @@ fn sys_setup_screenspace_test(
                 TopLeft => "TopLeftTest",
             };
 
-            let handle = meshes.add(Mesh::from(shape::Quad::new(vec2(10., 10.))).into());
+            let handle = meshes.add(Mesh::from(shape::Quad::new(vec2(10., 10.))));
             builder.spawn((
                 Name::from(name),
                 orientation,

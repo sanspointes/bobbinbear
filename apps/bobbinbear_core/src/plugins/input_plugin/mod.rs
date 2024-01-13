@@ -9,9 +9,8 @@ use bevy::{
     sprite::MaterialMesh2dBundle,
     utils::HashSet,
 };
-use bevy_mod_raycast::{
-    prelude::{RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem},
-    DefaultRaycastingPlugin,
+use bevy_mod_raycast::prelude::{
+    DeferredRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
 use crate::{editor::EditorSet, systems::camera::CameraTag};
@@ -34,7 +33,7 @@ impl Plugin for InputPlugin {
         app.insert_resource(RawInputResource::default())
             .add_event::<RawInputMessage>()
             .add_event::<InputMessage>()
-            .add_plugins(DefaultRaycastingPlugin::default())
+            .add_plugins(DeferredRaycastingPlugin::<RaycastRawInput>::default())
             // Hit plane creation and movement
             .add_systems(Startup, sys_setup_input_plugin)
             // Input events
