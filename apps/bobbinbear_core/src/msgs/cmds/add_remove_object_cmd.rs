@@ -4,10 +4,7 @@ use std::{
 };
 
 use anyhow::anyhow;
-use bevy::{
-    ecs::{world::EntityMut},
-    prelude::*,
-};
+use bevy::prelude::*;
 
 use crate::{
     components::bbid::{BBId, BBIdUtils},
@@ -102,7 +99,7 @@ impl AddObjectCmd {
 
 impl Cmd for AddObjectCmd {
     fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
-        let Some(serialised) = &self.serialised else {
+        let Some(serialised) = &self.serialised.take() else {
             return Err(CmdError::DoubleExecute);
         };
 
