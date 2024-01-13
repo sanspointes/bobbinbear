@@ -1,18 +1,20 @@
 use std::ops::Sub;
 
 use bevy::{
+    math::{vec2, vec3},
     prelude::*,
-    window::PrimaryWindow, sprite::{MaterialMesh2dBundle, Mesh2dHandle}, math::vec2,
+    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
 };
 
 use crate::{
     constants::{SELECTION_BOUNDS_STROKE_WIDTH, SELECT_COLOR},
-    plugins::{screen_space_root_plugin::ScreenSpaceRoot, bounds_2d_plugin::GlobalBounds2D},
-    systems::camera::CameraTag,
-    utils::coordinates,
+    plugins::{bounds_2d_plugin::GlobalBounds2D, screen_space_root_plugin::ScreenSpaceRoot}, utils::mesh::translate_mesh,
 };
 
-use super::Selected;
+use super::{
+    selection_bounds_material::{selection_bounds_mesh, SelectionBoundsMaterial},
+    Selected,
+};
 
 // Systems responsible for creating and updating the screenspace selection bounds of all selected
 // elements.
@@ -22,7 +24,7 @@ pub(super) struct SelectionBoundsTag;
 pub(super) fn sys_setup_selection_bounds(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut materials: ResMut<Assets<SelectionBoundsMaterial>>,
     q_ss_root: Query<Entity, With<ScreenSpaceRoot>>,
 ) {
     #[cfg(feature = "debug_trace")]
@@ -30,14 +32,20 @@ pub(super) fn sys_setup_selection_bounds(
 
     let ss_root = q_ss_root.single();
 
-    let handle = meshes.add(Mesh::from(shape::Quad::new(vec2(10000., 10000.))).into());
+    let mesh = Mesh::from(shape::Quad::new(vec2(1., 1.)));
+    let handle = meshes.add(translate_mesh(&mesh, vec3(0.5, 0.5, 0.)).unwrap());
     commands
         .spawn((
             Name::from("Selection bounds"),
             SelectionBoundsTag,
             MaterialMesh2dBundle {
                 mesh: handle.into(),
-                material: materials.add(ColorMaterial::from(SELECT_COLOR)),
+                material: materials.add(SelectionBoundsMaterial {
+                    color: SELECT_COLOR,
+                    border_color: SELECT_COLOR.with_a(0.05),
+                    border_width: SELECTION_BOUNDS_STROKE_WIDTH,
+                    dimensions: Vec2::default(),
+                }),
                 // visibility: Visibility::Hidden,
                 ..default()
             },
@@ -46,7 +54,7 @@ pub(super) fn sys_setup_selection_bounds(
 }
 
 pub(super) fn sys_selection_bounds_handle_change(
-    mut meshes: ResMut<Assets<Mesh>>,
+    mut selection_bounds_material: ResMut<Assets<SelectionBoundsMaterial>>,
 
     mut system_set: ParamSet<(
         // Query for selection or bounds changes
@@ -57,7 +65,11 @@ pub(super) fn sys_selection_bounds_handle_change(
 
     // To Mutate
     mut q_selection_bounds: Query<
-        (&Mesh2dHandle, &mut Transform, &mut Visibility),
+        (
+            &Handle<SelectionBoundsMaterial>,
+            &mut Transform,
+            &mut Visibility,
+        ),
         With<SelectionBoundsTag>,
     >,
     // To Calculate
@@ -70,7 +82,6 @@ pub(super) fn sys_selection_bounds_handle_change(
     if !needs_update {
         return;
     }
-
 
     #[cfg(feature = "debug_bounds")]
     debug!("Updating selection bounds!");
@@ -90,11 +101,10 @@ pub(super) fn sys_selection_bounds_handle_change(
         }
     }
 
-
     #[cfg(feature = "debug_bounds")]
     debug!("Recalculated selection bounds (global min max: {min:?} {max:?})");
 
-    let (handle, mut transform, mut visibility) = q_selection_bounds.single_mut();
+    let (mat_handle, mut transform, mut visibility) = q_selection_bounds.single_mut();
     *visibility = match any_selected {
         true => Visibility::Visible,
         false => Visibility::Hidden,
@@ -118,8 +128,8 @@ pub(super) fn sys_selection_bounds_handle_change(
         transform.translation.x = screen_min.x;
         transform.translation.y = screen_min.y;
 
-        if let Some(mut mesh) = meshes.get_mut(&handle.0) {
-            *mesh = Mesh::from(shape::Quad::new(extents)).into()
+        if let Some(mat) = selection_bounds_material.get_mut(mat_handle) {
+            mat.dimensions = extents;
         }
 
         // let shape = shapes::Rectangle {

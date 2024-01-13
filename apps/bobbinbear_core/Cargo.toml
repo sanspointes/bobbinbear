@@ -26,7 +26,7 @@ name = "bobbinbear_core"
 path = "src/main.rs"
 
 [features]
-default = ["bevy/bevy_sprite", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "bevy/webgl2", "lyon_tessellation/serialization"]
+default = ["bevy/bevy_sprite", "bevy/bevy_pbr", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "bevy/webgl2", "lyon_tessellation/serialization"]
 desktop = ["bevy/dynamic_linking"]
 linux = ["bevy/x11"]
 debug_text = ["bevy-debug-text-overlay/debug"]

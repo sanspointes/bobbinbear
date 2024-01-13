@@ -670,6 +670,7 @@ dependencies = [
  "bevy_core_pipeline",
  "bevy_ecs",
  "bevy_math",
+ "bevy_pbr",
  "bevy_reflect",
  "bevy_render",
  "bevy_sprite",
