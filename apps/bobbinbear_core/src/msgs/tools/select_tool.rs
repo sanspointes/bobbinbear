@@ -1,5 +1,7 @@
+use std::{rc::Rc, sync::Arc};
+
 use bevy::{
-    ecs::system::SystemState,
+    ecs::system::{BoxedSystem, SystemState},
     input::ButtonState,
     math::Vec3Swizzles,
     prelude::*,
@@ -323,8 +325,6 @@ pub fn msg_handler_select_tool(
                 }
             };
 
-            
-
             match ev {
                 InputMessage::PointerDown { .. } => {
                     fsm.pointer_down(hit_bbid, modifiers, world_pos)
@@ -359,8 +359,10 @@ pub fn msg_handler_select_tool(
             // Uninspect if click outside of selected element.
             let state = world.resource::<State<InspectState>>();
             info!("{state:?} {:?}", new);
-            if new.is_empty() && !state.eq(&InspectState::None)  {
-                world.resource_mut::<NextState<InspectState>>().set(InspectState::None);
+            if new.is_empty() && !state.eq(&InspectState::None) {
+                world
+                    .resource_mut::<NextState<InspectState>>()
+                    .set(InspectState::None);
             }
 
             if !new.eq(old) {

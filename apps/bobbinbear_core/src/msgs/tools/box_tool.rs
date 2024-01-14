@@ -232,7 +232,6 @@ pub fn msg_handler_box_tool_input(
                 entity.insert((
                     Name::from("Box"),
                     bbid,
-                    BBObject::Vector,
                     BBObjectVectorBundle::from_vector_graph(vector_graph).with_transform(Transform {
                         translation: Vec3::new(box_origin_pos.x, box_origin_pos.y, 0.),
                         ..Default::default()

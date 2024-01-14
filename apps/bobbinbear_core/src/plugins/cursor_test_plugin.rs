@@ -30,7 +30,6 @@ pub fn sys_setup_cursor_test(
             CursorTestTag,
             Name::from("CursorTest"),
             MaterialMeshBundle {
-                mesh: 
             },
         ));
     });

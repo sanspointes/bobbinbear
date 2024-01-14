@@ -1,10 +1,19 @@
+mod world_to_screen;
+
 use std::ops::Div;
 
-use bevy::{math::{Vec3Swizzles, vec2}, prelude::*, window::PrimaryWindow, sprite::MaterialMesh2dBundle};
+use bevy::{
+    math::{vec2, Vec3Swizzles},
+    prelude::*,
+    sprite::MaterialMesh2dBundle,
+    window::PrimaryWindow,
+};
 
 use crate::{
     editor::EditorSet, msgs::sys_msg_handler, systems::camera::CameraTag, utils::coordinates,
 };
+
+pub use self::world_to_screen::{sys_update_world_to_screen, WorldToScreen};
 
 #[derive(Component, Reflect, Default, Debug, Copy, Clone, PartialEq)]
 #[reflect(Component)]
@@ -49,6 +58,9 @@ impl Plugin for ScreenSpaceRootPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, sys_setup)
             .add_systems(Update, sys_update_ss_root.in_set(EditorSet::PostMsgs));
+
+        app.add_systems(PostUpdate, sys_update_world_to_screen);
+        app.register_type::<WorldToScreen>();
         // In debug mode show the test bounds elements
         #[cfg(debug_assertions)]
         {
@@ -113,7 +125,6 @@ pub fn sys_update_ss_root(
         projection_area,
     };
     ss_root.set_if_neq(new_ss_root);
-
 
     let half_size = window_size.div(2.);
     ss_root_transform.translation.x = -half_size.x;

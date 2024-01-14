@@ -1,35 +1,26 @@
+mod sys_enter_exit;
+mod sys_update;
 mod utils;
 
-use bb_vector_network::{
-    bb_edge::{BBEdge, BBEdgeIndex},
-    bb_node::BBNodeIndex,
-};
-use bevy::{
-    math::{vec2, vec3, Vec3Swizzles, Vec4Swizzles},
-    prelude::*,
-    render::mesh::MeshVertexAttribute,
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
-};
+use bevy::math::vec3;
+use bevy::{math::vec2, prelude::*, sprite::Mesh2dHandle};
 
 use crate::{
     components::{
         bbid::BBId,
-        scene::{BBIndex, BBNode, BBObject},
+        scene::{BBIndex, BBObject},
     },
-    constants::Z_INDEX_BB_NODE,
     msgs::{cmds::inspect_cmd::InspectingTag, sys_msg_handler},
-    plugins::{
-        inspect_plugin::InspectArtifact, screen_space_root_plugin::ScreenSpaceRoot,
-        selection_plugin::SelectableBundle, vector_graph_plugin::VectorGraph,
-    },
-    prelude::W,
-    utils::{
-        coordinates::{LocalToScreen, ScreenToLocal},
-        mesh::{add_vertex_colors_mesh, combine_meshes, translate_mesh},
-    },
+    plugins::{screen_space_root_plugin::ScreenSpaceRoot, vector_graph_plugin::VectorGraph},
+    utils::mesh::{add_vertex_colors_mesh, combine_meshes},
 };
 
 // use self::utils::make_path_of_bb_path_event;
+
+use self::{
+    sys_enter_exit::{sys_handle_enter_inspect_vector, sys_handle_exit_inspect_vector},
+    sys_update::{sys_check_needs_update, sys_update_bb_nodes},
+};
 
 use super::InspectState;
 
@@ -38,6 +29,7 @@ pub struct InspectVectorPlugin;
 impl Plugin for InspectVectorPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(VectorResource::default())
+            .add_systems(Startup, sys_setup_cached_meshes)
             .add_systems(
                 OnEnter(InspectState::InspectVector),
                 sys_handle_enter_inspect_vector,
@@ -93,7 +85,7 @@ fn sys_setup_cached_meshes(
     {
         let mut control_node_m1 = Mesh::from(shape::Quad::new(vec2(3., 3.)));
         add_vertex_colors_mesh(&mut control_node_m1, Color::BLUE);
-        let mut control_node_m2 = Mesh::from(shape::Quad::new(vec2(3., 3.)));
+        let mut control_node_m2 = Mesh::from(shape::Quad::new(vec2(5., 5.)));
         add_vertex_colors_mesh(&mut control_node_m2, Color::WHITE);
 
         let to_combine = [control_node_m1, control_node_m2];
@@ -109,7 +101,7 @@ fn sys_setup_cached_meshes(
             &to_combine,
             &transforms,
             true,
-            true,
+            false,
             true,
             true,
         ));
@@ -120,7 +112,7 @@ fn sys_setup_cached_meshes(
     {
         let mut control_node_m1 = Mesh::from(shape::Circle::new(3.));
         add_vertex_colors_mesh(&mut control_node_m1, Color::BLUE);
-        let mut control_node_m2 = Mesh::from(shape::Circle::new(3.));
+        let mut control_node_m2 = Mesh::from(shape::Circle::new(5.));
         add_vertex_colors_mesh(&mut control_node_m2, Color::WHITE);
 
         let to_combine = [control_node_m1, control_node_m2];
@@ -136,184 +128,11 @@ fn sys_setup_cached_meshes(
             &to_combine,
             &transforms,
             true,
-            true,
+            false,
             true,
             true,
         ));
         resource.cached_meshes.endpoint_node = Some(handle.into());
-    }
-}
-
-/// Generates all of the entities require to inspect the currently inspecting BBVector entity.
-fn sys_handle_enter_inspect_vector(
-    mut commands: Commands,
-    res: Res<VectorResource>,
-    q_inspected_vector: Query<
-        (Entity, &BBId, &VectorGraph, &GlobalTransform),
-        (With<BBObject>, With<InspectingTag>),
-    >,
-    q_ss_root: Query<(Entity, &ScreenSpaceRoot)>,
-) {
-    let (entity, bbid, graph, global_transform) = q_inspected_vector
-        .get_single()
-        .expect("sys_handle_enter_inspect_vector: None or more than 1 entity inspecting.");
-    let global_matrix = global_transform.compute_matrix();
-    let (_, _, parent_pos) = global_matrix.to_scale_rotation_translation();
-    info!(
-        "sys_handle_exit_inspect_vector: Inspecting {:?} with pos {parent_pos:?}",
-        bbid
-    );
-
-    let (ss_root_entity, ss_root) = q_ss_root.single();
-
-    let make_default_node_bundle = |node: BBNode, index: usize, screen_pos: Vec2| {
-        (
-            BBId::default(),
-            BBNode::Endpoint,
-            BBIndex(index),
-            InspectArtifact(*bbid),
-            SelectableBundle::default(),
-            MaterialMesh2dBundle {
-                mesh: match node {
-                    BBNode::Endpoint => res.cached_meshes.endpoint_node.as_ref().unwrap().clone(),
-                    BBNode::Ctrl1 | BBNode::Ctrl2 => res.cached_meshes.control_node.as_ref().unwrap().clone(),
-                },
-                material: res.cached_meshes.material.as_ref().unwrap().clone(),
-                transform: Transform {
-                    translation: screen_pos.extend(Z_INDEX_BB_NODE),
-                    ..Default::default()
-                },
-                ..Default::default()
-            },
-        )
-    };
-
-    for (idx, node) in &graph.0.nodes {
-        let screen_pos = node.position().local_to_screen(&global_matrix, ss_root);
-        let mut e = commands.spawn(make_default_node_bundle(
-            BBNode::Endpoint,
-            idx.0,
-            screen_pos,
-        ));
-        e.insert(Name::from(format!("{}", idx).to_string()));
-    }
-
-    for (idx, edge) in &graph.0.edges {
-        let (ctrl1, ctrl2) = match edge {
-            BBEdge::Line { .. } => (None, None),
-            BBEdge::Quadratic { ctrl1, .. } => (Some(ctrl1), None),
-            BBEdge::Cubic { ctrl1, ctrl2, .. } => (Some(ctrl1), Some(ctrl2)),
-        };
-
-        if let Some(ctrl1) = ctrl1 {
-            let screen_pos = ctrl1.local_to_screen(&global_matrix, ss_root);
-            let e = commands.spawn(make_default_node_bundle(BBNode::Ctrl1, idx.0, screen_pos));
-        }
-
-        if let Some(ctrl2) = ctrl2 {
-            let screen_pos = ctrl2.local_to_screen(&global_matrix, ss_root);
-            let e = commands.spawn(make_default_node_bundle(BBNode::Ctrl2, idx.0, screen_pos));
-        }
-    }
-}
-
-fn sys_handle_exit_inspect_vector(
-    mut commands: Commands,
-    q_inspected_vector: Query<(Entity, &BBId, &VectorGraph), (With<BBObject>, With<InspectingTag>)>,
-    q_inspect_artifacts: Query<(Entity, &InspectArtifact)>,
-) {
-    let (_entity, bbid, _path) = q_inspected_vector
-        .get_single()
-        .expect("sys_handle_enter_inspect_vector: None or more than 1 entity inspecting.");
-    info!("sys_handle_exit_inspect_vector: Uinspecting {:?}", bbid);
-
-    let to_remove = q_inspect_artifacts
-        .iter()
-        .filter_map(|(entity, inspect_artifact)| {
-            if inspect_artifact.0 == *bbid {
-                Some(entity)
-            } else {
-                None
-            }
-        });
-
-    for e in to_remove {
-        if let Some(e) = commands.get_entity(e) {
-            e.despawn_recursive();
-        } else {
-            warn!("sys_handle_exit_inspect_vector: Attempted to despawn {e:?} but no entity found.")
-        }
-    }
-}
-
-fn sys_check_needs_update(
-    q_inspected_vector: Query<
-        Entity,
-        (
-            With<BBObject>,
-            With<InspectingTag>,
-            Or<(Changed<GlobalTransform>, Changed<VectorGraph>)>,
-        ),
-    >,
-    q_ss_root: Query<Entity, Changed<ScreenSpaceRoot>>,
-) -> bool {
-    let inspected_vector_changed = q_inspected_vector.get_single().is_ok();
-    let screenspace_root_changed = q_ss_root.get_single().is_ok();
-    inspected_vector_changed || screenspace_root_changed
-}
-
-fn sys_update_bb_nodes(
-    In(needs_update): In<bool>,
-    q_inspected_vector: Query<
-        (Entity, &BBId, &VectorGraph, &GlobalTransform),
-        (With<BBObject>, With<InspectingTag>),
-    >,
-    q_ss_root: Query<&ScreenSpaceRoot>,
-    mut q_bb_node: Query<(&BBNode, &BBIndex, &mut Transform)>,
-) {
-    if !needs_update {
-        return;
-    }
-
-    let ss_root = q_ss_root.single();
-    let Ok((_entity, _bbid, vector_graph, global_transform)) = q_inspected_vector.get_single()
-    else {
-        return;
-    };
-
-    let global_matrix = global_transform.compute_matrix();
-
-    for (bb_node, bb_index, mut transform) in &mut q_bb_node {
-        match bb_node {
-            BBNode::Endpoint => {
-                let pos = vector_graph
-                    .0
-                    .node(BBNodeIndex(bb_index.0))
-                    .unwrap()
-                    .position();
-                transform.translation = pos
-                    .local_to_screen(&global_matrix, ss_root)
-                    .extend(Z_INDEX_BB_NODE);
-            }
-            BBNode::Ctrl1 => {
-                let edge = vector_graph.0.edge(BBEdgeIndex(bb_index.0)).unwrap();
-                match edge {
-                    edge => panic!("sys_update_bb_nodes: Trying to update BBNode::Ctrl1 node but it references a {edge:?}."),
-                    BBEdge::Quadratic { ctrl1, .. } | BBEdge::Cubic { ctrl1, .. } => {
-                        transform.translation = ctrl1.local_to_screen(&global_matrix, ss_root).extend(Z_INDEX_BB_NODE);
-                    }
-                }
-            }
-            BBNode::Ctrl2 => {
-                let edge = vector_graph.0.edge(BBEdgeIndex(bb_index.0)).unwrap();
-                match edge {
-                    BBEdge::Cubic { ctrl2, .. } => {
-                        transform.translation = ctrl2.local_to_screen(&global_matrix, ss_root).extend(Z_INDEX_BB_NODE);
-                    }
-                    edge => panic!("sys_update_bb_nodes: Trying to update BBNode::Ctrl2 node but it references a {edge:?}.")
-                }
-            }
-        }
     }
 }
 

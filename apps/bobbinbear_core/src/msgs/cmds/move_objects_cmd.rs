@@ -1,9 +1,12 @@
-use std::{fmt::Display, sync::Arc, mem::MaybeUninit};
+use std::{fmt::Display, sync::Arc};
 
 use anyhow::anyhow;
 use bevy::prelude::*;
 
-use crate::{components::bbid::BBId, plugins::bounds_2d_plugin::GlobalBounds2D};
+use crate::{
+    components::{bbid::BBId, utility::OnMoveCommand},
+    plugins::bounds_2d_plugin::GlobalBounds2D,
+};
 
 use super::{Cmd, CmdError, CmdMsg, CmdType, CmdUpdateTreatment};
 
@@ -77,7 +80,14 @@ impl MoveObjectsCmd {
 impl Cmd for MoveObjectsCmd {
     fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
         let to_move_entities = self.get_to_move_entities(world);
-        let mut q_movable = world.query::<(&mut Transform, Option<&mut GlobalBounds2D>)>();
+        let mut q_movable = world.query::<(
+            Entity,
+            &mut Transform,
+            Option<&mut GlobalBounds2D>,
+            Option<&mut OnMoveCommand>,
+        )>();
+
+        let mut to_callback = vec![];
 
         // to_move_transforms.iite
         for (entity, bbid) in to_move_entities {
@@ -87,7 +97,7 @@ impl Cmd for MoveObjectsCmd {
                 .find(|model| bbid.eq(&model.target))
                 .ok_or(anyhow!("Could not find to_move with bbid {bbid:?}"))?;
 
-            let (mut transform, maybe_bounds_2d) =
+            let (entity, mut transform, maybe_bounds_2d, maybe_on_move) =
                 q_movable.get_mut(world, entity).map_err(|err| {
                     anyhow!("Could not get transform on entity {entity:?}.\n - Reason {err:?}")
                 })?;
@@ -107,24 +117,29 @@ impl Cmd for MoveObjectsCmd {
             transform.translation.y = initial_position.y + self.offset.y;
 
             // TODO: Low priority. Make this faster by translating the bounds
-            match maybe_bounds_2d {
-                Some(mut bounds_2d) => {
-                    #[cfg(feature = "debug_bounds")]
-                    debug!("MoveObjectsCmd reset GlobalBounds2D on {entity:?}.");
-                    *bounds_2d = GlobalBounds2D::NeedsCalculate;
-                }
-                None => {
-                    #[cfg(feature = "debug_bounds")]
-                    debug!("MoveObjectsCmd could not update GlobalBounds2D on {entity:?}, could not get component.");
-                }
+            if let Some(mut bounds_2d) = maybe_bounds_2d {
+                *bounds_2d = GlobalBounds2D::NeedsCalculate;
             }
+            if let Some(on_move) = maybe_on_move {
+                to_callback.push((entity, on_move.clone()))
+            }
+        }
+
+        for (entity, callback) in to_callback {
+            callback.run(world, entity);
         }
 
         Ok(())
     }
     fn undo(&mut self, world: &mut bevy::prelude::World) -> Result<(), CmdError> {
         let to_move_entities = self.get_to_move_entities(world);
-        let mut q_movable = world.query::<(&mut Transform, Option<&mut GlobalBounds2D>)>();
+        let mut q_movable = world.query::<(
+            &mut Transform,
+            Option<&mut GlobalBounds2D>,
+            Option<&mut OnMoveCommand>,
+        )>();
+
+        let mut to_callback = vec![];
 
         // to_move_transforms.iite
         for (entity, bbid) in to_move_entities {
@@ -134,7 +149,7 @@ impl Cmd for MoveObjectsCmd {
                 .find(|model| bbid.eq(&model.target))
                 .ok_or(anyhow!("Could not find to_move with bbid {bbid:?}"))?;
 
-            let (mut transform, maybe_bounds_2d) =
+            let (mut transform, maybe_bounds_2d, maybe_on_move) =
                 q_movable.get_mut(world, entity).map_err(|err| {
                     anyhow!("Could not get transform on entity {entity:?}.\n - Reason {err:?}")
                 })?;
@@ -147,17 +162,16 @@ impl Cmd for MoveObjectsCmd {
             transform.translation.y = initial_position.y;
 
             // TODO: Low priority. Make this faster by translating the bounds
-            match maybe_bounds_2d {
-                Some(mut bounds_2d) => {
-                    #[cfg(feature = "debug_bounds")]
-                    debug!("MoveObjectsCmd reset GlobalBounds2D on {entity:?}.");
-                    *bounds_2d = GlobalBounds2D::NeedsCalculate;
-                }
-                None => {
-                    #[cfg(feature = "debug_bounds")]
-                    debug!("MoveObjectsCmd could not update GlobalBounds2D on {entity:?}, could not get component.");
-                }
+            if let Some(mut bounds_2d) = maybe_bounds_2d {
+                *bounds_2d = GlobalBounds2D::NeedsCalculate;
             }
+            if let Some(on_move) = maybe_on_move {
+                to_callback.push((entity, on_move.clone()))
+            }
+        }
+
+        for (entity, callback) in to_callback {
+            callback.run(world, entity);
         }
 
         Ok(())

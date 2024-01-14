@@ -37,7 +37,7 @@ pub fn translate_mesh(mesh: &Mesh, translate: Vec3) -> anyhow::Result<Mesh> {
 pub fn add_vertex_colors_mesh(mesh: &mut Mesh, color: Color) {
     let count = mesh.count_vertices();
 
-    let color_data = vec![[color.r(), color.g(), color.b()]; count];
+    let color_data = vec![[color.r(), color.g(), color.b(), color.a()]; count];
     mesh.insert_attribute(Mesh::ATTRIBUTE_COLOR, color_data);
 }
 
