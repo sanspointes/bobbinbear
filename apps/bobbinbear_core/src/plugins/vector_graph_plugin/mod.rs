@@ -15,9 +15,10 @@ impl Plugin for VectorGraphPlugin {
         app.insert_resource(FillTessellator(fill_tess))
             .insert_resource(StrokeTessellator(stroke_tess));
 
+        app.configure_sets(PostUpdate, BuildShapes.after(bevy::transform::TransformSystem::TransformPropagate));
         app.add_systems(
             PostUpdate,
-            sys_mesh_vector_graph.after(bevy::transform::TransformSystem::TransformPropagate),
+            sys_mesh_vector_graph.in_set(BuildShapes),
         );
         // app.add_systems(PostStartup, sys_setup_selection_bounds)
         //     .add_systems(PostUpdate, sys_selection_bounds_handle_change.after(sys_update_global_bounds_2d).in_set(EditorSet::PostPlugins));

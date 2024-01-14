@@ -92,7 +92,7 @@ impl Plugin for EditorPlugin {
             .add_plugins((ToolMsgPlugin, CmdMsgPlugin, InspectPlugin, VectorGraphPlugin))
 
             .configure_sets(Update, (EditorSet::PreMsgs, EditorSet::Msgs, EditorSet::PostMsgs).chain()) 
-            .configure_set(PostUpdate, EditorSet::PostPlugins.after(BuildShapes))
+            .configure_sets(PostUpdate, EditorSet::PostPlugins.after(BuildShapes))
 
             .add_systems(PreStartup, sys_setup_camera)
             .add_systems(Update, sys_handle_pre_editor_msgs.in_set(EditorSet::PreMsgs))

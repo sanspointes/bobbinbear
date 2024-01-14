@@ -9,6 +9,7 @@ use crate::{
     constants::Z_INDEX_BB_NODE,
     msgs::cmds::inspect_cmd::InspectingTag,
     plugins::{
+        bounds_2d_plugin::GlobalBounds2D,
         inspect_plugin::InspectArtifact,
         screen_space_root_plugin::{ScreenSpaceRoot, WorldToScreen},
         vector_graph_plugin::VectorGraph,
@@ -91,11 +92,7 @@ mod handle_moved_utils {
         utils::coordinates::ScreenToLocal,
     };
 
-    pub(super) fn get_node_local_pos(
-        world: &mut World,
-        e: Entity,
-        inspecting_e: Entity,
-    ) -> Vec3 {
+    pub(super) fn get_node_local_pos(world: &mut World, e: Entity, inspecting_e: Entity) -> Vec3 {
         let Some(screen_pos) = world.get::<Transform>(e).map(|t| t.translation) else {
             panic!("Could not get transform of BBNode on move.");
         };
@@ -119,6 +116,8 @@ pub(super) fn handle_endpoint_node_moved(world: &mut World, entity: Entity) {
         .node_mut(node_index)
         .unwrap()
         .set_position(new_position.xy());
+
+    GlobalBounds2D::reset_on_entity(world, inspecting_entity);
 }
 
 pub(super) fn handle_ctrl1_node_moved(world: &mut World, entity: Entity) {
@@ -128,13 +127,14 @@ pub(super) fn handle_ctrl1_node_moved(world: &mut World, entity: Entity) {
 
     let edge_idx = BBEdgeIndex(world.get::<BBIndex>(entity).unwrap().0);
     let mut graph = world.get_mut::<VectorGraph>(inspecting_entity).unwrap();
-    match graph
-        .0
-        .edge_mut(edge_idx)
-        .unwrap() {
-            BBEdge::Line { start, end } => panic!("No line."),
-            BBEdge::Quadratic { ref mut ctrl1, .. } | BBEdge::Cubic { ref mut ctrl1, .. } => *ctrl1 = new_position.xy(),
+    match graph.0.edge_mut(edge_idx).unwrap() {
+        BBEdge::Line { start, end } => panic!("No line."),
+        BBEdge::Quadratic { ref mut ctrl1, .. } | BBEdge::Cubic { ref mut ctrl1, .. } => {
+            *ctrl1 = new_position.xy()
         }
+    }
+
+    GlobalBounds2D::reset_on_entity(world, inspecting_entity);
 }
 
 pub(super) fn handle_ctrl2_node_moved(world: &mut World, entity: Entity) {
@@ -144,12 +144,10 @@ pub(super) fn handle_ctrl2_node_moved(world: &mut World, entity: Entity) {
 
     let edge_idx = BBEdgeIndex(world.get::<BBIndex>(entity).unwrap().0);
     let mut graph = world.get_mut::<VectorGraph>(inspecting_entity).unwrap();
-    match graph
-        .0
-        .edge_mut(edge_idx)
-        .unwrap() {
-            BBEdge::Line { start, end } => panic!("No line."),
-            BBEdge::Quadratic { ref mut ctrl1, .. } => panic!("No Quadratic."),
-            BBEdge::Cubic { ref mut ctrl1, .. } => *ctrl1 = new_position.xy(),
-        }
+    match graph.0.edge_mut(edge_idx).unwrap() {
+        BBEdge::Line { start, end } => panic!("No line."),
+        BBEdge::Quadratic { ref mut ctrl1, .. } => panic!("No Quadratic."),
+        BBEdge::Cubic { ref mut ctrl1, .. } => *ctrl1 = new_position.xy(),
+    }
+    GlobalBounds2D::reset_on_entity(world, inspecting_entity);
 }
