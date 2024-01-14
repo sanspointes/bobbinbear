@@ -3,7 +3,7 @@ use std::{fmt::{Debug, Display}, mem, sync::Arc};
 use anyhow::anyhow;
 use bevy::prelude::*;
 
-use crate::{components::bbid::{BBId, BBIdUtils}, plugins::vector_graph_plugin::VectorGraph};
+use crate::{components::bbid::{BBId, BBIdUtils}, plugins::{vector_graph_plugin::VectorGraph, bounds_2d_plugin::GlobalBounds2D}};
 
 use super::{Cmd, CmdError, CmdType, CmdMsg, CmdUpdateTreatment};
 
@@ -68,6 +68,10 @@ impl UpdateVectorGraphCmd {
 
         mem::swap(&mut vector_graph.0, &mut self.vector_graph.0);
         vector_graph.set_changed();
+
+        if let Some(mut global_bounds) = world.get_mut::<GlobalBounds2D>(target_entity) {
+            *global_bounds = GlobalBounds2D::NeedsCalculate;
+        }
 
         Ok(())
     }

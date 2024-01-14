@@ -78,7 +78,7 @@ impl BoxFsm {
                 let bbid = BBId::default();
                 let box_origin_pos =
                     Vec2::min(cursor_origin_pos, cursor_origin_pos.sub(*cursor_offset));
-                let box_extents = Vec2::abs(*cursor_offset);
+                let box_extents = *cursor_offset;
 
                 self = BoxFsm::BuildingBox {
                     bbid,
@@ -103,7 +103,7 @@ impl BoxFsm {
                 ref mut box_extents,
                 ..
             } => {
-                *box_extents = Vec2::abs(*cursor_offset);
+                *box_extents = *cursor_offset;
                 *box_origin_pos =
                     Vec2::min(cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
                 Ok(self)
