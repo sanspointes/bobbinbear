@@ -3,7 +3,8 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "dev:editor": "turbo run --filter ./apps/editor dev",
+    "dev:editor": "WASM32=1 turbo run --filter ./apps/editor --filter ./apps/bobbinbear_core/ dev",
+    "build:editor": "WASM32=1 turbo run --filter ./apps/editor --filter ./apps/bobbinbear_core/ build",
     "dev:packages": "turbo run --filter=\"./packages/*\" dev",
     "playground:constructables": "turbo run --filter ./packages/constructables playground",
     "playground:solixi": "turbo run --filter ./packages/solixi playground",

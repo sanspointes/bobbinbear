@@ -1,0 +1,84 @@
+# You must change these to your own details.
+[package]
+name = "bobbinbear_core"
+version = "0.1.0"
+authors = ["Connor Meehan <connorgm@pm.me>"]
+edition = "2021"
+resolver = "2"
+
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+
+# [target.x86_64-apple-darwin]
+# rustflags = [
+#     "-C",
+#     "link-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
+#     "-Zshare-generics=y",
+# ]
+
+[lib]
+name = "bobbinbear_core"
+path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
+
+[[bin]]
+name = "bobbinbear_core"
+path = "src/main.rs"
+
+[features]
+default = ["bevy/bevy_scene", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "bevy/webgl2"]
+desktop = ["bevy/dynamic_linking"]
+linux = ["bevy/x11"]
+debug_text = ["bevy-debug-text-overlay/debug"]
+
+inspector = ["bevy-inspector-egui"]
+
+trace_bevy = []
+# Useful for tracing the system order of execution with tracy
+# NOTE: This does not debug the bevy systems.  Just our app.
+debug_trace = ["bevy/trace", "bevy/trace_tracy"]
+# Debug select tool / selection systems
+debug_select = []
+# Debug reflection/serialisation/deserialisation
+debug_reflect = []
+# Debug global bounds plugin
+debug_bounds = []
+# Debug commands
+debug_cmd = []
+
+[dependencies]
+js-sys = "0.3.64"
+web-sys = { version = "0.3.64", features = [ "console", "Window" ] }
+console_error_panic_hook = "0.1.7"
+wasm-bindgen = { version = "0.2.87", features = [ "serde", "serde-serialize" ] }
+# logging them with `console.error`. This is great for development, but requires
+# all the `std::fmt` and `std::panicking` infrastructure, so isn't great for
+# code size when deploying.
+bevy = { version = "0.11.3", default-features = false }
+bevy_prototype_lyon = { version = "0.10" }
+crossbeam-channel = "0.5.8"
+lazy_static = "1.4.0"
+bevy_mod_raycast = "0.14.1"
+bevy-inspector-egui = { version = "0.19.0", optional = true }
+bb_vector_network = { path = "../../packages/bb_vector_network/", features = [ "serde", "lyon_path" ] }
+# Serialisation
+serde_json = "1.0.107"
+serde = { version = "1.0.188", features = [ "derive" ] }
+# Error handling
+thiserror = "1.0.49"
+anyhow = "1.0.75"
+serde-wasm-bindgen = "0.6.0"
+tsify = "0.4.5"
+bevy-debug-text-overlay = { version = "6.0.0", default-features = false, features = ["builtin-font"] }
+lyon_tessellation = { version = "1.0.13", optional = true }
+
+[dev-dependencies]
+wasm-bindgen-test = "0.3.34"
+
+[profile.dev]
+debug = 1
+
+[profile.release]
+# Tell `rustc` to optimize for small code size.
+opt-level = "s"
+lto = true
