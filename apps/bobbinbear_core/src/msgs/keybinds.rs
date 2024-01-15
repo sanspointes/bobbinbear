@@ -32,8 +32,8 @@ pub fn msg_handler_keybinds(
             (ButtonState::Released, KeyCode::Key2, _, _) => {
                 responder.push_internal(ToolMessage::SwitchTool(BBTool::Box));
             }
-            (ButtonState::Released, KeyCode::Key3, _, _) => {
-                // msg_writer.send(ToolMessage::SwitchTool(BBTool::Pen).into());
+            (ButtonState::Released, KeyCode::Key0, _, _) => {
+                responder.push_internal(ToolMessage::SwitchTool(BBTool::Noop));
             }
             (ButtonState::Released, KeyCode::Z, ButtonState::Pressed, ButtonState::Released) => {
                 responder.push_internal(CmdMsg::Undo);

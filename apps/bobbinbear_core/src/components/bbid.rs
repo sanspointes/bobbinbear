@@ -3,8 +3,7 @@ use std::fmt::{Debug, Display};
 use bevy::{ecs::world::EntityMut, prelude::*, reflect::Reflect, utils::Uuid};
 use thiserror::Error;
 
-#[derive(Component, Reflect, Eq, PartialEq, Hash, Copy, Clone)]
-#[reflect(Component)]
+#[derive(Component, Reflect, Eq, PartialEq, Hash, Copy, Clone, serde::Serialize, serde::Deserialize)]
 /// A unique identifier that can be used to
 pub struct BBId(pub [u64; 2]);
 

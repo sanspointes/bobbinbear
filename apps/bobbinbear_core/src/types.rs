@@ -8,6 +8,7 @@ use wasm_bindgen::prelude::wasm_bindgen;
 #[tsify(into_wasm_abi, from_wasm_abi)]
 pub enum BBTool {
     #[default]
+    Noop,
     Select,
     Grab,
     Box,

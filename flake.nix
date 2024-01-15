@@ -33,6 +33,8 @@
                 pkgs.nodePackages.typescript
                 pkgs.nodePackages.typescript-language-server
 
+                rustPlatform.bindgenHook
+
                 pkgs.openssl
                 pkgs.binaryen
                 pkgs.pkg-config

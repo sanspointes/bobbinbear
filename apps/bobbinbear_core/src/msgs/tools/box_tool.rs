@@ -1,25 +1,21 @@
 use std::ops::{Add, Sub};
 
-use bevy::{ecs::system::SystemState, prelude::*};
-use bevy_prototype_lyon::{
-    prelude::{Fill, GeometryBuilder},
-    shapes,
-};
+use bevy::{ecs::system::SystemState, prelude::*, math::vec2};
 
 use crate::{
     components::{bbid::BBId, scene::BBObject},
     debug_log,
     msgs::{
         api::ApiEffectMsg,
-        cmds::{add_remove_object_cmd::AddObjectCmd, update_path_cmd::UpdatePathCmd, CmdMsg},
+        cmds::{add_remove_object_cmd::AddObjectCmd, update_vector_graph_cmd::UpdateVectorGraphCmd, CmdMsg},
         MsgQue,
     },
     plugins::{
         bounds_2d_plugin::GlobalBounds2D, input_plugin::InputMessage,
-        selection_plugin::SelectableBundle,
+        selection_plugin::SelectableBundle, vector_graph_plugin::Fill,
     },
     types::BBCursor,
-    utils::vector::BBObjectVectorBundle,
+    utils::{vector::BBObjectVectorBundle, vector_graph::build_vector_graph_box},
 };
 
 use super::{ToolFsmError, ToolFsmResult, ToolHandlerMessage};
@@ -82,7 +78,7 @@ impl BoxFsm {
                 let bbid = BBId::default();
                 let box_origin_pos =
                     Vec2::min(cursor_origin_pos, cursor_origin_pos.sub(*cursor_offset));
-                let box_extents = Vec2::abs(*cursor_offset);
+                let box_extents = *cursor_offset;
 
                 self = BoxFsm::BuildingBox {
                     bbid,
@@ -107,7 +103,7 @@ impl BoxFsm {
                 ref mut box_extents,
                 ..
             } => {
-                *box_extents = Vec2::abs(*cursor_offset);
+                *box_extents = *cursor_offset;
                 *box_origin_pos =
                     Vec2::min(cursor_origin_pos, cursor_origin_pos.add(*cursor_offset));
                 Ok(self)
@@ -197,15 +193,12 @@ pub fn msg_handler_box_tool_input(
         Ok((BoxFsm::PointerDown { cursor_origin_pos }, BoxFsm::Default)) => {
             let bbid = BBId::default();
             let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
-                let shape = shapes::Rectangle {
-                    origin: shapes::RectangleOrigin::TopLeft,
-                    extents: Vec2::new(100., 100.), // TODO: Convert this to a setting
-                };
+                let vector_graph = build_vector_graph_box(vec2(0., 0.), vec2(100., 100.));
+
                 entity.insert((
                     Name::from("Box"),
                     bbid,
-                    BBObject::Vector,
-                    BBObjectVectorBundle::from_shape(&shape).with_transform(Transform {
+                    BBObjectVectorBundle::from_vector_graph(vector_graph).with_transform(Transform {
                         translation: Vec3::new(cursor_origin_pos.x, cursor_origin_pos.y, 0.),
                         ..Default::default()
                     }),
@@ -234,15 +227,12 @@ pub fn msg_handler_box_tool_input(
             },
         )) => {
             let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
-                let shape = shapes::Rectangle {
-                    origin: shapes::RectangleOrigin::TopLeft,
-                    extents: box_extents,
-                };
+                let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
+
                 entity.insert((
                     Name::from("Box"),
                     bbid,
-                    BBObject::Vector,
-                    BBObjectVectorBundle::from_shape(&shape).with_transform(Transform {
+                    BBObjectVectorBundle::from_vector_graph(vector_graph).with_transform(Transform {
                         translation: Vec3::new(box_origin_pos.x, box_origin_pos.y, 0.),
                         ..Default::default()
                     }),
@@ -267,13 +257,8 @@ pub fn msg_handler_box_tool_input(
                 bbid, box_extents, ..
             },
         )) => {
-            let shape = shapes::Rectangle {
-                origin: shapes::RectangleOrigin::TopLeft,
-                extents: box_extents,
-            };
-            let path = GeometryBuilder::build_as(&shape).0;
-
-            let cmd = UpdatePathCmd::new(bbid, path);
+            let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
+            let cmd = UpdateVectorGraphCmd::new(bbid, vector_graph);
 
             responder.push_internal(CmdMsg::from(cmd));
         }
@@ -285,13 +270,8 @@ pub fn msg_handler_box_tool_input(
             },
             BoxFsm::Default,
         )) => {
-            let shape = shapes::Rectangle {
-                origin: shapes::RectangleOrigin::TopLeft,
-                extents: box_extents,
-            };
-            let path = GeometryBuilder::build_as(&shape).0;
-
-            let cmd = UpdatePathCmd::new(bbid, path);
+            let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
+            let cmd = UpdateVectorGraphCmd::new(bbid, vector_graph);
 
             responder.push_internal(CmdMsg::from(cmd));
         }

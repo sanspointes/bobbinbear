@@ -1,43 +1,28 @@
+mod sys_enter_exit;
+mod sys_update;
 mod utils;
 
-use bevy::{
-    math::{Vec3Swizzles, Vec4Swizzles},
-    prelude::*,
-};
-
-use bevy_prototype_lyon::{
-    prelude::{
-        tess::{
-            math::Point,
-            path::{Event, Path as TessPath},
-        },
-        GeometryBuilder, Path,
-    },
-    shapes,
-};
+use bevy::math::vec3;
+use bevy::{math::vec2, prelude::*, sprite::Mesh2dHandle};
 
 use crate::{
     components::{
         bbid::BBId,
-        scene::{BBIndex, BBNode, BBObject},
-        bbpath::{BBPath, BBPathEvent}
+        scene::{BBIndex, BBObject},
     },
-    constants::Z_INDEX_BB_NODE,
     msgs::{cmds::inspect_cmd::InspectingTag, sys_msg_handler},
-    plugins::{
-        inspect_plugin::{
-            inspect_vector_plugin::utils::{
-                spawn_bbnodes_of_segment, spawn_bbpathevent_of_segment,
-            },
-            InspectArtifact,
-        },
-        screen_space_root_plugin::ScreenSpaceRoot,
-    },
-    prelude::W,
-    utils::coordinates::{LocalToScreen, ScreenToLocal},
+    plugins::{screen_space_root_plugin::ScreenSpaceRoot, vector_graph_plugin::VectorGraph},
+    utils::mesh::{add_vertex_colors_mesh, combine_meshes},
 };
 
-use self::utils::make_path_of_bb_path_event;
+// use self::utils::make_path_of_bb_path_event;
+
+use self::{
+    sys_enter_exit::sys_handle_exit_inspect_vector,
+    sys_update::{sys_check_needs_update, sys_update_bb_nodes},
+};
+
+pub use sys_enter_exit::sys_handle_enter_inspect_vector;
 
 use super::InspectState;
 
@@ -45,7 +30,8 @@ pub struct InspectVectorPlugin;
 
 impl Plugin for InspectVectorPlugin {
     fn build(&self, app: &mut App) {
-        app.insert_resource(VectorResource::new())
+        app.insert_resource(VectorResource::default())
+            .add_systems(Startup, sys_setup_cached_meshes)
             .add_systems(
                 OnEnter(InspectState::InspectVector),
                 sys_handle_enter_inspect_vector,
@@ -73,233 +59,116 @@ impl Plugin for InspectVectorPlugin {
 #[derive(Component, Reflect, Debug, Default)]
 /// Tag that marks an entity as a segment of a BBObject::Vector, used with BBIndex to lookup a
 /// BBPathEvent.
-struct BBVectorSegmentTag;
+struct BBEdgeTag;
 
 ///
 /// Vector Entity Resource
 ///
 
 // Caches paths so they don't need to be re-calculated
-#[derive(Resource)]
-pub struct VectorCachedPaths {
-    pub control_node: TessPath,
-    pub endpoint_node: TessPath,
+#[derive(Resource, Default)]
+pub struct InspectCachedMeshes {
+    pub material: Option<Handle<ColorMaterial>>,
+    pub control_node: Option<Mesh2dHandle>,
+    pub endpoint_node: Option<Mesh2dHandle>,
 }
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct VectorResource {
-    pub cached_paths: VectorCachedPaths,
+    pub cached_meshes: InspectCachedMeshes,
 }
 
-impl VectorResource {
-    pub fn new() -> Self {
-        let control_shape = shapes::Polygon {
-            points: vec![
-                Vec2::new(-3., -3.),
-                Vec2::new(3., -3.),
-                Vec2::new(3., 3.),
-                Vec2::new(-3., 3.),
-            ],
-            closed: true,
-        };
-        let control_node = GeometryBuilder::build_as(&control_shape).0;
-        let endpoint_shape = shapes::Circle {
-            radius: 5.,
-            center: Vec2::ZERO,
-        };
-        let endpoint_node = GeometryBuilder::build_as(&endpoint_shape).0;
+fn sys_setup_cached_meshes(
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut resource: ResMut<VectorResource>,
+) {
+    resource.cached_meshes.material = Some(materials.add(ColorMaterial::default()));
+    // Builds the control node mesh (square)
+    {
+        let mut control_node_m1 = Mesh::from(shape::Quad::new(vec2(3., 3.)));
+        add_vertex_colors_mesh(&mut control_node_m1, Color::WHITE);
+        let mut control_node_m2 = Mesh::from(shape::Quad::new(vec2(5., 5.)));
+        add_vertex_colors_mesh(&mut control_node_m2, Color::BLUE);
 
-        Self {
-            cached_paths: VectorCachedPaths {
-                control_node,
-                endpoint_node,
+        let to_combine = [control_node_m1, control_node_m2];
+        let transforms = [
+            Transform::default(),
+            Transform {
+                translation: vec3(0., 0., 1.),
+                ..Default::default()
             },
-        }
-    }
-}
+        ];
 
-/// Generates all of the entities require to inspect the currently inspecting BBVector entity.
-fn sys_handle_enter_inspect_vector(
-    mut commands: Commands,
-    res: Res<VectorResource>,
-    q_inspected_vector: Query<
-        (Entity, &BBId, &Path, &GlobalTransform),
-        (With<BBObject>, With<InspectingTag>),
-    >,
-    q_ss_root: Query<(Entity, &ScreenSpaceRoot)>,
-) {
-    let (entity, bbid, path, global_transform) = q_inspected_vector
-        .get_single()
-        .expect("sys_handle_enter_inspect_vector: None or more than 1 entity inspecting.");
-    let parent_matrix = global_transform.compute_matrix();
-    let (_, _, parent_pos) = parent_matrix.to_scale_rotation_translation();
-    info!(
-        "sys_handle_exit_inspect_vector: Inspecting {:?} with pos {parent_pos:?}",
-        bbid
-    );
-
-    let (ss_root_entity, ss_root) = q_ss_root.single();
-
-    for (i, seg) in path.0.iter().enumerate() {
-        spawn_bbnodes_of_segment(
-            &mut commands,
-            &res,
-            *bbid,
-            &parent_matrix,
-            seg,
-            i,
-            ss_root_entity,
-            ss_root,
-        );
-        spawn_bbpathevent_of_segment(
-            &mut commands,
-            *bbid,
-            BBPathEvent::from(seg),
-            i,
-            ss_root_entity,
-            ss_root,
-            &parent_matrix,
-        );
-    }
-}
-
-fn sys_handle_exit_inspect_vector(
-    mut commands: Commands,
-    q_inspected_vector: Query<(Entity, &BBId, &Path), (With<BBObject>, With<InspectingTag>)>,
-    q_inspect_artifacts: Query<(Entity, &InspectArtifact)>,
-) {
-    let (_entity, bbid, _path) = q_inspected_vector
-        .get_single()
-        .expect("sys_handle_enter_inspect_vector: None or more than 1 entity inspecting.");
-    info!("sys_handle_exit_inspect_vector: Uinspecting {:?}", bbid);
-
-    let to_remove = q_inspect_artifacts
-        .iter()
-        .filter_map(|(entity, inspect_artifact)| {
-            if inspect_artifact.0 == *bbid {
-                Some(entity)
-            } else {
-                None
-            }
-        });
-
-    for e in to_remove {
-        if let Some(e) = commands.get_entity(e) {
-            e.despawn_recursive();
-        } else {
-            warn!("sys_handle_exit_inspect_vector: Attempted to despawn {e:?} but no entity found.")
-        }
-    }
-}
-
-fn sys_check_needs_update(
-    q_inspected_vector: Query<
-        Entity,
-        (
-            With<BBObject>,
-            With<InspectingTag>,
-            Or<(Changed<GlobalTransform>, Changed<BBPath>)>,
-        ),
-    >,
-    q_ss_root: Query<Entity, Changed<ScreenSpaceRoot>>,
-) -> bool {
-    let inspected_vector_changed = q_inspected_vector.get_single().is_ok();
-    let screenspace_root_changed = q_ss_root.get_single().is_ok();
-    inspected_vector_changed || screenspace_root_changed
-}
-
-fn sys_update_bb_nodes(
-    In(needs_update): In<bool>,
-    q_inspected_vector: Query<
-        (Entity, &BBId, &BBPath, &GlobalTransform),
-        (With<BBObject>, With<InspectingTag>),
-    >,
-    q_ss_root: Query<&ScreenSpaceRoot>,
-    mut q_bb_node: Query<(&BBNode, &BBIndex, &mut Transform)>,
-) {
-    if !needs_update {
-        return;
+        let combined = combine_meshes(&to_combine, &transforms, true, false, true, true);
+        println!("Generating control node mesh {combined:?}");
+        let handle = meshes.add(combined);
+        resource.cached_meshes.control_node = Some(handle.into());
     }
 
-    let ss_root = q_ss_root.single();
-    let Ok((_entity, _bbid, bb_path, global_transform)) = q_inspected_vector.get_single() else {
-        return;
-    };
+    // Builds the control node mesh (square)
+    {
+        let mut control_node_m1 = Mesh::from(shape::Circle::new(3.));
+        add_vertex_colors_mesh(&mut control_node_m1, Color::BLUE);
+        let mut control_node_m2 = Mesh::from(shape::Circle::new(5.));
+        add_vertex_colors_mesh(&mut control_node_m2, Color::WHITE);
 
-    let global_matrix = global_transform.compute_matrix();
+        let to_combine = [control_node_m1, control_node_m2];
+        let transforms = [
+            Transform::default(),
+            Transform {
+                translation: vec3(0., 0., 1.),
+                ..Default::default()
+            },
+        ];
 
-    for (bb_node, bb_index, mut transform) in &mut q_bb_node {
-        let Some(segment) = bb_path.get(bb_index.0) else {
-            warn!(
-                "sys_handle_changed: Attempted to get segment at index {:?} but none found.",
-                bb_index.0
-            );
-            continue;
-        };
-
-        match (bb_node, segment) {
-            (BBNode::From, seg) => {
-                let local_pos = seg.from_position();
-                transform.translation = local_pos
-                    .local_to_screen(&global_matrix, ss_root)
-                    .extend(Z_INDEX_BB_NODE);
-            }
-            (BBNode::Ctrl1, BBPathEvent::Cubic { ctrl1, .. } | BBPathEvent::Quadratic { ctrl1, .. }) => {
-                let local_pos = ctrl1;
-                transform.translation = local_pos
-                    .local_to_screen(&global_matrix, ss_root)
-                    .extend(Z_INDEX_BB_NODE);
-            }
-            (BBNode::Ctrl2, BBPathEvent::Cubic { ctrl2, .. }) => {
-                let local_pos = ctrl2;
-                transform.translation = local_pos
-                    .local_to_screen(&global_matrix, ss_root)
-                    .extend(Z_INDEX_BB_NODE);
-            }
-            (BBNode::To, seg) => {
-                let local_pos: Vec2 = seg.to_position();
-                transform.translation = local_pos
-                    .local_to_screen(&global_matrix, ss_root)
-                    .extend(Z_INDEX_BB_NODE);
-            }
-            (bb_node, seg) => {
-                panic!("sys_update_bb_nodes: Unhandled BBNode/PathEvent combination: \n BBNode: {bb_node:?}\n PathEvent: {seg:?}.")
-            }
-        }
+        let handle = meshes.add(combine_meshes(
+            &to_combine,
+            &transforms,
+            true,
+            false,
+            true,
+            true,
+        ));
+        resource.cached_meshes.endpoint_node = Some(handle.into());
     }
 }
 
 fn sys_update_bb_path_event(
     In(needs_update): In<bool>,
     mut q_inspected_vector: Query<
-        (Entity, &BBId, &mut BBPath, &GlobalTransform),
+        (Entity, &BBId, &mut VectorGraph, &GlobalTransform),
         (With<BBObject>, With<InspectingTag>),
     >,
     q_ss_root: Query<&ScreenSpaceRoot>,
-    mut q_bb_path_event: Query<(&BBIndex, &mut Path), (With<BBVectorSegmentTag>, Without<InspectingTag>)>,
+    mut q_bb_path_event: Query<
+        (&BBIndex, &mut VectorGraph),
+        (With<BBEdgeTag>, Without<InspectingTag>),
+    >,
 ) {
     if !needs_update {
         return;
     }
 
     let ss_root = q_ss_root.single();
-    let Ok((_entity, _bbid, mut bb_path, global_transform)) = q_inspected_vector.get_single_mut() else {
+    let Ok((_entity, _bbid, mut bb_path, global_transform)) = q_inspected_vector.get_single_mut()
+    else {
         return;
     };
 
     let global_matrix = global_transform.compute_matrix();
 
-    for (bb_index, mut path) in q_bb_path_event.iter_mut() {
-        let Some(segment) = bb_path.get(bb_index.0) else {
-            warn!(
-                "sys_handle_changed: Attempted to get segment at index {:?} but none found.",
-                bb_index.0
-            );
-            continue;
-        };
-
-        let seg_path = make_path_of_bb_path_event(&segment, ss_root, &global_matrix);
-        *path = Path(seg_path);
-    }
+    // for (bb_index, mut graph) in q_bb_path_event.iter_mut() {
+    //     let Some(segment) = bb_path.get(bb_index.0) else {
+    //         warn!(
+    //             "sys_handle_changed: Attempted to get segment at index {:?} but none found.",
+    //             bb_index.0
+    //         );
+    //         continue;
+    //     };
+    //
+    //     let seg_path = make_path_of_bb_path_event(&segment, ss_root, &global_matrix);
+    //     *graph = VectorGraph(seg_path);
+    // }
 }
 
 // /// When a BBNode moves, updates the cooresponding BBPathEvent entity
@@ -355,9 +224,9 @@ fn sys_update_bb_path_event(
 //
 // /// When a BBPathEvent is updated, updated the inspected entity path
 // ///
-// /// * `q_ss_root`: 
-// /// * `q_inspected_vector`: 
-// /// * `param_set_bb_path_event`: 
+// /// * `q_ss_root`:
+// /// * `q_inspected_vector`:
+// /// * `param_set_bb_path_event`:
 // fn sys_handle_bb_path_event_updated(
 //     q_ss_root: Query<&ScreenSpaceRoot>,
 //     q_inspected_vector: Query<

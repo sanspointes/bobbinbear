@@ -1,19 +1,21 @@
 mod raycast;
 mod selection_bounds;
+mod selection_bounds_material;
+mod utils;
 
-use bevy::prelude::*;
-use bevy_mod_raycast::{DefaultRaycastingPlugin, RaycastMesh, RaycastSystem};
+use bevy::{prelude::*, sprite::Material2dPlugin};
+use bevy_mod_raycast::prelude::*;
 
 use crate::editor::EditorSet;
 
 use self::{
     raycast::{sys_selection_raycast_update_ray, sys_setup_selection_raycast},
-    selection_bounds::{sys_selection_bounds_handle_change, sys_setup_selection_bounds},
+    selection_bounds::{sys_selection_bounds_handle_change, sys_setup_selection_bounds}, selection_bounds_material::SelectionBoundsMaterial,
 };
 
 use super::bounds_2d_plugin::sys_update_global_bounds_2d;
 
-#[derive(Debug, Default, Component, Reflect)]
+#[derive(Debug, Default, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]
 /// Contains the state for whether this component is selected.
 pub enum Selected {
@@ -22,7 +24,7 @@ pub enum Selected {
     Yes,
 }
 
-#[derive(Debug, Default, Component, Reflect)]
+#[derive(Debug, Default, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]
 /// Contains the state of this entity relating to interaction.
 /// Locked entities cannot be selected.
@@ -47,10 +49,11 @@ pub struct SelectableBundle {
 pub struct SelectionPlugin;
 impl Plugin for SelectionPlugin {
     fn build(&self, app: &mut App) {
+        app.add_plugins(Material2dPlugin::<SelectionBoundsMaterial>::default());
         app.add_systems(PostStartup, sys_setup_selection_bounds)
             .add_systems(PostUpdate, sys_selection_bounds_handle_change.after(sys_update_global_bounds_2d).in_set(EditorSet::PostPlugins));
 
-        app.add_plugins(DefaultRaycastingPlugin::<Selectable>::default())
+        app.add_plugins(DeferredRaycastingPlugin::<Selectable>::default())
             .add_systems(PostStartup, sys_setup_selection_raycast)
             .add_systems(
                 First,

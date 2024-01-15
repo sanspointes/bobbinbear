@@ -1,8 +1,8 @@
-use bevy::{math::Vec3A, prelude::*, sprite::Mesh2dHandle};
+use bevy::{math::Vec3A, prelude::*, sprite::Mesh2dHandle, render::primitives::Aabb};
 
 use crate::editor::EditorSet;
 
-#[derive(Component, Default, Debug, Reflect)]
+#[derive(Component, Default, Debug, Reflect, Copy, Clone)]
 /// Gets the global coords AABB of an entity
 #[reflect(Component)]
 pub enum GlobalBounds2D {
@@ -20,6 +20,12 @@ impl GlobalBounds2D {
             max = vert.max(max);
         }
         Self::Calculated(Rect::new(min.x, min.y, max.x, max.y))
+    }
+
+    pub fn reset_on_entity(world: &mut World, entity: Entity) {
+        if let Some(mut bounds) = world.get_mut::<GlobalBounds2D>(entity) {
+            *bounds = GlobalBounds2D::NeedsCalculate;
+        }
     }
 }
 
@@ -47,7 +53,7 @@ pub fn sys_update_global_bounds_2d(
             Or<(Changed<GlobalBounds2D>, Changed<Mesh2dHandle>, Changed<GlobalTransform>)>,
         >,
         // Query for all GlobalBounds2D entities.
-        Query<(&Mesh2dHandle, &GlobalTransform, &mut GlobalBounds2D)>,
+        Query<(&Mesh2dHandle, &GlobalTransform, &mut GlobalBounds2D, &mut Aabb)>,
     )>,
     mut to_update_que: Local<Vec<Entity>>,
 ) {
@@ -78,7 +84,7 @@ pub fn sys_update_global_bounds_2d(
     let mut q_calculatable = param_set.p1();
 
     for entity in &to_update_que {
-        if let Ok((mesh_handle, global_transform, mut global_bounds)) = q_calculatable.get_mut(*entity) {
+        if let Ok((mesh_handle, global_transform, mut global_bounds, mut aabb)) = q_calculatable.get_mut(*entity) {
             let Some(mesh) = r_meshes.get(&mesh_handle.0) else {
                 next_to_update_que.push(*entity); // Try again next frame
                 #[cfg(feature = "debug_bounds")]
@@ -95,10 +101,18 @@ pub fn sys_update_global_bounds_2d(
                 warn!("sys_update_global_bounds_2d: No position attribute on mesh {entity:?}.");
                 continue;
             };
+            let mut min = Vec3::MAX;
+            let mut max = Vec3::MIN;
             let global_matrix = global_transform.compute_matrix();
             let verts: Vec<_> = verts.iter()
                 .map(|vert_float3| {
                     let p = Vec3A::from(*vert_float3);
+                    min.x = min.x.min(p.x);
+                    min.y = min.y.min(p.y);
+                    min.z = min.z.min(p.z);
+                    max.x = max.x.max(p.x);
+                    max.y = max.y.max(p.y);
+                    max.z = max.z.max(p.z);
                     global_matrix.transform_point3a(p)
                 })
                 .collect();
@@ -107,6 +121,7 @@ pub fn sys_update_global_bounds_2d(
             #[cfg(feature = "debug_bounds")]
             debug!("sys_update_global_bounds_2d: Calculated bounds {new_bounds:?} on {entity:?}.");
             *global_bounds = new_bounds;
+            *aabb = Aabb::from_min_max(min, max);
         }
     }
     *to_update_que = next_to_update_que;

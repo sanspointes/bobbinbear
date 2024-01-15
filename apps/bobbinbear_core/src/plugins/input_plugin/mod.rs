@@ -1,21 +1,17 @@
 mod types;
 
-use std::{default, mem::discriminant, ops::Sub};
+use std::{mem::discriminant, ops::Sub};
 
 use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
-    math::Vec3Swizzles,
+    math::{vec2, Vec3Swizzles},
     prelude::*,
+    sprite::MaterialMesh2dBundle,
     utils::HashSet,
 };
-use bevy_mod_raycast::{
-    DefaultRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
+use bevy_mod_raycast::prelude::{
+    DeferredRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
-use bevy_prototype_lyon::{
-    prelude::{Fill, GeometryBuilder, ShapeBundle},
-    shapes,
-};
-use js_sys::Reflect::construct_with_new_target;
 
 use crate::{editor::EditorSet, systems::camera::CameraTag};
 
@@ -37,7 +33,7 @@ impl Plugin for InputPlugin {
         app.insert_resource(RawInputResource::default())
             .add_event::<RawInputMessage>()
             .add_event::<InputMessage>()
-            .add_plugins(DefaultRaycastingPlugin::<RaycastRawInput>::default())
+            .add_plugins(DeferredRaycastingPlugin::<RaycastRawInput>::default())
             // Hit plane creation and movement
             .add_systems(Startup, sys_setup_input_plugin)
             // Input events
@@ -224,13 +220,15 @@ pub fn sys_raw_input_processor(
                         if curr_time < res.last_click_time + res.double_click_timeout {
                             res.last_click_time = 0f32;
 
-                            info!("Double clicking {curr_time} {} {}", res.last_click_time, res.double_click_timeout);
+                            info!(
+                                "Double clicking {curr_time} {} {}",
+                                res.last_click_time, res.double_click_timeout
+                            );
                             to_send.push(InputMessage::DoubleClick {
                                 screen: res.cur_pos,
                                 world: world_point,
                                 modifiers: res.modifiers,
                             });
-
                         } else {
                             res.last_click_time = time.elapsed_seconds();
 
@@ -374,27 +372,28 @@ pub struct InputHitPlaneTag;
 /// Spawns a Raycaster hit plane for world coordinate mouse inputs + attaches the raycast
 /// source to the camera.
 ///
-fn sys_setup_input_plugin(mut commands: Commands, q_camera: Query<Entity, With<CameraTag>>) {
+fn sys_setup_input_plugin(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    q_camera: Query<Entity, With<CameraTag>>,
+) {
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_setup_input_plugin").entered();
 
-    let shape = shapes::Rectangle {
-        extents: Vec2::new(10000., 10000.),
-        ..Default::default()
-    };
+    let handle = meshes.add(Mesh::from(shape::Quad::new(vec2(10000., 10000.))).into());
     commands.spawn((
         Name::from("BgHitPlane"),
         InputHitPlaneTag,
-        ShapeBundle {
-            path: GeometryBuilder::build_as(&shape),
+        MaterialMesh2dBundle {
+            mesh: handle.into(),
             transform: Transform {
                 translation: Vec3::new(0., 0., BG_HIT_Z_INDEX),
                 ..Default::default()
             },
-
+            material: materials.add(ColorMaterial::from(Color::rgb(0.8, 0.8, 0.8))),
             ..Default::default()
         },
-        Fill::color(Color::rgb_u8(200, 200, 200)),
         RaycastMesh::<RaycastRawInput>::default(),
     ));
 

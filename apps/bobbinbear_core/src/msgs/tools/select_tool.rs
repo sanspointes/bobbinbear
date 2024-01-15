@@ -1,11 +1,13 @@
+use std::{rc::Rc, sync::Arc};
+
 use bevy::{
-    ecs::system::SystemState,
+    ecs::system::{BoxedSystem, SystemState},
     input::ButtonState,
     math::Vec3Swizzles,
     prelude::*,
     utils::{HashMap, HashSet},
 };
-use bevy_mod_raycast::RaycastSource;
+use bevy_mod_raycast::prelude::RaycastSource;
 
 use crate::{
     components::bbid::BBId,
@@ -50,6 +52,18 @@ pub enum SelectFsm {
        //     min_pos: Vec2,
        //     max_pos: Vec2,
        // }
+}
+
+pub struct OnSelectMoved(Vec<BoxedSystem>);
+impl OnSelectMoved {
+    /// Run a callback system every time this event listener is triggered. This can be a closure or
+    /// a function, as described by bevy's documentation. The only notable difference from Bevy
+    /// systems is that the callback system can access a resource with event data,
+    /// [`ListenerInput`]. You can more easily access this with the system params
+    /// [`Listener`](crate::callbacks::Listener) and [`ListenerMut`](crate::callbacks::ListenerMut).
+    pub fn run<Marker>(callback: impl IntoSystem<(), (), Marker>) -> Self {
+        Self(vec![Box::new(IntoSystem::into_system(callback))])
+    }
 }
 
 impl Default for SelectFsm {
@@ -323,8 +337,6 @@ pub fn msg_handler_select_tool(
                 }
             };
 
-            
-
             match ev {
                 InputMessage::PointerDown { .. } => {
                     fsm.pointer_down(hit_bbid, modifiers, world_pos)
@@ -359,8 +371,10 @@ pub fn msg_handler_select_tool(
             // Uninspect if click outside of selected element.
             let state = world.resource::<State<InspectState>>();
             info!("{state:?} {:?}", new);
-            if new.is_empty() && !state.eq(&InspectState::None)  {
-                world.resource_mut::<NextState<InspectState>>().set(InspectState::None);
+            if new.is_empty() && !state.eq(&InspectState::None) {
+                world
+                    .resource_mut::<NextState<InspectState>>()
+                    .set(InspectState::None);
             }
 
             if !new.eq(old) {

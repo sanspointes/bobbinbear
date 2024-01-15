@@ -1,22 +1,22 @@
-use std::{fmt::{Debug, Display}, sync::Arc};
+use std::{
+    fmt::{Debug, Display},
+    sync::Arc,
+};
 
 use anyhow::anyhow;
-use bevy::{
-    ecs::{entity::EntityMap, world::EntityMut},
-    prelude::*,
-};
+use bevy::prelude::*;
 
 use crate::{
     components::bbid::{BBId, BBIdUtils},
-    utils::reflect_shims::{patch_world_subhierarchy_for_reflection, patch_world_subhierarchy_for_playback},
+    serialisation::SerialisableEntity,
 };
 
-use super::{Cmd, CmdError, CmdType, CmdMsg};
+use super::{Cmd, CmdError, CmdMsg, CmdType};
 
 pub struct AddObjectCmd {
     entity_bbid: BBId,
     parent: Option<BBId>,
-    scene: Option<DynamicScene>,
+    serialised: Option<SerialisableEntity>,
 }
 impl From<AddObjectCmd> for CmdType {
     fn from(value: AddObjectCmd) -> Self {
@@ -51,14 +51,17 @@ impl Debug for AddObjectCmd {
             .field("parent", &self.parent)
             .field(
                 "scene",
-                &self.scene.as_ref().map(|_| String::from("Dynamic Scene")),
+                &self
+                    .serialised
+                    .as_ref()
+                    .map(|_| String::from("Dynamic Scene")),
             )
             .finish()
     }
 }
 
 impl AddObjectCmd {
-    pub fn from_builder<F: FnMut(&mut EntityMut<'_>)>(
+    pub fn from_builder<F: FnMut(&mut EntityWorldMut<'_>)>(
         world: &mut World,
         parent: Option<BBId>,
         mut builder: F,
@@ -75,87 +78,70 @@ impl AddObjectCmd {
         entity: Entity,
         parent: Option<BBId>,
     ) -> anyhow::Result<Self> {
+        let serialised = SerialisableEntity::from_entity_recursive(world, entity).ok_or(
+            CmdError::from(anyhow!("Can't get SerialisableEntity for {entity:?}")),
+        )?;
+
         let entity_bbid = world
             .get::<BBId>(entity)
             .cloned()
-            .ok_or(anyhow!("Cant get bbid from {entity:?}."))?;
-
-        let entities = patch_world_subhierarchy_for_reflection(world, entity)
-            .map_err(|reason| anyhow!("Cant get subheirarchy for {entity_bbid:?}.\n - Reason {reason:?}."))?;
-
-        let mut builder = DynamicSceneBuilder::from_world(world);
-        builder.extract_entities(entities.into_iter());
-        let dynamic_scene = builder.build();
-
-        let _type_registry = world.resource::<AppTypeRegistry>();
+            .ok_or(CmdError::from(anyhow!("Cant get bbid from {entity:?}.")))?;
 
         world.entity_mut(entity).despawn_recursive();
 
         Ok(Self {
             entity_bbid,
             parent,
-            scene: Some(dynamic_scene),
+            serialised: Some(serialised),
         })
     }
 }
 
 impl Cmd for AddObjectCmd {
     fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
-        // Write scene into world
-        let type_registry = world.resource::<AppTypeRegistry>().clone();
-
-        let mut entity_map = EntityMap::default();
-        let scene = self.scene.take().ok_or(CmdError::DoubleExecute)?;
-        scene
-            .write_to_world_with(world, &mut entity_map, &type_registry)
-            .map_err(|err| anyhow!("Error writing to world.\n - Reason: {err:?}"))?;
-
-        // Get Target and parent entity to parent to correct object (if necessary)
-        let target_entity: Entity =
-            world
-                .get_entity_id_by_bbid(self.entity_bbid)
-                .ok_or(anyhow!("Error finding target. Can't find {:?}.", self.entity_bbid))?;
-
-        patch_world_subhierarchy_for_playback(world, target_entity)
-            .map_err(|err| anyhow!("Error patching world.\n - Reason: {err:?}"))?;
-
-        let maybe_parent = match self.parent {
-            Some(parent) => match world.get_entity_id_by_bbid(parent) {
-                Some(parent) => Some(parent),
-                None => return Err(anyhow!("Error reparenting target object. Parent specified but not found.").into()),
-            },
-            None => None,
+        let Some(serialised) = &self.serialised.take() else {
+            return Err(CmdError::DoubleExecute);
         };
 
+        let id = serialised.to_entity_recursive(world);
+
+        let maybe_parent = self
+            .parent
+            .map(|parent_bbid| world.get_entity_id_by_bbid(parent_bbid))
+            .flatten();
         // Parent the object if necessary
         if let Some(parent) = maybe_parent {
-            world.entity_mut(target_entity).set_parent(parent);
+            world.entity_mut(id).set_parent(parent);
         }
 
         Ok(())
     }
 
     fn undo(&mut self, world: &mut World) -> Result<(), CmdError> {
-        if self.scene.is_some() {
+        if self.serialised.is_some() {
             return Err(CmdError::DoubleUndo);
         }
 
         // Get entity of app id.
         let target_entity = world
             .get_entity_id_by_bbid(self.entity_bbid)
-            .ok_or(anyhow!("Error finding target. Can't find {:?}.", self.entity_bbid))?;
+            .ok_or(CmdError::from(anyhow!(
+                "Error finding target. Can't find {:?}.",
+                self.entity_bbid
+            )))?;
 
-        let entities = patch_world_subhierarchy_for_reflection(world, target_entity)
-            .map_err(|err| anyhow!("Error patching world.\n - Reason: {err:?}"))?;
-        let mut builder = DynamicSceneBuilder::from_world(world);
-        builder.extract_entities(entities.into_iter());
-        let scene = builder.build();
+        if let Some(serialised) = SerialisableEntity::from_entity_recursive(world, target_entity) {
+            self.serialised = Some(serialised);
 
-        self.scene = Some(scene);
+            world.entity_mut(target_entity).despawn_recursive();
 
-        world.entity_mut(target_entity).despawn_recursive();
-
-        Ok(())
+            Ok(())
+        } else {
+            Err(CmdError::from(anyhow!(
+                "Cannot serialise entity {}",
+                self.entity_bbid
+            )))
+        }
     }
 
     fn try_update_from_prev(&mut self, _other: &CmdType) -> super::CmdUpdateTreatment {

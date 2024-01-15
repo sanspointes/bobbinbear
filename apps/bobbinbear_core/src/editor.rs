@@ -1,5 +1,4 @@
 use bevy::{app::PluginGroupBuilder, log::LogPlugin, prelude::*};
-use bevy_prototype_lyon::{prelude::*, plugin::BuildShapes};
 
 #[cfg(feature = "debug_text")]
 use bevy_debug_text_overlay::OverlayPlugin;
@@ -8,16 +7,16 @@ use bevy_debug_text_overlay::OverlayPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
-    components::{bbid::BBId, scene::{BBObject, BBNode}, bbpath::{BBPathEvent, BBPath}},
+    components::{bbid::BBId, scene::{BBObject, BBNode}},
     msgs::{cmds::CmdMsgPlugin, api::ApiMsg, sys_msg_handler, Msg, ToolMsgPlugin},
     plugins::{
         bounds_2d_plugin::Bounds2DPlugin,
         input_plugin::{InputMessage, InputPlugin},
         screen_space_root_plugin::{ScreenSpaceRootPlugin, ScreenSpaceRoot},
-        selection_plugin::SelectionPlugin, inspect_plugin::InspectPlugin,
+        selection_plugin::SelectionPlugin, inspect_plugin::InspectPlugin, vector_graph_plugin::{BuildShapes, VectorGraph, VectorGraphPlugin}, 
+        // inspect_plugin::InspectPlugin,
     },
     systems::camera::sys_setup_camera,
-    utils::reflect_shims::{ReflectableFill, ReflectablePath},
 };
 
 pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
@@ -84,18 +83,16 @@ pub struct EditorPlugin;
 impl Plugin for EditorPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app
-            // 3rd Party Plugins
-            .add_plugins(ShapePlugin)
             // Internals
             .add_event::<ApiMsg>()
             .add_event::<Msg>()
             // Internal generic plugins
             .add_plugins((InputPlugin, SelectionPlugin, ScreenSpaceRootPlugin, Bounds2DPlugin))
             // Internal App Logic plugins
-            .add_plugins((ToolMsgPlugin, CmdMsgPlugin, InspectPlugin))
+            .add_plugins((ToolMsgPlugin, CmdMsgPlugin, InspectPlugin, VectorGraphPlugin))
 
             .configure_sets(Update, (EditorSet::PreMsgs, EditorSet::Msgs, EditorSet::PostMsgs).chain()) 
-            .configure_set(PostUpdate, EditorSet::PostPlugins.after(BuildShapes))
+            .configure_sets(PostUpdate, EditorSet::PostPlugins.after(BuildShapes))
 
             .add_systems(PreStartup, sys_setup_camera)
             .add_systems(Update, sys_handle_pre_editor_msgs.in_set(EditorSet::PreMsgs))
@@ -103,13 +100,8 @@ impl Plugin for EditorPlugin {
 
             .register_type::<BBId>()
             .register_type::<BBObject>()
-            .register_type::<BBPath>()
             .register_type::<BBNode>()
             .register_type::<ScreenSpaceRoot>()
-
-            .register_type::<ReflectablePath>() // Also need reflection shimed path for ser/de
-            .register_type::<ReflectableFill>() // Also need reflection shimed path for ser/de
-
         ;
 
         // if let Some(frontend_sender) = app.world.get_resource_mut::<FrontendSender>() {

@@ -1,4 +1,4 @@
-mod inspect_vector_plugin;
+pub mod inspect_vector_plugin;
 
 use bevy::{prelude::*, ecs::system::SystemState};
 

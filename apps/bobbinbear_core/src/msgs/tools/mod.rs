@@ -6,7 +6,7 @@ use anyhow::anyhow;
 use bevy::{ecs::system::SystemState, prelude::*};
 use thiserror::Error;
 
-use crate::{plugins::input_plugin::InputMessage, types::BBTool};
+use crate::{plugins::input_plugin::InputMessage, types::BBTool, events::camera::CameraEvent};
 
 use self::{
     box_tool::{msg_handler_box_tool, BoxToolRes},
@@ -78,6 +78,8 @@ impl Plugin for ToolMsgPlugin {
             .insert_resource(SelectFsm::default())
             .insert_resource(BoxToolRes::default())
             .insert_resource(GrabToolState::default());
+
+        app.add_event::<CameraEvent>();
     }
 }
 
@@ -92,12 +94,14 @@ fn handle_active_tool_change(
         BBTool::Select => msg_handler_select_tool(world, &msg, responder),
         BBTool::Grab => msg_handler_grab_tool(world, &msg, responder),
         BBTool::Box => msg_handler_box_tool(world, &msg, responder),
+        BBTool::Noop => (),
     }
     let msg = ToolHandlerMessage::OnActivate;
     match curr_tool {
         BBTool::Select => msg_handler_select_tool(world, &msg, responder),
         BBTool::Grab => msg_handler_grab_tool(world, &msg, responder),
         BBTool::Box => msg_handler_box_tool(world, &msg, responder),
+        BBTool::Noop => (),
     }
     responder.notify_effect(ApiEffectMsg::SetCurrentTool(curr_tool));
 }
@@ -157,6 +161,7 @@ pub fn msg_handler_tool(world: &mut World, message: &ToolMessage, responder: &mu
                     }
                     BBTool::Grab => msg_handler_grab_tool(world, tool_handler_message, responder),
                     BBTool::Box => msg_handler_box_tool(world, tool_handler_message, responder),
+                    BBTool::Noop => (),
                 }
             } else {
                 warn!("Warning: Unhandled ToolMessage ({:?}).  Cannot convert to ToolHandlerMessage to pass to active tool.", tool_message);

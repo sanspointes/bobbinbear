@@ -1,14 +1,21 @@
+mod world_to_screen;
+
 use std::ops::Div;
 
-use bevy::{math::Vec3Swizzles, prelude::*, window::PrimaryWindow};
-use bevy_prototype_lyon::{
-    prelude::{Fill, GeometryBuilder, ShapeBundle},
-    shapes::{self, RectangleOrigin},
+use bevy::{
+    math::{vec2, Vec3Swizzles},
+    prelude::*,
+    sprite::MaterialMesh2dBundle,
+    window::PrimaryWindow,
 };
 
 use crate::{
     editor::EditorSet, msgs::sys_msg_handler, systems::camera::CameraTag, utils::coordinates,
 };
+
+pub use self::world_to_screen::{sys_update_world_to_screen, WorldToScreen};
+
+use super::inspect_plugin::inspect_vector_plugin::sys_handle_enter_inspect_vector;
 
 #[derive(Component, Reflect, Default, Debug, Copy, Clone, PartialEq)]
 #[reflect(Component)]
@@ -53,6 +60,9 @@ impl Plugin for ScreenSpaceRootPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, sys_setup)
             .add_systems(Update, sys_update_ss_root.in_set(EditorSet::PostMsgs));
+
+        app.add_systems(PostUpdate, sys_update_world_to_screen.after(sys_handle_enter_inspect_vector));
+        app.register_type::<WorldToScreen>();
         // In debug mode show the test bounds elements
         #[cfg(debug_assertions)]
         {
@@ -118,7 +128,6 @@ pub fn sys_update_ss_root(
     };
     ss_root.set_if_neq(new_ss_root);
 
-
     let half_size = window_size.div(2.);
     ss_root_transform.translation.x = -half_size.x;
     ss_root_transform.translation.y = -half_size.y;
@@ -133,21 +142,18 @@ enum TestTagOrientation {
 }
 fn sys_setup_screenspace_test(
     mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
     q_ss_root: Query<Entity, With<ScreenSpaceRoot>>,
 ) {
     let root = q_ss_root.single();
+
+    let mat_handle = materials.add(ColorMaterial::from(Color::rgba(0., 0., 0.5, 0.1)));
 
     commands.entity(root).with_children(|builder| {
         use TestTagOrientation::*;
         let to_build = vec![TopLeft, TopRight, BottomLeft, BottomRight];
         for orientation in to_build {
-            let origin = match orientation {
-                BottomRight => RectangleOrigin::BottomRight,
-                BottomLeft => RectangleOrigin::BottomLeft,
-                TopRight => RectangleOrigin::TopRight,
-                TopLeft => RectangleOrigin::TopLeft,
-            };
-
             let name = match orientation {
                 BottomRight => "BottomRightTest",
                 BottomLeft => "BottomLeftTest",
@@ -155,18 +161,15 @@ fn sys_setup_screenspace_test(
                 TopLeft => "TopLeftTest",
             };
 
-            let tl_shape = shapes::Rectangle {
-                extents: Vec2::new(50., 50.),
-                origin,
-            };
+            let handle = meshes.add(Mesh::from(shape::Quad::new(vec2(10., 10.))));
             builder.spawn((
                 Name::from(name),
                 orientation,
-                ShapeBundle {
-                    path: GeometryBuilder::build_as(&tl_shape),
+                MaterialMesh2dBundle {
+                    mesh: handle.into(),
+                    material: mat_handle.clone(),
                     ..default()
                 },
-                Fill::color(Color::rgba(0., 0., 0.5, 0.1)),
             ));
         }
     });
