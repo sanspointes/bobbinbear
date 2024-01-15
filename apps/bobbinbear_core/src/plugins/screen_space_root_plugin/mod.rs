@@ -15,6 +15,8 @@ use crate::{
 
 pub use self::world_to_screen::{sys_update_world_to_screen, WorldToScreen};
 
+use super::inspect_plugin::inspect_vector_plugin::sys_handle_enter_inspect_vector;
+
 #[derive(Component, Reflect, Default, Debug, Copy, Clone, PartialEq)]
 #[reflect(Component)]
 /// Component marking the entity that is the screenspace root.
@@ -59,7 +61,7 @@ impl Plugin for ScreenSpaceRootPlugin {
         app.add_systems(Startup, sys_setup)
             .add_systems(Update, sys_update_ss_root.in_set(EditorSet::PostMsgs));
 
-        app.add_systems(PostUpdate, sys_update_world_to_screen);
+        app.add_systems(PostUpdate, sys_update_world_to_screen.after(sys_handle_enter_inspect_vector));
         app.register_type::<WorldToScreen>();
         // In debug mode show the test bounds elements
         #[cfg(debug_assertions)]

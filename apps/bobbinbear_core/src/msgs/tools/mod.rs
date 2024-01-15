@@ -6,7 +6,7 @@ use anyhow::anyhow;
 use bevy::{ecs::system::SystemState, prelude::*};
 use thiserror::Error;
 
-use crate::{plugins::input_plugin::InputMessage, types::BBTool};
+use crate::{plugins::input_plugin::InputMessage, types::BBTool, events::camera::CameraEvent};
 
 use self::{
     box_tool::{msg_handler_box_tool, BoxToolRes},
@@ -78,6 +78,8 @@ impl Plugin for ToolMsgPlugin {
             .insert_resource(SelectFsm::default())
             .insert_resource(BoxToolRes::default())
             .insert_resource(GrabToolState::default());
+
+        app.add_event::<CameraEvent>();
     }
 }
 

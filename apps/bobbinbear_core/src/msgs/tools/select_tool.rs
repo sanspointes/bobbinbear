@@ -54,6 +54,18 @@ pub enum SelectFsm {
        // }
 }
 
+pub struct OnSelectMoved(Vec<BoxedSystem>);
+impl OnSelectMoved {
+    /// Run a callback system every time this event listener is triggered. This can be a closure or
+    /// a function, as described by bevy's documentation. The only notable difference from Bevy
+    /// systems is that the callback system can access a resource with event data,
+    /// [`ListenerInput`]. You can more easily access this with the system params
+    /// [`Listener`](crate::callbacks::Listener) and [`ListenerMut`](crate::callbacks::ListenerMut).
+    pub fn run<Marker>(callback: impl IntoSystem<(), (), Marker>) -> Self {
+        Self(vec![Box::new(IntoSystem::into_system(callback))])
+    }
+}
+
 impl Default for SelectFsm {
     fn default() -> Self {
         Self::Default {

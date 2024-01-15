@@ -8,7 +8,7 @@ use crate::{
     plugins::{input_plugin::InputMessage, screen_space_root_plugin::ScreenSpaceRoot},
     systems::camera::CameraTag,
     types::BBCursor,
-    utils::coordinates,
+    utils::coordinates, events::camera::CameraEvent,
 };
 
 use super::ToolHandlerMessage;
@@ -104,6 +104,8 @@ pub fn msg_handler_grab_tool(
 
     let (mut grab_state, mut q_camera, q_ss_root) = grab_sys_state.get_mut(world);
 
+    let mut camera_events = vec![];
+
     match message {
         ToolHandlerMessage::OnActivate => {
             debug!("GrabTool::OnActivate");
@@ -130,8 +132,14 @@ pub fn msg_handler_grab_tool(
                             if let GrabToolState::Moving { translation, .. } = new_state {
                                 responder
                                     .notify_effect(ApiEffectMsg::SetCursor(BBCursor::Grabbing));
+                                let delta = translation.xy() - transform.translation.xy();
                                 transform.translation.x = translation.x;
                                 transform.translation.y = translation.y;
+
+                                camera_events.push(CameraEvent::Moved {
+                                    translation: transform.translation.xy(),
+                                    delta,
+                                });
                             }
                             *grab_state = new_state.clone();
                         }
@@ -149,8 +157,14 @@ pub fn msg_handler_grab_tool(
                     match &v {
                         Ok(new_state) => {
                             if let GrabToolState::Moving { translation, .. } = new_state {
+                                let delta = translation.xy() - transform.translation.xy();
                                 transform.translation.x = translation.x;
                                 transform.translation.y = translation.y;
+
+                                camera_events.push(CameraEvent::Moved {
+                                    translation: transform.translation.xy(),
+                                    delta,
+                                });
                             }
                             *grab_state = new_state.clone();
                         }
@@ -168,8 +182,14 @@ pub fn msg_handler_grab_tool(
                     match &v {
                         Ok(new_state) => {
                             if let GrabToolState::Moving { translation, .. } = new_state {
+                                let delta = translation.xy() - transform.translation.xy();
                                 transform.translation.x = translation.x;
                                 transform.translation.y = translation.y;
+
+                                camera_events.push(CameraEvent::Moved {
+                                    translation: transform.translation.xy(),
+                                    delta,
+                                });
                             }
                             *grab_state = grab_state.drag_end_or_reset();
                         }
@@ -178,6 +198,10 @@ pub fn msg_handler_grab_tool(
                     responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Grab));
                 }
                 _ => {}
+            }
+
+            for ev in camera_events {
+                ev.send(world);
             }
         }
     }

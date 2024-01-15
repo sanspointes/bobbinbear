@@ -36,6 +36,7 @@ mod utils;
 mod constants;
 mod prelude;
 mod serialisation;
+mod events;
 
 // #[cfg(debug_assertions)]
 use crossbeam_channel::unbounded;

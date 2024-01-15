@@ -18,9 +18,11 @@ use crate::{
 // use self::utils::make_path_of_bb_path_event;
 
 use self::{
-    sys_enter_exit::{sys_handle_enter_inspect_vector, sys_handle_exit_inspect_vector},
+    sys_enter_exit::sys_handle_exit_inspect_vector,
     sys_update::{sys_check_needs_update, sys_update_bb_nodes},
 };
+
+pub use sys_enter_exit::sys_handle_enter_inspect_vector;
 
 use super::InspectState;
 
@@ -80,31 +82,26 @@ fn sys_setup_cached_meshes(
     mut meshes: ResMut<Assets<Mesh>>,
     mut resource: ResMut<VectorResource>,
 ) {
-    resource.cached_meshes.material = Some(materials.add(ColorMaterial::from(Color::WHITE)));
+    resource.cached_meshes.material = Some(materials.add(ColorMaterial::default()));
     // Builds the control node mesh (square)
     {
         let mut control_node_m1 = Mesh::from(shape::Quad::new(vec2(3., 3.)));
-        add_vertex_colors_mesh(&mut control_node_m1, Color::BLUE);
+        add_vertex_colors_mesh(&mut control_node_m1, Color::WHITE);
         let mut control_node_m2 = Mesh::from(shape::Quad::new(vec2(5., 5.)));
-        add_vertex_colors_mesh(&mut control_node_m2, Color::WHITE);
+        add_vertex_colors_mesh(&mut control_node_m2, Color::BLUE);
 
         let to_combine = [control_node_m1, control_node_m2];
         let transforms = [
             Transform::default(),
             Transform {
-                translation: vec3(0., 0., 0.1),
+                translation: vec3(0., 0., 1.),
                 ..Default::default()
             },
         ];
 
-        let handle = meshes.add(combine_meshes(
-            &to_combine,
-            &transforms,
-            true,
-            false,
-            true,
-            true,
-        ));
+        let combined = combine_meshes(&to_combine, &transforms, true, false, true, true);
+        println!("Generating control node mesh {combined:?}");
+        let handle = meshes.add(combined);
         resource.cached_meshes.control_node = Some(handle.into());
     }
 
@@ -119,7 +116,7 @@ fn sys_setup_cached_meshes(
         let transforms = [
             Transform::default(),
             Transform {
-                translation: vec3(0., 0., 0.1),
+                translation: vec3(0., 0., 1.),
                 ..Default::default()
             },
         ];

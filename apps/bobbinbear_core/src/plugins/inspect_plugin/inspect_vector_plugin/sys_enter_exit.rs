@@ -1,28 +1,32 @@
 use bevy::prelude::*;
 
-use bb_vector_network::{bb_edge::BBEdge, prelude::BBNodeIndex};
+use bb_vector_network::bb_edge::BBEdge;
 use bevy::sprite::MaterialMesh2dBundle;
 
 use crate::{
     components::{
-        bbid::{BBId, BBIdUtils},
+        bbid::BBId,
         scene::{BBIndex, BBNode, BBObject},
         utility::OnMoveCommand,
     },
     msgs::cmds::inspect_cmd::InspectingTag,
     plugins::{
-        inspect_plugin::{InspectArtifact, inspect_vector_plugin::sys_update::{handle_endpoint_node_moved, handle_ctrl1_node_moved, handle_ctrl2_node_moved}},
+        inspect_plugin::{
+            inspect_vector_plugin::sys_update::{
+                handle_ctrl1_node_moved, handle_ctrl2_node_moved, handle_endpoint_node_moved,
+            },
+            InspectArtifact,
+        },
         screen_space_root_plugin::{ScreenSpaceRoot, WorldToScreen},
         selection_plugin::SelectableBundle,
         vector_graph_plugin::VectorGraph,
-    },
-    utils::coordinates::ScreenToLocal,
+    }, utils::coordinates::LocalToWorld,
 };
 
 use super::VectorResource;
 
 /// Generates all of the entities require to inspect the currently inspecting BBVector entity.
-pub(super) fn sys_handle_enter_inspect_vector(
+pub fn sys_handle_enter_inspect_vector(
     mut commands: Commands,
     res: Res<VectorResource>,
     q_inspected_vector: Query<
@@ -35,11 +39,6 @@ pub(super) fn sys_handle_enter_inspect_vector(
         .get_single()
         .expect("sys_handle_enter_inspect_vector: None or more than 1 entity inspecting.");
     let global_matrix = global_transform.compute_matrix();
-    let (_, _, parent_pos) = global_matrix.to_scale_rotation_translation();
-    info!(
-        "sys_handle_exit_inspect_vector: Inspecting {:?} with pos {parent_pos:?}",
-        bbid
-    );
 
     let ss_root_entity = q_ss_root.single();
 
@@ -64,7 +63,6 @@ pub(super) fn sys_handle_enter_inspect_vector(
                 },
                 ..Default::default()
             },
-            WorldToScreen(global_transform.translation()),
         )
     };
 
@@ -72,6 +70,7 @@ pub(super) fn sys_handle_enter_inspect_vector(
         let mut e = commands.spawn(make_default_node_bundle(BBNode::Endpoint, idx.0));
         e.insert(Name::from(format!("{}", idx).to_string()));
         e.insert(OnMoveCommand::new(handle_endpoint_node_moved));
+        e.insert(WorldToScreen(node.position().local_to_world(&global_matrix).extend(0.)));
         e.set_parent(ss_root_entity);
     }
 
@@ -85,12 +84,14 @@ pub(super) fn sys_handle_enter_inspect_vector(
         if let Some(ctrl1) = ctrl1 {
             let mut e = commands.spawn(make_default_node_bundle(BBNode::Ctrl1, idx.0));
             e.insert(OnMoveCommand::new(handle_ctrl1_node_moved));
+            e.insert(WorldToScreen(ctrl1.local_to_world(&global_matrix).extend(0.)));
             e.set_parent(ss_root_entity);
         }
 
         if let Some(ctrl2) = ctrl2 {
             let mut e = commands.spawn(make_default_node_bundle(BBNode::Ctrl2, idx.0));
             e.insert(OnMoveCommand::new(handle_ctrl2_node_moved));
+            e.insert(WorldToScreen(ctrl2.local_to_world(&global_matrix).extend(0.)));
             e.set_parent(ss_root_entity);
         }
     }
