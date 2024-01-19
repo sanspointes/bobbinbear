@@ -2,7 +2,7 @@
 use bevy::prelude::*;
 // use crate::utils::vector::{FromPoint2, FromVec2};
 
-#[derive(Component, Reflect, Default, serde::Serialize, serde::Deserialize, Clone, Copy)]
+#[derive(Component, Reflect, Default, serde::Serialize, serde::Deserialize, Clone, Copy, Debug)]
 /// Represents a scene object that would show in the editor, i.e. a Vector shape, some text.
 pub enum BBObject {
     // Scene Object type for a vector element

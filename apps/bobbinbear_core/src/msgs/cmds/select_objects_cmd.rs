@@ -1,17 +1,14 @@
 use std::{fmt::Display, sync::Arc};
 
-use anyhow::anyhow;
 use bevy::prelude::*;
 
 use crate::{
     components::bbid::{BBId, BBIdUtils},
-    plugins::{
-        bounds_2d_plugin::GlobalBounds2D,
-        selection_plugin::Selected,
-    },
+    msgs::{effect::EffectMsg, MsgQue},
+    plugins::selection_plugin::Selected,
 };
 
-use super::{Cmd, CmdError, CmdMsg, CmdType, CmdUpdateTreatment};
+use super::{Cmd, CmdError, CmdMsg, CmdType};
 
 #[derive(Debug)]
 pub struct SelectObjectModel {
@@ -39,7 +36,11 @@ impl From<SelectObjectsCmd> for CmdMsg {
 
 impl Display for SelectObjectsCmd {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "SelectObjectsCmd: Selecting {:?}, Deselecting {:?}", self.to_select, self.to_deselect)
+        write!(
+            f,
+            "SelectObjectsCmd: Selecting {:?}, Deselecting {:?}",
+            self.to_select, self.to_deselect
+        )
     }
 }
 
@@ -76,39 +77,56 @@ impl SelectObjectsCmd {
     pub fn apply_select_deselect(
         &self,
         world: &mut World,
-        to_select: &Vec<Entity>,
-        to_deselect: &Vec<Entity>,
+        to_select: &Vec<BBId>,
+        to_deselect: &Vec<BBId>,
+        responder: &mut MsgQue,
     ) -> Result<(), CmdError> {
         let mut q_selectable = world.query::<&mut Selected>();
 
-        for entity in to_select {
-            let mut selected = q_selectable.get_mut(world, *entity)?;
+        let to_select_e: Vec<_> = to_select.iter().map(|bbid| world.bbid(*bbid)).collect();
+        for entity in to_select_e {
+            let mut selected = q_selectable.get_mut(world, entity)?;
             *selected = Selected::Yes;
         }
-        for entity in to_deselect {
-            let mut selected = q_selectable.get_mut(world, *entity)?;
+        let to_deselect_e: Vec<_> = to_deselect.iter().map(|bbid| world.bbid(*bbid)).collect();
+        for entity in to_deselect_e {
+            let mut selected = q_selectable.get_mut(world, entity)?;
             *selected = Selected::No;
         }
+
+        let mut q_selectable = world.query::<(&BBId, &Selected)>();
+        let currently_selected: Vec<_> = q_selectable
+            .iter(world)
+            .filter_map(|(bbid, selected)| match selected {
+                Selected::Yes => Some(bbid),
+                Selected::No => None,
+            })
+            .cloned()
+            .collect();
+
+        responder.push_internal(EffectMsg::ObjectSelectionChanged {
+            selected: to_select.clone(),
+            deselected: to_deselect.clone(),
+            currently_selected,
+        });
 
         Ok(())
     }
 }
 
 impl Cmd for SelectObjectsCmd {
-    fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
-
-        let (to_select, to_deselect) = self.get_to_select_to_deselect_entities(world)?;
-        self.apply_select_deselect(world, &to_select, &to_deselect)?;
+    fn execute(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
+        self.apply_select_deselect(world, &self.to_select, &self.to_deselect, responder)?;
         Ok(())
-
     }
-    fn undo(&mut self, world: &mut bevy::prelude::World) -> Result<(), CmdError> {
-
+    fn undo(
+        &mut self,
+        world: &mut bevy::prelude::World,
+        responder: &mut MsgQue,
+    ) -> Result<(), CmdError> {
         // Same as above but selecting / deselecting is switched
-        let (to_deselect, to_select) = self.get_to_select_to_deselect_entities(world)?;
-        self.apply_select_deselect(world, &to_select, &to_deselect)?;
+        self.apply_select_deselect(world, &self.to_deselect, &self.to_select, responder)?;
         Ok(())
-
     }
 
     fn try_update_from_prev(&mut self, _other: &CmdType) -> super::CmdUpdateTreatment {

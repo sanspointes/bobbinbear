@@ -3,21 +3,16 @@ use std::ops::Sub;
 use bevy::{
     math::{vec2, vec3},
     prelude::*,
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+    sprite::MaterialMesh2dBundle,
 };
 
 use crate::{
-    components::utility::OnMoveCommand,
     constants::{SELECTION_BOUNDS_STROKE_WIDTH, SELECT_COLOR},
-    events::camera::CameraEvent,
     plugins::{bounds_2d_plugin::GlobalBounds2D, screen_space_root_plugin::ScreenSpaceRoot},
-    utils::mesh::translate_mesh,
+    utils::mesh::translate_mesh, msgs::effect::EffectMsg,
 };
 
-use super::{
-    selection_bounds_material::{selection_bounds_mesh, SelectionBoundsMaterial},
-    Selected,
-};
+use super::{selection_bounds_material::SelectionBoundsMaterial, Selected};
 
 // Systems responsible for creating and updating the screenspace selection bounds of all selected
 // elements.
@@ -59,7 +54,7 @@ pub(super) fn sys_setup_selection_bounds(
 pub(super) fn sys_selection_bounds_handle_change(
     mut selection_bounds_material: ResMut<Assets<SelectionBoundsMaterial>>,
 
-    mut ev_camera_reader: EventReader<CameraEvent>,
+    mut ev_effect_reader: EventReader<EffectMsg>,
 
     mut system_set: ParamSet<(
         // Query for selection or bounds changes
@@ -84,9 +79,9 @@ pub(super) fn sys_selection_bounds_handle_change(
     let _span = info_span!("sys_selection_bounds_handle_change").entered();
 
     let needs_update = system_set.p0().iter().next().is_some()
-        || ev_camera_reader
+        || ev_effect_reader
             .read()
-            .any(|ev| matches!(ev, CameraEvent::Moved { .. }));
+            .any(|ev| matches!(ev, EffectMsg::CameraMoved { .. }));
     if !needs_update {
         return;
     }

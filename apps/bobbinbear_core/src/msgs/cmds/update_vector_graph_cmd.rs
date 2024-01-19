@@ -3,7 +3,7 @@ use std::{fmt::{Debug, Display}, mem, sync::Arc};
 use anyhow::anyhow;
 use bevy::prelude::*;
 
-use crate::{components::bbid::{BBId, BBIdUtils}, plugins::{vector_graph_plugin::VectorGraph, bounds_2d_plugin::GlobalBounds2D}};
+use crate::{components::bbid::{BBId, BBIdUtils}, plugins::{vector_graph_plugin::VectorGraph, bounds_2d_plugin::GlobalBounds2D}, msgs::{effect::EffectMsg, MsgQue}};
 
 use super::{Cmd, CmdError, CmdType, CmdMsg, CmdUpdateTreatment};
 
@@ -56,9 +56,10 @@ impl UpdateVectorGraphCmd {
         &mut self,
         world: &mut World,
         target_bbid: BBId,
+        responder: &mut MsgQue,
     ) -> Result<(), CmdError> {
         let target_entity = world
-            .get_entity_id_by_bbid(target_bbid)
+            .try_bbid(target_bbid)
             .ok_or(anyhow!("Can't find entity entity with {target_bbid:?}."))?;
 
         let mut vector_graph = world
@@ -73,16 +74,19 @@ impl UpdateVectorGraphCmd {
             *global_bounds = GlobalBounds2D::NeedsCalculate;
         }
 
+        responder.push_internal(EffectMsg::GraphStructureChanged { bbid: target_bbid });
+        responder.push_internal(EffectMsg::GraphNeedsRemesh { bbid: target_bbid });
+
         Ok(())
     }
 }
 
 impl Cmd for UpdateVectorGraphCmd {
-    fn execute(&mut self, world: &mut bevy::prelude::World) -> Result<(), CmdError> {
-        self.swap_path(world, self.target_bbid)
+    fn execute(&mut self, world: &mut bevy::prelude::World, responder: &mut MsgQue) -> Result<(), CmdError> {
+        self.swap_path(world, self.target_bbid, responder)
     }
-    fn undo(&mut self, world: &mut bevy::prelude::World) -> Result<(), CmdError> {
-        self.swap_path(world, self.target_bbid)
+    fn undo(&mut self, world: &mut bevy::prelude::World, responder: &mut MsgQue) -> Result<(), CmdError> {
+        self.swap_path(world, self.target_bbid, responder)
     }
 
     fn try_update_from_prev(&mut self, other: &CmdType) -> super::CmdUpdateTreatment {

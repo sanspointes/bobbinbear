@@ -18,9 +18,9 @@ use self::serialised_component::{ColorMaterialHandleDef, SerialisedComponent, Me
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerialisableEntity {
-    bbid: BBId,
-    components: Vec<SerialisedComponent>,
-    children: Vec<SerialisableEntity>,
+    pub bbid: BBId,
+    pub components: Vec<SerialisedComponent>,
+    pub children: Vec<SerialisableEntity>,
 }
 impl SerialisableEntity {
     pub fn new(bbid: BBId) -> Self {

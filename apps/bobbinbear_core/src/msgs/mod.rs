@@ -1,5 +1,6 @@
 pub mod api;
 pub mod cmds;
+pub mod effect;
 pub mod keybinds;
 pub mod tools;
 
@@ -18,10 +19,19 @@ use crate::{
 
 pub use self::tools::{msg_handler_tool, ToolMessage, ToolMsgPlugin};
 use self::{
-    api::{JsApiMsg, JsApiResponseMsg, ApiResponseMsg, ApiEffectMsg},
-    cmds::{msg_handler_cmds, CmdMsg},
+    api::{ApiEffectMsg, ApiResponseMsg, JsApiMsg, JsApiResponseMsg},
+    cmds::{msg_handler_cmds, CmdMsg, CmdMsgPlugin},
+    effect::{msg_handler_effect, EffectMsg, EffectMsgPlugin},
     keybinds::msg_handler_keybinds,
+    tools::msg_handler_effect_for_tools,
 };
+
+pub struct MsgPlugin;
+impl Plugin for MsgPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins((EffectMsgPlugin, ToolMsgPlugin, CmdMsgPlugin));
+    }
+}
 
 #[derive(Event, Clone, Debug)]
 pub enum Msg {
@@ -29,6 +39,7 @@ pub enum Msg {
     Input(InputMessage),
     Tool(ToolMessage),
     Cmd(CmdMsg),
+    Effect(EffectMsg),
 }
 
 impl From<ToolMessage> for Msg {
@@ -44,6 +55,11 @@ impl From<InputMessage> for Msg {
 impl From<CmdMsg> for Msg {
     fn from(value: CmdMsg) -> Self {
         Self::Cmd(value)
+    }
+}
+impl From<EffectMsg> for Msg {
+    fn from(value: EffectMsg) -> Self {
+        Self::Effect(value)
     }
 }
 
@@ -68,7 +84,7 @@ pub struct MsgQue {
     que: VecDeque<Msg>,
     response_id: Option<usize>,
     responses: VecDeque<ApiResponseMsg>,
-    effects: VecDeque<ApiEffectMsg>
+    effects: VecDeque<ApiEffectMsg>,
 }
 impl From<Msg> for MsgQue {
     fn from(value: Msg) -> Self {
@@ -111,11 +127,17 @@ impl MsgQue {
         self.que.pop_front()
     }
     fn as_js_api_msgs(mut self) -> VecDeque<JsApiMsg> {
-        let MsgQue { responses, effects, mut response_id, .. } = self;
+        let MsgQue {
+            responses,
+            effects,
+            mut response_id,
+            ..
+        } = self;
 
         let mut js_api_msgs: VecDeque<JsApiMsg> = effects.into_iter().map(|v| v.into()).collect();
         if let Some(response_id) = response_id.take() {
-            let mut responses: VecDeque<JsApiResponseMsg> = responses.into_iter().map(|v| v.into()).collect();
+            let mut responses: VecDeque<JsApiResponseMsg> =
+                responses.into_iter().map(|v| v.into()).collect();
             if responses.is_empty() {
                 responses.push_back(JsApiResponseMsg::Success);
             }
@@ -172,6 +194,10 @@ pub fn sys_msg_handler(world: &mut World) {
                 }
                 Msg::Tool(tool_msg) => msg_handler_tool(world, &tool_msg, &mut msg_responder),
                 Msg::Cmd(cmd_msg) => msg_handler_cmds(world, cmd_msg, &mut msg_responder),
+                Msg::Effect(effect_msg) => {
+                    msg_handler_effect(world, &effect_msg, &mut msg_responder);
+                    msg_handler_effect_for_tools(world, &effect_msg, &mut msg_responder);
+                }
             }
         }
 
@@ -182,7 +208,10 @@ pub fn sys_msg_handler(world: &mut World) {
         let to_send = msg_responder.as_js_api_msgs();
         for msg in to_send {
             info!("sys_msg_handler: Sending msg {msg:?}.");
-            sender.0.send(msg).expect("sys_msg_handler: Error sending effect for message call.");
+            sender
+                .0
+                .send(msg)
+                .expect("sys_msg_handler: Error sending effect for message call.");
         }
     }
 }

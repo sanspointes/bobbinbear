@@ -1,4 +1,3 @@
-pub mod inspect_vector_plugin;
 
 use bevy::{prelude::*, ecs::system::SystemState};
 
@@ -10,13 +9,12 @@ impl Plugin for InspectPlugin {
     fn build(&self, app: &mut App) {
         app
             .add_state::<InspectState>()
-            .add_plugins(inspect_vector_plugin::InspectVectorPlugin)
         ;
 
     }
 }
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, Clone, Copy)]
 #[reflect(Component)]
 /// Component that declares something as an artifact of another object,
 /// only visible when inspecting.  Usually this is used to cleanup after a BBObject

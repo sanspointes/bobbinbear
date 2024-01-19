@@ -2,6 +2,8 @@ use std::{fmt::Display, sync::Arc};
 
 use bevy::prelude::World;
 
+use crate::msgs::MsgQue;
+
 use super::{Cmd, CmdError, CmdMsg, CmdType};
 
 #[derive(Debug)]
@@ -38,16 +40,16 @@ impl MultiCmd {
 }
 
 impl Cmd for MultiCmd {
-    fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
+    fn execute(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
         for cmd in self.commands.iter_mut() {
-            cmd.execute(world)?;
+            cmd.execute(world, responder)?;
         }
         Ok(())
     }
 
-    fn undo(&mut self, world: &mut World) -> Result<(), CmdError> {
-        for cmd in self.commands.iter_mut() {
-            cmd.undo(world)?;
+    fn undo(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
+        for cmd in self.commands.iter_mut().rev() {
+            cmd.undo(world, responder)?;
         }
         Ok(())
     }

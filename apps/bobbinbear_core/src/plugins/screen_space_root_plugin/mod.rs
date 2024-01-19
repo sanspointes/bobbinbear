@@ -15,8 +15,6 @@ use crate::{
 
 pub use self::world_to_screen::{sys_update_world_to_screen, WorldToScreen};
 
-use super::inspect_plugin::inspect_vector_plugin::sys_handle_enter_inspect_vector;
-
 #[derive(Component, Reflect, Default, Debug, Copy, Clone, PartialEq)]
 #[reflect(Component)]
 /// Component marking the entity that is the screenspace root.
@@ -50,6 +48,13 @@ impl ScreenSpaceRoot {
     pub fn projection_area(&self) -> Rect {
         self.projection_area
     }
+
+    pub fn get_entity_from_world(world: &mut World) -> Entity {
+        world.query_filtered::<Entity, With<ScreenSpaceRoot>>().single(world)
+    }
+    pub fn get_from_world(world: &mut World) -> &ScreenSpaceRoot {
+        world.query::<&ScreenSpaceRoot>().single(world)
+    }
 }
 
 /// This plugin creates a new entity with component `ScreenSpaceRootTag` where
@@ -58,10 +63,10 @@ impl ScreenSpaceRoot {
 pub struct ScreenSpaceRootPlugin;
 impl Plugin for ScreenSpaceRootPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(Startup, sys_setup)
+        app.add_systems(Startup, sys_setup_ss_root)
             .add_systems(Update, sys_update_ss_root.in_set(EditorSet::PostMsgs));
 
-        app.add_systems(PostUpdate, sys_update_world_to_screen.after(sys_handle_enter_inspect_vector));
+        app.add_systems(PostUpdate, sys_update_world_to_screen);
         app.register_type::<WorldToScreen>();
         // In debug mode show the test bounds elements
         #[cfg(debug_assertions)]
@@ -73,7 +78,7 @@ impl Plugin for ScreenSpaceRootPlugin {
 }
 
 /// Creates the screenspace root.
-fn sys_setup(
+pub fn sys_setup_ss_root(
     mut commands: Commands,
     q_window: Query<&Window, With<PrimaryWindow>>,
     q_camera: Query<(Entity, &OrthographicProjection), With<CameraTag>>,

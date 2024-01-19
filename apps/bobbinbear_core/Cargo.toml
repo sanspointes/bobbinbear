@@ -7,7 +7,8 @@ edition = "2021"
 resolver = "2"
 
 [target.x86_64-unknown-linux-gnu]
-rustflags = ["-C", "link-arg=-fuse-ld=lld"]
+linker = "clang"
+rustflags = ["-Clink-arg=-fuse-ld=lld", "-Zshare-generics=y"]
 
 # [target.x86_64-apple-darwin]
 # rustflags = [
@@ -19,14 +20,14 @@ rustflags = ["-C", "link-arg=-fuse-ld=lld"]
 [lib]
 name = "bobbinbear_core"
 path = "src/lib.rs"
-crate-type = ["cdylib", "rlib"]
+# crate-type = ["cdylib", "rlib"]
 
 [[bin]]
 name = "bobbinbear_core"
 path = "src/main.rs"
 
 [features]
-default = ["bevy/bevy_sprite", "bevy/bevy_pbr", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "bevy/webgl2", "lyon_tessellation/serialization"]
+default = ["bevy/bevy_sprite", "bevy/bevy_winit", "bevy/bevy_core_pipeline", "bevy/bevy_render", "bevy/serialize", "bevy/webgl2", "lyon_tessellation/serialization"]
 desktop = ["bevy/dynamic_linking"]
 linux = ["bevy/x11"]
 debug_text = ["bevy-debug-text-overlay/debug"]
@@ -75,8 +76,13 @@ anyhow = "1.0.75"
 [dev-dependencies]
 wasm-bindgen-test = "0.3.34"
 
+# Enable a small amount of optimization in debug mode
 [profile.dev]
-debug = 1
+opt-level = 1
+
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
 
 [profile.release]
 # Tell `rustc` to optimize for small code size.

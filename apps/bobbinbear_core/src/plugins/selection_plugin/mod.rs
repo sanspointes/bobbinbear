@@ -15,6 +15,8 @@ use self::{
 
 use super::bounds_2d_plugin::sys_update_global_bounds_2d;
 
+pub use utils::get_raycast_hits_selectable;
+
 #[derive(Debug, Default, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]
 /// Contains the state for whether this component is selected.

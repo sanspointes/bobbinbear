@@ -12,6 +12,7 @@ pub enum BBTool {
     Select,
     Grab,
     Box,
+    Pen,
 }
 
 #[derive(Serialize, Deserialize, tsify::Tsify, Debug, Clone)]

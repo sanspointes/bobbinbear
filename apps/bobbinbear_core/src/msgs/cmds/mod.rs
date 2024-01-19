@@ -2,8 +2,9 @@ pub mod add_remove_object_cmd;
 pub mod move_objects_cmd;
 pub mod multi_cmd;
 pub mod select_objects_cmd;
-pub mod update_vector_graph_cmd;
 pub mod inspect_cmd;
+pub mod update_vector_graph_cmd;
+pub mod add_remove_edge_cmd;
 
 use std::{
     fmt::{Debug, Display},
@@ -17,7 +18,7 @@ use thiserror::Error;
 
 use crate::components::bbid::BbidWorldError;
 
-use self::{update_vector_graph_cmd::UpdateVectorGraphCmd, inspect_cmd::InspectCmd};
+use self::{update_vector_graph_cmd::UpdateVectorGraphCmd, inspect_cmd::InspectCmd, add_remove_edge_cmd::AddRemoveEdgeCmd};
 use self::{
     add_remove_object_cmd::AddObjectCmd, move_objects_cmd::MoveObjectsCmd,
     select_objects_cmd::SelectObjectsCmd,
@@ -42,8 +43,8 @@ pub enum CmdUpdateTreatment {
 /// Commands are atomic actions that can be undone / redone
 ///
 pub trait Cmd: Send + Sync + Debug + Display {
-    fn execute(&mut self, world: &mut World) -> Result<(), CmdError>;
-    fn undo(&mut self, world: &mut World) -> Result<(), CmdError>;
+    fn execute(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError>;
+    fn undo(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError>;
     /// Tries to update self using data from prev, if successful (CmdUpdateTreatment::AsRepeat)
     /// it will update itself with data from the previous command.
     fn try_update_from_prev(&mut self, _other: &CmdType) -> CmdUpdateTreatment {
@@ -86,6 +87,7 @@ pub enum CmdType {
     MoveObjects(MoveObjectsCmd),
     SelectObjects(SelectObjectsCmd),
     Inspect(InspectCmd),
+    AddRemoveEdge(AddRemoveEdgeCmd),
 }
 
 macro_rules! unwrap_cmd_type {
@@ -97,6 +99,7 @@ macro_rules! unwrap_cmd_type {
             CmdType::MoveObjects($pattern) => $result,
             CmdType::SelectObjects($pattern) => $result,
             CmdType::Inspect($pattern) => $result,
+            CmdType::AddRemoveEdge($pattern) => $result,
         }
     };
 }
@@ -135,7 +138,7 @@ impl Plugin for CmdMsgPlugin {
     }
 }
 
-pub fn msg_handler_cmds(world: &mut World, message: CmdMsg, _responses: &mut MsgQue) {
+pub fn msg_handler_cmds(world: &mut World, message: CmdMsg, responder: &mut MsgQue) {
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_handler_cmds").entered();
 
@@ -166,7 +169,7 @@ pub fn msg_handler_cmds(world: &mut World, message: CmdMsg, _responses: &mut Msg
                     debug!("Command updated from previous. {cmd:?}");
                 }
 
-                let execution_result = cmd.execute(world);
+                let execution_result = cmd.execute(world, responder);
                 if let Err(reason) = execution_result {
                     error!("Failed to execute command {cmd:?} with reason: \n - {reason:?}.");
                     return;
@@ -194,7 +197,7 @@ pub fn msg_handler_cmds(world: &mut World, message: CmdMsg, _responses: &mut Msg
             };
 
             let execution_result = unwrap_cmd_type!(cmd, ref mut cmd => {
-                cmd.undo(world)
+                cmd.undo(world, responder)
             });
 
             if let Err(reason) = execution_result {
@@ -216,7 +219,7 @@ pub fn msg_handler_cmds(world: &mut World, message: CmdMsg, _responses: &mut Msg
             };
 
             let execution_result = unwrap_cmd_type!(cmd, ref mut cmd => {
-                cmd.execute(world)
+                cmd.execute(world, responder)
             });
 
             if let Err(reason) = execution_result {

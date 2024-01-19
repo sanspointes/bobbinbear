@@ -1,21 +1,26 @@
 mod box_tool;
 mod grab_tool;
+mod noop_tool;
+mod pen_tool;
 mod select_tool;
 
 use anyhow::anyhow;
 use bevy::{ecs::system::SystemState, prelude::*};
 use thiserror::Error;
 
-use crate::{plugins::input_plugin::InputMessage, types::BBTool, events::camera::CameraEvent};
-
-use self::{
-    box_tool::{msg_handler_box_tool, BoxToolRes},
-    // box_tool::msg_handler_box_tool,
-    grab_tool::{msg_handler_grab_tool, GrabToolState},
-    select_tool::{msg_handler_select_tool, SelectFsm},
+use crate::{
+    plugins::{input_plugin::InputMessage, screen_space_root_plugin::sys_setup_ss_root},
+    types::BBTool, shared::sys_setup_cached_meshes,
 };
 
-use super::{api::ApiEffectMsg, MsgQue};
+use self::{
+    box_tool::{BoxTool, BoxToolRes},
+    grab_tool::{GrabTool, GrabToolState},
+    pen_tool::{sys_setup_pen_resource, PenResource, PenTool},
+    select_tool::{SelectFsm, SelectTool},
+};
+
+use super::{api::ApiEffectMsg, effect::EffectMsg, MsgQue};
 
 #[derive(Error, Debug)]
 pub enum ToolFsmError {
@@ -64,7 +69,7 @@ pub struct ToolResource {
     tool_stack: Vec<BBTool>,
 }
 impl ToolResource {
-    fn get_current_tool(&self) -> BBTool {
+    pub fn get_current_tool(&self) -> BBTool {
         *self.tool_stack.last().unwrap_or(&BBTool::Select)
     }
 }
@@ -77,9 +82,10 @@ impl Plugin for ToolMsgPlugin {
             .insert_resource(ToolResource::default())
             .insert_resource(SelectFsm::default())
             .insert_resource(BoxToolRes::default())
-            .insert_resource(GrabToolState::default());
+            .insert_resource(GrabToolState::default())
+            .insert_resource(PenResource::default());
 
-        app.add_event::<CameraEvent>();
+        app.add_systems(PostStartup, sys_setup_pen_resource.after(sys_setup_ss_root).after(sys_setup_cached_meshes));
     }
 }
 
@@ -91,16 +97,18 @@ fn handle_active_tool_change(
 ) {
     let msg = ToolHandlerMessage::OnDeactivate;
     match prev_tool {
-        BBTool::Select => msg_handler_select_tool(world, &msg, responder),
-        BBTool::Grab => msg_handler_grab_tool(world, &msg, responder),
-        BBTool::Box => msg_handler_box_tool(world, &msg, responder),
+        BBTool::Select => SelectTool::handle_msg(world, &msg, responder),
+        BBTool::Grab => GrabTool::handle_msg(world, &msg, responder),
+        BBTool::Box => BoxTool::handle_msg(world, &msg, responder),
+        BBTool::Pen => PenTool::handle_msg(world, &msg, responder),
         BBTool::Noop => (),
     }
     let msg = ToolHandlerMessage::OnActivate;
     match curr_tool {
-        BBTool::Select => msg_handler_select_tool(world, &msg, responder),
-        BBTool::Grab => msg_handler_grab_tool(world, &msg, responder),
-        BBTool::Box => msg_handler_box_tool(world, &msg, responder),
+        BBTool::Select => SelectTool::handle_msg(world, &msg, responder),
+        BBTool::Grab => GrabTool::handle_msg(world, &msg, responder),
+        BBTool::Box => BoxTool::handle_msg(world, &msg, responder),
+        BBTool::Pen => PenTool::handle_msg(world, &msg, responder),
         BBTool::Noop => (),
     }
     responder.notify_effect(ApiEffectMsg::SetCurrentTool(curr_tool));
@@ -154,18 +162,51 @@ pub fn msg_handler_tool(world: &mut World, message: &ToolMessage, responder: &mu
             }
         }
         tool_message => {
-            if let Ok(tool_handler_message) = &tool_message.try_into() {
+            if let Ok(msg) = &tool_message.try_into() {
                 match res.get_current_tool() {
-                    BBTool::Select => {
-                        msg_handler_select_tool(world, tool_handler_message, responder)
-                    }
-                    BBTool::Grab => msg_handler_grab_tool(world, tool_handler_message, responder),
-                    BBTool::Box => msg_handler_box_tool(world, tool_handler_message, responder),
+                    BBTool::Select => SelectTool::handle_msg(world, msg, responder),
+                    BBTool::Grab => GrabTool::handle_msg(world, msg, responder),
+                    BBTool::Box => BoxTool::handle_msg(world, msg, responder),
+                    BBTool::Pen => PenTool::handle_msg(world, msg, responder),
                     BBTool::Noop => (),
                 }
             } else {
                 warn!("Warning: Unhandled ToolMessage ({:?}).  Cannot convert to ToolHandlerMessage to pass to active tool.", tool_message);
             }
         }
+    }
+}
+
+pub trait ToolHandler {
+    /// Executes when setting up the tool handler.
+    ///
+    /// * `world`:
+    fn setup(world: &mut World);
+
+    /// Handles messages such as commands or actions
+    ///
+    /// * `world`:
+    /// * `msg`:
+    /// * `responder`:
+    fn handle_msg(world: &mut World, msg: &ToolHandlerMessage, responder: &mut MsgQue);
+
+    /// Handles events (side effects of executed actions)
+    ///
+    /// * `world`:
+    /// * `msg`:
+    /// * `responder`:
+    fn handle_effects(world: &mut World, event: &EffectMsg);
+}
+
+pub fn msg_handler_effect_for_tools(world: &mut World, msg: &EffectMsg, _responder: &mut MsgQue) {
+    let tool_resource = world.resource::<ToolResource>();
+    let tool = tool_resource.get_current_tool();
+
+    match tool {
+        BBTool::Noop => (),
+        BBTool::Grab => GrabTool::handle_effects(world, msg),
+        BBTool::Select => SelectTool::handle_effects(world, msg),
+        BBTool::Box => BoxTool::handle_effects(world, msg),
+        BBTool::Pen => PenTool::handle_effects(world, msg),
     }
 }

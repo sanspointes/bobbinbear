@@ -85,6 +85,37 @@ impl LocalToWorld for Vec4 {
     }
 }
 
+pub trait WorldToLocal {
+    fn world_to_local(&self, world_matrix: &Mat4) -> Self;
+}
+
+impl WorldToLocal for Vec3 {
+    fn world_to_local(&self, world_matrix: &Mat4) -> Self {
+        world_matrix.inverse().mul_vec4(Vec4::new(self.x, self.y, self.z, 1.)).xyz()
+    }
+}
+impl WorldToLocal for Vec4 {
+    fn world_to_local(&self, world_matrix: &Mat4) -> Self {
+        world_matrix.inverse().mul_vec4(*self)
+    }
+}
+
+pub trait WorldToEntityLocal {
+    fn world_to_entity_local(&self, world: &World, entity: Entity) -> Self;
+}
+impl WorldToEntityLocal for Vec3 {
+    fn world_to_entity_local(&self, world: &World, entity: Entity) -> Self {
+        let global_matrix = world.get::<GlobalTransform>(entity).unwrap().compute_matrix();
+        self.world_to_local(&global_matrix)
+    }
+}
+impl WorldToEntityLocal for Vec4 {
+    fn world_to_entity_local(&self, world: &World, entity: Entity) -> Self {
+        let global_matrix = world.get::<GlobalTransform>(entity).unwrap().compute_matrix();
+        self.world_to_local(&global_matrix)
+    }
+}
+
 pub trait ScreenToWorld {
     fn screen_to_world(&self, ss_root: &ScreenSpaceRoot) -> Self;
 }

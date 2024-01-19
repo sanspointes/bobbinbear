@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::{
     components::{bbid::BBId, utility::OnMoveCommand},
-    plugins::bounds_2d_plugin::GlobalBounds2D,
+    plugins::bounds_2d_plugin::GlobalBounds2D, msgs::MsgQue,
 };
 
 use super::{Cmd, CmdError, CmdMsg, CmdType, CmdUpdateTreatment};
@@ -78,7 +78,7 @@ impl MoveObjectsCmd {
 }
 
 impl Cmd for MoveObjectsCmd {
-    fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
+    fn execute(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
         let to_move_entities = self.get_to_move_entities(world);
         let mut q_movable = world.query::<(
             Entity,
@@ -131,7 +131,7 @@ impl Cmd for MoveObjectsCmd {
 
         Ok(())
     }
-    fn undo(&mut self, world: &mut bevy::prelude::World) -> Result<(), CmdError> {
+    fn undo(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
         let to_move_entities = self.get_to_move_entities(world);
         let mut q_movable = world.query::<(
             &mut Transform,
