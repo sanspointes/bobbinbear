@@ -5,7 +5,7 @@ use bevy::prelude::*;
 
 use crate::{
     components::{bbid::BBId, utility::OnMoveCommand},
-    plugins::bounds_2d_plugin::GlobalBounds2D, msgs::MsgQue,
+    plugins::bounds_2d_plugin::GlobalBounds2D, msgs::{MsgQue, Msg},
 };
 
 use super::{Cmd, CmdError, CmdMsg, CmdType, CmdUpdateTreatment};
@@ -31,6 +31,11 @@ impl From<MoveObjectsCmd> for CmdMsg {
     fn from(value: MoveObjectsCmd) -> Self {
         let cmd_type: CmdType = value.into();
         CmdMsg::Execute(Arc::new(cmd_type))
+    }
+}
+impl From<MoveObjectsCmd> for Msg {
+    fn from(value: MoveObjectsCmd) -> Self {
+        Msg::from(CmdMsg::from(value))
     }
 }
 

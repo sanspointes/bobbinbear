@@ -11,12 +11,6 @@ use crate::{
 use super::{Cmd, CmdError, CmdMsg, CmdType};
 
 #[derive(Debug)]
-pub struct SelectObjectModel {
-    target: BBId,
-    initial_position: Option<Vec3>,
-}
-
-#[derive(Debug)]
 pub struct SelectObjectsCmd {
     pub to_select: Vec<BBId>,
     pub to_deselect: Vec<BBId>,

@@ -40,7 +40,7 @@ pub(super) fn sys_setup_selection_bounds(
                 mesh: handle.into(),
                 material: materials.add(SelectionBoundsMaterial {
                     color: SELECT_COLOR,
-                    border_color: SELECT_COLOR.with_a(0.05),
+                    border_color: SELECT_COLOR.with_a(0.0),
                     border_width: SELECTION_BOUNDS_STROKE_WIDTH,
                     dimensions: Vec2::default(),
                 }),
@@ -78,10 +78,17 @@ pub(super) fn sys_selection_bounds_handle_change(
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_selection_bounds_handle_change").entered();
 
-    let needs_update = system_set.p0().iter().next().is_some()
-        || ev_effect_reader
+    let has_emitted_dirty_event = ev_effect_reader
             .read()
-            .any(|ev| matches!(ev, EffectMsg::CameraMoved { .. }));
+            .any(|ev| match ev {
+                EffectMsg::ObjectSelectionChanged { .. } => true,
+                EffectMsg::CameraMoved { .. } => true,
+                EffectMsg::CameraZoomed { .. } => true,
+                _ => false,
+            });
+    let has_dirty_entity = system_set.p0().iter().next().is_some();
+
+    let needs_update = has_emitted_dirty_event || has_dirty_entity;
     if !needs_update {
         return;
     }

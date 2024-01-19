@@ -2,7 +2,8 @@
     "lspconfig": {
         "rust_analyzer": {
             "rust-analyzer.cargo.features": ["desktop","linux","inspector"],
-            "rust-analyzer.check.command": "check"
+            "rust-analyzer.check.command": "clippy",
+            "rust-analyzer.check.extraArgs": ["--profile", "rust-analyzer"]
         }
     }
 }

@@ -25,6 +25,14 @@ pub enum Selected {
     No,
     Yes,
 }
+impl Selected {
+    pub fn is_selected(&self) -> bool {
+        matches!(self, Selected::Yes)
+    }
+    pub fn is_unselected(&self) -> bool {
+        matches!(self, Selected::No)
+    }
+}
 
 #[derive(Debug, Default, Component, Reflect, Clone, Copy)]
 #[reflect(Component)]

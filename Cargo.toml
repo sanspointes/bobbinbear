@@ -7,3 +7,7 @@ members = [
     "packages/bb_vector_network/examples/editor",
     "packages/bb_vector_network/examples/visualisations",
 ]
+
+# Fix for RA breaking incremental compilation.
+[profile.rust-analyzer]
+inherits = "dev"

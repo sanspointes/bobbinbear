@@ -5,7 +5,7 @@ use bevy::{prelude::*, ecs::event::event_update_condition};
 
 use crate::{
     components::{bbid::{BBId, BBIdUtils}, scene::BBObject},
-    plugins::inspect_plugin::{InspectState, update_inspect_state}, msgs::{MsgQue, effect::EffectMsg},
+    plugins::inspect_plugin::{InspectState, update_inspect_state}, msgs::{MsgQue, effect::EffectMsg, Msg},
 };
 
 use super::{Cmd, CmdError, CmdMsg, CmdType};
@@ -18,6 +18,16 @@ pub struct InspectCmd {
     pub target: Option<BBId>,
 }
 impl InspectCmd {
+    pub fn new(target: Option<BBId>) -> Self {
+        Self {
+            target,
+        }
+    }
+    pub fn uninspect() -> Self {
+        Self {
+            target: None,
+        }
+    }
     pub fn inspect(target: BBId) -> Self {
         Self {
             target: Some(target),
@@ -76,6 +86,11 @@ impl From<InspectCmd> for CmdMsg {
     fn from(value: InspectCmd) -> Self {
         let cmd_type: CmdType = value.into();
         CmdMsg::Execute(Arc::new(cmd_type))
+    }
+}
+impl From<InspectCmd> for Msg {
+    fn from(value: InspectCmd) -> Self {
+        Msg::Cmd(value.into())
     }
 }
 

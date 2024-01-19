@@ -1,4 +1,4 @@
-use bevy::{math::Vec3A, prelude::*, sprite::Mesh2dHandle, render::primitives::Aabb};
+use bevy::{math::Vec3A, prelude::*, render::primitives::Aabb, sprite::Mesh2dHandle};
 
 use crate::editor::EditorSet;
 
@@ -48,12 +48,14 @@ pub fn sys_update_global_bounds_2d(
     r_meshes: Res<Assets<Mesh>>,
     mut param_set: ParamSet<(
         // Query for changes to global bounds
-        Query<
-            (Entity, &GlobalBounds2D),
-            Or<(Changed<GlobalBounds2D>, Changed<Mesh2dHandle>, Changed<GlobalTransform>)>,
-        >,
+        Query<(Entity, &GlobalBounds2D)>,
         // Query for all GlobalBounds2D entities.
-        Query<(&Mesh2dHandle, &GlobalTransform, &mut GlobalBounds2D, &mut Aabb)>,
+        Query<(
+            &Mesh2dHandle,
+            &GlobalTransform,
+            &mut GlobalBounds2D,
+            &mut Aabb,
+        )>,
     )>,
     mut to_update_que: Local<Vec<Entity>>,
 ) {
@@ -84,7 +86,9 @@ pub fn sys_update_global_bounds_2d(
     let mut q_calculatable = param_set.p1();
 
     for entity in &to_update_que {
-        if let Ok((mesh_handle, global_transform, mut global_bounds, mut aabb)) = q_calculatable.get_mut(*entity) {
+        if let Ok((mesh_handle, global_transform, mut global_bounds, mut aabb)) =
+            q_calculatable.get_mut(*entity)
+        {
             let Some(mesh) = r_meshes.get(&mesh_handle.0) else {
                 next_to_update_que.push(*entity); // Try again next frame
                 #[cfg(feature = "debug_bounds")]
@@ -104,7 +108,8 @@ pub fn sys_update_global_bounds_2d(
             let mut min = Vec3::MAX;
             let mut max = Vec3::MIN;
             let global_matrix = global_transform.compute_matrix();
-            let verts: Vec<_> = verts.iter()
+            let verts: Vec<_> = verts
+                .iter()
                 .map(|vert_float3| {
                     let p = Vec3A::from(*vert_float3);
                     min.x = min.x.min(p.x);
