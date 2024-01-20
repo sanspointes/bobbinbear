@@ -1,6 +1,6 @@
 use std::fmt::{Debug, Display};
 
-use bevy::{ecs::world::EntityMut, prelude::*, reflect::Reflect, utils::Uuid};
+use bevy::{ecs::{world::EntityMut, component::ComponentInfo}, prelude::*, reflect::Reflect, utils::Uuid};
 use thiserror::Error;
 
 #[derive(
@@ -48,6 +48,8 @@ pub trait BBIdUtils {
     fn try_bbid_get_mut<C: Component>(&mut self, bbid: BBId) -> Option<Mut<C>>;
 
     fn try_entities_by_bbid_vec(&mut self, bbids: &[BBId]) -> Result<Vec<Entity>, BbidWorldError>;
+
+    fn entity_components(&mut self, entity: Entity) -> Vec<Option<&ComponentInfo>>;
 }
 
 impl BBIdUtils for World {
@@ -80,10 +82,7 @@ impl BBIdUtils for World {
     }
 
     fn try_bbid_mut(&mut self, bbid: BBId) -> Option<EntityWorldMut> {
-        match self.try_bbid(bbid) {
-            Some(e) => Some(self.entity_mut(e)),
-            None => None,
-        }
+        self.try_bbid(bbid).map(|e| self.entity_mut(e))
     }
 
     fn bbid_get<C: Component>(&mut self, bbid: BBId) -> &C {
@@ -123,5 +122,11 @@ impl BBIdUtils for World {
             .collect();
 
         result
+    }
+
+    fn entity_components(&mut self, entity: Entity) -> Vec<Option<&ComponentInfo>> {
+        let reference = self.get_entity(entity).unwrap();
+        let components = self.components();
+        reference.archetype().components().map(|c| components.get_info(c)).collect()
     }
 }

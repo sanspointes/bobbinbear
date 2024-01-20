@@ -5,30 +5,56 @@ use bb_vector_network::prelude::{BBEdge, BBEdgeIndex, BBGraph, BBNodeIndex};
 use bevy::prelude::*;
 
 use crate::{
-    components::bbid::{BBId, BBIdUtils},
-    plugins::vector_graph_plugin::VectorGraph, msgs::{effect::EffectMsg, MsgQue},
+    components::{
+        bbid::{BBId, BBIdUtils},
+        scene::VectorGraphDirty,
+    },
+    msgs::{effect::EffectMsg, MsgQue},
+    plugins::vector_graph_plugin::VectorGraph,
 };
 
 use super::{Cmd, CmdError, CmdMsg, CmdType};
 
 #[derive(Debug, Clone, Copy)]
+/// Stores a reference to a pre-existing or not yet created BBNode.
+/// For the `New` variant, if used with a target bbid then coordinates are in screen space
+/// else they are in world space.
 pub enum AddRemoveEdgeNode {
     Existing(BBNodeIndex),
     New(Vec2),
 }
 
+impl From<Vec2> for AddRemoveEdgeNode {
+    fn from(value: Vec2) -> Self {
+        Self::New(value)
+    }
+}
+
 impl AddRemoveEdgeNode {
+    pub fn from_idx_or_local_pos(idx: Option<BBNodeIndex>, local_pos: Vec2) -> Self {
+        match idx {
+            Some(idx) => AddRemoveEdgeNode::Existing(idx),
+            None => AddRemoveEdgeNode::New(local_pos),
+        }
+    }
+
+    pub fn local_position_from_graph(&self, graph: &BBGraph) -> Vec2 {
+        match self {
+            Self::Existing(idx) => graph.node(*idx).unwrap().position(),
+            Self::New(pos) => *pos,
+        }
+    }
     /// Gets the position of this node reference.  Either from the stored new pos or by querying
     /// the existing node from the reference graph.
     ///
-    /// * `world`: 
+    /// * `world`:
     /// * `bbid`: BBId of the entity with the VectorGraph
-    pub fn position_from_bbid(&self, world: &mut World, bbid: BBId) -> Vec2 {
+    pub fn local_position_from_bbid(&self, world: &mut World, bbid: BBId) -> Vec2 {
         match self {
             AddRemoveEdgeNode::New(pos) => *pos,
             AddRemoveEdgeNode::Existing(node_idx) => {
                 let graph = world.bbid_get::<VectorGraph>(bbid);
-                graph.0.node(*node_idx).expect(&format!("Can't get {node_idx} from graph {graph:?}")).position()
+                self.local_position_from_graph(&graph.0)
             }
         }
     }
@@ -137,11 +163,7 @@ impl AddRemoveEdgeCmd {
 }
 
 impl AddRemoveEdgeCmd {
-    fn add_edge(
-        &mut self,
-        graph: &mut BBGraph,
-        edge_type: &AddRemoveEdgeType,
-    ) -> BBEdgeIndex {
+    fn add_edge(&mut self, graph: &mut BBGraph, edge_type: &AddRemoveEdgeType) -> BBEdgeIndex {
         debug!("AddRemoveEdgeCmd::add_edge(edge_type: {edge_type:?})");
         use AddRemoveEdgeNode::*;
 
@@ -206,7 +228,11 @@ impl AddRemoveEdgeCmd {
         })
     }
 
-    fn perform(&mut self, world: &mut World) -> Result<(), super::CmdError> {
+    fn perform(
+        &mut self,
+        world: &mut World,
+        responder: &mut MsgQue,
+    ) -> Result<(), super::CmdError> {
         let target_entity = world.bbid(self.target);
         let mut graph =
             world
@@ -215,22 +241,34 @@ impl AddRemoveEdgeCmd {
                     "Could not get target bbid"
                 )))?;
 
-        let ( next_action, effect ) = match self.action {
+        let (next_action, effect) = match self.action {
             AddRemoveEdgeAction::Add(edge_type) => {
                 let idx = self.add_edge(&mut graph.0, &edge_type);
-                (AddRemoveEdgeAction::Remove(idx), EffectMsg::EdgeAdded { target: self.target, idx })
-            },
+                (
+                    AddRemoveEdgeAction::Remove(idx),
+                    EffectMsg::EdgeAdded {
+                        target: self.target,
+                        idx,
+                    },
+                )
+            }
             AddRemoveEdgeAction::Remove(edge_idx) => (
                 self.remove_edge(&mut graph.0, &edge_idx),
                 EffectMsg::EdgeRemoved {
                     target: self.target,
                     idx: edge_idx,
-                } ,
+                },
             ),
         };
 
-        // effect.send(world);
-        // EffectMsg::GraphChanged { target: self.target }.send(world);
+        let e = world.bbid(self.target);
+        println!("Components: {:#?}", world.entity_components(e));
+
+        let mut dirty_state = world.bbid_get_mut::<VectorGraphDirty>(self.target);
+        *dirty_state = VectorGraphDirty::Dirty;
+
+        responder.push_internal(effect);
+
         self.action = next_action;
 
         Ok(())
@@ -238,12 +276,16 @@ impl AddRemoveEdgeCmd {
 }
 
 impl Cmd for AddRemoveEdgeCmd {
-    fn execute(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), super::CmdError> {
-        self.perform(world)
+    fn execute(
+        &mut self,
+        world: &mut World,
+        responder: &mut MsgQue,
+    ) -> Result<(), super::CmdError> {
+        self.perform(world, responder)
     }
 
     fn undo(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), super::CmdError> {
-        self.perform(world)
+        self.perform(world, responder)
     }
 
     fn try_update_from_prev(&mut self, _other: &super::CmdType) -> super::CmdUpdateTreatment {

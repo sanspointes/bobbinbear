@@ -9,7 +9,7 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use crate::{
     components::{
         bbid::BBId,
-        scene::{BBNode, BBObject},
+        scene::{BBNode, BBObject, VectorGraphDirty},
     },
     msgs::{
         api::ApiMsg, cmds::CmdMsgPlugin, effect::EffectMsg, sys_msg_handler, Msg, MsgPlugin,
@@ -122,7 +122,9 @@ impl Plugin for EditorPlugin {
             .register_type::<BBId>()
             .register_type::<BBObject>()
             .register_type::<BBNode>()
-            .register_type::<ScreenSpaceRoot>();
+            .register_type::<ScreenSpaceRoot>()
+            .register_type::<VectorGraphDirty>()
+        ;
 
         // if let Some(frontend_sender) = app.world.get_resource_mut::<FrontendSender>() {
         //     frontend_sender

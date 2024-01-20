@@ -166,8 +166,11 @@ pub fn msg_handler_cmds(world: &mut World, message: CmdMsg, responder: &mut MsgQ
 
                 #[cfg(feature = "debug_cmd")]
                 if matches!(treatment, CmdUpdateTreatment::AsRepeat) {
-                    debug!("Command updated from previous. {cmd:?}");
+                    debug!("Command updated from previous.");
                 }
+
+                #[cfg(feature = "debug_cmd")]
+                debug!("Executing cmd. {cmd:?}");
 
                 let execution_result = cmd.execute(world, responder);
                 if let Err(reason) = execution_result {

@@ -10,7 +10,7 @@ pub enum BBObject {
     Vector,
 }
 
-#[derive(Copy, Clone, Default, Component)]
+#[derive(Copy, Clone, Default, Component, Reflect, serde::Serialize, serde::Deserialize)]
 pub enum VectorGraphDirty {
     #[default]
     Default,

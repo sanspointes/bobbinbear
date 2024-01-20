@@ -2,7 +2,7 @@ use std::{fmt::Display, sync::Arc};
 
 use bevy::prelude::World;
 
-use crate::msgs::MsgQue;
+use crate::msgs::{MsgQue, Msg};
 
 use super::{Cmd, CmdError, CmdMsg, CmdType};
 
@@ -20,6 +20,11 @@ impl From<MultiCmd> for CmdMsg {
     fn from(value: MultiCmd) -> Self {
         let cmd_type: CmdType = value.into();
         CmdMsg::Execute(Arc::new(cmd_type))
+    }
+}
+impl From<MultiCmd> for Msg {
+    fn from(value: MultiCmd) -> Self {
+        Msg::Cmd(value.into())
     }
 }
 
