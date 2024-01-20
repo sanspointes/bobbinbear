@@ -1,9 +1,10 @@
 mod pen_edge;
 
+use std::default;
+
 use bb_vector_network::prelude::BBNodeIndex;
 use bevy::{prelude::*, sprite::Mesh2dHandle};
 use bevy_debug_text_overlay::screen_print;
-use lyon_tessellation::StrokeOptions;
 
 use crate::{
     components::{
@@ -12,25 +13,17 @@ use crate::{
     },
     constants::Z_INDEX_BB_NODE,
     msgs::{
-        cmds::{
-            add_remove_edge_cmd::{AddRemoveEdgeCmd, AddRemoveEdgeNode},
-            add_remove_object_cmd::AddObjectCmd,
-            inspect_cmd::{InspectCmd, InspectingTag},
-            Cmd, MultiCmd,
-        },
+        cmds::{inspect_cmd::InspectingTag, MultiCmd},
         effect::EffectMsg,
         tools::pen_tool::pen_edge::PenEdgeVariant,
         MsgQue,
     },
     plugins::{
-        bounds_2d_plugin::GlobalBounds2D,
-        inspect_plugin::InspectArtifact,
-        screen_space_root_plugin::ScreenSpaceRoot,
-        selection_plugin::{get_raycast_hits_selectable, SelectableBundle},
-        vector_graph_plugin::{Fill, Stroke, VectorGraph},
+        inspect_plugin::InspectArtifact, screen_space_root_plugin::ScreenSpaceRoot,
+        selection_plugin::get_raycast_hits_selectable, vector_graph_plugin::VectorGraph,
     },
     shared::{CachedMeshes, WorldUtils},
-    utils::{vector::BBObjectVectorBundle, coordinates::WorldToLocal},
+    utils::coordinates::{WorldToLocal, WorldToScreen},
 };
 
 use self::pen_edge::PenEdge2;
@@ -149,63 +142,19 @@ impl ToolHandler for PenTool {
                         (None, Some(_)) => panic!("PenTool: Input(PointerClick) impossible state. Can't have no target but reference BBNodeIndex."),
                     },
                     PenFsm::BuildingEdge(edge) => {
-                        let mut cmds: Vec<Box<dyn Cmd>> = Vec::new();
-                        // Unwrap or create BBGraph to add the edge to.
-                        let ( target, world_matrix ) = edge.target().map(|target| (target, world.bbid_get::<GlobalTransform>(target).compute_matrix())).unwrap_or_else(|| {
-                            let bbid = BBId::default();
-                            let transform = Transform {
-                                translation: Vec3::new(world_pos.x, world_pos.y, 0.),
-                                ..Default::default()
-                            };
-                            let world_matrix = transform.compute_matrix();
-
-                            let cmd = AddObjectCmd::from_bundle(
-                                world,
-                                None,
-                                (
-                                    Name::from("Box"),
-                                    bbid,
-                                    BBObjectVectorBundle::default().with_transform(transform),
-                                    GlobalBounds2D::default(),
-                                    SelectableBundle::default(),
-                                    Fill::color(Color::rgb_u8(50, 50, 50)),
-                                    Stroke {
-                                        color: Color::rgb(0.7, 0.7, 0.7),
-                                        options: StrokeOptions::default(),
-                                    },
-                                ),
-                            )
-                            .unwrap();
-                            cmds.push(Box::new(cmd));
-                            cmds.push(Box::new(InspectCmd::inspect(bbid)));
-                            (bbid, world_matrix)
-                        });
-
-                        let ss_root = ScreenSpaceRoot::get_from_world(world);
-                        let cmd = match edge.to_local_with_matrix(target, ss_root, &world_matrix).variant() {
-                            PenEdgeVariant::Line { start, start_node, end, end_node } => {
-                                let cmd = AddRemoveEdgeCmd::new_add_line(target, AddRemoveEdgeNode::from_idx_or_local_pos(*start_node, *start), AddRemoveEdgeNode::from_idx_or_local_pos(*end_node, *end));
-                                Box::new(cmd)
-                            }
-                            PenEdgeVariant::Quadratic { start, start_node, ctrl1, end, end_node } => {
-                                let cmd = AddRemoveEdgeCmd::new_add_quadratic(target, AddRemoveEdgeNode::from_idx_or_local_pos(*start_node, *start), *ctrl1, AddRemoveEdgeNode::from_idx_or_local_pos(*end_node, *end));
-                                Box::new(cmd)
-                            }
-                            PenEdgeVariant::Cubic { start, start_node, ctrl1, ctrl2, end, end_node } => {
-                                let cmd = AddRemoveEdgeCmd::new_add_cubic(target, AddRemoveEdgeNode::from_idx_or_local_pos(*start_node, *start), *ctrl1, *ctrl2, AddRemoveEdgeNode::from_idx_or_local_pos(*end_node, *end));
-                                Box::new(cmd)
-                            }
-                        };
-                        cmds.push(cmd);
-
+                        let (target, cmds) = edge.get_commands(world, *world_pos);
                         responder.push_internal(MultiCmd::new(cmds));
-
                         PenFsm::AwaitingAddedEdge { target }
                     }
                     pen_fsm => panic!("PenTool: Unhandled state {pen_fsm:?}."),
                 }
             }
-            Input(PointerMove { screen, world: world_pos, .. }) => {
+
+            Input(PointerMove {
+                screen,
+                world: world_pos,
+                ..
+            }) => {
                 let hit = get_raycast_hits_selectable(world)
                     .first()
                     .cloned()
@@ -228,17 +177,14 @@ impl ToolHandler for PenTool {
                         let hit_idx = hit.map(|e| BBNodeIndex(world.get::<BBIndex>(e).unwrap().0));
 
                         let next_edge = match target {
-                            Some(target) => {
-                                edge.to_local(world, target)
-                            }
-                            None => {
-                                edge.to_world(world)
-                            }
+                            Some(target) => edge.to_local(world, target),
+                            None => edge.to_world(world),
                         };
 
                         let next_edge = match next_edge {
                             PenEdge2::Local(target, mut edge) => {
-                                let world_matrix = world.bbid_get::<GlobalTransform>(target).compute_matrix();
+                                let world_matrix =
+                                    world.bbid_get::<GlobalTransform>(target).compute_matrix();
                                 *edge.end_node_mut() = hit_idx;
                                 *edge.end_mut() = world_pos.world_to_local(&world_matrix);
                                 println!("Updated edge {edge:?}");
@@ -258,6 +204,146 @@ impl ToolHandler for PenTool {
                     }
                 }
             }
+
+            Input(DragStart {
+                world: world_pos,
+                world_pressed,
+                ..
+            }) => {
+                let hit = get_raycast_hits_selectable(world)
+                    .first()
+                    .cloned()
+                    .and_then(|(e, _)| match world.has_component::<BBNode>(e) {
+                        true => Some(e),
+                        false => None,
+                    });
+
+                match &state {
+                    PenFsm::Default => {
+                        let target = hit.map(|e| world.get::<InspectArtifact>(e).unwrap().0);
+                        let hit_node = hit.map(|e| BBNodeIndex(world.get::<BBIndex>(e).unwrap().0));
+
+                        match (target, hit_node) {
+                            (Some(target), Some(node_idx)) => {
+                                let pos = world.bbid_get::<VectorGraph>(target).0.node(node_idx).unwrap().position();
+                                let world_matrix =
+                                    world.bbid_get::<GlobalTransform>(target).compute_matrix();
+                                let end_pos = world_pos.world_to_local(&world_matrix);
+                                PenFsm::BuildingEdge(PenEdge2::Local(target, PenEdgeVariant::Quadratic { start: pos, start_node: Some(node_idx), ctrl1: end_pos, end: end_pos, end_node: None }))
+                            },
+                            (target, None) => {
+                                PenFsm::BuildingEdge(PenEdge2::World(target, PenEdgeVariant::Quadratic { start: *world_pressed, start_node: None, ctrl1: *world_pos, end: *world_pos, end_node: None }))
+                            },
+                            (None, Some(_)) => panic!("PenTool: Input(DragStart) impossible state. Can't have no target but reference BBNodeIndex."),
+                        }
+                    }
+                    PenFsm::BuildingEdge(mut edge) => {
+                        let mouse_pos = match edge {
+                            PenEdge2::Local(target, _) => {
+                                let world_matrix =
+                                    world.bbid_get::<GlobalTransform>(target).compute_matrix();
+                                world_pos.world_to_local(&world_matrix)
+                            }
+                            PenEdge2::World(_, _) => *world_pos,
+                            PenEdge2::Screen(_, _) => {
+                                world_pos.world_to_screen(ScreenSpaceRoot::get_from_world(world))
+                            }
+                        };
+                        let next_variant = match edge.variant_mut() {
+                            variant @ PenEdgeVariant::Line { .. } => {
+                                let mut next_variant = variant.as_quadratic(mouse_pos);
+                                *next_variant.end_mut() = mouse_pos;
+                                next_variant
+                            }
+                            variant @ PenEdgeVariant::Quadratic { .. } => {
+                                let ctrl1 = *variant.try_ctrl1_mut().unwrap();
+                                let mut next_variant = variant.as_cubic(ctrl1, mouse_pos);
+                                *next_variant.end_mut() = mouse_pos;
+                                next_variant
+                            }
+                            PenEdgeVariant::Cubic { .. } => panic!("PenTool: Input(DragStart) impossible state. Can't drag start when already building cubic."),
+                        };
+
+                        *edge.variant_mut() = next_variant;
+                        PenFsm::BuildingEdge(edge)
+                    }
+                    _ => panic!("Unhandled."),
+                }
+            }
+
+            Input(DragMove {
+                world: world_pos, ..
+            }) => match &state {
+                PenFsm::BuildingEdge(mut edge) => {
+                    let coordinate_pos = edge.world_to_coordinate_space(world, *world_pos);
+
+                    match edge.variant_mut() {
+                        variant @ PenEdgeVariant::Line { .. } => {
+                            panic!("PenTool: Input(DragMove) impossible variant {variant:?}.")
+                        }
+                        variant @ PenEdgeVariant::Quadratic { .. } => {
+                            if let Some(pos) = variant.try_ctrl1_mut() {
+                                *pos = coordinate_pos
+                            }
+                            *variant.end_mut() = coordinate_pos;
+                        }
+                        variant @ PenEdgeVariant::Cubic { .. } => {
+                            if let Some(pos) = variant.try_ctrl2_mut() {
+                                *pos = coordinate_pos
+                            }
+                            *variant.end_mut() = coordinate_pos;
+                        }
+                    }
+
+                    edge.draw(world);
+                    PenFsm::BuildingEdge(edge)
+                }
+                state => panic!("PenTool: Input(DragMove) impossible state {state:?}."),
+            },
+
+            Input(DragEnd {
+                world: world_pos, ..
+            }) => match &state {
+                PenFsm::BuildingEdge(mut edge) => {
+                    let mouse_pos = match edge {
+                        PenEdge2::Local(target, _) => {
+                            let world_matrix =
+                                world.bbid_get::<GlobalTransform>(target).compute_matrix();
+                            world_pos.world_to_local(&world_matrix)
+                        }
+                        PenEdge2::World(_, _) => *world_pos,
+                        PenEdge2::Screen(_, _) => {
+                            world_pos.world_to_screen(ScreenSpaceRoot::get_from_world(world))
+                        }
+                    };
+
+                    match edge.variant_mut() {
+                        variant @ PenEdgeVariant::Line { .. } => {
+                            panic!("PenTool: Input(DragEnd) impossible variant {variant:?}.")
+                        }
+                        variant @ PenEdgeVariant::Quadratic { .. } => {
+                            if let Some(pos) = variant.try_ctrl1_mut() {
+                                *pos = mouse_pos
+                            }
+                        }
+                        variant @ PenEdgeVariant::Cubic { .. } => {
+                            if let Some(pos) = variant.try_ctrl2_mut() {
+                                *pos = mouse_pos
+                            }
+                        }
+                    }
+
+                    if matches!(edge.variant(), PenEdgeVariant::Cubic { .. }) {
+                        let (target, cmds) = edge.get_commands(world, *world_pos);
+                        responder.push_internal(MultiCmd::new(cmds));
+                        PenFsm::AwaitingAddedEdge { target }
+                    } else {
+                        PenFsm::BuildingEdge(edge)
+                    }
+                }
+                state => panic!("PenTool: Input(DragMove) impossible state {state:?}."),
+            },
+
             Input(Keyboard { key, .. }) => match key {
                 KeyCode::Escape => {
                     let pen_res = world.resource::<PenResource>();

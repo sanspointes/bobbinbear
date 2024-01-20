@@ -20,7 +20,7 @@ pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 #[derive(Debug, Clone, Reflect)]
 pub struct RaycastRawInput;
 
-const DRAG_THRESHOLD: f32 = 3.;
+const DRAG_THRESHOLD: f32 = 2.;
 const BG_HIT_Z_INDEX: f32 = -100.;
 
 /// The input processor plugin processes raw input (mouse down/up, move, etc)

@@ -20,10 +20,10 @@ use crate::{
     },
     plugins::{
         screen_space_root_plugin::ScreenSpaceRoot,
-        vector_graph_plugin::{Stroke, VectorGraph},
+        vector_graph_plugin::{Stroke, VectorGraph, Fill}, selection_plugin::SelectableBundle, bounds_2d_plugin::GlobalBounds2D,
     },
     shared::CachedMeshes,
-    utils::coordinates::{LocalToScreen, LocalToWorld, ScreenToWorld, WorldToLocal, WorldToScreen},
+    utils::{coordinates::{LocalToScreen, LocalToWorld, ScreenToWorld, WorldToLocal, WorldToScreen}, vector::BBObjectVectorBundle}, msgs::cmds::{Cmd, inspect_cmd::InspectCmd, add_remove_object_cmd::AddObjectCmd, add_remove_edge_cmd::{AddRemoveEdgeCmd, AddRemoveEdgeNode}},
 };
 
 use super::PenResource;
@@ -342,6 +342,95 @@ impl PenEdgeVariant {
         }
         self
     }
+
+    pub fn as_quadratic(&self, ctrl1: Vec2) -> Self {
+        match self {
+            Self::Line {
+                start,
+                start_node,
+                end,
+                end_node,
+            } => Self::Quadratic {
+                start: *start,
+                start_node: *start_node,
+                ctrl1,
+                end: *end,
+                end_node: *end_node,
+            },
+            Self::Quadratic {
+                start,
+                start_node,
+                end,
+                end_node,
+                ..
+            } => Self::Quadratic {
+                start: *start,
+                start_node: *start_node,
+                ctrl1,
+                end: *end,
+                end_node: *end_node,
+            },
+            Self::Cubic {
+                start,
+                start_node,
+                end,
+                end_node,
+                ..
+            } => Self::Quadratic {
+                start: *start,
+                start_node: *start_node,
+                ctrl1,
+                end: *end,
+                end_node: *end_node,
+            },
+        }
+    }
+
+    pub fn as_cubic(&self, ctrl1: Vec2, ctrl2: Vec2) -> Self {
+        match self {
+            Self::Line {
+                start,
+                start_node,
+                end,
+                end_node,
+            } => Self::Cubic {
+                start: *start,
+                start_node: *start_node,
+                ctrl1,
+                ctrl2,
+                end: *end,
+                end_node: *end_node,
+            },
+            Self::Quadratic {
+                start,
+                start_node,
+                end,
+                end_node,
+                ..
+            } => Self::Cubic {
+                start: *start,
+                start_node: *start_node,
+                ctrl1,
+                ctrl2,
+                end: *end,
+                end_node: *end_node,
+            },
+            Self::Cubic {
+                start,
+                start_node,
+                end,
+                end_node,
+                ..
+            } => Self::Cubic {
+                start: *start,
+                start_node: *start_node,
+                ctrl1,
+                ctrl2,
+                end: *end,
+                end_node: *end_node,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -480,6 +569,7 @@ impl PenEdge2 {
         }
     }
 
+    /// Returns the currently targetted entity that we're trying to apply the temporary edge to.
     pub fn target(&self) -> Option<BBId> {
         use PenEdge2::*;
         match self {
@@ -488,6 +578,8 @@ impl PenEdge2 {
         }
     }
 
+    /// Creates a copy of this temporary edge in screen coordinate space.  Useful for rendering to
+    /// the screen (see `draw`).
     pub fn to_screen(self, world: &mut World) -> Self {
         match self {
             PenEdge2::Local(target, mut variant) => {
@@ -506,6 +598,7 @@ impl PenEdge2 {
         }
     }
 
+    /// Creates a copy of this temporary edge in world coordinate space.
     pub fn to_world(self, world: &mut World) -> Self {
         match self {
             PenEdge2::Screen(target, mut variant) => {
@@ -522,6 +615,8 @@ impl PenEdge2 {
         }
     }
 
+    /// Creates a copy of this temporary edge in local coordinates of an entity using the
+    /// screenspace root and the global matrix.
     pub fn to_local_with_matrix(
         self,
         target: BBId,
@@ -530,8 +625,8 @@ impl PenEdge2 {
     ) -> Self {
         match self {
             PenEdge2::Screen(_, mut variant) => {
-                variant.as_screen_to_world(&ss_root);
-                variant.as_world_to_local(&global_matrix);
+                variant.as_screen_to_world(ss_root);
+                variant.as_world_to_local(global_matrix);
                 PenEdge2::Local(target, variant)
             }
             PenEdge2::World(_, mut variant) => {
@@ -541,10 +636,124 @@ impl PenEdge2 {
             local => local,
         }
     }
+    /// Creates a copy of this temporary edge in local coordinates of a given entity.
     pub fn to_local(self, world: &mut World, target: BBId) -> Self {
         let global_matrix = world.bbid_get::<GlobalTransform>(target).compute_matrix();
         let ss_root = ScreenSpaceRoot::get_from_world(world);
         self.to_local_with_matrix(target, ss_root, &global_matrix)
+    }
+
+    /// Converts a world coordinate into the same coordinate space as this temporary edge.
+    pub fn world_to_coordinate_space(&self, world: &mut World, world_pos: Vec2) -> Vec2 {
+        match self {
+            PenEdge2::Local(target, _) => {
+                let world_matrix =
+                    world.bbid_get::<GlobalTransform>(*target).compute_matrix();
+                world_pos.world_to_local(&world_matrix)
+            }
+            PenEdge2::World(_, _) => world_pos,
+            PenEdge2::Screen(_, _) => {
+                world_pos.world_to_screen(ScreenSpaceRoot::get_from_world(world))
+            }
+        }
+    }
+
+    /// Gets the commands to apply this temporary edge to the world.
+    pub fn get_commands(&self, world: &mut World, world_pos: Vec2) -> (BBId, Vec<Box<dyn Cmd>>) {
+        let mut cmds: Vec<Box<dyn Cmd>> = Vec::new();
+        // Unwrap or create BBGraph to add the edge to.
+        let (target, world_matrix) = self
+            .target()
+            .map(|target| {
+                (
+                    target,
+                    world.bbid_get::<GlobalTransform>(target).compute_matrix(),
+                )
+            })
+            .unwrap_or_else(|| {
+                let bbid = BBId::default();
+                let transform = Transform {
+                    translation: Vec3::new(world_pos.x, world_pos.y, 0.),
+                    ..Default::default()
+                };
+                let world_matrix = transform.compute_matrix();
+
+                let cmd = AddObjectCmd::from_bundle(
+                    world,
+                    None,
+                    (
+                        Name::from("Box"),
+                        bbid,
+                        BBObjectVectorBundle::default().with_transform(transform),
+                        GlobalBounds2D::default(),
+                        SelectableBundle::default(),
+                        Fill::color(Color::rgb_u8(50, 50, 50)),
+                        Stroke {
+                            color: Color::rgb(0.7, 0.7, 0.7),
+                            options: StrokeOptions::default(),
+                        },
+                    ),
+                )
+                .unwrap();
+                cmds.push(Box::new(cmd));
+                cmds.push(Box::new(InspectCmd::inspect(bbid)));
+                (bbid, world_matrix)
+            });
+
+        let ss_root = ScreenSpaceRoot::get_from_world(world);
+        let cmd = match self
+            .to_local_with_matrix(target, ss_root, &world_matrix)
+            .variant()
+        {
+            PenEdgeVariant::Line {
+                start,
+                start_node,
+                end,
+                end_node,
+            } => {
+                let cmd = AddRemoveEdgeCmd::new_add_line(
+                    target,
+                    AddRemoveEdgeNode::from_idx_or_local_pos(*start_node, *start),
+                    AddRemoveEdgeNode::from_idx_or_local_pos(*end_node, *end),
+                );
+                Box::new(cmd)
+            }
+            PenEdgeVariant::Quadratic {
+                start,
+                start_node,
+                ctrl1,
+                end,
+                end_node,
+            } => {
+                let cmd = AddRemoveEdgeCmd::new_add_quadratic(
+                    target,
+                    AddRemoveEdgeNode::from_idx_or_local_pos(*start_node, *start),
+                    *ctrl1,
+                    AddRemoveEdgeNode::from_idx_or_local_pos(*end_node, *end),
+                );
+                Box::new(cmd)
+            }
+            PenEdgeVariant::Cubic {
+                start,
+                start_node,
+                ctrl1,
+                ctrl2,
+                end,
+                end_node,
+            } => {
+                let cmd = AddRemoveEdgeCmd::new_add_cubic(
+                    target,
+                    AddRemoveEdgeNode::from_idx_or_local_pos(*start_node, *start),
+                    *ctrl1,
+                    *ctrl2,
+                    AddRemoveEdgeNode::from_idx_or_local_pos(*end_node, *end),
+                );
+                Box::new(cmd)
+            }
+        };
+        cmds.push(cmd);
+
+        (target, cmds)
     }
 
     pub fn draw(&self, world: &mut World) {
