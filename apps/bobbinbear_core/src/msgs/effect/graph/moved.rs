@@ -4,7 +4,7 @@ use bevy::{prelude::*, ecs::system::SystemState};
 use crate::{
     components::{bbid::BBIdUtils, scene::{BBIndex, BBNode}},
     msgs::{effect::{ObjectMovedEffect, EffectMsg}, MsgQue},
-    plugins::{inspect_plugin::InspectArtifact, vector_graph_plugin::VectorGraph, screen_space_root_plugin::WorldToScreen}, utils::coordinates::{WorldToEntityLocal, WorldToLocal},
+    plugins::{inspect_plugin::InspectArtifact, vector_graph_plugin::VectorGraph, screen_space_root_plugin::WorldToScreen, bounds_2d_plugin::GlobalBounds2D}, utils::coordinates::{WorldToEntityLocal, WorldToLocal},
 };
 
 pub fn handle_bb_node_moved(world: &mut World, effect: &ObjectMovedEffect, responder: &mut MsgQue) {
@@ -22,7 +22,7 @@ pub fn handle_bb_node_moved(world: &mut World, effect: &ObjectMovedEffect, respo
     println!("graph pos: {graph_position}");
 
     let mut ss_state = SystemState::<(
-        Query<(&mut VectorGraph, &GlobalTransform)>,
+        Query<(&mut VectorGraph, &GlobalTransform, &mut GlobalBounds2D)>,
         Query<(&BBIndex, &BBNode, &mut WorldToScreen)>,
     )>::new(world);
 
@@ -30,7 +30,7 @@ pub fn handle_bb_node_moved(world: &mut World, effect: &ObjectMovedEffect, respo
     let (idx, bbnode, mut world_to_screen) = q_nodes.get_mut(node_entity).unwrap();
     world_to_screen.0 = *world_position;
 
-    let (mut graph, global_transform) = q_vector_graph.get_mut(inspected_entity).unwrap();
+    let (mut graph, global_transform, mut global_bounds_2d) = q_vector_graph.get_mut(inspected_entity).unwrap();
     let world_matrix = global_transform.compute_matrix();
     let local_position = world_position.world_to_local(&world_matrix);
     println!("local pos: {local_position}");
@@ -53,6 +53,7 @@ pub fn handle_bb_node_moved(world: &mut World, effect: &ObjectMovedEffect, respo
             panic!("handle_bb_node_moved: Impossible combination.  Cannot update position of {bbnode:?} when it references edge {edge:?}");
         }
     }
+    *global_bounds_2d = GlobalBounds2D::NeedsCalculate;
 
     responder.push_internal(EffectMsg::GraphNeedsRemesh { bbid: inspected_bbid });
 }

@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use bevy::{
-    ecs::system::BoxedSystem, input::ButtonState, math::Vec3Swizzles, prelude::*, utils::HashMap,
+    input::ButtonState, math::Vec3Swizzles, prelude::*, utils::HashMap,
 };
 
 use crate::{
@@ -9,15 +9,14 @@ use crate::{
     msgs::{
         api::ApiEffectMsg,
         cmds::{
-            inspect_cmd::{InspectCmd, InspectingTag}, move_objects_cmd::MoveObjectsCmd,
-            select_objects_cmd::SelectObjectsCmd, Cmd, CmdMsg, MultiCmd,
+            inspect_cmd::{InspectCmd, InspectingTag},
+            move_objects_cmd::MoveObjectsCmd,
+            select_objects_cmd::SelectObjectsCmd,
+            Cmd, CmdMsg, MultiCmd,
         },
         MsgQue,
     },
-    plugins::{
-        input_plugin::InputMessage,
-        selection_plugin::{get_raycast_hits_selectable, Selected},
-    },
+    plugins::{input_plugin::InputMessage, selection_plugin::get_raycast_hits_selectable},
     types::BBCursor,
 };
 
@@ -45,18 +44,6 @@ pub enum SelectFsm {
        // }
 }
 
-pub struct OnSelectMoved(Vec<BoxedSystem>);
-impl OnSelectMoved {
-    /// Run a callback system every time this event listener is triggered. This can be a closure or
-    /// a function, as described by bevy's documentation. The only notable difference from Bevy
-    /// systems is that the callback system can access a resource with event data,
-    /// [`ListenerInput`]. You can more easily access this with the system params
-    /// [`Listener`](crate::callbacks::Listener) and [`ListenerMut`](crate::callbacks::ListenerMut).
-    pub fn run<Marker>(callback: impl IntoSystem<(), (), Marker>) -> Self {
-        Self(vec![Box::new(IntoSystem::into_system(callback))])
-    }
-}
-
 impl Default for SelectFsm {
     fn default() -> Self {
         Self::Default {
@@ -71,7 +58,7 @@ impl SelectFsm {
         #[cfg(feature = "debug_select")]
         debug!("SelectFsm.reset()");
 
-        let result = match self {
+        match self {
             Self::Default { bbids } => Self::Default {
                 bbids: bbids.clone(),
             },
@@ -83,9 +70,7 @@ impl SelectFsm {
             } => Self::Default {
                 bbids: initial_positions.clone().into_keys().collect(),
             },
-        };
-
-        result
+        }
     }
 
     pub fn get_selected(&self) -> &HashSet<BBId> {
@@ -103,8 +88,8 @@ impl SelectFsm {
         }
     }
 
-    pub fn set_selected(&mut self, world: &mut World, new: HashSet<BBId>, responder: &mut MsgQue) {
-        let mut old = self.get_selected_mut();
+    pub fn set_selected(&mut self, _world: &mut World, new: HashSet<BBId>, responder: &mut MsgQue) {
+        let old = self.get_selected_mut();
         let to_select: Vec<BBId> = new.difference(old).cloned().collect();
         let to_deselect: Vec<BBId> = old.difference(&new).cloned().collect();
 
@@ -169,10 +154,7 @@ impl ToolHandler for SelectTool {
                     panic!("select_tool: Input(PointerDown) should never occur in state {state:?}.")
                 }
             },
-            Input(PointerClick {
-                modifiers,
-                ..
-            }) => {
+            Input(PointerClick { modifiers, .. }) => {
                 let hit = get_raycast_hits_selectable(world).first().cloned();
                 println!(
                     "SelectFsm (Input(PointerClick)) {:?}, {:?} {:?}",
@@ -180,11 +162,7 @@ impl ToolHandler for SelectTool {
                 );
 
                 match (&fsm, hit, modifiers.shift) {
-                    (
-                        SelectFsm::PointerDownAt { .. },
-                        Some((entity, _)),
-                        ButtonState::Released,
-                    ) => {
+                    (SelectFsm::PointerDownAt { .. }, Some((entity, _)), ButtonState::Released) => {
                         let bbid = world.get::<BBId>(entity).unwrap();
                         println!("Select single {bbid}");
                         fsm.select_single(world, *bbid, responder);
@@ -217,18 +195,10 @@ impl ToolHandler for SelectTool {
                     bbids: fsm.get_selected().clone(),
                 }
             }
-            Input(DoubleClick {
-                ..
-            }) => {
+            Input(DoubleClick { .. }) => {
                 let hit = get_raycast_hits_selectable(world).first().cloned();
                 match (&fsm, hit) {
-                    (
-                        SelectFsm::PointerDownAt {
-                            bbids,
-                            ..
-                        },
-                        Some((entity, _)),
-                    ) => {
+                    (SelectFsm::PointerDownAt { bbids, .. }, Some((entity, _))) => {
                         let target = world.get::<BBId>(entity).copied();
                         let mut cmds: Vec<Box<dyn Cmd>> = vec![];
                         let bbids_vec: Vec<_> = bbids.iter().cloned().collect();
@@ -236,6 +206,12 @@ impl ToolHandler for SelectTool {
                         cmds.push(Box::new(InspectCmd::new(target)));
                         responder.push_internal(CmdMsg::from(MultiCmd::new(cmds)));
 
+                        SelectFsm::Default {
+                            bbids: bbids.clone(),
+                        }
+                    }
+                    (SelectFsm::PointerDownAt { bbids, .. }, None) => {
+                        responder.push_internal(CmdMsg::from(InspectCmd::uninspect()));
                         SelectFsm::Default {
                             bbids: bbids.clone(),
                         }
@@ -252,20 +228,12 @@ impl ToolHandler for SelectTool {
 
                 println!("Drag start {hit:?}.");
                 match (&fsm, hit, modifiers.shift) {
-                    (
-                        SelectFsm::PointerDownAt {
-                            bbids,
-                            ..
-                        },
-                        None,
-                        _,
-                    ) => SelectFsm::Default {
+                    (SelectFsm::PointerDownAt { bbids, .. }, None, _) => SelectFsm::Default {
                         bbids: bbids.clone(),
                     },
                     (
                         SelectFsm::PointerDownAt {
-                            initial_world_pos,
-                            ..
+                            initial_world_pos, ..
                         },
                         Some((entity, _)),
                         button_state,

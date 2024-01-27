@@ -53,7 +53,8 @@ impl InspectCmd {
                 world.entity_mut(entity).remove::<InspectingTag>();
 
                 let object_type = *world.get::<BBObject>(entity).unwrap();
-                responder.push_internal(EffectMsg::ObjectUninspected { object_type, target: bbid });
+                let effect = EffectMsg::ObjectUninspected { object_type, target: bbid };
+                responder.push_internal(effect);
                 self.target = Some(bbid);
             }
         }

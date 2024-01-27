@@ -101,6 +101,7 @@ fn create_node_bundle(
         BBIndex(index),
         InspectArtifact(target),
         SelectableBundle::default(),
+        GlobalBounds2D::default(),
         MaterialMesh2dBundle {
             mesh: match node {
                 BBNode::Endpoint => meshes.endpoint_node.as_ref().unwrap().clone(),
@@ -388,6 +389,7 @@ fn despawn_endpoint_graph_nodes(
     to_despawn: &[BBNodeIndex],
     lookup: &HashMap<BBNodeIndex, Entity>,
 ) {
+    println!("{to_despawn:?} {lookup:?}");
     for node_idx in to_despawn.iter() {
         if let Some(e) = lookup.get(node_idx) {
             world.despawn(*e);
@@ -472,7 +474,7 @@ pub fn handle_graph_uninspected(world: &mut World, target: BBId) {
     let endpoint_lookup =
         get_endpoint_bbnode_lookup(world, target, |(e, idx, artifact, bbnode)| {
             let same_target = artifact.0 == target;
-            if same_target && bbnode.is_control() {
+            if same_target && bbnode.is_endpoint() {
                 Some((BBNodeIndex(idx.0), e))
             } else {
                 None
