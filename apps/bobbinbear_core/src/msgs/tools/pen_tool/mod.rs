@@ -2,10 +2,8 @@
 
 mod pen_edge;
 
-use std::default;
-
-use bb_vector_network::prelude::{BBEdge, BBNodeIndex};
-use bevy::{prelude::*, sprite::Mesh2dHandle, reflect::VariantFieldIter};
+use bb_vector_network::prelude::BBNodeIndex;
+use bevy::{prelude::*, sprite::Mesh2dHandle};
 use bevy_debug_text_overlay::screen_print;
 
 use crate::{
@@ -21,11 +19,11 @@ use crate::{
         MsgQue,
     },
     plugins::{
-        inspect_plugin::InspectArtifact, screen_space_root_plugin::ScreenSpaceRoot,
-        selection_plugin::get_raycast_hits_selectable, vector_graph_plugin::VectorGraph,
+        inspect_plugin::InspectArtifact, selection_plugin::get_raycast_hits_selectable,
+        vector_graph_plugin::VectorGraph,
     },
     shared::{CachedMeshes, WorldUtils},
-    utils::coordinates::{WorldToLocal, WorldToScreenHelpers},
+    utils::coordinates::WorldToLocal,
 };
 
 use self::pen_edge::PenEdge2;
@@ -115,6 +113,19 @@ impl ToolHandler for PenTool {
         let state = world.resource::<PenResource>().state.clone();
         screen_print!("PenState: {state:?}");
         let next_state = match msg {
+            OnDeactivate => {
+                let res = world.resource::<PenResource>();
+                let cursor_line = res.cursor_line.unwrap();
+                let cursor_node = res.cursor_node.unwrap();
+                PenTool::update_cursor_node_style(
+                    world,
+                    cursor_node,
+                    CursorNodeStyle::Hidden,
+                    Vec2::ZERO,
+                );
+                *world.get_mut::<Visibility>(cursor_line).unwrap() = Visibility::Hidden;
+                state
+            }
             Input(PointerClick {
                 world: world_pos,
                 modifiers: _modifiers,
@@ -179,7 +190,24 @@ impl ToolHandler for PenTool {
                         false => None,
                     });
 
-                let cursor_line = world.resource::<PenResource>().cursor_line.unwrap();
+                let res = world.resource::<PenResource>();
+                let cursor_line = res.cursor_line.unwrap();
+                let cursor_node = res.cursor_node.unwrap();
+                if hit.is_some() {
+                    PenTool::update_cursor_node_style(
+                        world,
+                        cursor_node,
+                        CursorNodeStyle::Hidden,
+                        *screen,
+                    );
+                } else {
+                    PenTool::update_cursor_node_style(
+                        world,
+                        cursor_node,
+                        CursorNodeStyle::Endpoint,
+                        *screen,
+                    );
+                }
 
                 match &state {
                     PenFsm::Default | PenFsm::AwaitingAddedEdge { .. } => {
@@ -270,22 +298,25 @@ impl ToolHandler for PenTool {
                     } => {
                         let mouse_pos = edge.world_to_coordinate_space(world, *world_pos);
 
-                        let (next_variant, next_building_target) = match (edge.variant_mut(), building_target) {
-                            (variant @ PenEdgeVariant::Line { .. }, BBNode::Endpoint) => {
-                                let mut next_variant = variant.as_quadratic(mouse_pos);
-                                *next_variant.end_mut() = mouse_pos;
-                                let next_building_target = BBNode::Ctrl2;
-                                ( next_variant, next_building_target )
-                            }
-                            (variant @ PenEdgeVariant::Quadratic { .. }, BBNode::Endpoint) => {
-                                let ctrl1 = *variant.try_ctrl1_mut().unwrap();
-                                let mut next_variant = variant.as_cubic(ctrl1, mouse_pos);
-                                *next_variant.end_mut() = mouse_pos;
-                                let next_building_target = BBNode::Ctrl2;
-                                ( next_variant, next_building_target )
-                            }
-                            state => panic!("PenTool: Input(DragStart) impossible state {state:?}."),
-                        };
+                        let (next_variant, next_building_target) =
+                            match (edge.variant_mut(), building_target) {
+                                (variant @ PenEdgeVariant::Line { .. }, BBNode::Endpoint) => {
+                                    let mut next_variant = variant.as_quadratic(mouse_pos);
+                                    *next_variant.end_mut() = mouse_pos;
+                                    let next_building_target = BBNode::Ctrl2;
+                                    (next_variant, next_building_target)
+                                }
+                                (variant @ PenEdgeVariant::Quadratic { .. }, BBNode::Endpoint) => {
+                                    let ctrl1 = *variant.try_ctrl1_mut().unwrap();
+                                    let mut next_variant = variant.as_cubic(ctrl1, mouse_pos);
+                                    *next_variant.end_mut() = mouse_pos;
+                                    let next_building_target = BBNode::Ctrl2;
+                                    (next_variant, next_building_target)
+                                }
+                                state => {
+                                    panic!("PenTool: Input(DragStart) impossible state {state:?}.")
+                                }
+                            };
 
                         *edge.variant_mut() = next_variant;
                         PenFsm::BuildingEdge {
@@ -298,6 +329,7 @@ impl ToolHandler for PenTool {
             }
 
             Input(DragMove {
+                screen,
                 world: world_pos, ..
             }) => match &state {
                 PenFsm::BuildingEdge {
@@ -305,6 +337,15 @@ impl ToolHandler for PenTool {
                     building_target,
                 } => {
                     let coordinate_pos = edge.world_to_coordinate_space(world, *world_pos);
+
+                    let res = world.resource::<PenResource>();
+                    let cursor_node = res.cursor_node.unwrap();
+                    PenTool::update_cursor_node_style(
+                        world,
+                        cursor_node,
+                        CursorNodeStyle::Control,
+                        *screen,
+                    );
 
                     let next_variant = match (*edge.variant(), building_target) {
                         (PenEdgeVariant::Quadratic { .. }, BBNode::Ctrl1) => {
@@ -321,6 +362,7 @@ impl ToolHandler for PenTool {
                             }
                         }
                         (PenEdgeVariant::Cubic { ctrl2, .. }, BBNode::Ctrl1) => {
+                            println!("PEV::Cubic, Ctrl1, {coordinate_pos}, {ctrl2}");
                             edge.variant().as_cubic(coordinate_pos, ctrl2)
                         }
                         (PenEdgeVariant::Cubic { ctrl1, .. }, BBNode::Ctrl2) => {
@@ -328,8 +370,10 @@ impl ToolHandler for PenTool {
                                 *pos = coordinate_pos;
                             }
                             if let Some(v) = edge.variant().try_get_inverse_ctrl_pos() {
+                                println!("PEV::Cubic, Ctrl2, {ctrl1}, {coordinate_pos} -> {v}");
                                 edge.variant().as_cubic(ctrl1, v)
                             } else {
+                                println!("PEV::Cubic, Ctrl2, unchanged");
                                 *edge.variant()
                             }
                         }
@@ -341,7 +385,7 @@ impl ToolHandler for PenTool {
                         PenEdge2::World(target, _) => PenEdge2::World(target, next_variant),
                         PenEdge2::Screen(target, _) => PenEdge2::Screen(target, next_variant),
                     };
-                            
+
                     next_edge.draw(world);
                     PenFsm::BuildingEdge {
                         edge: next_edge,
@@ -484,7 +528,10 @@ impl ToolHandler for PenTool {
                     *start_node = Some(added_edge.end_idx());
 
                     let mut res = world.resource_mut::<PenResource>();
-                    res.state = PenFsm::BuildingEdge { edge: next_edge, building_target: BBNode::Endpoint };
+                    res.state = PenFsm::BuildingEdge {
+                        edge: next_edge,
+                        building_target: BBNode::Endpoint,
+                    };
 
                     next_edge.draw(world);
                 }
