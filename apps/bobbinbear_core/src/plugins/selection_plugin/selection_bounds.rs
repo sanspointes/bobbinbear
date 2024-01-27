@@ -8,8 +8,9 @@ use bevy::{
 
 use crate::{
     constants::{SELECTION_BOUNDS_STROKE_WIDTH, SELECT_COLOR},
+    msgs::effect::EffectMsg,
     plugins::{bounds_2d_plugin::GlobalBounds2D, screen_space_root_plugin::ScreenSpaceRoot},
-    utils::mesh::translate_mesh, msgs::effect::EffectMsg,
+    utils::mesh::translate_mesh,
 };
 
 use super::{selection_bounds_material::SelectionBoundsMaterial, Selected};
@@ -56,12 +57,7 @@ pub(super) fn sys_selection_bounds_handle_change(
 
     mut ev_effect_reader: EventReader<EffectMsg>,
 
-    mut system_set: ParamSet<(
-        // Query for selection or bounds changes
-        Query<Entity, Or<(Changed<Selected>, Changed<GlobalBounds2D>)>>,
-        // Query all to calculate selection box
-        Query<(&GlobalBounds2D, &Selected)>,
-    )>,
+    q_all_selectables: Query<(&GlobalBounds2D, &Selected)>,
 
     // To Mutate
     mut q_selection_bounds: Query<
@@ -78,30 +74,28 @@ pub(super) fn sys_selection_bounds_handle_change(
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_selection_bounds_handle_change").entered();
 
-    let has_emitted_dirty_event = ev_effect_reader
-            .read()
-            .any(|ev| match ev {
-                EffectMsg::ObjectSelectionChanged { .. } => true,
-                EffectMsg::CameraMoved { .. } => true,
-                EffectMsg::CameraZoomed { .. } => true,
-                _ => false,
-            });
-    let has_dirty_entity = system_set.p0().iter().next().is_some();
+    let has_emitted_dirty_event = ev_effect_reader.read().any(|ev| {
+        matches!(
+            ev,
+            EffectMsg::ObjectSelectionChanged { .. }
+                | EffectMsg::ObjectMoved(_)
+                | EffectMsg::ObjectRemoved { .. }
+                | EffectMsg::CameraMoved { .. }
+                | EffectMsg::CameraZoomed { .. }
+        )
+    });
 
-    let needs_update = has_emitted_dirty_event || has_dirty_entity;
-    if !needs_update {
+    if !has_emitted_dirty_event {
         return;
     }
 
     #[cfg(feature = "debug_bounds")]
     debug!("Updating selection bounds!");
 
-    let q_all_selecteables = system_set.p1();
-
     let mut any_selected = false;
     let mut min = Vec2::MAX;
     let mut max = Vec2::MIN;
-    for (bounds, selected) in q_all_selecteables.iter() {
+    for (bounds, selected) in q_all_selectables.iter() {
         if let (Selected::Yes, GlobalBounds2D::Calculated(bounds)) = (selected, bounds) {
             #[cfg(feature = "debug_bounds")]
             debug!("\tHandling {bounds:?}!");

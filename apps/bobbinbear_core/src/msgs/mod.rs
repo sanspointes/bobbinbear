@@ -198,6 +198,9 @@ pub fn sys_msg_handler(world: &mut World) {
                     println!("Handling effect: {effect_msg:?}");
                     msg_handler_effect(world, &effect_msg, &mut msg_responder);
                     msg_handler_effect_for_tools(world, &effect_msg, &mut msg_responder);
+
+                    let mut effect_events = world.resource_mut::<Events<EffectMsg>>();
+                    effect_events.send(effect_msg);
                 }
             }
         }
