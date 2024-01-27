@@ -223,19 +223,19 @@ impl PenEdgeVariant {
     pub fn as_local_to_world(&mut self, world_matrix: &Mat4) -> &mut Self {
         use PenEdgeVariant::*;
         match self {
-            Line { start, start_node, end, end_node, } => {
+            Line { start, end, .. } => {
                 *start = start.local_to_world(world_matrix);
                 *end = end.local_to_world(world_matrix);
             }
-            Quadratic { start, start_node, ctrl1, end, end_node, } => {
+            Quadratic { start, ctrl1, end, .. } => {
                 *start = start.local_to_world(world_matrix);
                 *ctrl1 = ctrl1.local_to_world(world_matrix);
                 *end = end.local_to_world(world_matrix);
             }
-            Cubic { start, start_node, ctrl1, ctrl2, end, end_node, } => {
+            Cubic { start, ctrl1, ctrl2, end, .. } => {
                 *start = start.local_to_world(world_matrix);
                 *ctrl1 = ctrl1.local_to_world(world_matrix);
-                *ctrl2 = ctrl1.local_to_world(world_matrix);
+                *ctrl2 = ctrl2.local_to_world(world_matrix);
                 *end = end.local_to_world(world_matrix);
             }
         }
@@ -247,16 +247,16 @@ impl PenEdgeVariant {
     pub fn as_world_to_local(&mut self, world_matrix: &Mat4) -> &mut Self {
         use PenEdgeVariant::*;
         match self {
-            Line { start, start_node, end, end_node, } => {
+            Line { start, end, .. } => {
                 *start = start.world_to_local(world_matrix);
                 *end = end.world_to_local(world_matrix);
             }
-            Quadratic { start, start_node, ctrl1, end, end_node, } => {
+            Quadratic { start, ctrl1, end, .. } => {
                 *start = start.world_to_local(world_matrix);
                 *ctrl1 = ctrl1.world_to_local(world_matrix);
                 *end = end.world_to_local(world_matrix);
             }
-            Cubic { start, start_node, ctrl1, ctrl2, end, end_node, } => {
+            Cubic { start, ctrl1, ctrl2, end, .. } => {
                 *start = start.world_to_local(world_matrix);
                 *ctrl1 = ctrl1.world_to_local(world_matrix);
                 *ctrl2 = ctrl1.world_to_local(world_matrix);
@@ -270,18 +270,18 @@ impl PenEdgeVariant {
     pub fn as_world_to_screen(&mut self, ss_root: &ScreenSpaceRoot) -> &mut Self {
         use PenEdgeVariant::*;
         match self {
-            Line { start, start_node, end, end_node, } => {
+            Line { start, end, .. } => {
                 *start = start.world_to_screen(ss_root);
                 *end = end.world_to_screen(ss_root);
             }
-            Quadratic { start, start_node, ctrl1, end, end_node, } => { *start = start.world_to_screen(ss_root);
+            Quadratic { start, ctrl1, end, .. } => { *start = start.world_to_screen(ss_root);
                 *ctrl1 = ctrl1.world_to_screen(ss_root);
                 *end = end.world_to_screen(ss_root);
             }
-            Cubic { start, start_node, ctrl1, ctrl2, end, end_node, } => {
+            Cubic { start, ctrl1, ctrl2, end, .. } => {
                 *start = start.world_to_screen(ss_root);
                 *ctrl1 = ctrl1.world_to_screen(ss_root);
-                *ctrl2 = ctrl1.world_to_screen(ss_root);
+                *ctrl2 = ctrl2.world_to_screen(ss_root);
                 *end = end.world_to_screen(ss_root);
             }
         }
@@ -292,16 +292,16 @@ impl PenEdgeVariant {
     pub fn as_screen_to_world(&mut self, ss_root: &ScreenSpaceRoot) -> &mut Self {
         use PenEdgeVariant::*;
         match self {
-            Line { start, start_node, end, end_node, } => {
+            Line { start, end, .. } => {
                 *start = start.screen_to_world(ss_root);
                 *end = end.screen_to_world(ss_root);
             }
-            Quadratic { start, start_node, ctrl1, end, end_node, } => {
+            Quadratic { start, ctrl1, end, .. } => {
                 *start = start.screen_to_world(ss_root);
                 *ctrl1 = ctrl1.screen_to_world(ss_root);
                 *end = end.screen_to_world(ss_root);
             }
-            Cubic { start, start_node, ctrl1, ctrl2, end, end_node, } => {
+            Cubic { start, ctrl1, ctrl2, end, .. } => {
                 *start = start.screen_to_world(ss_root);
                 *ctrl1 = ctrl1.screen_to_world(ss_root);
                 *ctrl2 = ctrl1.screen_to_world(ss_root);
@@ -734,6 +734,7 @@ impl PenEdge2 {
                 end,
                 ..
             } => {
+                println!("Drawing cubic {start}, {ctrl1}, {ctrl2}, {end}");
                 g.cubic(*start, *ctrl1, *ctrl2, *end);
             }
         }

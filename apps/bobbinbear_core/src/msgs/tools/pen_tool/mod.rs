@@ -23,7 +23,7 @@ use crate::{
         vector_graph_plugin::VectorGraph,
     },
     shared::{CachedMeshes, WorldUtils},
-    utils::coordinates::WorldToLocal,
+    utils::coordinates::{self, WorldToLocal},
 };
 
 use self::pen_edge::PenEdge2;
@@ -306,10 +306,23 @@ impl ToolHandler for PenTool {
                                     let next_building_target = BBNode::Ctrl2;
                                     (next_variant, next_building_target)
                                 }
-                                (variant @ PenEdgeVariant::Quadratic { .. }, BBNode::Endpoint) => {
-                                    let ctrl1 = *variant.try_ctrl1_mut().unwrap();
-                                    let mut next_variant = variant.as_cubic(ctrl1, mouse_pos);
-                                    *next_variant.end_mut() = mouse_pos;
+                                (
+                                    PenEdgeVariant::Quadratic {
+                                        start,
+                                        start_node,
+                                        ctrl1,
+                                        ..
+                                    },
+                                    BBNode::Endpoint,
+                                ) => {
+                                    let next_variant = PenEdgeVariant::Cubic {
+                                        start: *start,
+                                        start_node: *start_node,
+                                        ctrl1: *ctrl1,
+                                        ctrl2: mouse_pos,
+                                        end: mouse_pos,
+                                        end_node: None,
+                                    };
                                     let next_building_target = BBNode::Ctrl2;
                                     (next_variant, next_building_target)
                                 }
@@ -330,7 +343,8 @@ impl ToolHandler for PenTool {
 
             Input(DragMove {
                 screen,
-                world: world_pos, ..
+                world: world_pos,
+                ..
             }) => match &state {
                 PenFsm::BuildingEdge {
                     mut edge,
@@ -366,19 +380,17 @@ impl ToolHandler for PenTool {
                             edge.variant().as_cubic(coordinate_pos, ctrl2)
                         }
                         (PenEdgeVariant::Cubic { ctrl1, .. }, BBNode::Ctrl2) => {
-                            if let Some(pos) = edge.variant_mut().try_ctrl2_mut() {
-                                *pos = coordinate_pos;
+                            let mut next_variant = edge.variant().as_cubic(ctrl1, coordinate_pos);
+                            if let Some(v) = next_variant.try_get_inverse_ctrl_pos() {
+                                if let Some(p) = next_variant.try_ctrl2_mut() {
+                                    *p = v;
+                                }
                             }
-                            if let Some(v) = edge.variant().try_get_inverse_ctrl_pos() {
-                                println!("PEV::Cubic, Ctrl2, {ctrl1}, {coordinate_pos} -> {v}");
-                                edge.variant().as_cubic(ctrl1, v)
-                            } else {
-                                println!("PEV::Cubic, Ctrl2, unchanged");
-                                *edge.variant()
-                            }
+                            next_variant
                         }
                         (variant, build_target) => panic!("PenTool: Input(DragMove) impossible (variant, building_target) - ({variant:?}, {build_target:?})"),
                     };
+                    println!("next_variant: {next_variant:?}");
 
                     let next_edge = match edge {
                         PenEdge2::Local(target, _) => PenEdge2::Local(target, next_variant),
