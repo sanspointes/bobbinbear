@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{ HashSet, HashMap };
 
 use glam::Vec2;
 
@@ -92,10 +92,22 @@ impl BBGraph {
             .values()
             .flat_map(|r| r.cycles.iter().map(|c| c.edges.clone()))
             .collect();
+
+        let mut edge_references: HashMap<BBEdgeIndex, usize> = cycles.iter().fold(HashMap::new(), |mut map, cycle| {
+            for edge in cycle {
+                let entry = map.entry(*edge).or_insert(0);
+                *entry += 1;
+            }
+            map
+        });
         for edges in cycles {
             g.build_path_for_edge_list(&mut builder, &edges)?;
             for e in edges {
-                g.delete_edge(e)?;
+                let uses = edge_references.get_mut(&e).unwrap();
+                *uses -= 1;
+                if *uses == 0 {
+                    g.delete_edge(e)?;
+                }
             }
         }
 
@@ -113,23 +125,27 @@ impl BBGraph {
             };
 
             // Walk along the edges until you hit an end or a fork.
+            let mut prev_edge: Option<BBEdgeIndex> = None;
             let mut edges = vec![];
-            loop {
+            for i in 0..1000 {
                 let node = g.node(node_idx)?;
-                if !edges.is_empty() && node.adjacents.len() != 2 {
+                if i != 0 && node.adjacents.len() != 2 {
                     break;
                 }
-                let edge_idx = node.adjacents.first().unwrap();
-                edges.push(*edge_idx);
-                let edge = g.edge(*edge_idx)?;
+                let next_edge = node.adjacents.iter().find(|idx| prev_edge.map_or(true, |prev_idx| **idx != prev_idx));
+                let Some(next_edge) = next_edge else {
+                    break;
+                };
+                prev_edge = Some(*next_edge);
+                edges.push(*next_edge);
+                let edge = g.edge(*next_edge)?;
                 node_idx = edge.other_node_idx(node_idx);
             }
 
-            println!("generate_stroke_path: {edges:?}");
             // Build and remove from graph.
             g.build_path_for_edge_list(&mut builder, &edges)?;
-            for e in edges {
-                g.delete_edge(e)?;
+            for e in &edges {
+                g.delete_edge(*e)?;
             }
         }
 
