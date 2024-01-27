@@ -5,7 +5,10 @@ use bevy::{
     sprite::{ColorMaterial, Mesh2dHandle},
 };
 
-use crate::utils::mesh::{add_vertex_colors_mesh, combine_meshes};
+use crate::{
+    constants::SELECT_COLOR,
+    utils::mesh::{add_vertex_colors_mesh, combine_meshes},
+};
 
 #[derive(Resource, Default, Clone)]
 /// TODO: Move this to a more general location
@@ -30,13 +33,13 @@ pub fn sys_setup_cached_meshes(
         let mut control_node_m1 = Mesh::from(shape::Quad::new(vec2(3., 3.)));
         add_vertex_colors_mesh(&mut control_node_m1, Color::WHITE);
         let mut control_node_m2 = Mesh::from(shape::Quad::new(vec2(5., 5.)));
-        add_vertex_colors_mesh(&mut control_node_m2, Color::BLUE);
+        add_vertex_colors_mesh(&mut control_node_m2, SELECT_COLOR);
 
-        let to_combine = [control_node_m1, control_node_m2];
+        let to_combine = [control_node_m2, control_node_m1];
         let transforms = [
             Transform::default(),
             Transform {
-                translation: vec3(0., 0., 1.),
+                translation: vec3(0., 0., -1.),
                 ..Default::default()
             },
         ];
@@ -52,13 +55,13 @@ pub fn sys_setup_cached_meshes(
         let mut control_node_m1 = Mesh::from(shape::Circle::new(3.));
         add_vertex_colors_mesh(&mut control_node_m1, Color::WHITE);
         let mut control_node_m2 = Mesh::from(shape::Circle::new(5.));
-        add_vertex_colors_mesh(&mut control_node_m2, Color::BLUE);
+        add_vertex_colors_mesh(&mut control_node_m2, SELECT_COLOR);
 
-        let to_combine = [control_node_m1, control_node_m2];
+        let to_combine = [control_node_m2, control_node_m1];
         let transforms = [
             Transform::default(),
             Transform {
-                translation: vec3(0., 0., 1.),
+                translation: vec3(0., 0., -1.),
                 ..Default::default()
             },
         ];
