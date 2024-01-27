@@ -135,12 +135,11 @@ impl ToolHandler for SelectTool {
 
         let next_fsm = match msg {
             OnActivate => {
-                debug!("SelectTool::OnActivate");
                 responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Default));
                 fsm
             }
             OnDeactivate => {
-                debug!("SelectTool::OnDeactivate");
+                fsm.clear_select(world, responder);
                 fsm.reset()
             }
             Input(PointerDown {
