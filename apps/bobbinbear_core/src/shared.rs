@@ -50,9 +50,9 @@ pub fn sys_setup_cached_meshes(
     // Builds the control node mesh (square)
     {
         let mut control_node_m1 = Mesh::from(shape::Circle::new(3.));
-        add_vertex_colors_mesh(&mut control_node_m1, Color::BLUE);
+        add_vertex_colors_mesh(&mut control_node_m1, Color::WHITE);
         let mut control_node_m2 = Mesh::from(shape::Circle::new(5.));
-        add_vertex_colors_mesh(&mut control_node_m2, Color::WHITE);
+        add_vertex_colors_mesh(&mut control_node_m2, Color::BLUE);
 
         let to_combine = [control_node_m1, control_node_m2];
         let transforms = [

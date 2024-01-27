@@ -1,11 +1,15 @@
 use std::{fmt::Display, sync::Arc};
 
 use anyhow::anyhow;
-use bevy::prelude::*;
+use bevy::{ecs::system::SystemState, prelude::*};
 
 use crate::{
-    components::{bbid::BBId, utility::OnMoveCommand},
-    plugins::bounds_2d_plugin::GlobalBounds2D, msgs::{MsgQue, Msg},
+    components::bbid::BBId,
+    msgs::{
+        effect::{EffectMsg, ObjectMovedEffect},
+        Msg, MsgQue,
+    },
+    plugins::bounds_2d_plugin::GlobalBounds2D,
 };
 
 use super::{Cmd, CmdError, CmdMsg, CmdType, CmdUpdateTreatment};
@@ -85,12 +89,11 @@ impl MoveObjectsCmd {
 impl Cmd for MoveObjectsCmd {
     fn execute(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
         let to_move_entities = self.get_to_move_entities(world);
-        let mut q_movable = world.query::<(
-            Entity,
-            &mut Transform,
-            Option<&mut GlobalBounds2D>,
-            Option<&mut OnMoveCommand>,
-        )>();
+        let mut ss_state = SystemState::<(
+            Query<(&mut Transform, Option<&Parent>, Option<&mut GlobalBounds2D>)>,
+            Query<&GlobalTransform>,
+        )>::new(world);
+        let (mut q_movable, mut q_parent) = ss_state.get_mut(world);
 
         let mut to_callback = vec![];
 
@@ -102,8 +105,8 @@ impl Cmd for MoveObjectsCmd {
                 .find(|model| bbid.eq(&model.target))
                 .ok_or(anyhow!("Could not find to_move with bbid {bbid:?}"))?;
 
-            let (entity, mut transform, maybe_bounds_2d, maybe_on_move) =
-                q_movable.get_mut(world, entity).map_err(|err| {
+            let (mut transform, maybe_parent, maybe_bounds_2d) =
+                q_movable.get_mut(entity).map_err(|err| {
                     anyhow!("Could not get transform on entity {entity:?}.\n - Reason {err:?}")
                 })?;
 
@@ -125,24 +128,32 @@ impl Cmd for MoveObjectsCmd {
             if let Some(mut bounds_2d) = maybe_bounds_2d {
                 *bounds_2d = GlobalBounds2D::NeedsCalculate;
             }
-            if let Some(on_move) = maybe_on_move {
-                to_callback.push((entity, on_move.clone()))
+
+            let mut world_position = transform.translation;
+            if let Some(parent_e) = maybe_parent {
+                if let Ok(global_transform) = q_parent.get(**parent_e) {
+                    world_position = global_transform.transform_point(world_position);
+                }
             }
+            to_callback.push(ObjectMovedEffect {
+                target: bbid,
+                world_position,
+            })
         }
 
-        for (entity, callback) in to_callback {
-            callback.run(world, entity);
+        for effect in to_callback {
+            responder.push_internal(EffectMsg::ObjectMoved(effect))
         }
 
         Ok(())
     }
     fn undo(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
         let to_move_entities = self.get_to_move_entities(world);
-        let mut q_movable = world.query::<(
-            &mut Transform,
-            Option<&mut GlobalBounds2D>,
-            Option<&mut OnMoveCommand>,
-        )>();
+        let mut ss_state = SystemState::<(
+            Query<(&mut Transform, Option<&Parent>, Option<&mut GlobalBounds2D>)>,
+            Query<&GlobalTransform>,
+        )>::new(world);
+        let (mut q_movable, mut q_parent) = ss_state.get_mut(world);
 
         let mut to_callback = vec![];
 
@@ -154,8 +165,8 @@ impl Cmd for MoveObjectsCmd {
                 .find(|model| bbid.eq(&model.target))
                 .ok_or(anyhow!("Could not find to_move with bbid {bbid:?}"))?;
 
-            let (mut transform, maybe_bounds_2d, maybe_on_move) =
-                q_movable.get_mut(world, entity).map_err(|err| {
+            let (mut transform, maybe_parent, maybe_bounds_2d) =
+                q_movable.get_mut(entity).map_err(|err| {
                     anyhow!("Could not get transform on entity {entity:?}.\n - Reason {err:?}")
                 })?;
 
@@ -170,13 +181,21 @@ impl Cmd for MoveObjectsCmd {
             if let Some(mut bounds_2d) = maybe_bounds_2d {
                 *bounds_2d = GlobalBounds2D::NeedsCalculate;
             }
-            if let Some(on_move) = maybe_on_move {
-                to_callback.push((entity, on_move.clone()))
+
+            let mut world_position = transform.translation;
+            if let Some(parent_e) = maybe_parent {
+                if let Ok(global_transform) = q_parent.get(**parent_e) {
+                    world_position = global_transform.transform_point(world_position);
+                }
             }
+            to_callback.push(ObjectMovedEffect {
+                target: bbid,
+                world_position,
+            })
         }
 
-        for (entity, callback) in to_callback {
-            callback.run(world, entity);
+        for effect in to_callback {
+            responder.push_internal(EffectMsg::ObjectMoved(effect))
         }
 
         Ok(())

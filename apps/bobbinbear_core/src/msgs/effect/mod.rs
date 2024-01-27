@@ -23,8 +23,8 @@ impl Plugin for EffectMsgPlugin {
 
 #[derive(Event, Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct ObjectMovedEffect {
-    target: BBId,
-    world_position: Vec3,
+    pub target: BBId,
+    pub world_position: Vec3,
 }
 
 #[derive(Event, Debug, Clone, serde::Serialize, serde::Deserialize)]
@@ -103,6 +103,12 @@ pub(super) fn msg_handler_effect(world: &mut World, effect: &EffectMsg, responde
         } => match object_type {
             BBObject::Vector => graph::handle_graph_inspected(world, *target),
         },
+        EffectMsg::EdgeAdded { target, .. } => {
+            graph::handle_inspected_graph_changed(world, *target);
+        }
+        EffectMsg::EdgeRemoved { target, .. } => {
+            graph::handle_inspected_graph_changed(world, *target);
+        }
         EffectMsg::ObjectUninspected {
             object_type,
             target,
@@ -110,7 +116,9 @@ pub(super) fn msg_handler_effect(world: &mut World, effect: &EffectMsg, responde
             BBObject::Vector => graph::handle_graph_uninspected(world, *target),
         },
         EffectMsg::ObjectMoved(effect @ ObjectMovedEffect { target, .. }) => {
+            println!("Object moved {target}");
             if world.try_bbid_get::<BBNode>(*target).is_some() {
+                println!("BBNode moved!");
                 graph::handle_bb_node_moved(world, effect, responder);
             }
         }

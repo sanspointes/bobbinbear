@@ -1,4 +1,3 @@
-
 use bevy::prelude::*;
 // use crate::utils::vector::{FromPoint2, FromVec2};
 
@@ -226,11 +225,20 @@ pub struct BBIndex(pub usize);
 //     }
 // }
 
-#[derive(Component, Reflect, Default, Debug, Copy, Clone)]
+#[derive(Component, Reflect, Default, Debug, Copy, Clone, Hash, Eq, PartialEq)]
 #[reflect(Component)]
 pub enum BBNode {
     #[default]
     Endpoint,
     Ctrl1,
     Ctrl2,
+}
+impl BBNode {
+    pub fn is_endpoint(&self) -> bool {
+        matches!(self, Self::Endpoint)
+    }
+
+    pub fn is_control(&self) -> bool {
+        matches!(self, Self::Ctrl1 | Self::Ctrl2)
+    }
 }

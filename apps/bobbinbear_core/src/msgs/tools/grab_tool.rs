@@ -36,8 +36,6 @@ impl Default for GrabToolState {
     }
 }
 
-const VEC2_INVERSE_Y: Vec2 = Vec2::new(1., -1.);
-
 impl GrabToolState {
     /// Returns the drag end or reset of this [`GrabToolState`].
     fn drag_end_or_reset(&self) -> Self {
@@ -78,8 +76,7 @@ impl GrabToolState {
                 initial_translation: *initial_translation,
                 translation: initial_translation.add(
                     initial_mouse_pos
-                        .sub(*current_mouse_pos)
-                        .mul(VEC2_INVERSE_Y),
+                        .sub(*current_mouse_pos),
                 ),
                 initial_mouse_pos: *initial_mouse_pos,
             }),

@@ -13,7 +13,7 @@ use crate::{
     editor::EditorSet, msgs::sys_msg_handler, systems::camera::CameraTag, utils::coordinates,
 };
 
-pub use self::world_to_screen::{sys_update_world_to_screen, WorldToScreen};
+pub use self::world_to_screen::{sys_handle_world_to_screen_changed, WorldToScreen};
 
 #[derive(Component, Reflect, Default, Debug, Copy, Clone, PartialEq)]
 #[reflect(Component)]
@@ -66,7 +66,7 @@ impl Plugin for ScreenSpaceRootPlugin {
         app.add_systems(Startup, sys_setup_ss_root)
             .add_systems(Update, sys_update_ss_root.in_set(EditorSet::PostMsgs));
 
-        app.add_systems(PostUpdate, sys_update_world_to_screen);
+        app.add_systems(PostUpdate, sys_handle_world_to_screen_changed);
         app.register_type::<WorldToScreen>();
         // In debug mode show the test bounds elements
         #[cfg(debug_assertions)]

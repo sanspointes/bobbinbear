@@ -261,9 +261,6 @@ impl AddRemoveEdgeCmd {
             ),
         };
 
-        let e = world.bbid(self.target);
-        println!("Components: {:#?}", world.entity_components(e));
-
         let mut dirty_state = world.bbid_get_mut::<VectorGraphDirty>(self.target);
         *dirty_state = VectorGraphDirty::Dirty;
 

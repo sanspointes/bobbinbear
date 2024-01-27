@@ -18,12 +18,23 @@ use crate::{
         bbid::{BBId, BBIdUtils},
         scene::{BBNode, VectorGraphDirty},
     },
+    msgs::cmds::{
+        add_remove_edge_cmd::{AddRemoveEdgeCmd, AddRemoveEdgeNode},
+        add_remove_object_cmd::AddObjectCmd,
+        inspect_cmd::InspectCmd,
+        Cmd,
+    },
     plugins::{
+        bounds_2d_plugin::GlobalBounds2D,
         screen_space_root_plugin::ScreenSpaceRoot,
-        vector_graph_plugin::{Stroke, VectorGraph, Fill}, selection_plugin::SelectableBundle, bounds_2d_plugin::GlobalBounds2D,
+        selection_plugin::SelectableBundle,
+        vector_graph_plugin::{Fill, Stroke, VectorGraph},
     },
     shared::CachedMeshes,
-    utils::{coordinates::{LocalToScreen, LocalToWorld, ScreenToWorld, WorldToLocal, WorldToScreen}, vector::BBObjectVectorBundle}, msgs::cmds::{Cmd, inspect_cmd::InspectCmd, add_remove_object_cmd::AddObjectCmd, add_remove_edge_cmd::{AddRemoveEdgeCmd, AddRemoveEdgeNode}},
+    utils::{
+        coordinates::{LocalToScreen, LocalToWorld, ScreenToWorld, WorldToLocal, WorldToScreenHelpers},
+        vector::BBObjectVectorBundle,
+    },
 };
 
 use super::PenResource;
@@ -140,11 +151,25 @@ pub enum PenEdgeVariant {
 }
 
 impl PenEdgeVariant {
+    pub fn start(&self) -> Vec2 {
+        match self {
+            Self::Line { start, .. }
+            | Self::Quadratic { start, .. }
+            | Self::Cubic { start, .. } => *start,
+        }
+    }
     pub fn start_mut(&mut self) -> &mut Vec2 {
         match self {
             Self::Line { start, .. }
             | Self::Quadratic { start, .. }
             | Self::Cubic { start, .. } => start,
+        }
+    }
+    pub fn start_node(&self) -> Option<BBNodeIndex> {
+        match self {
+            Self::Line { start_node, .. }
+            | Self::Quadratic { start_node, .. }
+            | Self::Cubic { start_node, .. } => *start_node,
         }
     }
     pub fn start_node_mut(&mut self) -> &mut Option<BBNodeIndex> {
@@ -169,9 +194,21 @@ impl PenEdgeVariant {
         }
     }
 
+    pub fn end(&self) -> Vec2 {
+        match self {
+            Self::Line { end, .. } | Self::Quadratic { end, .. } | Self::Cubic { end, .. } => *end,
+        }
+    }
     pub fn end_mut(&mut self) -> &mut Vec2 {
         match self {
             Self::Line { end, .. } | Self::Quadratic { end, .. } | Self::Cubic { end, .. } => end,
+        }
+    }
+    pub fn end_node(&self) -> Option<BBNodeIndex> {
+        match self {
+            Self::Line { end_node, .. }
+            | Self::Quadratic { end_node, .. }
+            | Self::Cubic { end_node, .. } => *end_node,
         }
     }
     pub fn end_node_mut(&mut self) -> &mut Option<BBNodeIndex> {
@@ -182,37 +219,20 @@ impl PenEdgeVariant {
         }
     }
 
+    #[rustfmt::skip]
     pub fn as_local_to_world(&mut self, world_matrix: &Mat4) -> &mut Self {
         use PenEdgeVariant::*;
         match self {
-            Line {
-                start,
-                start_node,
-                end,
-                end_node,
-            } => {
+            Line { start, start_node, end, end_node, } => {
                 *start = start.local_to_world(world_matrix);
                 *end = end.local_to_world(world_matrix);
             }
-            Quadratic {
-                start,
-                start_node,
-                ctrl1,
-                end,
-                end_node,
-            } => {
+            Quadratic { start, start_node, ctrl1, end, end_node, } => {
                 *start = start.local_to_world(world_matrix);
                 *ctrl1 = ctrl1.local_to_world(world_matrix);
                 *end = end.local_to_world(world_matrix);
             }
-            Cubic {
-                start,
-                start_node,
-                ctrl1,
-                ctrl2,
-                end,
-                end_node,
-            } => {
+            Cubic { start, start_node, ctrl1, ctrl2, end, end_node, } => {
                 *start = start.local_to_world(world_matrix);
                 *ctrl1 = ctrl1.local_to_world(world_matrix);
                 *ctrl2 = ctrl1.local_to_world(world_matrix);
@@ -223,37 +243,20 @@ impl PenEdgeVariant {
         self
     }
 
+    #[rustfmt::skip]
     pub fn as_world_to_local(&mut self, world_matrix: &Mat4) -> &mut Self {
         use PenEdgeVariant::*;
         match self {
-            Line {
-                start,
-                start_node,
-                end,
-                end_node,
-            } => {
+            Line { start, start_node, end, end_node, } => {
                 *start = start.world_to_local(world_matrix);
                 *end = end.world_to_local(world_matrix);
             }
-            Quadratic {
-                start,
-                start_node,
-                ctrl1,
-                end,
-                end_node,
-            } => {
+            Quadratic { start, start_node, ctrl1, end, end_node, } => {
                 *start = start.world_to_local(world_matrix);
                 *ctrl1 = ctrl1.world_to_local(world_matrix);
                 *end = end.world_to_local(world_matrix);
             }
-            Cubic {
-                start,
-                start_node,
-                ctrl1,
-                ctrl2,
-                end,
-                end_node,
-            } => {
+            Cubic { start, start_node, ctrl1, ctrl2, end, end_node, } => {
                 *start = start.world_to_local(world_matrix);
                 *ctrl1 = ctrl1.world_to_local(world_matrix);
                 *ctrl2 = ctrl1.world_to_local(world_matrix);
@@ -263,37 +266,19 @@ impl PenEdgeVariant {
         self
     }
 
+    #[rustfmt::skip]
     pub fn as_world_to_screen(&mut self, ss_root: &ScreenSpaceRoot) -> &mut Self {
         use PenEdgeVariant::*;
         match self {
-            Line {
-                start,
-                start_node,
-                end,
-                end_node,
-            } => {
+            Line { start, start_node, end, end_node, } => {
                 *start = start.world_to_screen(ss_root);
                 *end = end.world_to_screen(ss_root);
             }
-            Quadratic {
-                start,
-                start_node,
-                ctrl1,
-                end,
-                end_node,
-            } => {
-                *start = start.world_to_screen(ss_root);
+            Quadratic { start, start_node, ctrl1, end, end_node, } => { *start = start.world_to_screen(ss_root);
                 *ctrl1 = ctrl1.world_to_screen(ss_root);
                 *end = end.world_to_screen(ss_root);
             }
-            Cubic {
-                start,
-                start_node,
-                ctrl1,
-                ctrl2,
-                end,
-                end_node,
-            } => {
+            Cubic { start, start_node, ctrl1, ctrl2, end, end_node, } => {
                 *start = start.world_to_screen(ss_root);
                 *ctrl1 = ctrl1.world_to_screen(ss_root);
                 *ctrl2 = ctrl1.world_to_screen(ss_root);
@@ -303,37 +288,20 @@ impl PenEdgeVariant {
         self
     }
 
+    #[rustfmt::skip]
     pub fn as_screen_to_world(&mut self, ss_root: &ScreenSpaceRoot) -> &mut Self {
         use PenEdgeVariant::*;
         match self {
-            Line {
-                start,
-                start_node,
-                end,
-                end_node,
-            } => {
+            Line { start, start_node, end, end_node, } => {
                 *start = start.screen_to_world(ss_root);
                 *end = end.screen_to_world(ss_root);
             }
-            Quadratic {
-                start,
-                start_node,
-                ctrl1,
-                end,
-                end_node,
-            } => {
+            Quadratic { start, start_node, ctrl1, end, end_node, } => {
                 *start = start.screen_to_world(ss_root);
                 *ctrl1 = ctrl1.screen_to_world(ss_root);
                 *end = end.screen_to_world(ss_root);
             }
-            Cubic {
-                start,
-                start_node,
-                ctrl1,
-                ctrl2,
-                end,
-                end_node,
-            } => {
+            Cubic { start, start_node, ctrl1, ctrl2, end, end_node, } => {
                 *start = start.screen_to_world(ss_root);
                 *ctrl1 = ctrl1.screen_to_world(ss_root);
                 *ctrl2 = ctrl1.screen_to_world(ss_root);
@@ -343,40 +311,24 @@ impl PenEdgeVariant {
         self
     }
 
+    #[rustfmt::skip]
     pub fn as_quadratic(&self, ctrl1: Vec2) -> Self {
         match self {
-            Self::Line {
-                start,
-                start_node,
-                end,
-                end_node,
-            } => Self::Quadratic {
+            Self::Line { start, start_node, end, end_node, } => Self::Quadratic {
                 start: *start,
                 start_node: *start_node,
                 ctrl1,
                 end: *end,
                 end_node: *end_node,
             },
-            Self::Quadratic {
-                start,
-                start_node,
-                end,
-                end_node,
-                ..
-            } => Self::Quadratic {
+            Self::Quadratic { start, start_node, end, end_node, .. } => Self::Quadratic {
                 start: *start,
                 start_node: *start_node,
                 ctrl1,
                 end: *end,
                 end_node: *end_node,
             },
-            Self::Cubic {
-                start,
-                start_node,
-                end,
-                end_node,
-                ..
-            } => Self::Quadratic {
+            Self::Cubic { start, start_node, end, end_node, .. } => Self::Quadratic { 
                 start: *start,
                 start_node: *start_node,
                 ctrl1,
@@ -386,14 +338,10 @@ impl PenEdgeVariant {
         }
     }
 
+    #[rustfmt::skip]
     pub fn as_cubic(&self, ctrl1: Vec2, ctrl2: Vec2) -> Self {
         match self {
-            Self::Line {
-                start,
-                start_node,
-                end,
-                end_node,
-            } => Self::Cubic {
+            Self::Line { start, start_node, end, end_node, } => Self::Cubic {
                 start: *start,
                 start_node: *start_node,
                 ctrl1,
@@ -401,13 +349,7 @@ impl PenEdgeVariant {
                 end: *end,
                 end_node: *end_node,
             },
-            Self::Quadratic {
-                start,
-                start_node,
-                end,
-                end_node,
-                ..
-            } => Self::Cubic {
+            Self::Quadratic { start, start_node, end, end_node, .. } => Self::Cubic {
                 start: *start,
                 start_node: *start_node,
                 ctrl1,
@@ -415,13 +357,7 @@ impl PenEdgeVariant {
                 end: *end,
                 end_node: *end_node,
             },
-            Self::Cubic {
-                start,
-                start_node,
-                end,
-                end_node,
-                ..
-            } => Self::Cubic {
+            Self::Cubic { start, start_node, end, end_node, .. } => Self::Cubic {
                 start: *start,
                 start_node: *start_node,
                 ctrl1,
@@ -429,6 +365,21 @@ impl PenEdgeVariant {
                 end: *end,
                 end_node: *end_node,
             },
+        }
+    }
+
+    /// If this is a curve, reflects the control point across the end node to get the next control
+    /// point. Usefull for partially autofilling the next curve for curve continuity.
+    pub fn try_get_inverse_ctrl_pos(&self) -> Option<Vec2> {
+        match self {
+            Self::Line { .. } => None,
+            Self::Quadratic { ctrl1, end, .. }
+            | Self::Cubic {
+                ctrl2: ctrl1, end, ..
+            } => {
+                let diff = *ctrl1 - *end;
+                Some(*end - diff)
+            }
         }
     }
 }
@@ -647,8 +598,7 @@ impl PenEdge2 {
     pub fn world_to_coordinate_space(&self, world: &mut World, world_pos: Vec2) -> Vec2 {
         match self {
             PenEdge2::Local(target, _) => {
-                let world_matrix =
-                    world.bbid_get::<GlobalTransform>(*target).compute_matrix();
+                let world_matrix = world.bbid_get::<GlobalTransform>(*target).compute_matrix();
                 world_pos.world_to_local(&world_matrix)
             }
             PenEdge2::World(_, _) => world_pos,
@@ -768,7 +718,6 @@ impl PenEdge2 {
         *vis = Visibility::Visible;
 
         let mut g = BBGraph::new();
-        println!("PenEdge2::draw() screen_edge: {screen_edge:?}");
         match screen_edge.variant() {
             PenEdgeVariant::Line { start, end, .. } => {
                 g.line(*start, *end);
@@ -776,9 +725,7 @@ impl PenEdge2 {
             PenEdgeVariant::Quadratic {
                 start, ctrl1, end, ..
             } => {
-                let (_, e) = g.quadratic(*start, *ctrl1, *end);
-                let (_, l) = g.line_from(e.start_idx(), *ctrl1);
-                g.line_from_to(e.end_idx(), l.end_idx());
+                g.quadratic(*start, *ctrl1, *end);
             }
             PenEdgeVariant::Cubic {
                 start,
@@ -787,9 +734,7 @@ impl PenEdge2 {
                 end,
                 ..
             } => {
-                let (_, e) = g.cubic(*start, *ctrl1, *ctrl2, *end);
-                g.line_from(e.start_idx(), *ctrl1);
-                g.line_from(e.end_idx(), *ctrl2);
+                g.cubic(*start, *ctrl1, *ctrl2, *end);
             }
         }
         *graph = VectorGraph(g);

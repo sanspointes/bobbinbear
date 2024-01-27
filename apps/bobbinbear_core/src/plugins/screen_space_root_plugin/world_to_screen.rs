@@ -9,9 +9,9 @@ use super::ScreenSpaceRoot;
 /// point in screenspace.
 pub struct WorldToScreen(pub Vec3);
 
-pub fn sys_update_world_to_screen(
+pub fn sys_handle_world_to_screen_changed(
     q_ss_root: Query<&ScreenSpaceRoot>,
-    mut q_world_to_screen: Query<(&mut Transform, &WorldToScreen), Changed<WorldToScreen>>,
+    mut q_world_to_screen: Query<(&mut Transform, &WorldToScreen)>,
 ) {
     let ss_root = q_ss_root.single();
 

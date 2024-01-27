@@ -104,21 +104,21 @@ impl WorldToLocal for Vec4 {
         world_matrix.inverse().mul_vec4(*self)
     }
 }
-pub trait WorldToScreen {
+pub trait WorldToScreenHelpers {
     fn world_to_screen(&self, ss_root: &ScreenSpaceRoot) -> Vec2;
 }
 
-impl WorldToScreen for Vec2 {
+impl WorldToScreenHelpers for Vec2 {
     fn world_to_screen(&self, ss_root: &ScreenSpaceRoot) -> Vec2 {
         world_to_screen(self.xy(), ss_root.window_size(), ss_root.projection_area())
     }
 }
-impl WorldToScreen for Vec3 {
+impl WorldToScreenHelpers for Vec3 {
     fn world_to_screen(&self, ss_root: &ScreenSpaceRoot) -> Vec2 {
         world_to_screen(self.xy(), ss_root.window_size(), ss_root.projection_area())
     }
 }
-impl WorldToScreen for Vec4 {
+impl WorldToScreenHelpers for Vec4 {
     fn world_to_screen(&self, ss_root: &ScreenSpaceRoot) -> Vec2 {
         world_to_screen(self.xy(), ss_root.window_size(), ss_root.projection_area())
     }

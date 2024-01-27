@@ -6,7 +6,7 @@ mod utils;
 
 use bevy::prelude::*;
 
-pub use inspect::{handle_graph_inspected, handle_graph_uninspected};
+pub use inspect::{handle_graph_inspected, handle_graph_uninspected, handle_inspected_graph_changed};
 pub use moved::handle_bb_node_moved;
 
 use crate::shared::CachedMeshes;
