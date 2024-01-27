@@ -42,31 +42,31 @@ pub fn normalized_proj_to_screen(norm_pos: Vec2, window_size: Vec2) -> Vec2 {
 
 /// To world trait 
 pub trait LocalToScreen {
-    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self;
+    fn local_to_screen(&self, world_matrix: &Mat4, ss_root: &ScreenSpaceRoot) -> Self;
 }
 
 impl LocalToScreen for Vec2 {
-    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
-        let world_pos = self.local_to_world(world_transform);
+    fn local_to_screen(&self, world_matrix: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let world_pos = self.local_to_world(world_matrix);
         ss_root.world_to_screen(world_pos)
     }
 }
 impl LocalToScreen for Vec3 {
-    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
-        let world_pos = self.local_to_world(world_transform);
+    fn local_to_screen(&self, world_matrix: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let world_pos = self.local_to_world(world_matrix);
         ss_root.world_to_screen(world_pos.xy()).extend(0.)
     }
 }
 impl LocalToScreen for Vec4 {
-    fn local_to_screen(&self, world_transform: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
-        let world_pos = self.local_to_world(world_transform);
+    fn local_to_screen(&self, world_matrix: &Mat4, ss_root: &ScreenSpaceRoot) -> Self {
+        let world_pos = self.local_to_world(world_matrix);
         let sp = ss_root.world_to_screen(world_pos.xy());
         Vec4::new(sp.x, sp.y, 0., 1.)
     }
 }
 
 pub trait LocalToWorld {
-    fn local_to_world(&self, world_transform: &Mat4) -> Self;
+    fn local_to_world(&self, world_matrix: &Mat4) -> Self;
 }
 
 impl LocalToWorld for Vec2 {
@@ -82,6 +82,61 @@ impl LocalToWorld for Vec3 {
 impl LocalToWorld for Vec4 {
     fn local_to_world(&self, world_matrix: &Mat4) -> Self {
         world_matrix.mul_vec4(*self)
+    }
+}
+
+pub trait WorldToLocal {
+    fn world_to_local(&self, world_matrix: &Mat4) -> Self;
+}
+
+impl WorldToLocal for Vec2 {
+    fn world_to_local(&self, world_matrix: &Mat4) -> Self {
+        world_matrix.inverse().mul_vec4(Vec4::new(self.x, self.y, 0., 1.)).xy()
+    }
+}
+impl WorldToLocal for Vec3 {
+    fn world_to_local(&self, world_matrix: &Mat4) -> Self {
+        world_matrix.inverse().mul_vec4(Vec4::new(self.x, self.y, self.z, 1.)).xyz()
+    }
+}
+impl WorldToLocal for Vec4 {
+    fn world_to_local(&self, world_matrix: &Mat4) -> Self {
+        world_matrix.inverse().mul_vec4(*self)
+    }
+}
+pub trait WorldToScreenHelpers {
+    fn world_to_screen(&self, ss_root: &ScreenSpaceRoot) -> Vec2;
+}
+
+impl WorldToScreenHelpers for Vec2 {
+    fn world_to_screen(&self, ss_root: &ScreenSpaceRoot) -> Vec2 {
+        world_to_screen(self.xy(), ss_root.window_size(), ss_root.projection_area())
+    }
+}
+impl WorldToScreenHelpers for Vec3 {
+    fn world_to_screen(&self, ss_root: &ScreenSpaceRoot) -> Vec2 {
+        world_to_screen(self.xy(), ss_root.window_size(), ss_root.projection_area())
+    }
+}
+impl WorldToScreenHelpers for Vec4 {
+    fn world_to_screen(&self, ss_root: &ScreenSpaceRoot) -> Vec2 {
+        world_to_screen(self.xy(), ss_root.window_size(), ss_root.projection_area())
+    }
+}
+
+pub trait WorldToEntityLocal {
+    fn world_to_entity_local(&self, world: &World, entity: Entity) -> Self;
+}
+impl WorldToEntityLocal for Vec3 {
+    fn world_to_entity_local(&self, world: &World, entity: Entity) -> Self {
+        let global_matrix = world.get::<GlobalTransform>(entity).unwrap().compute_matrix();
+        self.world_to_local(&global_matrix)
+    }
+}
+impl WorldToEntityLocal for Vec4 {
+    fn world_to_entity_local(&self, world: &World, entity: Entity) -> Self {
+        let global_matrix = world.get::<GlobalTransform>(entity).unwrap().compute_matrix();
+        self.world_to_local(&global_matrix)
     }
 }
 

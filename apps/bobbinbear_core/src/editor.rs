@@ -7,16 +7,23 @@ use bevy_debug_text_overlay::OverlayPlugin;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 use crate::{
-    components::{bbid::BBId, scene::{BBObject, BBNode}},
-    msgs::{cmds::CmdMsgPlugin, api::ApiMsg, sys_msg_handler, Msg, ToolMsgPlugin},
+    components::{
+        bbid::BBId,
+        scene::{BBNode, BBObject, VectorGraphDirty},
+    },
+    msgs::{
+        api::ApiMsg, cmds::CmdMsgPlugin, effect::EffectMsg, sys_msg_handler, Msg, MsgPlugin,
+    },
     plugins::{
         bounds_2d_plugin::Bounds2DPlugin,
         input_plugin::{InputMessage, InputPlugin},
-        screen_space_root_plugin::{ScreenSpaceRootPlugin, ScreenSpaceRoot},
-        selection_plugin::SelectionPlugin, inspect_plugin::InspectPlugin, vector_graph_plugin::{BuildShapes, VectorGraph, VectorGraphPlugin}, 
+        inspect_plugin::InspectPlugin,
+        screen_space_root_plugin::{ScreenSpaceRoot, ScreenSpaceRootPlugin},
+        selection_plugin::SelectionPlugin,
+        vector_graph_plugin::{BuildShapes, VectorGraphPlugin},
         // inspect_plugin::InspectPlugin,
     },
-    systems::camera::sys_setup_camera,
+    systems::camera::sys_setup_camera, shared::{CachedMeshes, sys_setup_cached_meshes},
 };
 
 pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
@@ -25,7 +32,6 @@ pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
 
     #[cfg(debug_assertions)]
     let default_plugins = {
-
         #[cfg(all(not(feature = "trace_bevy"), not(feature = "debug_trace")))]
         let default_plugins = default_plugins.set(LogPlugin {
             level: bevy::log::Level::DEBUG,
@@ -62,7 +68,10 @@ pub fn start_bobbin_bear(default_plugins: PluginGroupBuilder) -> App {
     app.add_plugins(WorldInspectorPlugin::default());
 
     #[cfg(feature = "debug_text")]
-    app.add_plugins(OverlayPlugin { font_size: 12.0, ..default() });
+    app.add_plugins(OverlayPlugin {
+        font_size: 12.0,
+        ..default()
+    });
 
     app.insert_resource(Msaa::Off)
         .insert_resource(ClearColor(Color::rgb(1., 0., 0.)));
@@ -86,22 +95,35 @@ impl Plugin for EditorPlugin {
             // Internals
             .add_event::<ApiMsg>()
             .add_event::<Msg>()
+            .add_event::<EffectMsg>()
             // Internal generic plugins
-            .add_plugins((InputPlugin, SelectionPlugin, ScreenSpaceRootPlugin, Bounds2DPlugin))
+            .add_plugins((
+                InputPlugin,
+                SelectionPlugin,
+                ScreenSpaceRootPlugin,
+                Bounds2DPlugin,
+            ))
             // Internal App Logic plugins
-            .add_plugins((ToolMsgPlugin, CmdMsgPlugin, InspectPlugin, VectorGraphPlugin))
-
-            .configure_sets(Update, (EditorSet::PreMsgs, EditorSet::Msgs, EditorSet::PostMsgs).chain()) 
+            .add_plugins(MsgPlugin)
+            .add_plugins((InspectPlugin, VectorGraphPlugin))
+            .configure_sets(
+                Update,
+                (EditorSet::PreMsgs, EditorSet::Msgs, EditorSet::PostMsgs).chain(),
+            )
             .configure_sets(PostUpdate, EditorSet::PostPlugins.after(BuildShapes))
-
-            .add_systems(PreStartup, sys_setup_camera)
-            .add_systems(Update, sys_handle_pre_editor_msgs.in_set(EditorSet::PreMsgs))
+            .add_systems(PreStartup, (sys_setup_camera, sys_setup_cached_meshes))
+            .add_systems(
+                Update,
+                sys_handle_pre_editor_msgs.in_set(EditorSet::PreMsgs),
+            )
             .add_systems(Update, sys_msg_handler.in_set(EditorSet::Msgs))
+            .insert_resource(CachedMeshes::default())
 
             .register_type::<BBId>()
             .register_type::<BBObject>()
             .register_type::<BBNode>()
             .register_type::<ScreenSpaceRoot>()
+            .register_type::<VectorGraphDirty>()
         ;
 
         // if let Some(frontend_sender) = app.world.get_resource_mut::<FrontendSender>() {

@@ -248,7 +248,7 @@ impl BBGraph {
     ///
     /// * `edge_idx`: ID of the edge to delete.
     pub fn delete_edge(&mut self, edge_idx: BBEdgeIndex) -> BBResult<()> {
-        let edge = *self.edge(edge_idx).unwrap();
+        let edge = *self.edge(edge_idx)?;
         self.edges.remove(&edge_idx);
 
         if let Ok(start) = self.node_mut(edge.start_idx()) {

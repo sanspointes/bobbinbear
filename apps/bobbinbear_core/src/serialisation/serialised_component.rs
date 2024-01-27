@@ -9,7 +9,7 @@ use crate::{plugins::{
     bounds_2d_plugin::GlobalBounds2D,
     selection_plugin::{Selectable, Selected},
     vector_graph_plugin::{Fill, Stroke, VectorGraph},
-}, components::scene::BBObject};
+}, components::scene::{BBObject, VectorGraphDirty}};
 
 /// NameDef
 ///
@@ -292,6 +292,7 @@ pub enum SerialisedComponent {
 
     // bb_vector_network_related
     VectorGraph(VectorGraph),
+    VectorGraphDirty(VectorGraphDirty),
     Fill(Fill),
     Stroke(Stroke),
 }
@@ -366,6 +367,11 @@ impl From<Stroke> for SerialisedComponent {
 impl From<VectorGraph> for SerialisedComponent {
     fn from(value: VectorGraph) -> Self {
         SerialisedComponent::VectorGraph(value)
+    }
+}
+impl From<VectorGraphDirty> for SerialisedComponent {
+    fn from(value: VectorGraphDirty) -> Self {
+        SerialisedComponent::VectorGraphDirty(value)
     }
 }
 

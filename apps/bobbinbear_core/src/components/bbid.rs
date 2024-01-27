@@ -1,9 +1,11 @@
 use std::fmt::{Debug, Display};
 
-use bevy::{ecs::world::EntityMut, prelude::*, reflect::Reflect, utils::Uuid};
+use bevy::{ecs::{world::EntityMut, component::ComponentInfo}, prelude::*, reflect::Reflect, utils::Uuid};
 use thiserror::Error;
 
-#[derive(Component, Reflect, Eq, PartialEq, Hash, Copy, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(
+    Component, Reflect, Eq, PartialEq, Hash, Copy, Clone, serde::Serialize, serde::Deserialize,
+)]
 /// A unique identifier that can be used to
 pub struct BBId(pub [u64; 2]);
 
@@ -34,18 +36,28 @@ pub enum BbidWorldError {
 // fallback to query all?
 
 pub trait BBIdUtils {
-    fn entity_id_by_bbid(&mut self, bbid: BBId) -> Entity;
-    fn get_entity_id_by_bbid(&mut self, bbid: BBId) -> Option<Entity>;
+    fn bbid(&mut self, bbid: BBId) -> Entity;
+    fn try_bbid(&mut self, bbid: BBId) -> Option<Entity>;
+    fn bbid_mut(&mut self, bbid: BBId) -> EntityWorldMut;
+    fn try_bbid_mut(&mut self, bbid: BBId) -> Option<EntityWorldMut>;
 
-    fn try_entities_by_bbid_vec(
-        &mut self,
-        bbids: &[BBId],
-    ) -> Result<Vec<Entity>, BbidWorldError>;
+    fn bbid_get<C: Component>(&mut self, bbid: BBId) -> &C;
+    fn try_bbid_get<C: Component>(&mut self, bbid: BBId) -> Option<&C>;
+
+    fn bbid_get_mut<C: Component>(&mut self, bbid: BBId) -> Mut<C>;
+    fn try_bbid_get_mut<C: Component>(&mut self, bbid: BBId) -> Option<Mut<C>>;
+
+    fn try_entities_by_bbid_vec(&mut self, bbids: &[BBId]) -> Result<Vec<Entity>, BbidWorldError>;
+
+    fn entity_components(&mut self, entity: Entity) -> Vec<Option<&ComponentInfo>>;
 }
 
 impl BBIdUtils for World {
-    fn entity_id_by_bbid(&mut self, bbid: BBId) -> Entity {
-        match self.get_entity_id_by_bbid(bbid) {
+    /// Gets an entity from the scene by BBId
+    ///
+    /// * `bbid`:
+    fn bbid(&mut self, bbid: BBId) -> Entity {
+        match self.try_bbid(bbid) {
             Some(entity) => entity,
             None => panic!(
                 "entity_by_uuid: Could not find entity with uuid {:?}",
@@ -54,28 +66,67 @@ impl BBIdUtils for World {
         }
     }
 
-    fn get_entity_id_by_bbid(&mut self, bbid: BBId) -> Option<Entity> {
+    /// Tries to get an entity from the scene by bbid.
+    ///
+    /// * `bbid`:
+    fn try_bbid(&mut self, bbid: BBId) -> Option<Entity> {
         self.query::<(Entity, &BBId)>()
             .iter(self)
             .find(|(_entity, id)| (*id).eq(&bbid))
             .map(|(e, _)| e)
     }
 
-    fn try_entities_by_bbid_vec(
-        &mut self,
-        bbids: &[BBId],
-    ) -> Result<Vec<Entity>, BbidWorldError> {
+    fn bbid_mut(&mut self, bbid: BBId) -> EntityWorldMut {
+        let e = self.bbid(bbid);
+        self.entity_mut(e)
+    }
+
+    fn try_bbid_mut(&mut self, bbid: BBId) -> Option<EntityWorldMut> {
+        self.try_bbid(bbid).map(|e| self.entity_mut(e))
+    }
+
+    fn bbid_get<C: Component>(&mut self, bbid: BBId) -> &C {
+        let e = self.bbid(bbid);
+        self.get::<C>(e).unwrap()
+    }
+
+    fn try_bbid_get<C: Component>(&mut self, bbid: BBId) -> Option<&C> {
+        self.try_bbid(bbid).and_then(|e| self.get::<C>(e))
+    }
+
+    fn bbid_get_mut<C: Component>(&mut self, bbid: BBId) -> Mut<C> {
+        let e = self.bbid(bbid);
+        self.get_mut::<C>(e).unwrap()
+    }
+
+    fn try_bbid_get_mut<C: Component>(&mut self, bbid: BBId) -> Option<Mut<C>> {
+        let Some(e) = self.try_bbid(bbid) else {
+            return None;
+        };
+        self.get_mut::<C>(e)
+    }
+
+    fn try_entities_by_bbid_vec(&mut self, bbids: &[BBId]) -> Result<Vec<Entity>, BbidWorldError> {
         let mut q_bbids = self.query::<(Entity, &BBId)>();
 
-        let result: Result<Vec<Entity>, BbidWorldError> = bbids.iter().map(|bbid| {
-            for (e, bbid_other) in q_bbids.iter(self) {
-                if bbid_other.eq(bbid) {
-                    return Ok(e);
+        let result: Result<Vec<Entity>, BbidWorldError> = bbids
+            .iter()
+            .map(|bbid| {
+                for (e, bbid_other) in q_bbids.iter(self) {
+                    if bbid_other.eq(bbid) {
+                        return Ok(e);
+                    }
                 }
-            }
-            Err(BbidWorldError::NoEntityWithBbid(*bbid))
-        }).collect();
+                Err(BbidWorldError::NoEntityWithBbid(*bbid))
+            })
+            .collect();
 
         result
+    }
+
+    fn entity_components(&mut self, entity: Entity) -> Vec<Option<&ComponentInfo>> {
+        let reference = self.get_entity(entity).unwrap();
+        let components = self.components();
+        reference.archetype().components().map(|c| components.get_info(c)).collect()
     }
 }

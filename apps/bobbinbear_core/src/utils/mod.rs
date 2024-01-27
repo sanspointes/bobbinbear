@@ -1,4 +1,4 @@
-pub mod scene;
+pub mod world;
 pub mod coordinates;
 pub mod debug;
 pub mod vector;

@@ -6,7 +6,7 @@ use bevy_mod_raycast::prelude::RaycastMesh;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    components::{bbid::BBId, scene::BBObject},
+    components::{bbid::BBId, scene::{BBObject, VectorGraphDirty}},
     plugins::{
         bounds_2d_plugin::GlobalBounds2D,
         selection_plugin::{Selectable, Selected},
@@ -18,9 +18,9 @@ use self::serialised_component::{ColorMaterialHandleDef, SerialisedComponent, Me
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct SerialisableEntity {
-    bbid: BBId,
-    components: Vec<SerialisedComponent>,
-    children: Vec<SerialisableEntity>,
+    pub bbid: BBId,
+    pub components: Vec<SerialisedComponent>,
+    pub children: Vec<SerialisableEntity>,
 }
 impl SerialisableEntity {
     pub fn new(bbid: BBId) -> Self {
@@ -94,6 +94,9 @@ impl SerialisableEntity {
         if let Some(value) = world.get::<VectorGraph>(entity) {
             serialised.components.push((value.clone()).into())
         }
+        if let Some(value) = world.get::<VectorGraphDirty>(entity) {
+            serialised.components.push((value.clone()).into())
+        }
         if let Some(value) = world.get::<GlobalBounds2D>(entity) {
             serialised.components.push((*value).into())
         }
@@ -158,6 +161,9 @@ impl SerialisableEntity {
                 }
                 SerialisedComponent::VectorGraph(value) => {
                     e.insert(value.clone());
+                }
+                SerialisedComponent::VectorGraphDirty(value) => {
+                    e.insert(*value);
                 }
                 SerialisedComponent::GlobalBounds2D(value) => {
                     e.insert(GlobalBounds2D::from(value.clone()));

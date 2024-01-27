@@ -32,6 +32,9 @@ pub fn msg_handler_keybinds(
             (ButtonState::Released, KeyCode::Key2, _, _) => {
                 responder.push_internal(ToolMessage::SwitchTool(BBTool::Box));
             }
+            (ButtonState::Released, KeyCode::Key3, _, _) => {
+                responder.push_internal(ToolMessage::SwitchTool(BBTool::Pen));
+            }
             (ButtonState::Released, KeyCode::Key0, _, _) => {
                 responder.push_internal(ToolMessage::SwitchTool(BBTool::Noop));
             }

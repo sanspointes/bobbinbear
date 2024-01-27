@@ -8,7 +8,7 @@ use bevy::prelude::*;
 
 use crate::{
     components::bbid::{BBId, BBIdUtils},
-    serialisation::SerialisableEntity,
+    serialisation::SerialisableEntity, msgs::{MsgQue, effect::EffectMsg},
 };
 
 use super::{Cmd, CmdError, CmdMsg, CmdType};
@@ -61,6 +61,14 @@ impl Debug for AddObjectCmd {
 }
 
 impl AddObjectCmd {
+    pub fn from_bundle<B: Bundle>(
+        world: &mut World,
+        parent: Option<BBId>,
+        bundle: B,
+    ) -> anyhow::Result<Self> {
+        let id = world.spawn(bundle).id();
+        AddObjectCmd::from_entity(world, id, parent)
+    }
     pub fn from_builder<F: FnMut(&mut EntityWorldMut<'_>)>(
         world: &mut World,
         parent: Option<BBId>,
@@ -98,7 +106,7 @@ impl AddObjectCmd {
 }
 
 impl Cmd for AddObjectCmd {
-    fn execute(&mut self, world: &mut World) -> Result<(), CmdError> {
+    fn execute(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
         let Some(serialised) = &self.serialised.take() else {
             return Err(CmdError::DoubleExecute);
         };
@@ -107,33 +115,37 @@ impl Cmd for AddObjectCmd {
 
         let maybe_parent = self
             .parent
-            .map(|parent_bbid| world.get_entity_id_by_bbid(parent_bbid))
-            .flatten();
+            .and_then(|parent_bbid| world.try_bbid(parent_bbid));
         // Parent the object if necessary
         if let Some(parent) = maybe_parent {
             world.entity_mut(id).set_parent(parent);
         }
 
+        responder.push_internal(EffectMsg::ObjectAdded { bbid: serialised.bbid });
+
         Ok(())
     }
 
-    fn undo(&mut self, world: &mut World) -> Result<(), CmdError> {
+    fn undo(&mut self, world: &mut World, responder: &mut MsgQue) -> Result<(), CmdError> {
         if self.serialised.is_some() {
             return Err(CmdError::DoubleUndo);
         }
 
         // Get entity of app id.
         let target_entity = world
-            .get_entity_id_by_bbid(self.entity_bbid)
+            .try_bbid(self.entity_bbid)
             .ok_or(CmdError::from(anyhow!(
                 "Error finding target. Can't find {:?}.",
                 self.entity_bbid
             )))?;
 
         if let Some(serialised) = SerialisableEntity::from_entity_recursive(world, target_entity) {
-            self.serialised = Some(serialised);
 
             world.entity_mut(target_entity).despawn_recursive();
+
+            responder.push_internal(EffectMsg::ObjectRemoved { bbid: serialised.bbid });
+
+            self.serialised = Some(serialised);
 
             Ok(())
         } else {

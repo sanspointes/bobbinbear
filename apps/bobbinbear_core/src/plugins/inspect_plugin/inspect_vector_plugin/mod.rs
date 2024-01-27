@@ -1,5 +1,4 @@
-mod sys_enter_exit;
-mod sys_update;
+mod systems;
 mod utils;
 
 use bevy::math::vec3;
@@ -10,19 +9,16 @@ use crate::{
         bbid::BBId,
         scene::{BBIndex, BBObject},
     },
-    msgs::{cmds::inspect_cmd::InspectingTag, sys_msg_handler},
+    msgs::cmds::inspect_cmd::InspectingTag,
     plugins::{screen_space_root_plugin::ScreenSpaceRoot, vector_graph_plugin::VectorGraph},
     utils::mesh::{add_vertex_colors_mesh, combine_meshes},
 };
 
 // use self::utils::make_path_of_bb_path_event;
 
-use self::{
-    sys_enter_exit::sys_handle_exit_inspect_vector,
-    sys_update::{sys_check_needs_update, sys_update_bb_nodes},
-};
+use self::systems::sys_handle_exit_inspect_vector;
 
-pub use sys_enter_exit::sys_handle_enter_inspect_vector;
+pub use systems::sys_handle_enter_inspect_vector;
 
 use super::InspectState;
 
@@ -37,22 +33,27 @@ impl Plugin for InspectVectorPlugin {
                 sys_handle_enter_inspect_vector,
             )
             .add_systems(
-                OnExit(InspectState::InspectVector),
-                sys_handle_exit_inspect_vector,
+                PostUpdate,
+                systems::sys_handle_inspected_graph_changed
+                    .run_if(in_state(InspectState::InspectVector)),
             )
             .add_systems(
-                Update,
-                (
-                    (
-                        sys_check_needs_update.pipe(sys_update_bb_nodes),
-                        sys_check_needs_update.pipe(sys_update_bb_path_event),
-                    ),
-                    // sys_handle_bb_node_moved,
-                )
-                    .chain()
-                    .run_if(in_state(InspectState::InspectVector))
-                    .after(sys_msg_handler),
+                OnExit(InspectState::InspectVector),
+                sys_handle_exit_inspect_vector,
             );
+        // .add_systems(
+        //     Update,
+        //     (
+        //         (
+        //             sys_check_needs_update.pipe(sys_update_bb_nodes),
+        //             sys_check_needs_update.pipe(sys_update_bb_path_event),
+        //         ),
+        //         // sys_handle_bb_node_moved,
+        //     )
+        //         .chain()
+        //         .run_if(in_state(InspectState::InspectVector))
+        //         .after(sys_msg_handler),
+        // );
     }
 }
 
@@ -66,18 +67,18 @@ struct BBEdgeTag;
 ///
 
 // Caches paths so they don't need to be re-calculated
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct InspectCachedMeshes {
     pub material: Option<Handle<ColorMaterial>>,
     pub control_node: Option<Mesh2dHandle>,
     pub endpoint_node: Option<Mesh2dHandle>,
 }
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub struct VectorResource {
     pub cached_meshes: InspectCachedMeshes,
 }
 
-fn sys_setup_cached_meshes(
+pub fn sys_setup_cached_meshes(
     mut materials: ResMut<Assets<ColorMaterial>>,
     mut meshes: ResMut<Assets<Mesh>>,
     mut resource: ResMut<VectorResource>,

@@ -1,48 +1,38 @@
-use std::{rc::Rc, sync::Arc};
+use std::collections::HashSet;
 
 use bevy::{
-    ecs::system::{BoxedSystem, SystemState},
-    input::ButtonState,
-    math::Vec3Swizzles,
-    prelude::*,
-    utils::{HashMap, HashSet},
+    input::ButtonState, math::Vec3Swizzles, prelude::*, utils::HashMap,
 };
-use bevy_mod_raycast::prelude::RaycastSource;
 
 use crate::{
-    components::bbid::BBId,
+    components::bbid::{BBId, BBIdUtils},
     msgs::{
         api::ApiEffectMsg,
         cmds::{
-            inspect_cmd::InspectCmd, move_objects_cmd::MoveObjectsCmd,
-            select_objects_cmd::SelectObjectsCmd, Cmd, CmdMsg, MultiCmd,
+            inspect_cmd::{InspectCmd, InspectingTag},
+            move_objects_cmd::MoveObjectsCmd,
+            select_objects_cmd::SelectObjectsCmd,
+            Cmd, CmdMsg, MultiCmd,
         },
         MsgQue,
     },
-    plugins::{
-        input_plugin::{InputMessage, ModifiersState},
-        inspect_plugin::InspectState,
-        selection_plugin::{Selectable, Selected},
-    },
+    plugins::{input_plugin::InputMessage, selection_plugin::get_raycast_hits_selectable},
     types::BBCursor,
 };
 
-use super::{ToolFsmError, ToolFsmResult, ToolHandlerMessage};
+use super::{ToolHandler, ToolHandlerMessage};
 
 #[derive(Resource, Debug, Clone)]
 pub enum SelectFsm {
     Default {
         bbids: HashSet<BBId>,
     },
-    DoubleClickReturn {
-        bbids: HashSet<BBId>,
-        target: BBId,
-    },
-    AwaitingMoveSelected {
+    PointerDownAt {
         bbids: HashSet<BBId>,
         initial_world_pos: Vec2,
     },
     MovingSelected {
+        bbids: HashSet<BBId>,
         initial_positions: HashMap<BBId, Vec2>,
         initial_world_pos: Vec2,
         world_offset: Vec2,
@@ -52,18 +42,6 @@ pub enum SelectFsm {
        //     min_pos: Vec2,
        //     max_pos: Vec2,
        // }
-}
-
-pub struct OnSelectMoved(Vec<BoxedSystem>);
-impl OnSelectMoved {
-    /// Run a callback system every time this event listener is triggered. This can be a closure or
-    /// a function, as described by bevy's documentation. The only notable difference from Bevy
-    /// systems is that the callback system can access a resource with event data,
-    /// [`ListenerInput`]. You can more easily access this with the system params
-    /// [`Listener`](crate::callbacks::Listener) and [`ListenerMut`](crate::callbacks::ListenerMut).
-    pub fn run<Marker>(callback: impl IntoSystem<(), (), Marker>) -> Self {
-        Self(vec![Box::new(IntoSystem::into_system(callback))])
-    }
 }
 
 impl Default for SelectFsm {
@@ -76,372 +54,278 @@ impl Default for SelectFsm {
 
 impl SelectFsm {
     /// Resets to default state, persisting any data that it can.
-    fn reset(&self) -> ToolFsmResult<SelectFsm> {
+    fn reset(&self) -> SelectFsm {
         #[cfg(feature = "debug_select")]
         debug!("SelectFsm.reset()");
 
-        let result = match self {
-            Self::Default { bbids } => Ok(Self::Default {
+        match self {
+            Self::Default { bbids } => Self::Default {
                 bbids: bbids.clone(),
-            }),
-            Self::AwaitingMoveSelected { bbids, .. } => Ok(Self::Default {
+            },
+            Self::PointerDownAt { bbids, .. } => Self::Default {
                 bbids: bbids.clone(),
-            }),
+            },
             Self::MovingSelected {
                 initial_positions, ..
-            } => Ok(Self::Default {
+            } => Self::Default {
                 bbids: initial_positions.clone().into_keys().collect(),
-            }),
-            Self::DoubleClickReturn { bbids, .. } => Ok(Self::Default {
-                bbids: bbids.clone(),
-            }),
-        };
-
-        result.map(|new| (self.clone(), new))
+            },
+        }
     }
 
-    fn pointer_down(
-        &self,
-        bbid: Option<&BBId>,
-        modifiers: &ModifiersState,
-        initial_world_pos: &Vec2,
-    ) -> ToolFsmResult<SelectFsm> {
-        #[cfg(feature = "debug_select")]
-        debug!("SelectFsm.pointer_down_with_hover(bbid: {bbid:?}, modifiers: {modifiers:?})");
-
-        let result = match self {
-            Self::Default { bbids } => {
-                let pointer_down_on_selected = match bbid {
-                    Some(bbid) => bbids.contains(bbid),
-                    None => false,
-                };
-
-                match (pointer_down_on_selected, modifiers.shift) {
-                    // If pointer down on already selected, do not deselect / add select.
-                    (true, _) => Ok(Self::AwaitingMoveSelected {
-                        bbids: bbids.clone(),
-                        initial_world_pos: *initial_world_pos,
-                    }),
-
-                    // If pointer down and not pressing shift, just select the new element
-                    (false, ButtonState::Released) => {
-                        let mut bbids = HashSet::new();
-                        if let Some(bbid) = bbid {
-                            bbids.insert(*bbid);
-                        }
-                        Ok(Self::AwaitingMoveSelected {
-                            bbids,
-                            initial_world_pos: *initial_world_pos,
-                        })
-                    }
-
-                    // If pointer down and not pressing try to add new element to selection
-                    (false, ButtonState::Pressed) => {
-                        let mut bbids = bbids.clone();
-                        if let Some(bbid) = bbid {
-                            bbids.insert(*bbid);
-                        }
-                        Ok(Self::AwaitingMoveSelected {
-                            bbids,
-                            initial_world_pos: *initial_world_pos,
-                        })
-                    }
-                }
-            }
-            _ => Err(ToolFsmError::NoTransition),
-        };
-
-        result.map(|new| (self.clone(), new))
+    pub fn get_selected(&self) -> &HashSet<BBId> {
+        match self {
+            Self::Default { bbids } => bbids,
+            Self::MovingSelected { bbids, .. } => bbids,
+            Self::PointerDownAt { bbids, .. } => bbids,
+        }
+    }
+    pub fn get_selected_mut(&mut self) -> &mut HashSet<BBId> {
+        match self {
+            Self::Default { bbids } => bbids,
+            Self::MovingSelected { bbids, .. } => bbids,
+            Self::PointerDownAt { bbids, .. } => bbids,
+        }
     }
 
-    fn pointer_click(
-        &self,
-        bbid: Option<&BBId>,
-        modifiers: &ModifiersState,
-    ) -> ToolFsmResult<SelectFsm> {
-        #[cfg(feature = "debug_select")]
-        debug!("SelectFsm.pointer_click(bbid: {bbid:?}, modifiers: {modifiers:?})");
+    pub fn set_selected(&mut self, _world: &mut World, new: HashSet<BBId>, responder: &mut MsgQue) {
+        let old = self.get_selected_mut();
+        let to_select: Vec<BBId> = new.difference(old).cloned().collect();
+        let to_deselect: Vec<BBId> = old.difference(&new).cloned().collect();
 
-        let result = match (self, modifiers.shift) {
-            // If click without shift, deselect all but clicked element
-            (Self::AwaitingMoveSelected { bbids, .. }, ButtonState::Released) => {
-                let mut bbids = HashSet::new();
-                if let Some(bbid) = bbid {
-                    bbids.insert(*bbid);
-                }
-                Ok(Self::Default { bbids })
-            }
-            // If click WITH shift, element has already been selected by pointerdown so transiton
-            // back to default but keep selection.
-            (Self::AwaitingMoveSelected { bbids, .. }, ButtonState::Pressed) => Ok(Self::Default {
-                bbids: bbids.clone(),
-            }),
-            (_, _) => Err(ToolFsmError::NoTransition),
-        };
+        let cmd = SelectObjectsCmd::select_deselect(to_select, to_deselect);
+        responder.push_internal(CmdMsg::from(cmd));
 
-        result.map(|new| (self.clone(), new))
+        *old = new;
     }
 
-    fn start_drag(&self, world_offset: &Vec2, world: &mut World) -> ToolFsmResult<SelectFsm> {
-        #[cfg(feature = "debug_select")]
-        debug!("SelectFsm.start_drag(world_offset: {world_offset:?})");
-
-        let result = match self {
-            Self::AwaitingMoveSelected {
-                bbids,
-                initial_world_pos,
-            } => {
-                let mut q_dragging = world.query::<(&BBId, &Selected, &Transform)>();
-
-                let iter_selected_and_known =
-                    q_dragging.iter(world).filter(|(bbid, selected, _)| {
-                        matches!(selected, Selected::Yes) && bbids.contains(*bbid)
-                    });
-
-                let initial_positions: HashMap<BBId, Vec2> = iter_selected_and_known.fold(
-                    HashMap::new(),
-                    |mut map, (bbid, _, transform)| {
-                        map.insert(*bbid, transform.translation.xy());
-                        map
-                    },
-                );
-                Ok(SelectFsm::MovingSelected {
-                    initial_positions,
-                    initial_world_pos: *initial_world_pos,
-                    world_offset: *world_offset,
-                })
-            }
-            _ => Err(ToolFsmError::NoTransition),
-        };
-
-        result.map(|new| (self.clone(), new))
+    pub fn select_single(&mut self, world: &mut World, bbid: BBId, responder: &mut MsgQue) {
+        let mut new = HashSet::new();
+        new.insert(bbid);
+        self.set_selected(world, new, responder);
     }
 
-    fn move_drag(&self, world_offset: &Vec2) -> ToolFsmResult<SelectFsm> {
-        #[cfg(feature = "debug_select")]
-        debug!("SelectFsm.move_drag(world_offset: {world_offset:?})");
-
-        let result = match self {
-            Self::MovingSelected {
-                initial_positions,
-                initial_world_pos,
-                ..
-            } => Ok(SelectFsm::MovingSelected {
-                initial_positions: initial_positions.clone(),
-                initial_world_pos: *initial_world_pos,
-                world_offset: *world_offset,
-            }),
-            _ => Err(ToolFsmError::NoTransition),
-        };
-
-        result.map(|new| (self.clone(), new))
+    pub fn add_select_single(&mut self, world: &mut World, bbid: BBId, responder: &mut MsgQue) {
+        let mut new = self.get_selected().clone();
+        new.insert(bbid);
+        self.set_selected(world, new, responder);
     }
-
-    fn end_drag(&self) -> ToolFsmResult<SelectFsm> {
-        #[cfg(feature = "debug_select")]
-        debug!("SelectFsm.end_drag()");
-
-        let result = match self {
-            Self::MovingSelected {
-                initial_positions, ..
-            } => Ok(SelectFsm::Default {
-                bbids: initial_positions.clone().into_keys().collect(),
-            }),
-            _ => Err(ToolFsmError::NoTransition),
-        };
-
-        result.map(|new| (self.clone(), new))
+    pub fn remove_select_single(&mut self, world: &mut World, bbid: BBId, responder: &mut MsgQue) {
+        let mut new = self.get_selected().clone();
+        new.remove(&bbid);
+        self.set_selected(world, new, responder);
     }
-
-    fn double_click(&self, bbid: Option<&BBId>) -> ToolFsmResult<SelectFsm> {
-        let result = match (self, bbid) {
-            (Self::AwaitingMoveSelected { bbids, .. }, Some(bbid)) => Ok(Self::DoubleClickReturn {
-                target: *bbid,
-                bbids: bbids.clone(),
-            }),
-            _ => Err(ToolFsmError::NoTransition),
-        };
-
-        result.map(|new| (self.clone(), new))
+    pub fn clear_select(&mut self, world: &mut World, responder: &mut MsgQue) {
+        let new = HashSet::new();
+        self.set_selected(world, new, responder);
     }
 }
 
-pub fn msg_handler_select_tool(
-    world: &mut World,
-    message: &ToolHandlerMessage,
-    responder: &mut MsgQue,
-) {
-    let _span = debug_span!("msg_handler_select_tool").entered();
+pub struct SelectTool;
 
-    let fsm = world.resource::<SelectFsm>().clone();
+impl ToolHandler for SelectTool {
+    fn setup(world: &mut World) {}
+    fn handle_msg(world: &mut World, msg: &ToolHandlerMessage, responder: &mut MsgQue) {
+        let _span = debug_span!("msg_handler_select_tool").entered();
 
-    use InputMessage::*;
-    use ToolHandlerMessage::*;
+        let mut fsm = world.resource::<SelectFsm>().clone();
 
-    let transition_result = match message {
-        OnActivate => {
-            debug!("SelectTool::OnActivate");
-            responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Default));
-            Err(ToolFsmError::NoTransition)
-        }
-        OnDeactivate => {
-            debug!("SelectTool::OnDeactivate");
-            fsm.reset()
-        }
-        // Handle Pointer down and Click events
-        Input(
-            ev @ PointerDown {
-                modifiers,
-                world: world_pos,
-                ..
+        use InputMessage::*;
+        use ToolHandlerMessage::*;
+
+        let next_fsm = match msg {
+            OnActivate => {
+                responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Default));
+                fsm
+            }
+            OnDeactivate => {
+                fsm.clear_select(world, responder);
+                fsm.reset()
+            }
+            Input(PointerDown {
+                world: world_pos, ..
+            }) => match fsm {
+                SelectFsm::Default { bbids } => SelectFsm::PointerDownAt {
+                    bbids,
+                    initial_world_pos: *world_pos,
+                },
+                state => {
+                    panic!("select_tool: Input(PointerDown) should never occur in state {state:?}.")
+                }
             },
-        )
-        | Input(
-            ev @ PointerClick {
-                world: world_pos,
-                modifiers,
-                ..
-            },
-        )
-        | Input(
-            ev @ DoubleClick {
-                world: world_pos,
-                modifiers,
-                ..
-            },
-        ) => {
-            let mut select_sys_state = SystemState::<(
-                // Selectables
-                Query<(&BBId, &Selectable, &mut Selected, &Transform)>,
-                // Raycaster
-                Query<&RaycastSource<Selectable>>,
-            )>::new(world);
-            let (mut q_selectables, q_rc_source) = select_sys_state.get_mut(world);
-            let hits = q_rc_source.single().intersections();
+            Input(PointerClick { modifiers, .. }) => {
+                let hit = get_raycast_hits_selectable(world).first().cloned();
+                println!(
+                    "SelectFsm (Input(PointerClick)) {:?}, {:?} {:?}",
+                    &fsm, hit, modifiers.shift
+                );
 
-            let hit_bbid = match hits.first() {
-                // Early exit, if no hit then deselect.
-                None => None,
-                Some((hit_entity, data)) => {
-                    let Ok((bbid, selectable, _, _)) = q_selectables.get_mut(*hit_entity) else {
-                        error!("SelectTool: Hit entity {hit_entity:?} but querying for it failed.\n Hit data: {data:?}");
-                        return;
-                    };
-
-                    if matches!(selectable, Selectable::Locked) {
-                        debug!("SelectTool: Hit entity {hit_entity:?} with {bbid:?} but entity is {selectable:?}.");
-                        return;
+                match (&fsm, hit, modifiers.shift) {
+                    (SelectFsm::PointerDownAt { .. }, Some((entity, _)), ButtonState::Released) => {
+                        let bbid = world.get::<BBId>(entity).unwrap();
+                        println!("Select single {bbid}");
+                        fsm.select_single(world, *bbid, responder);
                     }
-
-                    Some(bbid)
+                    (
+                        SelectFsm::PointerDownAt { bbids, .. },
+                        Some((entity, _)),
+                        ButtonState::Pressed,
+                    ) => {
+                        let bbid = world.get::<BBId>(entity).unwrap();
+                        println!("Add select single {bbid}");
+                        if bbids.contains(bbid) {
+                            fsm.remove_select_single(world, *bbid, responder);
+                        } else {
+                            fsm.add_select_single(world, *bbid, responder);
+                        }
+                    }
+                    (SelectFsm::PointerDownAt { .. }, None, ButtonState::Released) => {
+                        fsm.clear_select(world, responder);
+                        let inspected_entity = world.query::<&InspectingTag>().get_single(world);
+                        if inspected_entity.is_ok() {
+                            let cmd = InspectCmd::uninspect();
+                            responder.push_internal(cmd);
+                        }
+                    }
+                    _ => (),
                 }
-            };
 
-            match ev {
-                InputMessage::PointerDown { .. } => {
-                    fsm.pointer_down(hit_bbid, modifiers, world_pos)
+                SelectFsm::Default {
+                    bbids: fsm.get_selected().clone(),
                 }
-                InputMessage::PointerClick { .. } => fsm.pointer_click(hit_bbid, modifiers),
-                InputMessage::DoubleClick { .. } => fsm.double_click(hit_bbid),
-                _ => panic!(
-                    "Unhandled InputMessage variant in select_tool. This should never happen."
-                ),
             }
-        }
-        Input(DragStart { world_offset, .. }) => fsm.start_drag(world_offset, world),
-        Input(DragMove { world_offset, .. }) => fsm.move_drag(world_offset),
-        Input(DragEnd { .. }) => fsm.end_drag(),
+            Input(DoubleClick { .. }) => {
+                let hit = get_raycast_hits_selectable(world).first().cloned();
+                match (&fsm, hit) {
+                    (SelectFsm::PointerDownAt { bbids, .. }, Some((entity, _))) => {
+                        let target = world.get::<BBId>(entity).copied();
+                        let mut cmds: Vec<Box<dyn Cmd>> = vec![];
+                        let bbids_vec: Vec<_> = bbids.iter().cloned().collect();
+                        cmds.push(Box::new(SelectObjectsCmd::deselect(bbids_vec)));
+                        cmds.push(Box::new(InspectCmd::new(target)));
+                        responder.push_internal(CmdMsg::from(MultiCmd::new(cmds)));
 
-        _ => Err(ToolFsmError::NoTransition),
-    };
-
-    #[cfg(feature = "debug_select")]
-    if let Ok((ref old, ref new)) = transition_result {
-        println!("Old: {old:?}\n New: {new:?}");
-    }
-
-    use SelectFsm::*;
-    match &transition_result {
-        //
-        // On Default <-> Default or Default <-> AwaitingDrag, just select/deselect the entities
-        //
-        Ok((Default { bbids: old }, Default { bbids: new }))
-        | Ok((AwaitingMoveSelected { bbids: old, .. }, Default { bbids: new }))
-        | Ok((Default { bbids: old }, AwaitingMoveSelected { bbids: new, .. })) => {
-            // Uninspect if click outside of selected element.
-            let state = world.resource::<State<InspectState>>();
-            info!("{state:?} {:?}", new);
-            if new.is_empty() && !state.eq(&InspectState::None) {
-                world
-                    .resource_mut::<NextState<InspectState>>()
-                    .set(InspectState::None);
+                        SelectFsm::Default {
+                            bbids: bbids.clone(),
+                        }
+                    }
+                    (SelectFsm::PointerDownAt { bbids, .. }, None) => {
+                        responder.push_internal(CmdMsg::from(InspectCmd::uninspect()));
+                        SelectFsm::Default {
+                            bbids: bbids.clone(),
+                        }
+                    }
+                    _ => fsm,
+                }
             }
-
-            if !new.eq(old) {
-                let to_select: Vec<BBId> = new.difference(old).cloned().collect();
-                let to_deselect: Vec<BBId> = old.difference(new).cloned().collect();
-
-                let cmd = SelectObjectsCmd::select_deselect(to_select, to_deselect);
-                responder.push_internal(CmdMsg::from(cmd))
-            }
-        }
-
-        // When starting or continuing to move selected elements
-        Ok((
-            AwaitingMoveSelected { .. },
-            MovingSelected {
-                initial_positions,
+            Input(DragStart {
                 world_offset,
+                modifiers,
                 ..
-            },
-        ))
-        | Ok((
-            MovingSelected { .. },
-            MovingSelected {
-                initial_positions,
-                world_offset,
-                ..
-            },
-        )) => {
-            let bbids: Vec<_> = initial_positions.keys().cloned().collect();
-            let cmd = MoveObjectsCmd::from_multiple(bbids, *world_offset);
-            responder.push_internal(CmdMsg::from(cmd));
-        }
+            }) => {
+                let hit = get_raycast_hits_selectable(world).first().cloned();
 
-        // When movement selection complete, flag that the last command cannot be repeated.
-        Ok((MovingSelected { .. }, Default { .. })) => {
-            responder.push_internal(CmdMsg::DisallowRepeated);
-        }
+                println!("Drag start {hit:?}.");
+                match (&fsm, hit, modifiers.shift) {
+                    (SelectFsm::PointerDownAt { bbids, .. }, None, _) => SelectFsm::Default {
+                        bbids: bbids.clone(),
+                    },
+                    (
+                        SelectFsm::PointerDownAt {
+                            initial_world_pos, ..
+                        },
+                        Some((entity, _)),
+                        button_state,
+                    ) => {
+                        let initial_world_pos = *initial_world_pos;
+                        let target = *world.get::<BBId>(entity).unwrap();
+                        println!("Drag Start. Target: {target:?}");
+                        match button_state {
+                            ButtonState::Released => {
+                                fsm.select_single(world, target, responder);
+                            }
+                            ButtonState::Pressed => fsm.add_select_single(world, target, responder),
+                        }
+                        let bbids = fsm.get_selected().clone();
+                        let to_move: Vec<_> =
+                            bbids.iter().map(|bbid| (world.bbid(*bbid), bbid)).collect();
 
-        Ok((AwaitingMoveSelected { bbids, .. }, DoubleClickReturn { target, .. })) => {
-            let mut cmds: Vec<Box<dyn Cmd>> = Vec::new();
-            let bbids: Vec<_> = bbids.into_iter().cloned().collect();
-            cmds.push(Box::new(SelectObjectsCmd::deselect(bbids)));
-            cmds.push(Box::new(InspectCmd::inspect(*target)));
-            let cmd = MultiCmd::new(cmds);
-            responder.push_internal(CmdMsg::from(cmd));
-        }
-
-        // Error on valid transitions that are not handled
-        Ok((from, to)) => {
-            panic!("SelectTool: Unhandled state transition from tool message({message:?})\n - From {from:?}\n - To {to:?}.")
-        }
-
-        Err(_) => {}
-    }
-
-    // Save the new state back in the resource.
-    if let Ok((_, new_state)) = transition_result {
-        let mut r_fsm = world.resource_mut::<SelectFsm>();
-        match new_state {
-            DoubleClickReturn { bbids, .. } => {
-                *r_fsm = Default {
-                    bbids: bbids.clone(),
+                        let initial_positions: HashMap<_, _> = to_move
+                            .into_iter()
+                            .map(|(e, bbid)| {
+                                let pos = world.get::<Transform>(e).unwrap().translation.xy();
+                                (*bbid, pos)
+                            })
+                            .collect();
+                        let cmd = MoveObjectsCmd::from_multiple(
+                            initial_positions.keys().cloned().collect(),
+                            *world_offset,
+                        );
+                        responder.push_internal(cmd);
+                        SelectFsm::MovingSelected {
+                            bbids,
+                            initial_positions,
+                            initial_world_pos,
+                            world_offset: *world_offset,
+                        }
+                    }
+                    state => panic!(
+                        "select_tool: Input(DragStart) should never occur in state ({state:?})."
+                    ),
                 }
             }
-            new_state => {
-                *r_fsm = new_state;
-            }
-        }
+            Input(DragMove { world_offset, .. }) => match fsm {
+                SelectFsm::Default { .. } => fsm,
+                SelectFsm::MovingSelected {
+                    bbids,
+                    initial_positions,
+                    initial_world_pos,
+                    ..
+                } => {
+                    let cmd = MoveObjectsCmd::from_multiple(
+                        initial_positions.keys().cloned().collect(),
+                        *world_offset,
+                    );
+                    responder.push_internal(cmd);
+                    SelectFsm::MovingSelected {
+                        bbids,
+                        initial_positions,
+                        initial_world_pos,
+                        world_offset: *world_offset,
+                    }
+                }
+                state => {
+                    panic!("select_tool: Input(DragMove) should never occur in state {state:?}.")
+                }
+            },
+            Input(DragEnd { world_offset, .. }) => match &fsm {
+                SelectFsm::Default { .. } => fsm,
+                SelectFsm::MovingSelected {
+                    bbids,
+                    initial_positions,
+                    ..
+                } => {
+                    let cmd = MoveObjectsCmd::from_multiple(
+                        initial_positions.keys().cloned().collect(),
+                        *world_offset,
+                    );
+                    responder.push_internal(cmd);
+                    SelectFsm::Default {
+                        bbids: bbids.clone(),
+                    }
+                }
+                state => {
+                    panic!("select_tool: Input(DragEnd) should never occur in state {state:?}.")
+                }
+            },
+            _ => fsm,
+        };
+
+        bevy_debug_text_overlay::screen_print!("SelectFsm: {:?}", &next_fsm);
+
+        let mut fsm = world.resource_mut::<SelectFsm>();
+        *fsm = next_fsm;
     }
+
+    fn handle_effects(_world: &mut World, _event: &crate::msgs::effect::EffectMsg) {}
 }

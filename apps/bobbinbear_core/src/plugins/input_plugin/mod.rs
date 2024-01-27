@@ -7,7 +7,7 @@ use bevy::{
     math::{vec2, Vec3Swizzles},
     prelude::*,
     sprite::MaterialMesh2dBundle,
-    utils::HashSet,
+    utils::HashSet, window::PrimaryWindow,
 };
 use bevy_mod_raycast::prelude::{
     DeferredRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
@@ -20,7 +20,7 @@ pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 #[derive(Debug, Clone, Reflect)]
 pub struct RaycastRawInput;
 
-const DRAG_THRESHOLD: f32 = 3.;
+const DRAG_THRESHOLD: f32 = 2.;
 const BG_HIT_Z_INDEX: f32 = -100.;
 
 /// The input processor plugin processes raw input (mouse down/up, move, etc)
@@ -93,6 +93,7 @@ pub fn sys_raw_input_processor(
     mut ev_reader: EventReader<RawInputMessage>,
     mut ev_writer: EventWriter<InputMessage>,
     bg_hit_query: Query<&RaycastMesh<RaycastRawInput>, With<InputHitPlaneTag>>,
+    q_window: Query<&Window, With<PrimaryWindow>>,
 ) {
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_raw_input_processor").entered();
@@ -112,12 +113,16 @@ pub fn sys_raw_input_processor(
     }
 
     let mut to_send = Vec::<InputMessage>::with_capacity(8);
+    let window_size = {
+        let w = q_window.single();
+        Vec2::new(w.width(), w.height())
+    };
 
-    for msg in ev_reader.iter() {
+    for msg in ev_reader.read() {
         match msg {
-            RawInputMessage::PointerMove(move_model) => {
-                res.cur_pos.x = move_model.x;
-                res.cur_pos.y = move_model.y;
+            RawInputMessage::PointerMove(pos) => {
+                res.cur_pos.x = pos.x;
+                res.cur_pos.y = window_size.y - pos.y;
 
                 if res.left_pressed
                     && !res.is_dragging

@@ -10,7 +10,7 @@ mod types;
 mod utils;
 mod prelude;
 mod serialisation;
-mod events;
+mod shared;
 
 use api::{ApiToEditorReceiver, EditorApi, EditorToApiSender};
 use crossbeam_channel::unbounded;

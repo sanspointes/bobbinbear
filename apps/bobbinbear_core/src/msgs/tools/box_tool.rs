@@ -1,24 +1,28 @@
 use std::ops::{Add, Sub};
 
-use bevy::{ecs::system::SystemState, prelude::*, math::vec2};
+use bevy::{ecs::system::SystemState, math::vec2, prelude::*};
+use lyon_tessellation::StrokeOptions;
 
 use crate::{
-    components::{bbid::BBId, scene::BBObject},
+    components::{bbid::BBId},
     debug_log,
     msgs::{
         api::ApiEffectMsg,
-        cmds::{add_remove_object_cmd::AddObjectCmd, update_vector_graph_cmd::UpdateVectorGraphCmd, CmdMsg},
-        MsgQue,
+        cmds::{
+            add_remove_object_cmd::AddObjectCmd, update_vector_graph_cmd::UpdateVectorGraphCmd,
+            CmdMsg,
+        },
+        MsgQue, effect::EffectMsg,
     },
     plugins::{
         bounds_2d_plugin::GlobalBounds2D, input_plugin::InputMessage,
-        selection_plugin::SelectableBundle, vector_graph_plugin::Fill,
+        selection_plugin::SelectableBundle, vector_graph_plugin::{Fill, Stroke},
     },
     types::BBCursor,
     utils::{vector::BBObjectVectorBundle, vector_graph::build_vector_graph_box},
 };
 
-use super::{ToolFsmError, ToolFsmResult, ToolHandlerMessage};
+use super::{ToolFsmError, ToolFsmResult, ToolHandlerMessage, ToolHandler};
 
 //
 // BOX TOOL FSM
@@ -135,153 +139,177 @@ pub struct BoxToolRes {
 // BOX TOOL MESSAGE HANDLERS
 //
 
+pub struct BoxTool;
+
+impl BoxTool {
+    pub fn handle_input_msg(
+        world: &mut World,
+        message: &InputMessage,
+        responder: &mut MsgQue,
+    ) {
+        let mut sys_state: SystemState<(ResMut<BoxToolRes>,)> = SystemState::new(world);
+
+        let mut res = sys_state.get_mut(world).0;
+
+        let result = match message {
+            InputMessage::PointerDown {
+                world: world_pos, ..
+            } => res.state.handle_pointer_down(world_pos),
+            // On Click we try make a default box
+            InputMessage::PointerClick { .. } => res.state.handle_pointer_click(),
+            // On Drag start we try to create a box that we will continue to update.
+            InputMessage::DragStart { world_offset, .. } => res.state.handle_drag_start(world_offset),
+            InputMessage::DragMove { world_offset, .. } => res.state.handle_drag_move(world_offset),
+            InputMessage::DragEnd { .. } => res.state.handle_drag_end(),
+            _ => Err(ToolFsmError::NoTransition),
+        };
+
+        // Save the new state back in the resource.
+        if let Ok((_, new_state)) = result {
+            res.state = new_state;
+        }
+
+        // Handle state transitions
+        match result {
+            //
+            // Default -> Pointer down is preparing to either make box manually or via a click event
+            Ok((BoxFsm::Default, BoxFsm::PointerDown { .. })) => {}
+            //
+            // PointerDown -> Default, create a default box by click event.
+            Ok((BoxFsm::PointerDown { cursor_origin_pos }, BoxFsm::Default)) => {
+                let bbid = BBId::default();
+                let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
+                    let vector_graph = build_vector_graph_box(vec2(0., 0.), vec2(100., 100.));
+
+                    entity.insert((
+                        Name::from("Box"),
+                        bbid,
+                        BBObjectVectorBundle::from_vector_graph(vector_graph).with_transform(
+                            Transform {
+                                translation: Vec3::new(cursor_origin_pos.x, cursor_origin_pos.y, 0.),
+                                ..Default::default()
+                            },
+                        ),
+                        GlobalBounds2D::default(),
+                        SelectableBundle::default(),
+                        Fill::color(Color::rgb_u8(50, 50, 50)),
+                        Stroke {
+                            color: Color::rgb(0.8, 0.8, 0.8),
+                            options: StrokeOptions::default(),
+                        }
+                    ));
+                });
+
+                match cmd_result {
+                    Ok(cmd) => responder.push_internal(CmdMsg::from(cmd)),
+                    Err(reason) => {
+                        error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
+                    }
+                }
+            }
+            //
+            // PointerDown -> BuildingBox, Creates a new box with no path
+            Ok((
+                BoxFsm::PointerDown { .. },
+                BoxFsm::BuildingBox {
+                    bbid,
+                    box_origin_pos,
+                    box_extents,
+                    ..
+                },
+            )) => {
+                let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
+                    let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
+
+                    entity.insert((
+                        Name::from("Box"),
+                        bbid,
+                        BBObjectVectorBundle::from_vector_graph(vector_graph).with_transform(
+                            Transform {
+                                translation: Vec3::new(box_origin_pos.x, box_origin_pos.y, 0.),
+                                ..Default::default()
+                            },
+                        ),
+                        GlobalBounds2D::default(),
+                        SelectableBundle::default(),
+                        Fill::color(Color::rgb_u8(50, 50, 50)),
+                    ));
+                });
+
+                match cmd_result {
+                    Ok(cmd) => responder.push_internal(CmdMsg::from(cmd)),
+                    Err(reason) => {
+                        error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
+                    }
+                }
+            }
+            //
+            // BuildingBox -> BuildingBox, Updates the currently building box
+            Ok((
+                BoxFsm::BuildingBox { .. },
+                BoxFsm::BuildingBox {
+                    bbid, box_extents, ..
+                },
+            )) => {
+                let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
+                let cmd = UpdateVectorGraphCmd::new(bbid, vector_graph);
+
+                responder.push_internal(CmdMsg::from(cmd));
+            }
+            //
+            // BuildingBox -> Default, Finish building the box.
+            Ok((
+                BoxFsm::BuildingBox {
+                    bbid, box_extents, ..
+                },
+                BoxFsm::Default,
+            )) => {
+                let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
+                let cmd = UpdateVectorGraphCmd::new(bbid, vector_graph);
+
+                responder.push_internal(CmdMsg::from(cmd));
+            }
+            Ok((arg1, arg2)) => panic!("BoxTool: Unhandled state transition from {arg1:?} to {arg2:?}"),
+            Err(ToolFsmError::NoTransition) => {}
+            Err(ToolFsmError::TransitionError(error)) => {
+                panic!("BoxTool: Error during transition. Reason {error:?}.")
+            }
+        }
+    }
+}
+
+impl ToolHandler for BoxTool {
+    fn setup(world: &mut World) {
+        
+    }
+    fn handle_msg(world: &mut World, msg: &ToolHandlerMessage, responder: &mut MsgQue) {
+        let _span = debug_span!("msg_handler_box_tool").entered();
+
+        match msg {
+            ToolHandlerMessage::OnActivate => {
+                debug_log!("BoxTool::OnActivate");
+                responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Box));
+            }
+            ToolHandlerMessage::OnDeactivate => {
+                debug_log!("BoxTool::OnDeactivate");
+            }
+            ToolHandlerMessage::Input(input_message) => {
+                BoxTool::handle_input_msg(world, input_message, responder)
+            }
+        }
+    }
+    fn handle_effects(world: &mut World, event: &EffectMsg) {
+        
+    }
+}
+
 pub fn msg_handler_box_tool(
     world: &mut World,
     message: &ToolHandlerMessage,
     responder: &mut MsgQue,
 ) {
-    let _span = debug_span!("msg_handler_box_tool").entered();
-
-    match message {
-        ToolHandlerMessage::OnActivate => {
-            debug_log!("BoxTool::OnActivate");
-            responder.notify_effect(ApiEffectMsg::SetCursor(BBCursor::Box));
-        }
-        ToolHandlerMessage::OnDeactivate => {
-            debug_log!("BoxTool::OnDeactivate");
-        }
-        ToolHandlerMessage::Input(input_message) => {
-            msg_handler_box_tool_input(world, input_message, responder)
-        }
-    }
 }
 
-pub fn msg_handler_box_tool_input(
-    world: &mut World,
-    message: &InputMessage,
-    responder: &mut MsgQue,
-) {
-    let mut sys_state: SystemState<(ResMut<BoxToolRes>,)> = SystemState::new(world);
-
-    let mut res = sys_state.get_mut(world).0;
-
-    let result = match message {
-        InputMessage::PointerDown {
-            world: world_pos, ..
-        } => res.state.handle_pointer_down(world_pos),
-        // On Click we try make a default box
-        InputMessage::PointerClick { .. } => res.state.handle_pointer_click(),
-        // On Drag start we try to create a box that we will continue to update.
-        InputMessage::DragStart { world_offset, .. } => res.state.handle_drag_start(world_offset),
-        InputMessage::DragMove { world_offset, .. } => res.state.handle_drag_move(world_offset),
-        InputMessage::DragEnd { .. } => res.state.handle_drag_end(),
-        _ => Err(ToolFsmError::NoTransition),
-    };
-
-    // Save the new state back in the resource.
-    if let Ok((_, new_state)) = result {
-        res.state = new_state;
-    }
-
-    // Handle state transitions
-    match result {
-        //
-        // Default -> Pointer down is preparing to either make box manually or via a click event
-        Ok((BoxFsm::Default, BoxFsm::PointerDown { .. })) => {}
-        //
-        // PointerDown -> Default, create a default box by click event.
-        Ok((BoxFsm::PointerDown { cursor_origin_pos }, BoxFsm::Default)) => {
-            let bbid = BBId::default();
-            let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
-                let vector_graph = build_vector_graph_box(vec2(0., 0.), vec2(100., 100.));
-
-                entity.insert((
-                    Name::from("Box"),
-                    bbid,
-                    BBObjectVectorBundle::from_vector_graph(vector_graph).with_transform(Transform {
-                        translation: Vec3::new(cursor_origin_pos.x, cursor_origin_pos.y, 0.),
-                        ..Default::default()
-                    }),
-                    GlobalBounds2D::default(),
-                    SelectableBundle::default(),
-                    Fill::color(Color::rgb_u8(50, 50, 50)),
-                ));
-            });
-
-            match cmd_result {
-                Ok(cmd) => responder.push_internal(CmdMsg::from(cmd)),
-                Err(reason) => {
-                    error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
-                }
-            }
-        }
-        //
-        // PointerDown -> BuildingBox, Creates a new box with no path
-        Ok((
-            BoxFsm::PointerDown { .. },
-            BoxFsm::BuildingBox {
-                bbid,
-                box_origin_pos,
-                box_extents,
-                ..
-            },
-        )) => {
-            let cmd_result = AddObjectCmd::from_builder(world, None, |entity| {
-                let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
-
-                entity.insert((
-                    Name::from("Box"),
-                    bbid,
-                    BBObjectVectorBundle::from_vector_graph(vector_graph).with_transform(Transform {
-                        translation: Vec3::new(box_origin_pos.x, box_origin_pos.y, 0.),
-                        ..Default::default()
-                    }),
-                    GlobalBounds2D::default(),
-                    SelectableBundle::default(),
-                    Fill::color(Color::rgb_u8(50, 50, 50)),
-                ));
-            });
-
-            match cmd_result {
-                Ok(cmd) => responder.push_internal(CmdMsg::from(cmd)),
-                Err(reason) => {
-                    error!("Error performing .start_making_box on box_tool \"{reason:?}\".")
-                }
-            }
-        }
-        //
-        // BuildingBox -> BuildingBox, Updates the currently building box
-        Ok((
-            BoxFsm::BuildingBox { .. },
-            BoxFsm::BuildingBox {
-                bbid, box_extents, ..
-            },
-        )) => {
-            let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
-            let cmd = UpdateVectorGraphCmd::new(bbid, vector_graph);
-
-            responder.push_internal(CmdMsg::from(cmd));
-        }
-        //
-        // BuildingBox -> Default, Finish building the box.
-        Ok((
-            BoxFsm::BuildingBox {
-                bbid, box_extents, ..
-            },
-            BoxFsm::Default,
-        )) => {
-            let vector_graph = build_vector_graph_box(vec2(0., 0.), box_extents);
-            let cmd = UpdateVectorGraphCmd::new(bbid, vector_graph);
-
-            responder.push_internal(CmdMsg::from(cmd));
-        }
-        Ok((arg1, arg2)) => panic!("BoxTool: Unhandled state transition from {arg1:?} to {arg2:?}"),
-        Err(ToolFsmError::NoTransition) => {}
-        Err(ToolFsmError::TransitionError(error)) => {
-            panic!("BoxTool: Error during transition. Reason {error:?}.")
-        }
-    }
-}
 
 //
 // BOX TOOL HELPERS

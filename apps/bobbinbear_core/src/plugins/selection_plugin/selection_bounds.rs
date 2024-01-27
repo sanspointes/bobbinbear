@@ -3,21 +3,17 @@ use std::ops::Sub;
 use bevy::{
     math::{vec2, vec3},
     prelude::*,
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+    sprite::MaterialMesh2dBundle,
 };
 
 use crate::{
-    components::utility::OnMoveCommand,
     constants::{SELECTION_BOUNDS_STROKE_WIDTH, SELECT_COLOR},
-    events::camera::CameraEvent,
+    msgs::effect::EffectMsg,
     plugins::{bounds_2d_plugin::GlobalBounds2D, screen_space_root_plugin::ScreenSpaceRoot},
     utils::mesh::translate_mesh,
 };
 
-use super::{
-    selection_bounds_material::{selection_bounds_mesh, SelectionBoundsMaterial},
-    Selected,
-};
+use super::{selection_bounds_material::SelectionBoundsMaterial, Selected};
 
 // Systems responsible for creating and updating the screenspace selection bounds of all selected
 // elements.
@@ -45,7 +41,7 @@ pub(super) fn sys_setup_selection_bounds(
                 mesh: handle.into(),
                 material: materials.add(SelectionBoundsMaterial {
                     color: SELECT_COLOR,
-                    border_color: SELECT_COLOR.with_a(0.05),
+                    border_color: SELECT_COLOR.with_a(0.0),
                     border_width: SELECTION_BOUNDS_STROKE_WIDTH,
                     dimensions: Vec2::default(),
                 }),
@@ -59,14 +55,9 @@ pub(super) fn sys_setup_selection_bounds(
 pub(super) fn sys_selection_bounds_handle_change(
     mut selection_bounds_material: ResMut<Assets<SelectionBoundsMaterial>>,
 
-    mut ev_camera_reader: EventReader<CameraEvent>,
+    mut ev_effect_reader: EventReader<EffectMsg>,
 
-    mut system_set: ParamSet<(
-        // Query for selection or bounds changes
-        Query<Entity, Or<(Changed<Selected>, Changed<GlobalBounds2D>)>>,
-        // Query all to calculate selection box
-        Query<(&GlobalBounds2D, &Selected)>,
-    )>,
+    q_all_selectables: Query<(&GlobalBounds2D, &Selected)>,
 
     // To Mutate
     mut q_selection_bounds: Query<
@@ -83,23 +74,28 @@ pub(super) fn sys_selection_bounds_handle_change(
     #[cfg(feature = "debug_trace")]
     let _span = info_span!("sys_selection_bounds_handle_change").entered();
 
-    let needs_update = system_set.p0().iter().next().is_some()
-        || ev_camera_reader
-            .read()
-            .any(|ev| matches!(ev, CameraEvent::Moved { .. }));
-    if !needs_update {
+    let has_emitted_dirty_event = ev_effect_reader.read().any(|ev| {
+        matches!(
+            ev,
+            EffectMsg::ObjectSelectionChanged { .. }
+                | EffectMsg::ObjectMoved(_)
+                | EffectMsg::ObjectRemoved { .. }
+                | EffectMsg::CameraMoved { .. }
+                | EffectMsg::CameraZoomed { .. }
+        )
+    });
+
+    if !has_emitted_dirty_event {
         return;
     }
 
     #[cfg(feature = "debug_bounds")]
     debug!("Updating selection bounds!");
 
-    let q_all_selecteables = system_set.p1();
-
     let mut any_selected = false;
     let mut min = Vec2::MAX;
     let mut max = Vec2::MIN;
-    for (bounds, selected) in q_all_selecteables.iter() {
+    for (bounds, selected) in q_all_selectables.iter() {
         if let (Selected::Yes, GlobalBounds2D::Calculated(bounds)) = (selected, bounds) {
             #[cfg(feature = "debug_bounds")]
             debug!("\tHandling {bounds:?}!");
