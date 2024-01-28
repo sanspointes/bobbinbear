@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod curve;
+
 use std::{fmt::Display, ops::Add};
 
 use glam::Vec2;

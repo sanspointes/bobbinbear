@@ -389,6 +389,7 @@ name = "bb_vector_network"
 version = "0.1.0"
 dependencies = [
  "comfy",
+ "flo_curves",
  "glam",
  "lyon_path",
  "lyon_tessellation",
@@ -1486,7 +1487,7 @@ dependencies = [
  "image",
  "inline_tweak",
  "instant",
- "itertools",
+ "itertools 0.11.0",
  "kira",
  "lazy_static",
  "log",
@@ -2155,6 +2156,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "flo_curves"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21c3da91984f219319fc08a775ffdbc4962d4a1a6b3181967f64b456ac84d2eb"
+dependencies = [
+ "itertools 0.10.5",
+ "roots",
+ "smallvec",
+]
+
+[[package]]
 name = "float_next_after"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2749,6 +2761,15 @@ dependencies = [
  "hermit-abi 0.3.3",
  "rustix",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "itertools"
+version = "0.10.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0fd2260e829bddf4cb6ea802289de2f86d6a7a690192fbe91b3f46e0f2c8473"
+dependencies = [
+ "either",
 ]
 
 [[package]]
@@ -3876,6 +3897,12 @@ dependencies = [
  "serde",
  "serde_derive",
 ]
+
+[[package]]
+name = "roots"
+version = "0.0.8"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "082f11ffa03bbef6c2c6ea6bea1acafaade2fd9050ae0234ab44a2153742b058"
 
 [[package]]
 name = "rustc-demangle"
