@@ -11,6 +11,8 @@ use crate::{
 
 use super::{BBEdge, BBEdgeIndex};
 
+const TWO_THIRDS: f32 = 2./3.;
+
 pub fn v2_to_c2(v: Vec2) -> Coord2 {
     Coord2(v.x as f64, v.y as f64)
 }
@@ -35,9 +37,12 @@ impl BBEdge {
             Self::Quadratic { start, ctrl1, end } => {
                 let start = graph.node(*start).unwrap().position();
                 let end = graph.node(*end).unwrap().position();
+
+                let ctrl2 = start + TWO_THIRDS * (*ctrl1 - start);
+                let ctrl1 = end + TWO_THIRDS * (*ctrl1 - end);
                 Curve::from_points(
                     v2_to_c2(start),
-                    (v2_to_c2(*ctrl1), v2_to_c2(*ctrl1)),
+                    (v2_to_c2(ctrl1), v2_to_c2(ctrl2)),
                     v2_to_c2(end),
                 )
             }
@@ -90,8 +95,7 @@ impl BBEdgeCurveHelpers for Curve<Coord2> {
     ) -> (BBEdgeIndex, BBEdge) {
         let characteristics = self.characteristics();
 
-        println!("Adding {self:?} to graph.  characteristics: {characteristics:?}");
-        match (characteristics, start_node, end_node) {
+        let (idx, edge) = match (characteristics, start_node, end_node) {
             (CurveCategory::Linear, Some(start), Some(end)) => graph.line_from_to(start, end),
             (CurveCategory::Linear, None, Some(end)) => {
                 graph.line_to(c2_to_v2(self.start_point), end)
@@ -111,7 +115,7 @@ impl BBEdgeCurveHelpers for Curve<Coord2> {
                     (None, Some(end)) => graph.cubic_to(
                         c2_to_v2(self.start_point),
                         c2_to_v2(ctrl1),
-                        c2_to_v2(ctrl1),
+                        c2_to_v2(ctrl2),
                         end,
                     ),
                     (Some(start), None) => graph.cubic_from(
@@ -128,6 +132,9 @@ impl BBEdgeCurveHelpers for Curve<Coord2> {
                     ),
                 }
             }
-        }
+        };
+
+        println!("Added {self:?} to graph.  characteristics: {characteristics:?}");
+        (idx, edge)
     }
 }

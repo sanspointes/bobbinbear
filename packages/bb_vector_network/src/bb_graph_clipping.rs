@@ -85,12 +85,10 @@ impl BBGraph {
             values.sort_by(|a, b| a.self_t.partial_cmp(&b.self_t).unwrap());
         }
 
-        println!("Intersections: {intersections:#?}");
         // Apply them to self
         let mut endpoint_lookup: HashMap<BBEdgeIndex, Vec<(BBNodeIndex, Vec2)>> = HashMap::new();
         for (idx_a, ints) in &intersections {
             let edge = *self.edge(*idx_a).unwrap();
-            println!("*** Subdividing edge {edge:?} with {} intersection(s)", ints.len());
             // 
             let mut prev_node = edge.start_idx();
             let mut remaining_curve = edge.as_curve(self);
@@ -112,7 +110,6 @@ impl BBGraph {
                 let t_mapped = map_linear(int.self_t, t_offset, 1., 0., 1.);
                 let (to_add, remaining) = remaining_curve.subdivide::<Curve<Coord2>>(t_mapped as f64);
 
-                println!("+ {t_offset:.2} Adding edge from {prev_node} to {existing_end_node:?}");
                 let (_, added_edge) = to_add.add_to_graph_with_nodes(self, Some(prev_node), existing_end_node);
                 prev_node = added_edge.end_idx();
 
@@ -125,13 +122,11 @@ impl BBGraph {
                 edge_nodes.push((prev_node, int.pos));
             }
 
-            println!("+ (FINAL) {t_offset:.2} Adding edge from {prev_node} {}", edge.end_idx());
             remaining_curve.add_to_graph_with_nodes(self, Some(prev_node), Some(edge.end_idx()));
         }
 
         for (idx, _) in endpoint_lookup {
             let edge = self.delete_edge(idx);
-            println!("-Delete edge {idx} ({edge:?})");
         }
 
         Ok(())
