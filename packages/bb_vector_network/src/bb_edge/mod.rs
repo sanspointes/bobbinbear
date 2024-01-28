@@ -16,6 +16,8 @@ use super::{
     errors::BBResult,
 };
 
+pub use curve::{ c2_to_v2, v2_to_c2, BBEdgeCurveHelpers };
+
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Represents an index position of a BBVNRegion, which are joins between two nodes.

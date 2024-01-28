@@ -206,7 +206,7 @@ impl BBGraph {
     /// Pushes a new node node to the BBVectorNetwork
     ///
     /// * `value`: Position of the node
-    fn add_node(&mut self, position: Vec2) -> BBNodeIndex {
+    pub(crate) fn add_node(&mut self, position: Vec2) -> BBNodeIndex {
         let node_idx = BBNodeIndex(self.get_next_idx());
         self.nodes.insert(node_idx, BBNode::new(position));
         node_idx
@@ -247,7 +247,7 @@ impl BBGraph {
     /// connects.
     ///
     /// * `edge_idx`: ID of the edge to delete.
-    pub fn delete_edge(&mut self, edge_idx: BBEdgeIndex) -> BBResult<()> {
+    pub fn delete_edge(&mut self, edge_idx: BBEdgeIndex) -> BBResult<BBEdge> {
         let edge = *self.edge(edge_idx)?;
         self.edges.remove(&edge_idx);
 
@@ -265,7 +265,7 @@ impl BBGraph {
             }
         }
 
-        Ok(())
+        Ok(edge)
     }
 
     /*

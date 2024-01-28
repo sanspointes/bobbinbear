@@ -7,6 +7,7 @@ pub mod traits;
 
 #[cfg(feature = "lyon_path")]
 pub mod bb_graph_lyon;
+pub mod bb_graph_clipping;
 
 #[cfg(feature = "debug_draw")]
 pub mod debug_draw;
