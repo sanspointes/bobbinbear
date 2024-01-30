@@ -1,3 +1,8 @@
+
+pub mod clipping;
+#[cfg(feature = "lyon_path")]
+pub mod lyon;
+
 use std::collections::hash_map::{self};
 
 #[allow(unused_imports)]
