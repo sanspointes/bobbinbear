@@ -12,7 +12,7 @@ use std::{
     ops::{Mul, Sub},
 };
 
-use crate::traits::AngleBetween;
+use crate::{traits::AngleBetween, prelude::Determinate};
 use glam::{vec2, Vec2};
 
 use super::{
@@ -562,29 +562,6 @@ impl BBGraph {
         &self,
         node_idx: BBNodeIndex,
         prev_edge_idx: Option<BBEdgeIndex>,
-    ) -> BBResult<Vec<(BBEdgeIndex, BBEdge, Vec2)>> {
-        let node = self.node(node_idx).unwrap();
-        // Get list of next edges, omitting the previous edge (if provided)
-        node.adjacents()
-            .iter()
-            .filter(|edge_idx| {
-                prev_edge_idx.map_or(true, |prev_edge_idx: BBEdgeIndex| {
-                    // println!("Comparing {edge_idx} {prev_edge_idx}");
-                    **edge_idx != prev_edge_idx
-                })
-            })
-            .map(|edge_idx| {
-                let edge = self.edge(*edge_idx)?.directed_from(node_idx);
-                let tangent = edge.calc_start_tangent(self)?;
-                Ok((*edge_idx, edge, tangent))
-            })
-            .collect()
-    }
-
-    fn next_edges_of_node_2(
-        &self,
-        node_idx: BBNodeIndex,
-        prev_edge_idx: Option<BBEdgeIndex>,
     ) -> BBResult<Vec<(BBEdgeIndex, BBEdge)>> {
         let node = self.node(node_idx)?;
         // Get list of next edges, omitting the previous edge (if provided)
@@ -602,13 +579,20 @@ impl BBGraph {
             .collect()
     }
 
+    /// Given a node and a current direction, calculates which edge is the most clockwise.
+    /// It uses matrix2 determinates to calculate if it's clockwise. 
+    /// https://alexharri.medium.com/the-engineering-behind-figmas-vector-networks-688568e37110
+    ///
+    /// * `node_idx`: Current Node idx
+    /// * `curr_dir`: Current direction
+    /// * `prev_edge_idx`: Previous edge to exclude from results 
     pub fn get_cw_edge_of_node(
         &self,
         node_idx: BBNodeIndex,
         curr_dir: Vec2,
         prev_edge_idx: Option<BBEdgeIndex>,
     ) -> BBResult<BBEdgeIndex> {
-        let mut next_edge_dirs = self.next_edges_of_node_2(node_idx, prev_edge_idx)?;
+        let mut next_edge_dirs = self.next_edges_of_node(node_idx, prev_edge_idx)?;
 
         let Some((first_idx, first_edge)) = next_edge_dirs.pop() else {
             return Err(BBError::ClosedWalkDeadEnd);
@@ -617,16 +601,26 @@ impl BBGraph {
             return Ok(first_idx);
         }
 
-        let inv_dir = curr_dir.mul(-1.);
-
-        let mut next_edge_idx = first_idx;
-        let mut next_edge_angle = inv_dir.angle_between_cw(first_edge.calc_start_tangent(self)?);
+        let mut best_idx = first_idx;
+        let mut best_dir = first_edge.calc_start_tangent(self)?;
 
         for (idx, edge) in next_edge_dirs.iter() {
-            let angle = inv_dir.angle_between_cw(edge.calc_start_tangent(self)?);
-            if angle > next_edge_angle {
-                next_edge_idx = *idx;
-                next_edge_angle = angle;
+            let dir = edge.calc_start_tangent(self)?;
+            let needs_convex_check = curr_dir.determinate(best_dir) > 0.;
+
+            let ccw_of_curr = curr_dir.determinate(dir) <= 0.;
+            let ccw_of_best = best_dir.determinate(dir) <= 0.;
+
+            if needs_convex_check {
+                if ccw_of_curr || ccw_of_best {
+                    best_idx = *idx;
+                    best_dir = dir;
+                }
+            } else {
+                if ccw_of_curr && ccw_of_best {
+                    best_idx = *idx;
+                    best_dir = dir;
+                }
             }
         }
 
@@ -638,20 +632,17 @@ impl BBGraph {
             if *DEBUG_DRAW_CCW.deref().borrow() {
                 let p1 = self.node(node_idx)?.position();
 
-                let next_edge = self.edge(next_edge_idx)?;
-                let next_dir = next_edge.calc_start_tangent(self)?;
-
                 comfy::draw_arrow(p1 - curr_dir.normalize() * 3., p1, 0.1, comfy::BLUE, 500);
                 comfy::draw_arrow(
                     p1,
-                    p1 + next_dir.normalize() * 2.,
+                    p1 + best_dir.normalize() * 2.,
                     0.1,
                     comfy::DARKBLUE,
                     500,
                 );
                 curr_dir
                     .mul(-1.)
-                    .draw_angle_between_cw(next_dir, self.node(node_idx)?.position());
+                    .draw_angle_between_cw(best_dir, self.node(node_idx)?.position());
 
                 if let Some(idx) = prev_edge_idx {
                     comfy::draw_text_ex(
@@ -664,16 +655,23 @@ impl BBGraph {
             }
         }
 
-        Ok(next_edge_idx)
+        Ok(best_idx)
     }
 
+    /// Given a node and a current direction, calculates which edge is the most counterclockwise.
+    /// It uses matrix2 determinates to calculate if it's counter clockwise. 
+    /// https://alexharri.medium.com/the-engineering-behind-figmas-vector-networks-688568e37110
+    ///
+    /// * `node_idx`: Current Node idx
+    /// * `curr_dir`: Current direction
+    /// * `prev_edge_idx`: Previous edge to exclude from results 
     pub fn get_ccw_edge_of_node(
         &self,
         node_idx: BBNodeIndex,
         curr_dir: Vec2,
         prev_edge_idx: Option<BBEdgeIndex>,
     ) -> BBResult<BBEdgeIndex> {
-        let mut next_edge_dirs = self.next_edges_of_node_2(node_idx, prev_edge_idx)?;
+        let mut next_edge_dirs = self.next_edges_of_node(node_idx, prev_edge_idx)?;
 
         #[cfg(feature = "debug_draw")]
         {
@@ -696,16 +694,26 @@ impl BBGraph {
             return Ok(first_idx);
         }
 
-        let inv_dir = curr_dir.mul(-1.);
-
-        let mut next_edge_idx = first_idx;
-        let mut next_edge_angle = inv_dir.angle_between_ccw(first_edge.calc_start_tangent(self)?);
+        let mut best_idx = first_idx;
+        let mut best_dir = first_edge.calc_start_tangent(self)?;
 
         for (idx, edge) in next_edge_dirs.iter() {
-            let angle = inv_dir.angle_between_ccw(edge.calc_start_tangent(self)?);
-            if angle > next_edge_angle {
-                next_edge_idx = *idx;
-                next_edge_angle = angle;
+            let dir = edge.calc_start_tangent(self)?;
+            let needs_convex_check = curr_dir.determinate(best_dir) < 0.;
+
+            let ccw_of_curr = curr_dir.determinate(dir) > 0.;
+            let ccw_of_best = best_dir.determinate(dir) > 0.;
+
+            if needs_convex_check {
+                if ccw_of_curr || ccw_of_best {
+                    best_idx = *idx;
+                    best_dir = dir;
+                }
+            } else {
+                if ccw_of_curr && ccw_of_best {
+                    best_idx = *idx;
+                    best_dir = dir;
+                }
             }
         }
 
@@ -717,20 +725,17 @@ impl BBGraph {
             if *DEBUG_DRAW_CCW.deref().borrow() {
                 let p1 = self.node(node_idx)?.position();
 
-                let next_edge = self.edge(next_edge_idx)?;
-                let next_dir = next_edge.calc_start_tangent(self)?;
-
                 comfy::draw_arrow(p1 - curr_dir.normalize() * 3., p1, 0.1, comfy::BLUE, 500);
                 comfy::draw_arrow(
                     p1,
-                    p1 + next_dir.normalize() * 2.,
+                    p1 + best_dir.normalize() * 2.,
                     0.1,
                     comfy::DARKBLUE,
                     500,
                 );
                 curr_dir
                     .mul(-1.)
-                    .draw_angle_between_ccw(next_dir, self.node(node_idx)?.position());
+                    .draw_angle_between_ccw(best_dir, self.node(node_idx)?.position());
 
                 if let Some(idx) = prev_edge_idx {
                     comfy::draw_text_ex(
@@ -743,7 +748,7 @@ impl BBGraph {
             }
         }
 
-        Ok(next_edge_idx)
+        Ok(best_idx)
     }
 
     /// Performs a breadth first search over the graph to return a Vec of each detached graph
