@@ -1,4 +1,4 @@
-use comfy::HashMap;
+use std::collections::HashMap;
 use flo_curves::{
     bezier::{curve_intersects_curve_clip, Curve},
     BezierCurve, BoundingBox, Bounds, Coord2, Coordinate,
