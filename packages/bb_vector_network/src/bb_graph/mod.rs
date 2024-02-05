@@ -1,7 +1,7 @@
-
 pub mod clipping;
 #[cfg(feature = "lyon_path")]
 pub mod lyon;
+pub mod traits;
 
 use std::collections::hash_map::{self};
 
@@ -12,7 +12,7 @@ use std::{
     ops::{Mul, Sub},
 };
 
-use crate::{traits::AngleBetween, prelude::Determinate};
+use crate::prelude::Determinate;
 use glam::{vec2, Vec2};
 
 use super::{
@@ -580,12 +580,12 @@ impl BBGraph {
     }
 
     /// Given a node and a current direction, calculates which edge is the most clockwise.
-    /// It uses matrix2 determinates to calculate if it's clockwise. 
+    /// It uses matrix2 determinates to calculate if it's clockwise.
     /// https://alexharri.medium.com/the-engineering-behind-figmas-vector-networks-688568e37110
     ///
     /// * `node_idx`: Current Node idx
     /// * `curr_dir`: Current direction
-    /// * `prev_edge_idx`: Previous edge to exclude from results 
+    /// * `prev_edge_idx`: Previous edge to exclude from results
     pub fn get_cw_edge_of_node(
         &self,
         node_idx: BBNodeIndex,
@@ -659,12 +659,12 @@ impl BBGraph {
     }
 
     /// Given a node and a current direction, calculates which edge is the most counterclockwise.
-    /// It uses matrix2 determinates to calculate if it's counter clockwise. 
+    /// It uses matrix2 determinates to calculate if it's counter clockwise.
     /// https://alexharri.medium.com/the-engineering-behind-figmas-vector-networks-688568e37110
     ///
     /// * `node_idx`: Current Node idx
     /// * `curr_dir`: Current direction
-    /// * `prev_edge_idx`: Previous edge to exclude from results 
+    /// * `prev_edge_idx`: Previous edge to exclude from results
     pub fn get_ccw_edge_of_node(
         &self,
         node_idx: BBNodeIndex,
