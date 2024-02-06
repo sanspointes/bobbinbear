@@ -1,7 +1,6 @@
 pub mod clipping;
 #[cfg(feature = "lyon_path")]
 pub mod lyon;
-pub mod traits;
 
 use std::collections::hash_map::{self};
 
@@ -1045,17 +1044,31 @@ impl BBGraph {
         let mut region_indices = vec![];
 
         for mut graph in self.get_detached_graphs()? {
-            let mut cycles = vec![];
-            graph.extract_cycles(&mut cycles)?;
+            graph.remove_filaments()?;
 
-            let region = BBRegion::new(cycles);
+            let Some(start_id) = graph.get_left_most_node_index() else {
+                continue;
+            };
+
+            let perimiter = match graph.closed_walk_with_ccw_start_and_ccw_traverse(start_id) {
+                Ok(perimiter) => perimiter,
+                Err(reason) => {
+                    println!("Skipping graph for reason {reason:?}.");
+                    continue;
+                }
+            };
+            let mut cycle = BBCycle::new(perimiter.edges);
+
+            graph.extract_cycles(&mut cycle)?;
+
+            let region = BBRegion::new(cycle);
             region_indices.push(self.add_region(region));
         }
 
         Ok(region_indices)
     }
 
-    fn extract_cycles(&mut self, cycles_out: &mut Vec<BBCycle>) -> BBResult<()> {
+    fn extract_cycles(&mut self, parent_cycle: &mut BBCycle) -> BBResult<()> {
         while self.nodes_count() > 0 {
             // Need to cleanup filaments as it can prevent closed walks
             self.remove_filaments()?;
@@ -1067,15 +1080,15 @@ impl BBGraph {
                 break;
             };
             let ClosedWalkResult { outer_edge, edges } =
-                self.closed_walk_with_cw_start_and_ccw_traverse(left_most)?;
+                self.closed_walk_with_ccw_start_and_ccw_traverse(left_most)?;
 
-            let (parent_cycle, nested_walks) =
+            let (edges, nested_edges) =
                 self.extract_nested_cycle_from_closed_walk(&edges)?;
 
-            let mut parent_cycle = BBCycle::new(parent_cycle);
-            for walk in nested_walks {
+            let mut cycle = BBCycle::new(edges);
+            for walk in nested_edges {
                 let mut nested_graph = BBGraph::try_new_from_other_edges(self, &walk)?;
-                let result = nested_graph.extract_cycles(&mut parent_cycle.children);
+                let result = nested_graph.extract_cycles(&mut cycle);
 
                 // We will not throw all errors, only if they're critical (of the missing variant).
                 if let Err(reason) = result {
@@ -1087,7 +1100,7 @@ impl BBGraph {
 
             self.delete_edge(outer_edge)?;
 
-            cycles_out.push(parent_cycle);
+            parent_cycle.children.push(cycle);
         }
 
         Ok(())
