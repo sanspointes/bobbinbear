@@ -1,5 +1,7 @@
 //! Displays a single [`Sprite`], created from an image.
 mod ipc;
+mod changeset;
+mod index;
 
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use ipc::IpcPlugin;
