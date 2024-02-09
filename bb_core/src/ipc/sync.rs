@@ -1,5 +1,5 @@
 use core::panic;
-use std::sync::{Arc, Mutex};
+use std::{sync::{Arc, Mutex}, borrow::{Borrow, BorrowMut}, cell::RefCell};
 
 use wasm_bindgen::prelude::*;
 use bevy::prelude::World;
@@ -8,21 +8,25 @@ use wasm_bindgen_futures::{JsFuture, future_to_promise};
 use futures::channel::oneshot;
 
 pub(crate) fn execute_world_tasks_begin(world: &mut World) {
-    let receiver = CHANNEL_FRAME_START.1.lock().unwrap();
-    while let Ok(task) = receiver.try_recv() {
-        (task.task)(world);
-    }
+    let receiver = CHANNEL_FRAME_START.with(|rx| {
+        let rx = &rx.borrow().1;
+        while let Ok(task) = rx.borrow().try_recv() {
+            (task.task)(world);
+        }
+    });
 }
 
 pub(crate) fn execute_world_tasks_end(world: &mut World) {
-    let receiver = CHANNEL_FRAME_END.1.lock().unwrap();
-    while let Ok(task) = receiver.try_recv() {
-        (task.task)(world);
-    }
+    let receiver = CHANNEL_FRAME_END.with(|rx| {
+        let rx = &rx.borrow().1;
+        while let Ok(task) = rx.borrow().try_recv() {
+            (task.task)(world);
+        }
+    });
 }
 
 struct WorldTask {
-    task: Box<dyn FnOnce(&mut World) + Send + Sync + 'static>,
+    task: Box<dyn FnOnce(&mut World) + 'static>,
 }
 // {
 //     let (tx, rx) = futures::channel::oneshot::channel();
@@ -69,8 +73,8 @@ fn rx_to_promise(rx: oneshot::Receiver<()>) -> Promise {
 }
 
 pub(crate) async fn execute_in_world<
-    T: Into<JsValue> + Send + Sync + 'static,
-    F: FnOnce(&mut World) -> T + Send + Sync + 'static,
+    T: 'static,
+    F: FnOnce(&mut World) -> T + 'static,
 >(
     channel: ExecutionChannel,
     task: F,
@@ -89,13 +93,13 @@ pub(crate) async fn execute_in_world<
     let world_task = WorldTask { task: boxed_task };
     {
         let channel = match channel {
-            ExecutionChannel::FrameStart => &CHANNEL_FRAME_START.0,
-            ExecutionChannel::FrameEnd => &CHANNEL_FRAME_END.0,
-            ExecutionChannel::RenderApp => &CHANNEL_RENDER_APP.0,
+            ExecutionChannel::FrameStart => &CHANNEL_FRAME_START,
+            ExecutionChannel::FrameEnd => &CHANNEL_FRAME_END,
         };
 
-        let sender = channel.lock().unwrap();
-        sender.send(world_task).unwrap();
+        channel.with(|channel| {
+            channel.borrow().0.borrow_mut().send(world_task).unwrap();
+        });
     }
 
     JsFuture::from(rx_to_promise(rx)).await.unwrap();
@@ -104,23 +108,36 @@ pub(crate) async fn execute_in_world<
     output.take().unwrap()
 }
 
-lazy_static::lazy_static! {
-  static ref CHANNEL_FRAME_START: (Mutex<std::sync::mpsc::Sender<WorldTask>>, Mutex<std::sync::mpsc::Receiver<WorldTask>>) = {
-    let (rx, tx) = std::sync::mpsc::channel();
-    (Mutex::new(rx), Mutex::new(tx))
-  };
-  static ref CHANNEL_FRAME_END: (Mutex<std::sync::mpsc::Sender<WorldTask>>, Mutex<std::sync::mpsc::Receiver<WorldTask>>) = {
-    let (rx, tx) = std::sync::mpsc::channel();
-    (Mutex::new(rx), Mutex::new(tx))
-  };
-  static ref CHANNEL_RENDER_APP: (Mutex<std::sync::mpsc::Sender<WorldTask>>, Mutex<std::sync::mpsc::Receiver<WorldTask>>) = {
-    let (rx, tx) = std::sync::mpsc::channel();
-    (Mutex::new(rx), Mutex::new(tx))
-  };
+use std::sync::mpsc::{ Sender, Receiver };
+
+thread_local! {
+
+    pub static CHANNEL_FRAME_START: (RefCell<Sender<WorldTask>>, RefCell<Receiver<WorldTask>>) = {
+        let (tx, rx) = std::sync::mpsc::channel();
+        (RefCell::new(tx), RefCell::new(rx))
+    };
+    pub static CHANNEL_FRAME_END: (RefCell<Sender<WorldTask>>, RefCell<Receiver<WorldTask>>) = {
+        let (tx, rx) = std::sync::mpsc::channel();
+        (RefCell::new(tx), RefCell::new(rx))
+    };
 }
+
+// lazy_static::lazy_static! {
+//   static ref CHANNEL_FRAME_START: (Mutex<std::sync::mpsc::Sender<WorldTask>>, Mutex<std::sync::mpsc::Receiver<WorldTask>>) = {
+//     let (rx, tx) = std::sync::mpsc::channel();
+//     (Mutex::new(rx), Mutex::new(tx))
+//   };
+//   static ref CHANNEL_FRAME_END: (Mutex<std::sync::mpsc::Sender<WorldTask>>, Mutex<std::sync::mpsc::Receiver<WorldTask>>) = {
+//     let (rx, tx) = std::sync::mpsc::channel();
+//     (Mutex::new(rx), Mutex::new(tx))
+//   };
+//   static ref CHANNEL_RENDER_APP: (Mutex<std::sync::mpsc::Sender<WorldTask>>, Mutex<std::sync::mpsc::Receiver<WorldTask>>) = {
+//     let (rx, tx) = std::sync::mpsc::channel();
+//     (Mutex::new(rx), Mutex::new(tx))
+//   };
+// }
 
 pub(crate) enum ExecutionChannel {
     FrameStart,
     FrameEnd,
-    RenderApp,
 }

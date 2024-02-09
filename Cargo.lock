@@ -335,9 +335,11 @@ name = "bb_core"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "console_error_panic_hook",
  "futures",
  "js-sys",
  "lazy_static",
+ "thread_local",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]

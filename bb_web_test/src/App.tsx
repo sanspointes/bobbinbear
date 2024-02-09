@@ -1,35 +1,38 @@
-import { createSignal } from 'solid-js'
-import solidLogo from './assets/solid.svg'
-import viteLogo from '/vite.svg'
+import { Show, createSignal } from 'solid-js'
+import init, { IpcApi, setup_bb_core } from 'bb_core';
 import './App.css'
+import { IpcButtons } from './IpcButtons';
 
 function App() {
-  const [count, setCount] = createSignal(0)
+    const [ipc, setIpc] = createSignal<IpcApi|undefined>();
 
-  return (
-    <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} class="logo" alt="Vite logo" />
-        </a>
-        <a href="https://solidjs.com" target="_blank">
-          <img src={solidLogo} class="logo solid" alt="Solid logo" />
-        </a>
-      </div>
-      <h1>Vite + Solid</h1>
-      <div class="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count()}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p class="read-the-docs">
-        Click on the Vite and Solid logos to learn more
-      </p>
-    </>
-  )
+    const handleInit = async () => {
+        const result = await init();
+        try {
+            setup_bb_core("#bb-canvas")
+        } catch (e) {
+            console.log(e);
+        } finally {
+            const newIpc = new IpcApi();
+            setIpc(newIpc);
+        }
+    }
+
+    return (
+        <>
+            <canvas id="bb-canvas">
+            </canvas>
+            <h1>Vite + Solid</h1>
+            <div class="card">
+                <Show when={!ipc()}>
+                    <button onClick={handleInit}>Init</button>
+                </Show>
+                <Show when={ipc()}>
+                    {ipc => <IpcButtons ipc={ipc()} />}
+                </Show>
+            </div>
+        </>
+    )
 }
 
 export default App

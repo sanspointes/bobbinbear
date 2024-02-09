@@ -7,12 +7,15 @@ resolver = "2"
 [lib]
 name = "bb_core"
 path = "src/lib.rs"
+crate-type = ["cdylib", "rlib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 bevy = "0.12.1"
+console_error_panic_hook = "0.1.7"
 futures = "0.3.30"
 js-sys = "0.3.68"
 lazy_static = "1.4.0"
+thread_local = "1.1.7"
 wasm-bindgen = "0.2.91"
 wasm-bindgen-futures = "0.4.41"
