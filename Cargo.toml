@@ -3,7 +3,7 @@ resolver = "2"
 
 members = [
     "bb_core",
-    "bb_desktop"
+    "bb_desktop",
 ]
 
 # Fix for RA breaking incremental compilation.
