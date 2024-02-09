@@ -1,14 +1,14 @@
 use core::panic;
-use std::{sync::{Arc, Mutex}, borrow::{Borrow, BorrowMut}, cell::RefCell};
+use std::{sync::{Arc, Mutex}, borrow::Borrow, cell::RefCell};
 
 use wasm_bindgen::prelude::*;
 use bevy::prelude::World;
-use js_sys::{Promise};
+use js_sys::Promise;
 use wasm_bindgen_futures::{JsFuture, future_to_promise};
 use futures::channel::oneshot;
 
 pub(crate) fn execute_world_tasks_begin(world: &mut World) {
-    let receiver = CHANNEL_FRAME_START.with(|rx| {
+    CHANNEL_FRAME_START.with(|rx| {
         let rx = &rx.borrow().1;
         while let Ok(task) = rx.borrow().try_recv() {
             (task.task)(world);
@@ -17,7 +17,7 @@ pub(crate) fn execute_world_tasks_begin(world: &mut World) {
 }
 
 pub(crate) fn execute_world_tasks_end(world: &mut World) {
-    let receiver = CHANNEL_FRAME_END.with(|rx| {
+    CHANNEL_FRAME_END.with(|rx| {
         let rx = &rx.borrow().1;
         while let Ok(task) = rx.borrow().try_recv() {
             (task.task)(world);
@@ -28,39 +28,6 @@ pub(crate) fn execute_world_tasks_end(world: &mut World) {
 struct WorldTask {
     task: Box<dyn FnOnce(&mut World) + 'static>,
 }
-// {
-//     let (tx, rx) = futures::channel::oneshot::channel();
-//
-//     let output = Arc::new(Mutex::new(None));
-//     let output_cloned = output.clone();
-//     let boxed_task = Box::new(move |world: &mut World| {
-//         let mut output = output_cloned.lock().unwrap();
-//         *output = Some(task(world));
-//         tx.send(());
-//         output
-//     });
-//
-//     let world_task = unsafe { WorldTask { task: boxed_task } };
-//     {
-//         let channel = match channel {
-//             ExecutionChannel::FrameStart => &CHANNEL_FRAME_START.0,
-//             ExecutionChannel::FrameEnd => &CHANNEL_FRAME_END.0,
-//             ExecutionChannel::RenderApp => &CHANNEL_RENDER_APP.0,
-//         };
-//
-//         let sender = channel.lock().unwrap();
-//         sender.send(world_task).unwrap();
-//     }
-//
-//     spawn_local(async {
-//
-//     });
-//
-//     let v = JsFuture::from(promise).await;
-//
-//     let mut output = output.lock().unwrap();
-//     output.take().unwrap()
-// }
 
 // Convert a oneshot::Receiver into a JavaScript Promise
 fn rx_to_promise(rx: oneshot::Receiver<()>) -> Promise {
@@ -111,7 +78,6 @@ pub(crate) async fn execute_in_world<
 use std::sync::mpsc::{ Sender, Receiver };
 
 thread_local! {
-
     pub static CHANNEL_FRAME_START: (RefCell<Sender<WorldTask>>, RefCell<Receiver<WorldTask>>) = {
         let (tx, rx) = std::sync::mpsc::channel();
         (RefCell::new(tx), RefCell::new(rx))
@@ -122,6 +88,12 @@ thread_local! {
     };
 }
 
+pub(crate) enum ExecutionChannel {
+    FrameStart,
+    FrameEnd,
+}
+
+// For native 
 // lazy_static::lazy_static! {
 //   static ref CHANNEL_FRAME_START: (Mutex<std::sync::mpsc::Sender<WorldTask>>, Mutex<std::sync::mpsc::Receiver<WorldTask>>) = {
 //     let (rx, tx) = std::sync::mpsc::channel();
@@ -137,7 +109,3 @@ thread_local! {
 //   };
 // }
 
-pub(crate) enum ExecutionChannel {
-    FrameStart,
-    FrameEnd,
-}
