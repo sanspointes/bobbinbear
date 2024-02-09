@@ -1,0 +1,17 @@
+[package]
+name = "bb_desktop"
+version = "0.1.0"
+edition = "2021"
+resolver = "2"
+
+# [target.x86_64-apple-darwin]
+# rustflags = [
+#     "-C",
+#     "link-arg=-fuse-ld=/usr/local/opt/llvm/bin/ld64.lld",
+#     "-Zshare-generics=y",
+# ]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bb_core = { path = "../bb_core" }

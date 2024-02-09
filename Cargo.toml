@@ -2,10 +2,8 @@
 resolver = "2"
 
 members = [
-    "apps/bobbinbear_core",
-    "packages/bb_vector_network",
-    "packages/bb_vector_network/examples/editor",
-    "packages/bb_vector_network/examples/visualisations",
+    "bb_core",
+    "bb_desktop"
 ]
 
 # Fix for RA breaking incremental compilation.
