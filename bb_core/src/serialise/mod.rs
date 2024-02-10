@@ -1,9 +1,5 @@
 mod components;
-mod materials;
-
-pub struct EncodeContext {
-    materials: 
-}
+pub use components::{EncComponent, EncComponentTag, EncodableComponent};
 
 // use bevy::{ecs::world::EntityWorldMut, prelude::*};
 //

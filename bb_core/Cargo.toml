@@ -12,6 +12,7 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 bevy = { version = "0.12.1", default-features = false }
+bevy_save = "0.13.0"
 serde = {version = "1.0.196", features = ["serde_derive"] }
 
 futures = "0.3.30"

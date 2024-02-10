@@ -29,6 +29,42 @@ impl BBChange {
     }
 }
 
+impl From<MutateComponent> for BBChange {
+    fn from(value: MutateComponent) -> Self {
+        Self::MutateComponent(value)
+    }
+}
+impl From<AddComponent> for BBChange {
+    fn from(value: AddComponent) -> Self {
+        Self::AddComponent(value)
+    }
+}
+impl From<RemoveComponent> for BBChange {
+    fn from(value: RemoveComponent) -> Self {
+        Self::RemoveComponent(value)
+    }
+}
+impl From<SpawnEntity> for BBChange {
+    fn from(value: SpawnEntity) -> Self {
+        Self::SpawnEntity(value)
+    }
+}
+impl From<DespawnEntity> for BBChange {
+    fn from(value: DespawnEntity) -> Self {
+        Self::DespawnEntity(value)
+    }
+}
+impl From<ChangeParent> for BBChange {
+    fn from(value: ChangeParent) -> Self {
+        Self::ChangeParent(value)
+    }
+}
+impl From<ChangeMulti> for BBChange {
+    fn from(value: ChangeMulti) -> Self {
+        Self::ChangeMulti(value)
+    }
+}
+
 /// Mutate component BBChange.  Mutates a component on an entity
 ///
 /// * `old_value`:
@@ -43,7 +79,7 @@ impl MutateComponent {
     pub fn apply(mut self, world: &mut World) -> Result<MutateComponent, anyhow::Error> {
         let entity = world.idx(self.target).unwrap();
         let mut entity_mut = world.entity_mut(entity);
-        self.value.swap_with_entity_world_mut(&mut entity_mut)?;
+        self.value.try_swap_with_entity_world_mut(&mut entity_mut)?;
         Ok(MutateComponent {
             target: self.target,
             value: self.value,
@@ -86,7 +122,7 @@ impl RemoveComponent {
     pub fn apply(self, world: &mut World) -> Result<AddComponent, anyhow::Error> {
         let entity = world.idx(self.target).unwrap();
         let mut entity_mut = world.entity_mut(entity);
-        self.to_remove.remove_from_entity_world_mut(&mut entity_mut)?;
+        self.to_remove.try_remove_from_entity_world_mut(&mut entity_mut)?;
         Ok(AddComponent {
             target: self.target,
             to_add: self.to_remove,
@@ -119,10 +155,10 @@ impl SpawnEntity {
         }
     }
 
-    pub fn with_component<C: Component + EncodableComponent>(&mut self, component: C) -> Result<&mut Self, anyhow::Error> {
-        let encoded = component.try_encode()?;
+    pub fn with_component<C: Component + EncodableComponent>(&mut self, component: C) -> &mut Self {
+        let encoded = component.try_encode().unwrap();
         self.components.push(encoded);
-        Ok(self)
+        self
     }
 
     pub fn apply(self, world: &mut World) -> Result<DespawnEntity, anyhow::Error> {
@@ -153,11 +189,11 @@ impl DespawnEntity {
         let parent_target = world.get::<Parent>(entity).and_then(|p| world.get::<Idx>(**p).copied());
 
         let mut entity_mut = world.entity_mut(entity);
-        let components: Vec<_> = self.component_tags.into_iter().map(|tag| {
+        let components: Result<Vec<_>, anyhow::Error> = self.component_tags.into_iter().map(|tag| {
             EncComponent::from_tag_and_entity_world_mut(tag, &mut entity_mut)
         }).collect();
 
-        Ok(SpawnEntity { parent_target, components })
+        Ok(SpawnEntity { parent_target, components: components? })
     }
 }
 

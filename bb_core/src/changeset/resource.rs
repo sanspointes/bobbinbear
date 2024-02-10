@@ -18,8 +18,9 @@ impl Plugin for ChangesetPlugin {
     }
 }
 
-pub fn execute_change(world: &mut World, change: BBChange) -> Result<(), anyhow::Error> {
-    let inverse = change.apply(world)?;
+pub fn execute_change(world: &mut World, change: impl Into<BBChange>) -> Result<(), anyhow::Error> {
+    let c: BBChange = change.into();
+    let inverse = c.apply(world)?;
     let mut changeset = world.resource_mut::<ChangesetResource>();
     changeset.undo.push(inverse);
     Ok(())

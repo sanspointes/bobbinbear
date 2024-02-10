@@ -3,6 +3,7 @@ mod api;
 mod changeset;
 mod serialise;
 mod index;
+mod ecs;
 
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use api::IpcPlugin;
