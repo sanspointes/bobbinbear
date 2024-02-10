@@ -1,10 +1,12 @@
 //! Displays a single [`Sprite`], created from an image.
-mod ipc;
+mod api;
 mod changeset;
+mod serialise;
 mod index;
 
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
-use ipc::IpcPlugin;
+use api::IpcPlugin;
+use changeset::ChangesetPlugin;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
@@ -28,7 +30,10 @@ pub fn setup_bb_core(canvas_id: String) {
     });
 
     app.add_plugins(default_plugins)
-        .add_plugins(IpcPlugin {})
+        // App plugins
+        .add_plugins(IpcPlugin)
+        .add_plugins(ChangesetPlugin)
+
         .add_systems(Startup, setup);
 
     app.run();

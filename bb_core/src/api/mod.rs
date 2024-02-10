@@ -1,14 +1,16 @@
-use bevy::{ecs::system::SystemState, prelude::*, sprite::MaterialMesh2dBundle};
+mod sync;
+mod undoredo;
+mod scene;
+
+use bevy::{ecs::system::SystemState, prelude::*, sprite::MaterialMesh2dBundle, app::AppExit};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 
-use self::sync::{
+use self::{sync::{
     execute_in_world, execute_world_tasks_begin, execute_world_tasks_end, ExecutionChannel,
-};
+}, undoredo::UndoRedoApi};
 
-mod sync;
-
-pub struct IpcPlugin {}
+pub struct IpcPlugin;
 
 impl Plugin for IpcPlugin {
     fn build(&self, app: &mut App) {
@@ -17,15 +19,35 @@ impl Plugin for IpcPlugin {
     }
 }
 
-#[wasm_bindgen]
-pub struct IpcApi {}
+pub fn anyhow_result_to_js_result(result: Result<(), anyhow::Error>) -> Result<JsValue, JsValue> {
+    match result {
+        Ok(_) => Ok(JsValue::UNDEFINED),
+        Err(reason) => Err(JsValue::from(JsError::new(&format!("{reason}")))),
+    }
+}
 
 #[wasm_bindgen]
-impl IpcApi {
+pub struct Api {
+    undoredo: UndoRedoApi,
+}
+
+#[wasm_bindgen]
+impl Api {
 
     #[wasm_bindgen(constructor)]
     pub fn new() -> Self {
-        Self {}
+        Self {
+            undoredo: UndoRedoApi,
+        }
+    }
+
+    #[wasm_bindgen]
+    pub async fn exit(&self) -> js_sys::Promise {
+        future_to_promise(execute_in_world(ExecutionChannel::FrameEnd, |w| {
+            let mut exit_events = w.resource_mut::<Events<AppExit>>();
+            exit_events.send(AppExit);
+            Ok(JsValue::UNDEFINED)
+        }))
     }
 
     #[wasm_bindgen]
