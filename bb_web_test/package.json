@@ -9,10 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@kobalte/core": "^0.12.1",
     "bb_core": "workspace:^",
+    "clsx": "^2.1.0",
     "solid-js": "^1.8.14"
   },
   "devDependencies": {
+    "@kobalte/tailwindcss": "^0.9.0",
+    "autoprefixer": "^10.4.17",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
     "vite": "^5.1.0",
     "vite-plugin-solid": "^2.9.1"

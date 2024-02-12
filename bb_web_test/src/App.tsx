@@ -1,5 +1,4 @@
 import { Show, onMount } from 'solid-js';
-import './App.css';
 import { useBBCore } from './hooks/useBBCore';
 import { ApiButtons } from './ApiButtons';
 

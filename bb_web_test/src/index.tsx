@@ -1,9 +1,14 @@
 /* @refresh reload */
-import { render } from 'solid-js/web'
+import { ErrorBoundary, render } from 'solid-js/web'
 
-import './index.css'
+import './assets/style.css'
 import App from './App'
+import { ErrorView } from './features/error'
 
 const root = document.getElementById('root')
 
-render(() => <App />, root!)
+render(() => (
+    <ErrorBoundary fallback={error => <ErrorView error={error} />}>
+        <App />
+    </ErrorBoundary>
+), root!)
