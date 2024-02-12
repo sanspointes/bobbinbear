@@ -1,4 +1,5 @@
 import { Api } from 'bb_core';
+import { Button } from './components/button';
 
 type ApiButtonsProps = {
     api: Api;
@@ -23,11 +24,11 @@ export function ApiButtons(props: ApiButtonsProps) {
         await props.api.undoredo.redo();
     };
     return (
-        <div>
-            <button onClick={handleSpawnNode}>Spawn Circle</button>
-            <button onClick={handleDescribeWorld}>Describe World</button>
-            <button onClick={handleUndo}>Undo</button>
-            <button onClick={handleRedo}>Redo</button>
+        <div class="flex gap-2">
+            <Button onClick={handleSpawnNode}>Spawn Circle</Button>
+            <Button onClick={handleDescribeWorld}>Describe World</Button>
+            <Button onClick={handleUndo}>Undo</Button>
+            <Button onClick={handleRedo}>Redo</Button>
         </div>
     );
 }

@@ -1,12 +1,9 @@
 import { createEffect, createSignal, Show } from 'solid-js';
 import { FaRegularFaceSadCry } from 'solid-icons/fa';
-import { Command } from '../store/commands';
-import { Button } from './generics/Button';
-import { CommandStack } from './CommandStack';
 import { TbX } from 'solid-icons/tb';
 import { IoWarningOutline } from 'solid-icons/io';
-import RError from 'rerror';
 import { Collapsible as KCollapsible } from '@kobalte/core';
+import { Button } from '../../components/button';
 
 type ErrorReasonProps = {
     error: Error;
@@ -36,8 +33,7 @@ const ErrorReason = (props: ErrorReasonProps) => {
 
 type ErrorProps = {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    error: Error | RError;
-    stack?: Command[];
+    error: Error;
 };
 export const ErrorView = (props: ErrorProps) => {
     const [showExtra, setShowExtra] = createSignal(true);
