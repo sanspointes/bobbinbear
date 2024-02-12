@@ -1,32 +1,34 @@
-import initBBCore, { IpcApi, setup_bb_core } from "bb_core";
-import { createSignal, onCleanup } from "solid-js";
+import initBBCore, { Api, setup_bb_core } from 'bb_core';
+import { createSignal, onCleanup } from 'solid-js';
 
 export function useBBCore() {
-    const [ipc, setIpc] = createSignal<IpcApi|undefined>(undefined);
+    const [api, setApi] = createSignal<Api | undefined>(undefined);
 
     onCleanup(() => {
-        const i = ipc();
+        const i = api();
         if (i) {
             i.exit();
             i.free();
         }
-    })
+    });
 
     const handleInit = async (canvasSelector: string) => {
         try {
             await initBBCore();
-        } catch(reason) {
+        } catch (reason) {
             console.warn('init with error: ', reason);
         }
         try {
-            setup_bb_core(canvasSelector)
+            setup_bb_core(canvasSelector);
         } catch (e) {
             console.log(e);
         } finally {
-            const newIpc = new IpcApi();
-            setIpc(newIpc);
+            const newApi = new Api();
+            // @ts-expect-error Make API global
+            window.api = newApi;
+            setApi(newApi);
         }
-    }
+    };
 
-    return { setup: handleInit, ipc };
+    return { setup: handleInit, api };
 }

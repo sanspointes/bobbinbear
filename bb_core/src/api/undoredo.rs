@@ -6,7 +6,8 @@ use super::{ execute_in_world, anyhow_result_to_js_result, ExecutionChannel };
 use crate::changeset::{undo_change, redo_change};
 
 #[wasm_bindgen]
-pub(super) struct UndoRedoApi;
+#[derive(Clone, Copy)]
+pub struct UndoRedoApi;
 
 #[allow(dead_code)]
 #[wasm_bindgen]

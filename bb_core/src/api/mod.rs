@@ -6,9 +6,11 @@ use bevy::{ecs::system::SystemState, prelude::*, sprite::MaterialMesh2dBundle, a
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::future_to_promise;
 
+use crate::index::Idx;
+
 use self::{sync::{
     execute_in_world, execute_world_tasks_begin, execute_world_tasks_end, ExecutionChannel,
-}, undoredo::UndoRedoApi};
+}, undoredo::UndoRedoApi, scene::SceneApi};
 
 pub struct IpcPlugin;
 
@@ -28,7 +30,8 @@ pub fn anyhow_result_to_js_result(result: Result<(), anyhow::Error>) -> Result<J
 
 #[wasm_bindgen]
 pub struct Api {
-    undoredo: UndoRedoApi,
+    pub undoredo: UndoRedoApi,
+    pub scene: SceneApi,
 }
 
 #[wasm_bindgen]
@@ -38,6 +41,7 @@ impl Api {
     pub fn new() -> Self {
         Self {
             undoredo: UndoRedoApi,
+            scene: SceneApi,
         }
     }
 
@@ -53,9 +57,15 @@ impl Api {
     #[wasm_bindgen]
     pub async fn describe_world(&self) -> js_sys::Promise {
         future_to_promise(execute_in_world(ExecutionChannel::FrameEnd, |w| {
-            let e: Vec<_> = w.query::<(Entity, &Transform)>().iter(w).collect();
+            let e: Vec<_> = w.query::<Entity>().iter(w).collect();
 
-            Ok(JsValue::from_str(&format!("{e:?}")))
+            let info: Vec<_> = e.iter().map(|e| {
+                let v = w.inspect_entity(*e);
+                let info: Vec<_> = v.iter().map(|info| info.name()).collect();
+                (e, info)
+            }).collect();
+
+            Ok(JsValue::from_str(&format!("{info:#?}")))
         }))
     }
 

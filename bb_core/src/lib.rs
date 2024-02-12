@@ -8,6 +8,8 @@ mod ecs;
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 use api::IpcPlugin;
 use changeset::ChangesetPlugin;
+use ecs::node::{sys_derived_mesh_for_node, sys_derived_material_for_node};
+use index::IdxResource;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
@@ -34,6 +36,10 @@ pub fn setup_bb_core(canvas_id: String) {
         // App plugins
         .add_plugins(IpcPlugin)
         .add_plugins(ChangesetPlugin)
+
+        .insert_resource(IdxResource::default())
+
+        .add_systems(PostUpdate, (sys_derived_mesh_for_node, sys_derived_material_for_node))
 
         .add_systems(Startup, setup);
 

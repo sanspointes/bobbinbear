@@ -2,7 +2,7 @@ use anyhow::anyhow;
 use bevy::prelude::*;
 use serde::{Deserialize, Serialize};
 
-use crate::ecs::core::{DerivedMaterial, DerivedMesh};
+use crate::ecs::{core::{DerivedMaterial, DerivedMesh}, node::Node};
 
 #[derive(Clone, Debug)]
 pub enum EncComponentTag {
@@ -17,6 +17,9 @@ pub enum EncComponentTag {
     // entity.
     DerivedMaterial,
     DerivedMesh,
+
+    // Our app logic types
+    Node,
 }
 
 #[derive(Debug)]
@@ -47,7 +50,7 @@ macro_rules! impl_enc_component {
             ) -> Result<Self, anyhow::Error> {
                 let enc_component = match tag {
                     $(EncComponentTag::$var => {
-                        let component = entity_mut.get::<$var>().unwrap();
+                        let component = entity_mut.get::<$var>().ok_or(anyhow!("from_tag_and_entity_world_mut: Can't get {} component on entity.", stringify!($var)))?;
                         component.try_encode()?
                     },)*
                 };
@@ -60,7 +63,7 @@ macro_rules! impl_enc_component {
             ) -> Result<(), anyhow::Error> {
                 let data = match &self.0 {
                     $(EncComponentTag::$var => {
-                        let component = entity_mut.get::<$var>().unwrap();
+                        let component = entity_mut.get::<$var>().ok_or(anyhow!("try_swap_with_entity_world_mut: Can't get {} component on entity.", stringify!($var)))?;
                         component.try_encode()
                     })*
                 }?;
@@ -69,7 +72,7 @@ macro_rules! impl_enc_component {
                 Ok(())
             }
 
-            pub fn try_insert_into_entity_world_mut(
+            pub fn try_remove_from_entity_world_mut(
                 &self,
                 entity_mut: &mut EntityWorldMut,
             ) -> Result<(), anyhow::Error> {
@@ -81,13 +84,13 @@ macro_rules! impl_enc_component {
                 Ok(())
             }
 
-            pub fn try_remove_from_entity_world_mut(
+            pub fn try_insert_into_entity_world_mut(
                 &self,
                 entity_mut: &mut EntityWorldMut,
             ) -> Result<(), anyhow::Error> {
                 match &self.0 {
                     $(EncComponentTag::$var => {
-                        let component: $var = self.try_into().unwrap();
+                        let component: $var = self.try_into().expect(&format!("Cant try into {} on entity.", stringify!($var)));
                         entity_mut.insert(component);
                     },)*
                 }
@@ -96,7 +99,7 @@ macro_rules! impl_enc_component {
         }
     }
 }
-impl_enc_component! { Name, Transform, GlobalTransform, Visibility, InheritedVisibility, ViewVisibility, DerivedMaterial, DerivedMesh }
+impl_enc_component! { Name, Transform, GlobalTransform, Visibility, InheritedVisibility, ViewVisibility, DerivedMaterial, DerivedMesh, Node }
 
 pub trait EncodableComponent {
     fn try_encode(&self) -> Result<EncComponent, anyhow::Error>;
@@ -153,6 +156,8 @@ macro_rules! impl_encodable_component {
         }
     };
 }
+
+impl_encodable_component!(Node);
 
 impl_encodable_component!(Name);
 impl_encodable_component!(Transform);

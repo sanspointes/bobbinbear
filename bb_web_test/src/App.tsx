@@ -1,26 +1,23 @@
-import { Show, onMount } from 'solid-js'
-import './App.css'
-import { IpcButtons } from './IpcButtons';
+import { Show, onMount } from 'solid-js';
+import './App.css';
 import { useBBCore } from './hooks/useBBCore';
+import { ApiButtons } from './ApiButtons';
 
 function App() {
-    const { ipc, setup } = useBBCore();
+    const { api, setup } = useBBCore();
     onMount(() => {
-        setup('#bb-canvas')
-    })
+        setup('#bb-canvas');
+    });
 
     return (
         <>
-            <canvas id="bb-canvas">
-            </canvas>
+            <canvas id="bb-canvas" />
             <h1>Vite + Solid</h1>
             <div class="card">
-                <Show when={ipc()}>
-                    {ipc => <IpcButtons ipc={ipc()} />}
-                </Show>
+                <Show when={api()}>{(api) => <ApiButtons api={api()} />}</Show>
             </div>
         </>
-    )
+    );
 }
 
-export default App
+export default App;

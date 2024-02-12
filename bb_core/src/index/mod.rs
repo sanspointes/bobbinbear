@@ -1,16 +1,18 @@
 use std::{fmt::{Debug, Display}, hash::Hash};
 
+use tsify::Tsify;
 use bevy::{prelude::*, utils::{Uuid, HashMap}, reflect::Map};
 
 #[derive(
-    Component, Reflect, Eq, PartialEq, Hash, Copy, Clone, serde::Serialize, serde::Deserialize,
+    Component, Reflect, Eq, PartialEq, Hash, Copy, Clone, serde::Serialize, serde::Deserialize, Tsify,
 )]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 /// A unique identifier that can be used to
-pub struct Idx(pub [u64; 2]);
+pub struct Idx(pub u32);
 
 impl Idx {
     pub fn new() -> Self {
-        Self(Uuid::new_v4().as_u64_pair().into())
+        Self(Uuid::new_v4().as_u64_pair().0 as u32)
     }
 }
 
@@ -22,16 +24,16 @@ impl Default for Idx {
 
 impl Debug for Idx {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "BBID({}-{})", self.0[0], self.0[1])
+        write!(f, "BBID({})", self.0)
     }
 }
 impl Display for Idx {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "BBID({}-{})", self.0[0], self.0[1])
+        write!(f, "BBID({})", self.0)
     }
 }
 
-#[derive(Resource)]
+#[derive(Resource, Default)]
 pub struct IdxResource {
     forward: HashMap<Idx, Entity>
 }
