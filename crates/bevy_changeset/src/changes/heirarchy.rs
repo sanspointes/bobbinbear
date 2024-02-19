@@ -5,6 +5,7 @@ use crate::{error::ChangeError, uid::Uid};
 
 use super::Change;
 
+#[derive(Debug)]
 /// A Change that parents 1 entity to another
 ///
 /// * `target`: Target entity to act upon

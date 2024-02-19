@@ -2,6 +2,8 @@ mod heirarchy;
 mod insert;
 mod spawn;
 
+use std::fmt::Debug;
+
 use bevy_ecs::{component::Component, world::World};
 
 use crate::{error::ChangeError, uid::Uid};
@@ -9,27 +11,33 @@ use crate::{error::ChangeError, uid::Uid};
 use self::{
     heirarchy::SetParentChange,
     insert::{InsertChange, RemoveChange},
-    spawn::DespawnChange,
+    spawn::{DespawnChange, SpawnChange},
 };
 
-pub trait Change {
+pub trait Change: Debug {
     fn apply(&self, world: &mut World) -> Result<Box<dyn Change>, ChangeError>;
 }
 
+#[derive(Debug)]
 pub struct ChangeSet {
     changes: Vec<Box<dyn Change>>,
 }
 
 impl ChangeSet {
-    fn apply(self, world: &mut World) -> Result<ChangeSet, ChangeError> {
+    pub fn apply(self, world: &mut World) -> Result<ChangeSet, ChangeError> {
+        println!("Applying {} changes...", self.changes.len());
         let inverse: Result<Vec<Box<dyn Change>>, ChangeError> = self
             .changes
             .into_iter()
-            .map(|change| change.apply(world))
-            .rev() // Reverse order 
+            .map(|change| {
+                println!("Applying change {change:?}");
+                change.apply(world)
+            })
             .collect();
+        let mut inverse = inverse?;
+        inverse.reverse();
 
-        Ok(ChangeSet { changes: inverse? })
+        Ok(ChangeSet { changes: inverse })
     }
 }
 
@@ -50,9 +58,18 @@ impl<'w> ChangesetBuilder<'w> {
         self.changes.push(change);
     }
 
-    pub fn spawn_empty<'a>(&'a mut self) -> EntityChangeset<'w, 'a> {
+    pub fn entity<'a>(&'a mut self, uid: Uid) -> EntityChangeset<'w, 'a> {
         EntityChangeset {
-            target: Uid::default(),
+            target: uid,
+            builder: self,
+        }
+    }
+
+    pub fn spawn_empty<'a>(&'a mut self) -> EntityChangeset<'w, 'a> {
+        let uid = Uid::default();
+        self.push(Box::new(SpawnChange::new(uid)));
+        EntityChangeset {
+            target: uid,
             builder: self,
         }
     }
@@ -74,12 +91,12 @@ pub struct EntityChangeset<'w, 'a> {
 }
 
 impl<'w, 'a> EntityChangeset<'w, 'a> {
-    pub fn insert<C: Component + Clone>(&mut self, component: C) -> &mut Self {
+    pub fn insert<C: Component + Clone + Debug>(&mut self, component: C) -> &mut Self {
         self.builder
             .push(Box::new(InsertChange::new(self.target, component)));
         self
     }
-    pub fn remove<C: Component + Clone>(&mut self) -> &mut Self {
+    pub fn remove<C: Component + Clone + Debug>(&mut self) -> &mut Self {
         self.builder
             .push(Box::new(RemoveChange::<C>::new(self.target)));
         self
@@ -93,5 +110,9 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
         self.builder
             .push(Box::new(SetParentChange::unparent(self.target)));
         self
+    }
+
+    pub fn uid(&self) -> Uid {
+        self.target
     }
 }

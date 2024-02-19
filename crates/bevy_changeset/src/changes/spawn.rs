@@ -4,6 +4,7 @@ use crate::{error::ChangeError, uid::Uid};
 
 use super::Change;
 
+#[derive(Debug)]
 pub struct SpawnChange {
     uid: Uid,
 }
@@ -19,6 +20,7 @@ impl Change for SpawnChange {
     }
 }
 
+#[derive(Debug)]
 pub struct DespawnChange {
     uid: Uid,
 }
