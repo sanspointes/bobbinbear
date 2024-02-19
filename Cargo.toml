@@ -4,6 +4,7 @@ resolver = "2"
 members = [
     "bb_core",
     "bb_desktop",
+    "crates/bevy_changeset",
 ]
 
 # Fix for RA breaking incremental compilation.
