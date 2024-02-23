@@ -1,9 +1,9 @@
 use std::{any::TypeId, sync::Arc};
 
 use bevy_ecs::{
-    component::Component, entity::Entity, reflect::ReflectComponent, world::{EntityRef, EntityWorldMut, World}
+    component::Component, entity::Entity, reflect::{self, ReflectComponent}, world::{EntityRef, EntityWorldMut, World}
 };
-use bevy_reflect::{Reflect, TypeRegistry};
+use bevy_reflect::{Reflect, TypeRegistration, TypeRegistry};
 use bevy_scene::SceneFilter;
 
 use crate::uid::Uid;
@@ -59,7 +59,6 @@ impl ComponentFragment {
         Self::new(component.as_reflect().clone_value().into())
     }
 
-
     /// If an Entity in the World has component T, create a ComponentFragment from it.
     ///
     /// * `world`: 
@@ -78,11 +77,7 @@ impl ComponentFragment {
         })
     }
 
-    pub fn insert_to_entity_world_mut(
-        &self,
-        type_registry: &TypeRegistry,
-        entity_mut: &mut EntityWorldMut,
-    ) -> Result<(), FragmentApplyError> {
+    pub fn get_reflect_component<'a>(&'a self, type_registry: &'a TypeRegistry) -> Result<&'a ReflectComponent, FragmentApplyError> {
         let type_info = self.component.get_represented_type_info().ok_or_else(|| {
             FragmentApplyError::NoRepresentedType {
                 type_path: self.component.reflect_type_path().to_string(),
@@ -93,12 +88,47 @@ impl ComponentFragment {
                 type_path: type_info.type_path().to_string(),
             }
         })?;
-        let reflect_component = registration.data::<ReflectComponent>().ok_or_else(|| {
+        registration.data::<ReflectComponent>().ok_or_else(|| {
             FragmentApplyError::UnregisteredComponent {
                 type_path: type_info.type_path().to_string(),
             }
-        })?;
+        })
+    }
 
+    pub fn insert(&self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+        let comp = self.get_reflect_component(type_registry)?;
+        comp.insert(entity, &*self.component);
+        Ok(())
+    }
+    pub fn apply(&self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+        let comp = self.get_reflect_component(type_registry)?;
+        comp.apply(entity, &*self.component);
+        Ok(())
+    }
+    pub fn apply_or_insert(&self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+        let comp = self.get_reflect_component(type_registry)?;
+        comp.apply_or_insert(entity, &*self.component);
+        Ok(())
+    }
+    pub fn remove(&self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+        let comp = self.get_reflect_component(type_registry)?;
+        comp.apply_or_insert(entity, &*self.component);
+        Ok(())
+    }
+    pub fn swap(&mut self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+        let comp = self.get_reflect_component(type_registry)?;
+        let reflected: Arc<_> = comp.reflect_mut(entity).unwrap().clone_value().into();
+        comp.apply(entity, &*self.component);
+        self.component = reflected;
+        Ok(())
+    }
+
+    pub fn insert_to_entity_world_mut(
+        &self,
+        type_registry: &TypeRegistry,
+        entity_mut: &mut EntityWorldMut,
+    ) -> Result<(), FragmentApplyError> {
+        let reflect_component = self.get_reflect_component(type_registry)?;
         reflect_component.insert(entity_mut, &*self.component);
         Ok(())
     }
@@ -115,5 +145,22 @@ impl ComponentFragment {
         let mut entity_mut = world.entity_mut(entity);
 
         self.insert_to_entity_world_mut(type_registry, &mut entity_mut)
+    }
+
+    /// Gets the TypeId of the Component
+    ///
+    /// * `type_registry`: Type Registry to get the type id from
+    pub fn try_type_id(&self, type_registry: &TypeRegistry) -> Result<TypeId, FragmentApplyError> {
+        let type_info = self.component.get_represented_type_info().ok_or_else(|| {
+            FragmentApplyError::NoRepresentedType {
+                type_path: self.component.reflect_type_path().to_string(),
+            }
+        })?;
+        let registration = type_registry.get(type_info.type_id()).ok_or_else(|| {
+            FragmentApplyError::UnregisteredButReflectedType {
+                type_path: type_info.type_path().to_string(),
+            }
+        })?;
+        Ok(registration.type_id())
     }
 }

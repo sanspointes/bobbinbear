@@ -21,6 +21,10 @@ impl EntityFragment {
         Self { uid, components }
     }
 
+    pub fn uid(&self) -> Uid {
+        self.uid
+    }
+
     pub(crate) fn components_from_entity(
         world: &mut World,
         type_registry: &TypeRegistry,

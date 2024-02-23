@@ -408,6 +408,8 @@ dependencies = [
  "bevy_ecs",
  "bevy_hierarchy",
  "bevy_reflect",
+ "bevy_scene",
+ "bevy_spts_fragments",
  "serde",
  "thiserror",
  "uuid",

@@ -1,9 +1,7 @@
-use std::vec::IntoIter;
-
-use bevy_ecs::world::World;
 use bevy_hierarchy::{BuildWorldChildren, Parent};
+use bevy_spts_fragments::prelude::Uid;
 
-use crate::{error::ChangeError, uid::Uid};
+use crate::{error::ChangeError, resource::ChangesetContext};
 
 use super::{Change, ChangeIter, IntoChangeIter};
 
@@ -32,17 +30,14 @@ impl SetParentChange {
 }
 
 impl Change for SetParentChange {
-    fn apply(
-        &self,
-        world: &mut World,
-    ) -> Result<ChangeIter, ChangeError> {
+    fn apply(&self, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
         let target = self
             .target
-            .entity(world)
+            .entity(cx.world)
             .ok_or(ChangeError::NoEntity(self.target))?;
         let prev_parent = {
-            if let Some(p) = world.get::<Parent>(target) {
-                world.get::<Uid>(p.get()).cloned()
+            if let Some(p) = cx.world.get::<Parent>(target) {
+                cx.world.get::<Uid>(p.get()).cloned()
             } else {
                 None
             }
@@ -50,13 +45,13 @@ impl Change for SetParentChange {
 
         match self.parent {
             Some(parent) => {
-                let parent = parent.entity(world).ok_or(ChangeError::NoEntity(parent))?;
+                let parent = parent.entity(cx.world).ok_or(ChangeError::NoEntity(parent))?;
 
-                let mut entity_mut = world.entity_mut(target);
+                let mut entity_mut = cx.world.entity_mut(target);
                 entity_mut.set_parent(parent);
             }
             None => {
-                let mut entity_mut = world.entity_mut(target);
+                let mut entity_mut = cx.world.entity_mut(target);
                 entity_mut.remove_parent();
             }
         }
@@ -64,6 +59,7 @@ impl Change for SetParentChange {
         Ok(SetParentChange {
             target: self.target,
             parent: prev_parent,
-        }.into_change_iter())
+        }
+        .into_change_iter())
     }
 }

@@ -1,14 +1,10 @@
 //! 
 
-
-use std::marker::PhantomData;
-
+use bevy_spts_fragments::prelude::Uid;
 use thiserror::Error;
 
-use crate::uid::Uid;
-
 #[derive(Error, Debug)]
-enum ComponentMismatchError {
+pub enum ComponentMismatchError {
     #[error("The entity is not parented to {0}.")]
     MissingParent(Uid),
     #[error("The entity expected to have parent {0} but instead found {1}.")]

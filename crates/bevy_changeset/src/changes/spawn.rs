@@ -1,24 +1,24 @@
 use std::fmt::Debug;
 
-use bevy_ecs::world::World;
+use bevy_spts_fragments::prelude::{EntityFragment, Uid};
 
-use crate::{error::ChangeError, uid::Uid};
+use crate::{error::ChangeError, resource::ChangesetContext};
 
 use super::{Change, ChangeIter, IntoChangeIter};
 
 #[derive(Debug)]
-pub struct SpawnChange {
-    uid: Uid,
-}
+pub struct SpawnChange(EntityFragment);
+
 impl SpawnChange {
-    pub fn new(uid: Uid) -> Self {
-        Self { uid }
+    pub fn new(entity_fragment: EntityFragment) -> Self {
+        Self(entity_fragment)
     }
 }
 impl Change for SpawnChange {
-    fn apply(&self, world: &mut World) -> Result<ChangeIter, ChangeError> {
-        world.spawn(self.uid);
-        Ok(DespawnChange::new(self.uid).into_change_iter())
+    fn apply(&self, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
+        let entity_fragment = &self.0;
+        entity_fragment.spawn_in_world(cx.world, cx.type_registry);
+        Ok(DespawnChange::new(entity_fragment.uid()).into_change_iter())
     }
 }
 
@@ -32,21 +32,16 @@ impl DespawnChange {
     }
 }
 impl Change for DespawnChange {
-    fn apply(&self, world: &mut World) -> Result<ChangeIter, ChangeError> {
+    fn apply(&self, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
         let entity = self
             .uid
-            .entity(world)
+            .entity(cx.world)
             .ok_or(ChangeError::NoEntity(self.uid))?;
 
-        let entity_ref = world.entity(entity);
-        let archetype = entity_ref.archetype();
+        let entity_fragment =
+            EntityFragment::from_world_uid(cx.world, cx.type_registry, cx.filter, self.uid);
 
-        let mut inverse = vec![];
-        for component_id in archetype.components() {
-            let v = world.get_by_id(entity, component_id).unwrap();
-        }
-
-        world.despawn(entity);
-        Ok(SpawnChange::new(self.uid).into_change_iter())
+        cx.world.despawn(entity);
+        Ok(SpawnChange::new(entity_fragment).into_change_iter())
     }
 }
