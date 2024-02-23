@@ -1,12 +1,12 @@
-
 pub mod commands_ext;
 pub mod changes;
 pub mod error;
 pub mod uid;
+pub mod fragments;
 
 pub mod prelude {
-    use crate::error::ChangeError;
-    use crate::uid::Uid;
-    use crate::commands_ext::WorldChangesetExt;
-    use crate::changes::*;
+    pub use crate::error::ChangeError;
+    pub use crate::uid::Uid;
+    pub use crate::commands_ext::WorldChangesetExt;
+    pub use crate::changes::*;
 }

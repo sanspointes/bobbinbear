@@ -14,8 +14,30 @@ use self::{
     spawn::{DespawnChange, SpawnChange},
 };
 
+pub struct ChangeIter(pub Box<dyn Iterator<Item = Box<dyn Change>>>);
+impl Iterator for ChangeIter {
+    type Item = Box<dyn Change>;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.0.next()
+    }
+}
+
+pub trait IntoChangeIter {
+    fn into_change_iter(self) -> ChangeIter;
+}
+
+impl<T> IntoChangeIter for T 
+where
+    T: Change + 'static
+{
+    fn into_change_iter(self) -> ChangeIter {
+        let boxed = Box::new(self) as Box<dyn Change>;
+        ChangeIter(Box::new(Some(boxed).into_iter()))
+    }
+}
+
 pub trait Change: Debug {
-    fn apply(&self, world: &mut World) -> Result<Box<dyn Change>, ChangeError>;
+    fn apply(&self, world: &mut World) -> Result<ChangeIter, ChangeError>;
 }
 
 #[derive(Debug)]
@@ -26,15 +48,14 @@ pub struct ChangeSet {
 impl ChangeSet {
     pub fn apply(self, world: &mut World) -> Result<ChangeSet, ChangeError> {
         println!("Applying {} changes...", self.changes.len());
-        let inverse: Result<Vec<Box<dyn Change>>, ChangeError> = self
-            .changes
-            .into_iter()
-            .map(|change| {
-                println!("Applying change {change:?}");
-                change.apply(world)
-            })
-            .collect();
-        let mut inverse = inverse?;
+
+        let mut inverse = vec![];
+
+        for change in self.changes {
+            let iter = change.apply(world)?;
+            inverse.extend(iter);
+        }
+
         inverse.reverse();
 
         Ok(ChangeSet { changes: inverse })

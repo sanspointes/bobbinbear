@@ -1,9 +1,11 @@
+use std::vec::IntoIter;
+
 use bevy_ecs::world::World;
 use bevy_hierarchy::{BuildWorldChildren, Parent};
 
 use crate::{error::ChangeError, uid::Uid};
 
-use super::Change;
+use super::{Change, ChangeIter, IntoChangeIter};
 
 #[derive(Debug)]
 /// A Change that parents 1 entity to another
@@ -30,7 +32,10 @@ impl SetParentChange {
 }
 
 impl Change for SetParentChange {
-    fn apply(&self, world: &mut World) -> Result<Box<dyn Change>, ChangeError> {
+    fn apply(
+        &self,
+        world: &mut World,
+    ) -> Result<ChangeIter, ChangeError> {
         let target = self
             .target
             .entity(world)
@@ -56,9 +61,9 @@ impl Change for SetParentChange {
             }
         }
 
-        Ok(Box::new(SetParentChange {
+        Ok(SetParentChange {
             target: self.target,
             parent: prev_parent,
-        }))
+        }.into_change_iter())
     }
 }
