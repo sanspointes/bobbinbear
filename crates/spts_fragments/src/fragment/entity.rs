@@ -28,7 +28,6 @@ impl EntityFragment {
     pub(crate) fn components_from_entity(
         world: &mut World,
         type_registry: &TypeRegistry,
-        filter: &SceneFilter,
         entity: Entity,
     ) -> Vec<ComponentFragment> {
         let entity_ref = world.get_entity(entity).unwrap();
@@ -40,7 +39,7 @@ impl EntityFragment {
                 .get_info(comp_id)
                 .and_then(|c| c.type_id())
                 .and_then(|id| {
-                    ComponentFragment::from_type_id_filtered(type_registry, &entity_ref, id, filter)
+                    ComponentFragment::from_type_id(type_registry, &entity_ref, id)
                 });
 
             if let Some(cf) = component_fragment {
@@ -54,24 +53,22 @@ impl EntityFragment {
     pub fn from_world_uid(
         world: &mut World,
         type_registry: &TypeRegistry,
-        filter: &SceneFilter,
         uid: Uid,
     ) -> Self {
         let entity = uid.entity(world).unwrap();
         let components =
-            EntityFragment::components_from_entity(world, type_registry, filter, entity);
+            EntityFragment::components_from_entity(world, type_registry, entity);
         EntityFragment::new(uid, components)
     }
 
     pub fn from_world_entity(
         world: &mut World,
         type_registry: &TypeRegistry,
-        filter: &SceneFilter,
         entity: Entity,
     ) -> Self {
         let uid = *world.get::<Uid>(entity).unwrap();
         let components =
-            EntityFragment::components_from_entity(world, type_registry, filter, entity);
+            EntityFragment::components_from_entity(world, type_registry, entity);
         EntityFragment::new(uid, components)
     }
 

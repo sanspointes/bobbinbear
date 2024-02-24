@@ -1,73 +1,107 @@
 use bevy_app::App;
-use bevy_changeset::{commands_ext::WorldChangesetExt, uid::Uid};
-use bevy_ecs::component::Component;
+use bevy_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
+use bevy_ecs::{component::Component, world::FromWorld, reflect::ReflectComponent};
+use bevy_reflect::{Reflect, TypeRegistry};
+use bevy_scene::SceneFilter;
+use bevy_spts_fragments::prelude::Uid;
+
+#[derive(Default)]
+struct DefaultChangesetTag;
 
 #[test]
 pub fn spawn_change_spawns_entity() {
     let mut app = App::new();
+    app.insert_resource(ChangesetResource::<DefaultChangesetTag>::default());
     let world = &mut app.world;
     // Spawn empty
     let mut builder = world.changeset();
     let uid = builder.spawn_empty().uid();
+    let do_change = builder.build();
     // Apply to world
-    let undo = builder.build().apply(world).unwrap();
-    let in_world = world.query::<&Uid>().single(world);
-    assert_eq!(uid, *in_world);
-    // Undo
-    undo.apply(world).unwrap();
-    world.query::<&Uid>().get_single(world).unwrap_err();
+    ChangesetResource::<DefaultChangesetTag>::context_scope(world, |world, cx| {
+        let undo_change = do_change.apply(world, cx).unwrap();
+
+        let in_world = world.query::<&Uid>().single(world);
+        assert_eq!(uid, *in_world);
+
+        // Undo
+        undo_change.apply(world, cx).unwrap();
+        world.query::<&Uid>().get_single(world).unwrap_err();
+    });
 }
 
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Reflect, Default, Debug)]
+#[reflect(Component)]
 struct MyTag;
-#[derive(Component, Debug, Clone)]
+#[derive(Component, Reflect, Default, Debug)]
+#[reflect(Component)]
 struct MyOtherTag;
 
 #[test]
 pub fn spawns_with_components() {
     let mut app = App::new();
+
+    let mut changeset_type_registry = TypeRegistry::new();
+    changeset_type_registry.register::<MyTag>();
+    changeset_type_registry.register::<MyOtherTag>();
+    app.insert_resource(ChangesetResource::<DefaultChangesetTag>::new(changeset_type_registry));
+
     let world = &mut app.world;
 
-    let mut builder = world.changeset();
-    let uid = builder.spawn_empty().insert(MyTag).uid();
-    let undo1 = builder.build().apply(world).unwrap();
+    ChangesetResource::<DefaultChangesetTag>::context_scope(world, |world, cx| {
+        let mut builder = world.changeset();
+        let uid = builder.spawn_empty().insert(MyTag).uid();
 
-    world.query::<(&Uid, &MyTag)>().single(world);
+        let do_change = builder.build();
 
-    let mut builder = world.changeset();
-    builder.entity(uid).insert(MyOtherTag);
-    let undo2 = builder.build().apply(world).unwrap();
+        let undo1 = do_change.apply(world, cx).unwrap();
+        world.query::<(&Uid, &MyTag)>().single(world);
 
-    world.query::<(&Uid, &MyTag, &MyOtherTag)>().single(world);
+        let mut builder = world.changeset();
+        builder.entity(uid).insert(MyOtherTag);
+        let undo2 = builder.build().apply(world, cx).unwrap();
 
-    undo2.apply(world).unwrap();
+        world.query::<(&Uid, &MyTag, &MyOtherTag)>().single(world);
 
-    world.query::<(&Uid, &MyTag)>().single(world);
+        undo2.apply(world, cx).unwrap();
 
-    undo1.apply(world).unwrap();
+        world.query::<(&Uid, &MyTag)>().single(world);
 
-    world
-        .query::<(&Uid, &MyTag)>()
-        .get_single(world)
-        .unwrap_err();
+        undo1.apply(world, cx).unwrap();
+
+        world
+            .query::<(&Uid, &MyTag)>()
+            .get_single(world)
+            .unwrap_err();
+    });
+
 }
 
 #[test]
 pub fn respawns_despawned_components() {
     let mut app = App::new();
+
+    let mut changeset_type_registry = TypeRegistry::new();
+    changeset_type_registry.register::<MyTag>();
+    changeset_type_registry.register::<MyOtherTag>();
+    app.insert_resource(ChangesetResource::<DefaultChangesetTag>::new(changeset_type_registry));
+
     let world = &mut app.world;
 
-    let mut builder = world.changeset();
-    let uid = builder.spawn_empty().insert(MyTag).uid();
-    builder.build().apply(world).unwrap();
 
-    let mut builder = world.changeset();
-    builder.despawn(uid);
-    let undo = builder.build().apply(world).unwrap();
+    ChangesetResource::<DefaultChangesetTag>::context_scope(world, |world, cx| {
+        let mut builder = world.changeset();
+        let uid = builder.spawn_empty().insert(MyTag).uid();
+        builder.build().apply(world, cx).unwrap();
 
-    world.query::<&Uid>().get_single(world).unwrap_err();
+        let mut builder = world.changeset();
+        builder.despawn(uid);
+        let undo = builder.build().apply(world, cx).unwrap();
 
-    undo.apply(world).unwrap();
+        world.query::<&Uid>().get_single(world).unwrap_err();
 
-    world.query::<(&Uid, &MyTag)>().get_single(world).expect("Did not respawn the `MyTag` component with error");
+        undo.apply(world, cx).unwrap();
+
+        world.query::<(&Uid, &MyTag)>().get_single(world).expect("Did not respawn the `MyTag` component with error");
+    });
 }

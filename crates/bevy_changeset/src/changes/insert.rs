@@ -1,7 +1,6 @@
-use std::{any::TypeId, fmt::Debug, sync::Arc};
+use std::{any::TypeId, fmt::Debug};
 
-use bevy_ecs::reflect::ReflectComponent;
-use bevy_reflect::Reflect;
+use bevy_ecs::{reflect::ReflectComponent, world::World};
 use bevy_spts_fragments::prelude::{ComponentFragment, Uid};
 
 use crate::{error::ChangeError, resource::ChangesetContext};
@@ -21,13 +20,19 @@ impl InsertChange {
 }
 
 impl Change for InsertChange {
-    fn apply(&self, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
+    fn apply(
+        &self,
+        world: &mut World,
+        cx: &mut ChangesetContext,
+    ) -> Result<ChangeIter, ChangeError> {
         let mut entity_mut = self
             .target
-            .entity_world_mut(cx.world)
+            .entity_world_mut(world)
             .ok_or(ChangeError::NoEntity(self.target))?;
 
-        self.component.insert(&mut entity_mut, cx.type_registry).unwrap();
+        self.component
+            .insert(&mut entity_mut, cx.type_registry)
+            .unwrap();
         let type_id = self.component.try_type_id(cx.type_registry).unwrap();
 
         Ok(RemoveChange::new(self.target, type_id).into_change_iter())
@@ -47,10 +52,14 @@ impl ApplyChange {
 }
 
 impl Change for ApplyChange {
-    fn apply(&self, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
+    fn apply(
+        &self,
+        world: &mut World,
+        cx: &mut ChangesetContext,
+    ) -> Result<ChangeIter, ChangeError> {
         let mut entity_mut = self
             .target
-            .entity_world_mut(cx.world)
+            .entity_world_mut(world)
             .ok_or(ChangeError::NoEntity(self.target))?;
 
         let mut component = self.component.clone();
@@ -73,10 +82,14 @@ impl RemoveChange {
 }
 
 impl Change for RemoveChange {
-    fn apply(&self, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
+    fn apply(
+        &self,
+        world: &mut World,
+        cx: &mut ChangesetContext,
+    ) -> Result<ChangeIter, ChangeError> {
         let mut entity_mut = self
             .target
-            .entity_world_mut(cx.world)
+            .entity_world_mut(world)
             .ok_or(ChangeError::NoEntity(self.target))?;
 
         let registration = cx.type_registry.get(self.type_id).unwrap();

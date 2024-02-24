@@ -32,15 +32,15 @@ impl HierarchyFragment {
     /// * `type_registry`: 
     /// * `filter`: 
     /// * `uid`: 
-    pub fn from_world_uid(world: &mut World, type_registry: &TypeRegistry, filter: &SceneFilter, uid: Uid) -> HierarchyFragment {
+    pub fn from_world_uid(world: &mut World, type_registry: &TypeRegistry, uid: Uid) -> HierarchyFragment {
         let entity = uid.entity(world).unwrap();
 
-        let entity_fragment = EntityFragment::from_world_entity(world, type_registry, filter, entity);
+        let entity_fragment = EntityFragment::from_world_entity(world, type_registry, entity);
 
         let children: Option<SmallVec<[Entity; 8]>> = world.get::<Children>(entity).map(|children| children.into_iter().cloned().collect());
         let children: Option<Vec<HierarchyFragment>> = children.map(|children| {
             children.into_iter().map(|child| {
-                HierarchyFragment::from_world_entity(world, type_registry, filter, child)
+                HierarchyFragment::from_world_entity(world, type_registry, child)
             }).collect()
         });
 
@@ -53,13 +53,13 @@ impl HierarchyFragment {
     /// * `type_registry`: Type registry used to control what will be extracted from the world.
     /// * `filter`: 
     /// * `entity`: 
-    pub fn from_world_entity(world: &mut World, type_registry: &TypeRegistry, filter: &SceneFilter, entity: Entity) -> HierarchyFragment {
-        let entity_fragment = EntityFragment::from_world_entity(world, type_registry, filter, entity);
+    pub fn from_world_entity(world: &mut World, type_registry: &TypeRegistry, entity: Entity) -> HierarchyFragment {
+        let entity_fragment = EntityFragment::from_world_entity(world, type_registry, entity);
 
         let children: Option<SmallVec<[Entity; 8]>> = world.get::<Children>(entity).map(|children| children.into_iter().cloned().collect());
         let children: Option<Vec<HierarchyFragment>> = children.map(|children| {
             children.into_iter().map(|child| {
-                HierarchyFragment::from_world_entity(world, type_registry, filter, child)
+                HierarchyFragment::from_world_entity(world, type_registry, child)
             }).collect()
         });
 

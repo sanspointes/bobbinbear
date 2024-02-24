@@ -1,5 +1,6 @@
 use std::fmt::Debug;
 
+use bevy_ecs::world::World;
 use bevy_spts_fragments::prelude::{EntityFragment, Uid};
 
 use crate::{error::ChangeError, resource::ChangesetContext};
@@ -15,9 +16,9 @@ impl SpawnChange {
     }
 }
 impl Change for SpawnChange {
-    fn apply(&self, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
+    fn apply(&self, world: &mut World, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
         let entity_fragment = &self.0;
-        entity_fragment.spawn_in_world(cx.world, cx.type_registry);
+        entity_fragment.spawn_in_world(world, cx.type_registry);
         Ok(DespawnChange::new(entity_fragment.uid()).into_change_iter())
     }
 }
@@ -32,16 +33,16 @@ impl DespawnChange {
     }
 }
 impl Change for DespawnChange {
-    fn apply(&self, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
+    fn apply(&self, world: &mut World, cx: &mut ChangesetContext) -> Result<ChangeIter, ChangeError> {
         let entity = self
             .uid
-            .entity(cx.world)
+            .entity(world)
             .ok_or(ChangeError::NoEntity(self.uid))?;
 
         let entity_fragment =
-            EntityFragment::from_world_uid(cx.world, cx.type_registry, cx.filter, self.uid);
+            EntityFragment::from_world_uid(world, cx.type_registry, self.uid);
 
-        cx.world.despawn(entity);
+        world.despawn(entity);
         Ok(SpawnChange::new(entity_fragment).into_change_iter())
     }
 }

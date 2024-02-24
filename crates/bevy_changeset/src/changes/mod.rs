@@ -12,7 +12,7 @@ use crate::{error::ChangeError, resource::ChangesetContext};
 
 use self::{
     heirarchy::SetParentChange,
-    insert::{ApplyChange, RemoveChange},
+    insert::{ApplyChange, InsertChange, RemoveChange},
     spawn::{DespawnChange, SpawnChange},
 };
 
@@ -39,7 +39,7 @@ where
 }
 
 pub trait Change: Debug {
-    fn apply(&self, context: &mut ChangesetContext) -> Result<ChangeIter, ChangeError>;
+    fn apply(&self, world: &mut World, context: &mut ChangesetContext) -> Result<ChangeIter, ChangeError>;
 }
 
 #[derive(Debug)]
@@ -48,13 +48,13 @@ pub struct ChangeSet {
 }
 
 impl ChangeSet {
-    pub fn apply(self, cx: &mut ChangesetContext) -> Result<ChangeSet, ChangeError> {
+    pub fn apply(self, world: &mut World, cx: &mut ChangesetContext) -> Result<ChangeSet, ChangeError> {
         println!("Applying {} changes...", self.changes.len());
 
         let mut inverse = vec![];
 
         for change in self.changes {
-            let iter = change.apply(cx)?;
+            let iter = change.apply(world, cx)?;
             inverse.extend(iter);
         }
 
@@ -115,7 +115,7 @@ pub struct EntityChangeset<'w, 'a> {
 
 impl<'w, 'a> EntityChangeset<'w, 'a> {
     pub fn insert<C: Component + Reflect>(&mut self, component: C) -> &mut Self {
-        self.builder.push(Box::new(ApplyChange::new(
+        self.builder.push(Box::new(InsertChange::new(
             self.target,
             ComponentFragment::from_component::<C>(&component),
         )));

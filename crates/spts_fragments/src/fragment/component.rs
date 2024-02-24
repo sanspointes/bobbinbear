@@ -1,9 +1,12 @@
 use std::{any::TypeId, sync::Arc};
 
 use bevy_ecs::{
-    component::Component, entity::Entity, reflect::{self, ReflectComponent}, world::{EntityRef, EntityWorldMut, World}
+    component::Component,
+    entity::Entity,
+    reflect::ReflectComponent,
+    world::{EntityRef, EntityWorldMut, World},
 };
-use bevy_reflect::{Reflect, TypeRegistration, TypeRegistry};
+use bevy_reflect::{Reflect, TypeRegistry};
 use bevy_scene::SceneFilter;
 
 use crate::uid::Uid;
@@ -61,23 +64,29 @@ impl ComponentFragment {
 
     /// If an Entity in the World has component T, create a ComponentFragment from it.
     ///
-    /// * `world`: 
+    /// * `world`:
     /// * `entity`:  Entity to extract ComponentFragment from
-    pub fn try_from_entity<T: Component + Reflect>(world: &mut World, entity: Entity) -> Option<Self> {
+    pub fn try_from_entity<T: Component + Reflect>(
+        world: &mut World,
+        entity: Entity,
+    ) -> Option<Self> {
         let entity_ref = world.get_entity(entity)?;
         Self::try_from_entity_ref::<T>(&entity_ref)
     }
 
     /// If an EntityWorldMut has component T, create a ComponentFragment from it.
     ///
-    /// * `entity_mut`: 
+    /// * `entity_mut`:
     pub fn try_from_entity_ref<T: Component + Reflect>(entity_ref: &EntityRef) -> Option<Self> {
-        entity_ref.get::<T>().map(|component| {
-            Self::from_component(component)
-        })
+        entity_ref
+            .get::<T>()
+            .map(|component| Self::from_component(component))
     }
 
-    pub fn get_reflect_component<'a>(&'a self, type_registry: &'a TypeRegistry) -> Result<&'a ReflectComponent, FragmentApplyError> {
+    pub fn get_reflect_component<'a>(
+        &'a self,
+        type_registry: &'a TypeRegistry,
+    ) -> Result<&'a ReflectComponent, FragmentApplyError> {
         let type_info = self.component.get_represented_type_info().ok_or_else(|| {
             FragmentApplyError::NoRepresentedType {
                 type_path: self.component.reflect_type_path().to_string(),
@@ -95,27 +104,47 @@ impl ComponentFragment {
         })
     }
 
-    pub fn insert(&self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+    pub fn insert(
+        &self,
+        entity: &mut EntityWorldMut,
+        type_registry: &TypeRegistry,
+    ) -> Result<(), FragmentApplyError> {
         let comp = self.get_reflect_component(type_registry)?;
         comp.insert(entity, &*self.component);
         Ok(())
     }
-    pub fn apply(&self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+    pub fn apply(
+        &self,
+        entity: &mut EntityWorldMut,
+        type_registry: &TypeRegistry,
+    ) -> Result<(), FragmentApplyError> {
         let comp = self.get_reflect_component(type_registry)?;
         comp.apply(entity, &*self.component);
         Ok(())
     }
-    pub fn apply_or_insert(&self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+    pub fn apply_or_insert(
+        &self,
+        entity: &mut EntityWorldMut,
+        type_registry: &TypeRegistry,
+    ) -> Result<(), FragmentApplyError> {
         let comp = self.get_reflect_component(type_registry)?;
         comp.apply_or_insert(entity, &*self.component);
         Ok(())
     }
-    pub fn remove(&self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+    pub fn remove(
+        &self,
+        entity: &mut EntityWorldMut,
+        type_registry: &TypeRegistry,
+    ) -> Result<(), FragmentApplyError> {
         let comp = self.get_reflect_component(type_registry)?;
         comp.apply_or_insert(entity, &*self.component);
         Ok(())
     }
-    pub fn swap(&mut self, entity: &mut EntityWorldMut, type_registry: &TypeRegistry) -> Result<(), FragmentApplyError> {
+    pub fn swap(
+        &mut self,
+        entity: &mut EntityWorldMut,
+        type_registry: &TypeRegistry,
+    ) -> Result<(), FragmentApplyError> {
         let comp = self.get_reflect_component(type_registry)?;
         let reflected: Arc<_> = comp.reflect_mut(entity).unwrap().clone_value().into();
         comp.apply(entity, &*self.component);
