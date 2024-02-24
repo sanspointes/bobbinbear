@@ -7,7 +7,7 @@ use bevy_reflect::Reflect;
 
 /// A unique identifier that can be used to lookup entities, persists between 
 ///
-#[derive(Debug, Clone, Copy, Reflect, Component, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Reflect, Component, PartialEq, Eq, PartialOrd, Ord)]
 #[reflect(Component)]
 pub struct Uid(u64, u64);
 
