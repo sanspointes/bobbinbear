@@ -1,15 +1,12 @@
 //! Displays a single [`Sprite`], created from an image.
 mod api;
-mod changeset;
-mod serialise;
-mod index;
+mod undoredo;
 mod ecs;
 
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
-use api::IpcPlugin;
-use changeset::ChangesetPlugin;
+use bevy_wasm_api::BevyWasmApiPlugin;
 use ecs::node::{sys_derived_mesh_for_node, sys_derived_material_for_node};
-use index::IdxResource;
+use undoredo::UndoRedoPlugin;
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
@@ -34,10 +31,8 @@ pub fn setup_bb_core(canvas_id: String) {
 
     app.add_plugins(default_plugins)
         // App plugins
-        .add_plugins(IpcPlugin)
-        .add_plugins(ChangesetPlugin)
-
-        .insert_resource(IdxResource::default())
+        .add_plugins(BevyWasmApiPlugin)
+        .add_plugins(UndoRedoPlugin)
 
         .add_systems(PostUpdate, (sys_derived_mesh_for_node, sys_derived_material_for_node))
 

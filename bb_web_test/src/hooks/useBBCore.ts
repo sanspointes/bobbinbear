@@ -1,8 +1,8 @@
-import initBBCore, { Api, setup_bb_core } from 'bb_core';
+import initBBCore, { AppApi, setup_bb_core } from 'bb_core';
 import { createSignal, onCleanup } from 'solid-js';
 
 export function useBBCore() {
-    const [api, setApi] = createSignal<Api | undefined>(undefined);
+    const [api, setApi] = createSignal<AppApi | undefined>(undefined);
 
     onCleanup(() => {
         const i = api();
@@ -23,7 +23,7 @@ export function useBBCore() {
         } catch (e) {
             console.log(e);
         } finally {
-            const newApi = new Api();
+            const newApi = new AppApi();
             // @ts-expect-error Make API global
             window.api = newApi;
             setApi(newApi);

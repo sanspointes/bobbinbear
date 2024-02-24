@@ -40,13 +40,13 @@ impl<TTag: Sync + Send + Default + 'static> ChangesetResource<TTag> {
     ///
     /// * `world`:
     /// * `scope_fn`:
-    pub fn context_scope(world: &mut World, scope_fn: impl FnOnce(&mut World, &mut ChangesetContext)) {
-        Self::changeset_scope(world, |world, changeset_resource| {
+    pub fn context_scope<U>(world: &mut World, scope_fn: impl FnOnce(&mut World, &mut ChangesetContext) -> U) -> U {
+        Self::changeset_scope::<U>(world, |world, changeset_resource| {
             let mut cx = ChangesetContext {
                 type_registry: &changeset_resource.type_registry,
             };
-            (scope_fn)(world, &mut cx);
-        });
+            (scope_fn)(world, &mut cx)
+        })
     }
 }
 

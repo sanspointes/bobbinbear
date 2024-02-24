@@ -27,6 +27,10 @@ anyhow = "1.0.79"
 rmp-serde = "1.1.2"
 tsify = {version = "0.4.5", default-features = false, features = ["js", "wasm-bindgen"]}
 serde-wasm-bindgen = "0.6.3"
+bevy-wasm-api = { git = "https://github.com/sanspointes/bevy-wasm-api", version = "0.1.0" }
+bevy_spts_changeset = { version = "0.1.0", path = "../crates/bevy_spts_changeset" }
+bevy_spts_fragments = { version = "0.1.0", path = "../crates/bevy_spts_fragments", features = ["serde"] }
+uuid = { version = "1.7.0", features = ["serde"] }
 
 [features] 
 default = ["minimal_bevy"]

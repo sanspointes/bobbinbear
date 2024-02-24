@@ -298,7 +298,10 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "bevy",
+ "bevy-wasm-api",
  "bevy_save",
+ "bevy_spts_changeset",
+ "bevy_spts_fragments",
  "console_error_panic_hook",
  "futures",
  "js-sys",
@@ -308,6 +311,7 @@ dependencies = [
  "serde-wasm-bindgen 0.6.3",
  "thread_local",
  "tsify",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
 ]
@@ -326,6 +330,41 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e4bc7e09282a82a48d70ade0c4c1154b0fd7882a735a39c66766a5d0f4718ea9"
 dependencies = [
  "bevy_internal",
+]
+
+[[package]]
+name = "bevy-wasm-api"
+version = "0.1.0"
+source = "git+https://github.com/sanspointes/bevy-wasm-api#43b382965cb07650e7708395c4e96c3bdeec6a4f"
+dependencies = [
+ "bevy-wasm-api-macro",
+ "bevy_app",
+ "bevy_ecs",
+ "futures",
+ "js-sys",
+ "serde",
+ "serde-wasm-bindgen 0.6.3",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "bevy-wasm-api-macro"
+version = "0.1.0"
+source = "git+https://github.com/sanspointes/bevy-wasm-api#43b382965cb07650e7708395c4e96c3bdeec6a4f"
+dependencies = [
+ "bevy-wasm-api-macro-core",
+]
+
+[[package]]
+name = "bevy-wasm-api-macro-core"
+version = "0.1.0"
+source = "git+https://github.com/sanspointes/bevy-wasm-api#43b382965cb07650e7708395c4e96c3bdeec6a4f"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
 ]
 
 [[package]]
@@ -850,6 +889,7 @@ dependencies = [
  "serde",
  "smallvec",
  "thiserror",
+ "uuid",
 ]
 
 [[package]]
@@ -2243,6 +2283,30 @@ checksum = "7f4c021e1093a56626774e81216a4ce732a735e5bad4868a03f3ed65ca0c3919"
 dependencies = [
  "once_cell",
  "toml_edit 0.19.15",
+]
+
+[[package]]
+name = "proc-macro-error"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "da25490ff9892aab3fcf7c36f08cfb902dd3e71ca0f9f9517bea02a73a5ce38c"
+dependencies = [
+ "proc-macro-error-attr",
+ "proc-macro2",
+ "quote",
+ "syn 1.0.109",
+ "version_check",
+]
+
+[[package]]
+name = "proc-macro-error-attr"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1be40180e52ecc98ad80b184934baf3d0d29f979574e439af5a55274b35f869"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "version_check",
 ]
 
 [[package]]

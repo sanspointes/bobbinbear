@@ -1,18 +1,17 @@
-import { Api } from 'bb_core';
-import { createDocTreeState } from './createDocTreeState';
-import { Button } from '../../components/button';
+import { DocTreeContext, createDocTreeContext } from './createDocTreeState';
+import { DocTreeHead } from './DocTreeHead';
+import { DocTreeList } from './DocTreeList';
 
-type DocTreeProps = {
-    api: Api;
-};
-export function DocTree(props: DocTreeProps) {
+export function DocTree() {
     // eslint-disable-next-line solid/reactivity
-    const [data, { refresh }] = createDocTreeState(props.api);
+    const ctx = createDocTreeContext();
 
     return (
-        <div>
-            <Button onClick={refresh}>Refresh</Button>
-            {JSON.stringify(data())}
-        </div>
+        <DocTreeContext.Provider value={ctx}>
+            <div>
+                <DocTreeHead />
+                <DocTreeList />
+            </div>
+        </DocTreeContext.Provider>
     );
 }

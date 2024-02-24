@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{fmt::Debug, sync::Arc};
 
 use anyhow::anyhow;
 use bevy_ecs::world::World;
@@ -7,7 +7,7 @@ use bevy_spts_fragments::prelude::{EntityFragment, Uid};
 
 use crate::resource::ChangesetContext;
 
-use super::{Change, ChangeIter, IntoChangeIter};
+use super::Change;
 
 #[derive(Debug)]
 pub struct SpawnChange {
@@ -25,7 +25,7 @@ impl Change for SpawnChange {
         &self,
         world: &mut World,
         cx: &mut ChangesetContext,
-    ) -> Result<ChangeIter, anyhow::Error> {
+    ) -> Result<Arc<dyn Change>, anyhow::Error> {
         let entity_fragment = &self.entity;
         match self.parent {
             Some(parent) => {
@@ -33,7 +33,7 @@ impl Change for SpawnChange {
             }
             None => entity_fragment.spawn_in_world(world, cx.type_registry)?,
         };
-        Ok(DespawnChange::new(entity_fragment.uid()).into_change_iter())
+        Ok(Arc::new(DespawnChange::new(entity_fragment.uid())))
     }
 }
 
@@ -51,7 +51,7 @@ impl Change for DespawnChange {
         &self,
         world: &mut World,
         cx: &mut ChangesetContext,
-    ) -> Result<ChangeIter, anyhow::Error> {
+    ) -> Result<Arc<dyn Change>, anyhow::Error> {
         let entity = self
             .uid
             .entity(world)
@@ -67,6 +67,6 @@ impl Change for DespawnChange {
 
         world.despawn(entity);
 
-        Ok(SpawnChange::new(entity_fragment, parent).into_change_iter())
+        Ok(Arc::new(SpawnChange::new(entity_fragment, parent)))
     }
 }

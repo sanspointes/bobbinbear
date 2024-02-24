@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use anyhow::anyhow;
 
 use bevy_ecs::world::World;
@@ -6,7 +8,7 @@ use bevy_spts_fragments::prelude::{HierarchyFragment, Uid};
 
 use crate::resource::ChangesetContext;
 
-use super::{Change, ChangeIter, IntoChangeIter};
+use super::Change;
 
 #[derive(Debug)]
 /// A Change that parents 1 entity to another
@@ -37,7 +39,7 @@ impl Change for SetParentChange {
         &self,
         world: &mut World,
         _cx: &mut ChangesetContext,
-    ) -> Result<ChangeIter, anyhow::Error> {
+    ) -> Result<Arc<dyn Change>, anyhow::Error> {
         let target = self.target.entity(world).ok_or(anyhow!(
             "Can't set parent. Can't get target. No Entity with uid {}",
             self.target
@@ -66,11 +68,10 @@ impl Change for SetParentChange {
             }
         }
 
-        Ok(SetParentChange {
+        Ok(Arc::new(SetParentChange {
             target: self.target,
             parent: prev_parent,
-        }
-        .into_change_iter())
+        }))
     }
 }
 
@@ -90,7 +91,7 @@ impl Change for SpawnRecursiveChange {
         &self,
         world: &mut World,
         cx: &mut ChangesetContext,
-    ) -> Result<ChangeIter, anyhow::Error> {
+    ) -> Result<Arc<dyn Change>, anyhow::Error> {
         let hierarchy_fragment = &self.hierarchy;
         match self.parent {
             Some(parent) => hierarchy_fragment.spawn_in_world_with_parent_uid(
@@ -101,7 +102,9 @@ impl Change for SpawnRecursiveChange {
             None => hierarchy_fragment.spawn_in_world(world, cx.type_registry)?,
         };
         hierarchy_fragment.spawn_in_world(world, cx.type_registry)?;
-        Ok(DespawnRecursiveChange::new(hierarchy_fragment.root_uid()).into_change_iter())
+        Ok(Arc::new(DespawnRecursiveChange::new(
+            hierarchy_fragment.root_uid(),
+        )))
     }
 }
 
@@ -119,7 +122,7 @@ impl Change for DespawnRecursiveChange {
         &self,
         world: &mut World,
         cx: &mut ChangesetContext,
-    ) -> Result<ChangeIter, anyhow::Error> {
+    ) -> Result<Arc<dyn Change>, anyhow::Error> {
         let entity = self
             .uid
             .entity(world)
@@ -136,6 +139,6 @@ impl Change for DespawnRecursiveChange {
 
         world.despawn(entity);
 
-        Ok(SpawnRecursiveChange::new(hierarchy_fragment, parent).into_change_iter())
+        Ok(Arc::new(SpawnRecursiveChange::new(hierarchy_fragment, parent)))
     }
 }

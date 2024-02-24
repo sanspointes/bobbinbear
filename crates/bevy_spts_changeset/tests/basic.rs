@@ -1,5 +1,5 @@
 use bevy_app::App;
-use bevy_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
+use bevy_spts_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
 use bevy_ecs::{component::Component, reflect::ReflectComponent};
 use bevy_reflect::{Reflect, TypeRegistry};
 use bevy_spts_fragments::prelude::Uid;
