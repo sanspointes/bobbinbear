@@ -6,7 +6,7 @@ use bevy_ecs::{
     reflect::ReflectComponent,
     world::{EntityRef, EntityWorldMut, World},
 };
-use bevy_reflect::{Reflect, TypeInfo, TypePath, TypeRegistry};
+use bevy_reflect::{Reflect, TypeInfo, TypeRegistry};
 use bevy_scene::SceneFilter;
 use thiserror::Error;
 

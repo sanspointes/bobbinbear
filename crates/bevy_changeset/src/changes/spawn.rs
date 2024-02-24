@@ -33,7 +33,6 @@ impl Change for SpawnChange {
             }
             None => entity_fragment.spawn_in_world(world, cx.type_registry)?,
         };
-        entity_fragment.spawn_in_world(world, cx.type_registry)?;
         Ok(DespawnChange::new(entity_fragment.uid()).into_change_iter())
     }
 }

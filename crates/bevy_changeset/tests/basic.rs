@@ -1,8 +1,7 @@
 use bevy_app::App;
 use bevy_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
-use bevy_ecs::{component::Component, world::FromWorld, reflect::ReflectComponent};
+use bevy_ecs::{component::Component, reflect::ReflectComponent};
 use bevy_reflect::{Reflect, TypeRegistry};
-use bevy_scene::SceneFilter;
 use bevy_spts_fragments::prelude::Uid;
 
 #[derive(Default)]
@@ -19,9 +18,17 @@ pub fn spawn_change_spawns_entity() {
     let do_change = builder.build();
     // Apply to world
     ChangesetResource::<DefaultChangesetTag>::context_scope(world, |world, cx| {
+        let mut q_uid = world.query::<&Uid>();
+        for v in q_uid.iter(world) {
+            println!("Entity found {v}");
+        }
         let undo_change = do_change.apply(world, cx).unwrap();
 
-        let in_world = world.query::<&Uid>().single(world);
+        let mut q_uid = world.query::<&Uid>();
+        for v in q_uid.iter(world) {
+            println!("Entity found {v}");
+        }
+        let in_world = q_uid.single(world);
         assert_eq!(uid, *in_world);
 
         // Undo
