@@ -14,6 +14,7 @@ bevy_scene = "0.12"
 bevy_utils = "0.12"
 serde = { version = "1.0.197", features = ["derive"], optional = true }
 smallvec = "1.13.1"
+thiserror = "1.0.57"
 
 [features]
 serde = ["dep:serde"]

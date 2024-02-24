@@ -849,6 +849,7 @@ dependencies = [
  "bevy_utils",
  "serde",
  "smallvec",
+ "thiserror",
 ]
 
 [[package]]
