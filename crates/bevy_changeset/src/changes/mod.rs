@@ -35,6 +35,10 @@ where
 }
 
 pub trait Change: Debug {
+    fn name(&self) -> &str {
+        std::any::type_name::<Self>()
+    }
+
     fn apply(
         &self,
         world: &mut World,
@@ -58,8 +62,15 @@ impl ChangeSet {
         let mut inverse = vec![];
 
         for change in self.changes {
-            let iter = change.apply(world, cx)?;
-            inverse.extend(iter);
+            let result = change.apply(world, cx);
+
+            match result {
+                Ok(inverse_iter) => {
+                    inverse.extend(inverse_iter);
+                    Ok(())
+                },
+                Err(reason) => Err(anyhow::anyhow!("Error while applying change {}.\n{}", change.name(), reason)),
+            }?
         }
 
         inverse.reverse();
