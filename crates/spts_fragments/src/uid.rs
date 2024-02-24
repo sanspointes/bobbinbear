@@ -1,7 +1,5 @@
 use std::fmt::{Debug, Display};
 use bevy_utils::Uuid;
-#[cfg(feature = "serde")]
-use serde::{Serialize, Deserialize};
 
 use bevy_ecs::{component::Component, entity::Entity, prelude::ReflectComponent, world::{EntityWorldMut, World}};
 use bevy_reflect::Reflect;
@@ -9,7 +7,6 @@ use bevy_reflect::Reflect;
 
 /// A unique identifier that can be used to lookup entities, persists between 
 ///
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, Reflect, Component, PartialEq, Eq)]
 #[reflect(Component)]
 pub struct Uid(u64, u64);
