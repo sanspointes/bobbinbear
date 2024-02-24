@@ -4,6 +4,6 @@ mod component;
 mod entity;
 mod hierarchy;
 
-pub use self::component::ComponentFragment;
-pub use self::entity::EntityFragment;
-pub use self::hierarchy::HierarchyFragment;
+pub use self::component::{ComponentFragment, ComponentFragmentError};
+pub use self::entity::{EntityFragment, EntityFragmentNewError, EntityFragmentSpawnError};
+pub use self::hierarchy::{HierarchyFragment, HierarchyFragmentSpawnError, HierarchyFragmentNewError};

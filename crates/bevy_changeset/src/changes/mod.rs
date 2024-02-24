@@ -8,13 +8,9 @@ use bevy_ecs::{component::Component, world::World};
 use bevy_reflect::Reflect;
 use bevy_spts_fragments::prelude::{ComponentFragment, EntityFragment, Uid};
 
-use crate::{error::ChangeError, resource::ChangesetContext};
+use crate::resource::ChangesetContext;
 
-use self::{
-    heirarchy::SetParentChange,
-    insert::{ApplyChange, InsertChange, RemoveChange},
-    spawn::{DespawnChange, SpawnChange},
-};
+pub use self::{heirarchy::*, insert::*, spawn::*};
 
 pub struct ChangeIter(pub Box<dyn Iterator<Item = Box<dyn Change>>>);
 impl Iterator for ChangeIter {
@@ -39,7 +35,11 @@ where
 }
 
 pub trait Change: Debug {
-    fn apply(&self, world: &mut World, context: &mut ChangesetContext) -> Result<ChangeIter, ChangeError>;
+    fn apply(
+        &self,
+        world: &mut World,
+        context: &mut ChangesetContext,
+    ) -> Result<ChangeIter, anyhow::Error>;
 }
 
 #[derive(Debug)]
@@ -48,7 +48,11 @@ pub struct ChangeSet {
 }
 
 impl ChangeSet {
-    pub fn apply(self, world: &mut World, cx: &mut ChangesetContext) -> Result<ChangeSet, ChangeError> {
+    pub fn apply(
+        self,
+        world: &mut World,
+        cx: &mut ChangesetContext,
+    ) -> Result<ChangeSet, anyhow::Error> {
         println!("Applying {} changes...", self.changes.len());
 
         let mut inverse = vec![];
@@ -64,6 +68,7 @@ impl ChangeSet {
     }
 }
 
+#[allow(dead_code)]
 pub struct ChangesetBuilder<'w> {
     world: &'w mut World,
     changes: Vec<Box<dyn Change>>,
@@ -90,7 +95,8 @@ impl<'w> ChangesetBuilder<'w> {
 
     pub fn spawn_empty<'a>(&'a mut self) -> EntityChangeset<'w, 'a> {
         let uid = Uid::default();
-        self.push(Box::new(SpawnChange::new(EntityFragment::new(uid, vec![]))));
+        let entity_fragment = EntityFragment::new(uid, vec![]);
+        self.push(Box::new(SpawnChange::new(entity_fragment, None)));
         EntityChangeset {
             target: uid,
             builder: self,

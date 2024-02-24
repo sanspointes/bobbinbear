@@ -52,6 +52,14 @@ impl HierarchyFragment {
         }
     }
 
+    pub fn root_uid(&self) -> Uid {
+        self.entity_fragment.uid()
+    }
+
+    pub fn entity_fragment(&self) -> &EntityFragment {
+        &self.entity_fragment
+    }
+
     fn resolve_children_of_entity(world: &mut World, type_registry: &TypeRegistry, entity: Entity) -> Result<Option<Vec<HierarchyFragment>>, HierarchyFragmentNewError> {
         let Some(children) = world.get::<Children>(entity) else {
             return Ok(None);

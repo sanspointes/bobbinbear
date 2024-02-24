@@ -6,7 +6,7 @@ use bevy_ecs::{
     reflect::ReflectComponent,
     world::{EntityRef, EntityWorldMut, World},
 };
-use bevy_reflect::{Reflect, TypeRegistry};
+use bevy_reflect::{Reflect, TypeInfo, TypePath, TypeRegistry};
 use bevy_scene::SceneFilter;
 use thiserror::Error;
 
@@ -199,7 +199,23 @@ impl ComponentFragment {
     pub fn try_type_id(
         &self,
         type_registry: &TypeRegistry,
-    ) -> Result<TypeId, ComponentFragmentError> {
+    ) -> Result<TypeId, ComponentFragmentReflectError> {
+        use ComponentFragmentReflectError::*;
+
+        let type_info = self.try_type_info()?;
+
+        let registration =
+            type_registry
+                .get(type_info.type_id())
+                .ok_or_else(|| UnregisteredButReflectedType {
+                    type_path: type_info.type_path().to_string(),
+                })?;
+        Ok(registration.type_id())
+    }
+
+    pub fn try_type_info(
+        &self,
+    ) -> Result<&TypeInfo, ComponentFragmentReflectError> {
         use ComponentFragmentReflectError::*;
 
         let type_info =
@@ -208,12 +224,7 @@ impl ComponentFragment {
                 .ok_or_else(|| NoRepresentedType {
                     type_path: self.component.reflect_type_path().to_string(),
                 })?;
-        let registration =
-            type_registry
-                .get(type_info.type_id())
-                .ok_or_else(|| UnregisteredButReflectedType {
-                    type_path: type_info.type_path().to_string(),
-                })?;
-        Ok(registration.type_id())
+        Ok(type_info)
+
     }
 }

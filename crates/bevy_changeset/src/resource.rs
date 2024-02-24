@@ -5,7 +5,6 @@ use bevy_ecs::{
     world::{Mut, World},
 };
 use bevy_reflect::TypeRegistry;
-use bevy_scene::SceneFilter;
 
 #[derive(Resource, Default)]
 /// Resource containing filter data for when creating / applying
