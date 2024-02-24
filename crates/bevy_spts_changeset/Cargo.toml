@@ -1,5 +1,5 @@
 [package]
-name = "bevy_changeset"
+name = "bevy_spts_changeset"
 version = "0.1.0"
 edition = "2021"
 
@@ -12,7 +12,7 @@ bevy_ecs = "0.12"
 bevy_hierarchy = "0.12"
 bevy_reflect = "0.12"
 bevy_scene = "0.12"
-bevy_spts_fragments = { version = "0.1.0", path = "../spts_fragments" }
+bevy_spts_fragments = { version = "0.1.0", path = "../bevy_spts_fragments" }
 serde = { version = "1.0.196", features = ["derive"], optional = true }
 uuid = { version = "1.7.0", features = ["v4", "serde"] }
 

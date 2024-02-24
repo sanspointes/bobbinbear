@@ -401,21 +401,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_changeset"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bevy_app",
- "bevy_ecs",
- "bevy_hierarchy",
- "bevy_reflect",
- "bevy_scene",
- "bevy_spts_fragments",
- "serde",
- "uuid",
-]
-
-[[package]]
 name = "bevy_core"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -835,6 +820,21 @@ dependencies = [
  "radsort",
  "rectangle-pack",
  "thiserror",
+]
+
+[[package]]
+name = "bevy_spts_changeset"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_hierarchy",
+ "bevy_reflect",
+ "bevy_scene",
+ "bevy_spts_fragments",
+ "serde",
+ "uuid",
 ]
 
 [[package]]
