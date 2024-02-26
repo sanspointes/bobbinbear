@@ -6,6 +6,7 @@ members = [
     "bb_desktop",
     "crates/bevy_spts_changeset",
     "crates/bevy_spts_fragments",
+    "packages/bb_vector_network",
 ]
 
 # Fix for RA breaking incremental compilation.
