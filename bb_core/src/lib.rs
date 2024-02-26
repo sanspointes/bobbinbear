@@ -4,6 +4,7 @@ mod undoredo;
 mod ecs;
 
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
+use bevy::math::prelude::Circle;
 use bevy_wasm_api::BevyWasmApiPlugin;
 use ecs::node::{sys_derived_mesh_for_node, sys_derived_material_for_node};
 use undoredo::UndoRedoPlugin;
@@ -21,9 +22,7 @@ pub fn setup_bb_core(canvas_id: String) {
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             title: "Bobbin Bear :: Embroidery Editor".to_string(),
-            resolution: (10., 10.).into(),
             canvas: Some(canvas_id),
-            fit_canvas_to_parent: true,
             ..Default::default()
         }),
         ..Default::default()
@@ -49,7 +48,7 @@ fn setup(
     commands.spawn(Camera2dBundle::default());
     commands
         .spawn(MaterialMesh2dBundle {
-            mesh: meshes.add(shape::Circle::new(50.).into()).into(),
+            mesh: meshes.add(Circle::new(50.)).into(),
             material: materials.add(ColorMaterial::from(Color::PURPLE)),
             transform: Transform::from_translation(Vec3::new(-150., 0., 0.)),
             ..default()

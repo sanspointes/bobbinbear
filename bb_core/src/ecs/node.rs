@@ -1,4 +1,4 @@
-use bevy::{prelude::*, math::vec2, sprite::Mesh2dHandle};
+use bevy::{prelude::*, math::prelude::{Rectangle, Circle}, sprite::Mesh2dHandle};
 use serde::{Serialize, Deserialize};
 
 use super::core::{DerivedMesh, DerivedMaterial};
@@ -20,8 +20,8 @@ pub fn sys_derived_mesh_for_node(
 ) {
     for (e, node) in &q_nodes {
         let mesh = match node {
-            Node::Control => meshes.add(shape::Quad::new(vec2(5., 5.)).into()),
-            Node::Endpoint => meshes.add(shape::Circle::new(5.).into()),
+            Node::Control => meshes.add(Rectangle::new(5., 5.)),
+            Node::Endpoint => meshes.add(Circle::new(5.)),
         };
         commands.entity(e).insert(mesh);
     }

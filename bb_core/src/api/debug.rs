@@ -1,4 +1,4 @@
-use bevy::{app::AppExit, ecs::system::SystemState, prelude::*};
+use bevy::{math::prelude::Circle, ecs::system::SystemState, prelude::*};
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
@@ -17,8 +17,8 @@ impl DebugApi {
 
         let (mut meshes, mut materials) = sys_state.get_mut(world);
 
-        let mesh = meshes.add(shape::Circle::new(25.).into());
-        let material = materials.add(Color::RED.into());
+        let mesh = meshes.add(Circle::new(25.));
+        let material = materials.add(Color::RED);
 
         let mut builder = world.changeset();
         let mut entity = builder.spawn_empty();

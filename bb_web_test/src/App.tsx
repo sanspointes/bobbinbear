@@ -10,7 +10,7 @@ function App() {
     });
 
     return (
-        <div class="w-full h-full min-h-screen flex flex-col">
+        <div class="flex flex-col w-full h-full min-h-screen">
             <div class="w-full h-20 bg-white">
                 <div class="card">
                     <Show when={api()}>
@@ -18,7 +18,7 @@ function App() {
                     </Show>
                 </div>
             </div>
-            <div class="flex grow">
+            <div class="flex items-stretch grow">
                 <Show when={api()}>
                     {(api) => (
                         <div class="min-w-52">
@@ -26,7 +26,10 @@ function App() {
                         </div>
                     )}
                 </Show>
-                <canvas id="bb-canvas" />
+                <canvas
+                    id="bb-canvas"
+                    style={{ width: '100%', height: '100%' }}
+                />
             </div>
         </div>
     );

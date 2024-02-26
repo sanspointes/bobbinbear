@@ -136,7 +136,7 @@ impl ComponentFragment {
         type_registry: &TypeRegistry,
     ) -> Result<(), ComponentFragmentError> {
         let comp = self.get_reflect_component(type_registry)?;
-        comp.insert(entity, &*self.component);
+        comp.insert(entity, &*self.component, type_registry);
         Ok(())
     }
     pub fn apply(
@@ -154,7 +154,7 @@ impl ComponentFragment {
         type_registry: &TypeRegistry,
     ) -> Result<(), ComponentFragmentError> {
         let comp = self.get_reflect_component(type_registry)?;
-        comp.apply_or_insert(entity, &*self.component);
+        comp.apply_or_insert(entity, &*self.component, type_registry);
         Ok(())
     }
     pub fn remove(
@@ -163,7 +163,7 @@ impl ComponentFragment {
         type_registry: &TypeRegistry,
     ) -> Result<(), ComponentFragmentError> {
         let comp = self.get_reflect_component(type_registry)?;
-        comp.apply_or_insert(entity, &*self.component);
+        comp.apply_or_insert(entity, &*self.component, type_registry);
         Ok(())
     }
     pub fn swap(
@@ -189,7 +189,7 @@ impl ComponentFragment {
         entity_mut: &mut EntityWorldMut,
     ) -> Result<(), ComponentFragmentError> {
         let reflect_component = self.get_reflect_component(type_registry)?;
-        reflect_component.insert(entity_mut, &*self.component);
+        reflect_component.insert(entity_mut, &*self.component, type_registry);
         Ok(())
     }
 
