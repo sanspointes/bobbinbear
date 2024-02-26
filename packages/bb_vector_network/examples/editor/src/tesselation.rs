@@ -75,7 +75,7 @@ pub fn tessellate_stroke(graph: &BBGraph) -> BBResult<Mesh> {
 
     let result = tess.tessellate(
             &path,          // PositionStore
-            &StrokeOptions::default().with_line_width(0.08),
+            &StrokeOptions::default().with_line_width(0.08).with_tolerance(0.01),
             &mut vertex_builder
         );
 

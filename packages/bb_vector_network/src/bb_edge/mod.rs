@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+mod curve;
+
 use std::{fmt::Display, ops::Add};
 
 use glam::Vec2;
@@ -13,6 +15,8 @@ use super::{
     bb_node::{BBNode, BBNodeIndex},
     errors::BBResult,
 };
+
+pub use curve::{ c2_to_v2, v2_to_c2, BBEdgeCurveHelpers };
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
 #[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]

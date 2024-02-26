@@ -1,9 +1,11 @@
 use std::fmt::Display;
 
+use flo_curves::{bezier::Curve, Coord2};
+
 use crate::prelude::*;
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Hash)]
-#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 /// Represents an index position of a BBVNRegion, which are joins between two nodes.
 pub struct BBRegionIndex(pub usize);
 impl From<usize> for BBRegionIndex {
@@ -46,6 +48,20 @@ impl BBCycle {
             children: vec![],
         }
     }
+
+    fn edges_deep_inner(&self, edges_out: &mut Vec<Vec<BBEdgeIndex>>) {
+        edges_out.push(self.edges.clone());
+
+        for c in &self.children {
+            c.edges_deep_inner(edges_out);
+        }
+    }
+
+    pub fn edges_deep(&self) -> Vec<Vec<BBEdgeIndex>> {
+        let mut edges = vec![];
+        self.edges_deep_inner(&mut edges);
+        edges
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -56,18 +72,18 @@ pub enum BBWindingRule {
 }
 
 #[derive(Debug, Clone)]
-#[cfg_attr( feature = "serde", derive(serde::Serialize, serde::Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[allow(dead_code)]
 pub struct BBRegion {
     winding_rule: BBWindingRule,
-    pub cycles: Vec<BBCycle>
+    pub root_cycle: BBCycle,
 }
 
 impl BBRegion {
-    pub fn new(cycles: Vec<BBCycle>) -> Self {
+    pub fn new(root_cycle: BBCycle) -> Self {
         Self {
             winding_rule: BBWindingRule::Default,
-            cycles,
+            root_cycle,
         }
     }
 }

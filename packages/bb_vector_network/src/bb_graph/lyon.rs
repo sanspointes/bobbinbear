@@ -1,10 +1,10 @@
-use std::collections::{ HashSet, HashMap };
+use std::collections::{HashMap, HashSet};
 
 use glam::Vec2;
 
-use lyon_path::{builder::NoAttributes, math::Point, path::BuilderImpl, traits::PathBuilder, Path};
+use lyon_path::{builder::NoAttributes, math::Point, path::BuilderImpl, Path};
 
-use crate::{bb_graph::TraverseAction, prelude::*};
+use crate::prelude::*;
 
 trait ToPoint {
     fn to_p2(&self) -> Point;
@@ -73,9 +73,7 @@ impl BBGraph {
         let mut builder = Path::builder();
 
         for region in self.regions.values() {
-            for cycle in region.cycles.iter() {
-                self.build_path_for_edge_list(&mut builder, &cycle.edges)?
-            }
+            self.build_path_for_edge_list(&mut builder, &region.root_cycle.edges)?
         }
 
         Ok(builder.build())
@@ -90,16 +88,19 @@ impl BBGraph {
         let cycles: Vec<_> = g
             .regions
             .values()
-            .flat_map(|r| r.cycles.iter().map(|c| c.edges.clone()))
+            .flat_map(|r| {
+                r.root_cycle.edges_deep()
+            })
             .collect();
 
-        let mut edge_references: HashMap<BBEdgeIndex, usize> = cycles.iter().fold(HashMap::new(), |mut map, cycle| {
-            for edge in cycle {
-                let entry = map.entry(*edge).or_insert(0);
-                *entry += 1;
-            }
-            map
-        });
+        let mut edge_references: HashMap<BBEdgeIndex, usize> =
+            cycles.iter().fold(HashMap::new(), |mut map, cycle| {
+                for edge in cycle {
+                    let entry = map.entry(*edge).or_insert(0);
+                    *entry += 1;
+                }
+                map
+            });
         for edges in cycles {
             g.build_path_for_edge_list(&mut builder, &edges)?;
             for e in edges {
@@ -132,7 +133,10 @@ impl BBGraph {
                 if i != 0 && node.adjacents.len() != 2 {
                     break;
                 }
-                let next_edge = node.adjacents.iter().find(|idx| prev_edge.map_or(true, |prev_idx| **idx != prev_idx));
+                let next_edge = node
+                    .adjacents
+                    .iter()
+                    .find(|idx| prev_edge.map_or(true, |prev_idx| **idx != prev_idx));
                 let Some(next_edge) = next_edge else {
                     break;
                 };

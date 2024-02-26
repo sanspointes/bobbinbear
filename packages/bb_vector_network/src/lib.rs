@@ -5,9 +5,6 @@ pub mod bb_graph;
 pub mod errors;
 pub mod traits;
 
-#[cfg(feature = "lyon_path")]
-pub mod bb_graph_lyon;
-
 #[cfg(feature = "debug_draw")]
 pub mod debug_draw;
 
