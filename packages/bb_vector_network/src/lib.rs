@@ -5,7 +5,4 @@ pub mod bb_graph;
 pub mod errors;
 pub mod traits;
 
-#[cfg(feature = "debug_draw")]
-pub mod debug_draw;
-
 pub mod prelude;

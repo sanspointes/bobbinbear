@@ -623,37 +623,6 @@ impl BBGraph {
             }
         }
 
-        #[cfg(feature = "debug_draw")]
-        {
-            use crate::debug_draw::*;
-            use std::ops::Deref;
-
-            if *DEBUG_DRAW_CCW.deref().borrow() {
-                let p1 = self.node(node_idx)?.position();
-
-                comfy::draw_arrow(p1 - curr_dir.normalize() * 3., p1, 0.1, comfy::BLUE, 500);
-                comfy::draw_arrow(
-                    p1,
-                    p1 + best_dir.normalize() * 2.,
-                    0.1,
-                    comfy::DARKBLUE,
-                    500,
-                );
-                curr_dir
-                    .mul(-1.)
-                    .draw_angle_between_cw(best_dir, self.node(node_idx)?.position());
-
-                if let Some(idx) = prev_edge_idx {
-                    comfy::draw_text_ex(
-                        &format!("From {idx}"),
-                        p1,
-                        comfy::TextAlign::TopRight,
-                        DBG_TEXT_PARAMS.clone(),
-                    );
-                }
-            }
-        }
-
         Ok(best_idx)
     }
 
@@ -672,20 +641,6 @@ impl BBGraph {
     ) -> BBResult<BBEdgeIndex> {
         let mut next_edge_dirs = self.next_edges_of_node(node_idx, prev_edge_idx)?;
 
-        #[cfg(feature = "debug_draw")]
-        {
-            use comfy::*;
-            let p = self.node(node_idx)?.position();
-            for (_, edge) in next_edge_dirs.iter() {
-                draw_arrow(
-                    p,
-                    p + edge.calc_start_tangent(self)?.normalize(),
-                    0.1,
-                    WHITE.alpha(0.5),
-                    500,
-                );
-            }
-        }
         let Some((first_idx, first_edge)) = next_edge_dirs.pop() else {
             return Err(BBError::ClosedWalkDeadEnd);
         };
@@ -712,37 +667,6 @@ impl BBGraph {
                 if ccw_of_curr && ccw_of_best {
                     best_idx = *idx;
                     best_dir = dir;
-                }
-            }
-        }
-
-        #[cfg(feature = "debug_draw")]
-        {
-            use crate::debug_draw::*;
-            use std::ops::Deref;
-
-            if *DEBUG_DRAW_CCW.deref().borrow() {
-                let p1 = self.node(node_idx)?.position();
-
-                comfy::draw_arrow(p1 - curr_dir.normalize() * 3., p1, 0.1, comfy::BLUE, 500);
-                comfy::draw_arrow(
-                    p1,
-                    p1 + best_dir.normalize() * 2.,
-                    0.1,
-                    comfy::DARKBLUE,
-                    500,
-                );
-                curr_dir
-                    .mul(-1.)
-                    .draw_angle_between_ccw(best_dir, self.node(node_idx)?.position());
-
-                if let Some(idx) = prev_edge_idx {
-                    comfy::draw_text_ex(
-                        &format!("From {idx}"),
-                        p1,
-                        comfy::TextAlign::TopRight,
-                        DBG_TEXT_PARAMS.clone(),
-                    );
                 }
             }
         }
@@ -914,29 +838,6 @@ impl BBGraph {
             model.curr_dir = next_edge.calc_end_tangent(self)?;
             model.edges.push(next_edge_idx);
 
-            #[cfg(feature = "debug_draw")]
-            {
-                use crate::debug_draw::*;
-                use comfy::*;
-                use std::ops::Deref;
-
-                if *DEBUG_DRAW_TRAVERSAL.deref().borrow() {
-                    comfy::draw_arrow(
-                        next_edge.t_point(self, 0.49),
-                        next_edge.t_point(self, 0.51),
-                        0.1,
-                        LIME_GREEN,
-                        500,
-                    );
-                    comfy::draw_text_ex(
-                        &format!("w{}", model.traversals),
-                        next_edge.t_point(self, 0.5),
-                        comfy::TextAlign::TopLeft,
-                        DBG_TEXT_PARAMS.clone(),
-                    );
-                }
-            }
-
             Ok(TraverseAction::Continue)
         })?;
 
@@ -991,34 +892,6 @@ impl BBGraph {
 
             Ok(TraverseAction::Continue)
         })?;
-
-        // Visualise the traversal with comfy when debug_draw feature flag enabled.
-        #[cfg(feature = "debug_draw")]
-        {
-            use crate::debug_draw::*;
-            use comfy::*;
-            use std::ops::Deref;
-
-            if *DEBUG_DRAW_TRAVERSAL.deref().borrow() {
-                let directed = self.edges_directed(&result.edges)?;
-                for (i, (idx, edge)) in directed.iter().enumerate() {
-                    let t = (i as f32 / directed.len() as f32) * 0.79 + 0.2;
-                    draw_arrow(
-                        edge.t_point(self, t),
-                        edge.t_point(self, t + 0.01),
-                        0.1,
-                        LIME_GREEN,
-                        500,
-                    );
-                    draw_text_ex(
-                        &format!("{i}{idx}"),
-                        edge.t_point(self, t),
-                        comfy::TextAlign::TopLeft,
-                        DBG_TEXT_PARAMS.clone(),
-                    );
-                }
-            }
-        }
 
         Ok(result)
     }
