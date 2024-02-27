@@ -116,6 +116,13 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
         )));
         self
     }
+    pub fn apply<C: Component + Reflect>(&mut self, component: C) -> &mut Self {
+        self.builder.push(Arc::new(ApplyChange::new(
+            self.target,
+            ComponentFragment::from_component::<C>(&component),
+        )));
+        self
+    }
     pub fn remove<C: Component + Reflect>(&mut self) -> &mut Self {
         let type_id = TypeId::of::<C>();
         self.builder

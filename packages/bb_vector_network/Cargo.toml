@@ -9,7 +9,6 @@ edition = "2021"
 # Adds debug drawing via comfy, required to run the `testbed_*` examples.
 # You'd never want to activate this in a real project but it's used internally for visual
 # debugging.
-debug_draw = ["dep:comfy", "dep:lyon_tessellation"]
 lyon_path = ["dep:lyon_path"]
 serde = ["dep:serde", "dep:serde_with", "glam/serde"]
 

@@ -13,6 +13,7 @@ pub enum Node {
 ///
 /// * `meshes`: 
 /// * `q_nodes`: 
+#[allow(clippy::type_complexity)]
 pub fn sys_derived_mesh_for_node(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
@@ -31,6 +32,7 @@ pub fn sys_derived_mesh_for_node(
 ///
 /// * `meshes`: 
 /// * `q_nodes`: 
+#[allow(clippy::type_complexity)]
 pub fn sys_derived_material_for_node(
     mut commands: Commands,
     mut materials: ResMut<Assets<ColorMaterial>>,

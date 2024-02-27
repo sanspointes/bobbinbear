@@ -30,6 +30,7 @@ bevy-wasm-api = { git = "https://github.com/sanspointes/bevy-wasm-api", version 
 bevy_spts_changeset = { version = "0.1.0", path = "../crates/bevy_spts_changeset" }
 bevy_spts_fragments = { version = "0.1.0", path = "../crates/bevy_spts_fragments", features = ["serde"] }
 uuid = { version = "1.7.0", features = ["serde"] }
+bb_vector_network = { version = "0.1.0", path = "../packages/bb_vector_network" }
 
 [features] 
 default = ["minimal_bevy"]

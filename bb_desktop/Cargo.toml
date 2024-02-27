@@ -15,3 +15,5 @@ resolver = "2"
 
 [dependencies]
 bb_core = { path = "../bb_core" }
+bevy = "0.13.0"
+bevy-inspector-egui = "0.23.2"
