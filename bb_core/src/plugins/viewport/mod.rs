@@ -44,4 +44,31 @@ impl Viewport {
     pub fn set_position(&mut self, position: Vec2) {
         self.target_position = position;
     }
+
+    pub fn half_size(&self) -> Vec2 {
+        self.target_size / 2.
+    }
+
+    pub fn view_rect(&self) -> Rect {
+        let half_size = self.target_size / 2.;
+        Rect::new(
+            self.target_position.x - half_size.x,
+            self.target_position.y - half_size.y,
+            self.target_position.x + half_size.x,
+            self.target_position.y + half_size.y,
+        )
+    }
+
+    pub fn screen_to_world(&self, screen_pos: Vec2) -> Vec2 {
+        let norm_pos = screen_pos / self.window_size;
+        self.normalized_screen_to_world(norm_pos)
+    }
+    pub fn normalized_screen_to_world(&self, norm_pos: Vec2) -> Vec2 {
+        norm_pos.mul_add(self.target_size, self.target_position - self.half_size())
+    }
+}
+
+#[derive(Component)]
+pub struct WorldToScreen {
+    world_pos: Vec2,
 }
