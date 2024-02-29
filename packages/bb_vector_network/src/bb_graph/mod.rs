@@ -12,7 +12,7 @@ use std::{
 };
 
 use crate::prelude::Determinate;
-use glam::{vec2, Vec2};
+use glam::{vec2, Mat2, Vec2};
 
 use super::{
     bb_edge::{BBEdge, BBEdgeIndex},
@@ -524,6 +524,19 @@ impl BBGraph {
         }
         for l in self.edges.values_mut() {
             l.translate(translation);
+        }
+    }
+
+    pub fn rotate(&mut self, origin: Vec2, angle_delta: f32) {
+        let rot_matrix = Mat2::from_angle(angle_delta);
+        for v in self.nodes.values_mut() {
+            v.position -= origin;
+            v.position = rot_matrix * v.position;
+            v.position += origin;
+        }
+
+        for l in self.edges.values_mut() {
+            l.rotate_by_matrix(origin, &rot_matrix);
         }
     }
 }

@@ -4,7 +4,7 @@ mod curve;
 
 use std::{fmt::Display, ops::Add};
 
-use glam::Vec2;
+use glam::{Mat2, Vec2};
 
 #[allow(unused_imports)]
 #[cfg(feature = "debug_draw")]
@@ -275,6 +275,29 @@ impl BBEdge {
             Self::Cubic { ctrl1, ctrl2, .. } => {
                 *ctrl1 = ctrl1.add(translation);
                 *ctrl2 = ctrl2.add(translation);
+            }
+            _ => (),
+        }
+    }
+
+    pub fn rotate_by_matrix(&mut self, origin: Vec2, rot_matrix: &Mat2) {
+        match self {
+            Self::Quadratic { ctrl1, .. } => {
+                let mut p = *ctrl1 - origin;
+                p = *rot_matrix * p;
+                p += origin;
+                *ctrl1 = p;
+            }
+            Self::Cubic { ctrl1, ctrl2, .. } => {
+                let mut p = *ctrl1 - origin;
+                p = *rot_matrix * p;
+                p += origin;
+                *ctrl1 = p;
+
+                let mut p = *ctrl2 - origin;
+                p = *rot_matrix * p;
+                p += origin;
+                *ctrl2 = p;
             }
             _ => (),
         }
