@@ -620,19 +620,17 @@ impl BBGraph {
             let dir = edge.calc_start_tangent(self)?;
             let needs_convex_check = curr_dir.determinate(best_dir) > 0.;
 
-            let ccw_of_curr = curr_dir.determinate(dir) <= 0.;
-            let ccw_of_best = best_dir.determinate(dir) <= 0.;
+            let ccw_of_curr = curr_dir.determinate(dir) < 0.;
+            let ccw_of_best = best_dir.determinate(dir) < 0.;
 
             if needs_convex_check {
                 if ccw_of_curr || ccw_of_best {
                     best_idx = *idx;
                     best_dir = dir;
                 }
-            } else {
-                if ccw_of_curr && ccw_of_best {
-                    best_idx = *idx;
-                    best_dir = dir;
-                }
+            } else if ccw_of_curr && ccw_of_best {
+                best_idx = *idx;
+                best_dir = dir;
             }
         }
 
@@ -666,21 +664,19 @@ impl BBGraph {
 
         for (idx, edge) in next_edge_dirs.iter() {
             let dir = edge.calc_start_tangent(self)?;
-            let needs_convex_check = curr_dir.determinate(best_dir) < 0.;
+            let needs_convex_check = curr_dir.determinate(best_dir) <= 0.;
 
-            let ccw_of_curr = curr_dir.determinate(dir) > 0.;
-            let ccw_of_best = best_dir.determinate(dir) > 0.;
+            let ccw_of_curr = curr_dir.determinate(dir) >= 0.;
+            let ccw_of_best = best_dir.determinate(dir) >= 0.;
 
             if needs_convex_check {
                 if ccw_of_curr || ccw_of_best {
                     best_idx = *idx;
                     best_dir = dir;
                 }
-            } else {
-                if ccw_of_curr && ccw_of_best {
-                    best_idx = *idx;
-                    best_dir = dir;
-                }
+            } else if ccw_of_curr && ccw_of_best {
+                best_idx = *idx;
+                best_dir = dir;
             }
         }
 
