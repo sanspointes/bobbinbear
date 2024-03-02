@@ -21,30 +21,30 @@ pub fn c2_to_v2(c: Coord2) -> Vec2 {
 }
 
 impl BBEdge {
-    pub fn as_curve(&self, graph: &BBGraph) -> Curve<Coord2> {
+    pub fn as_curve(&self, graph: &BBGraph) -> BBResult<Curve<Coord2>> {
         match self {
             Self::Line { start, end } => {
-                let start = graph.node(*start).unwrap().position();
-                let end = graph.node(*end).unwrap().position();
+                let start = graph.node(*start)?.position();
+                let end = graph.node(*end)?.position();
                 let ctrl1 = start.lerp(end, 0.33333);
                 let ctrl2 = start.lerp(end, 0.66666);
-                Curve::from_points(
+                Ok(Curve::from_points(
                     v2_to_c2(start),
                     (v2_to_c2(ctrl1), v2_to_c2(ctrl2)),
                     v2_to_c2(end),
-                )
+                ))
             }
             Self::Quadratic { start, ctrl1, end } => {
-                let start = graph.node(*start).unwrap().position();
-                let end = graph.node(*end).unwrap().position();
+                let start = graph.node(*start)?.position();
+                let end = graph.node(*end)?.position();
 
                 let ctrl2 = start + TWO_THIRDS * (*ctrl1 - start);
                 let ctrl1 = end + TWO_THIRDS * (*ctrl1 - end);
-                Curve::from_points(
+                Ok(Curve::from_points(
                     v2_to_c2(start),
                     (v2_to_c2(ctrl1), v2_to_c2(ctrl2)),
                     v2_to_c2(end),
-                )
+                ))
             }
             Self::Cubic {
                 start,
@@ -52,18 +52,18 @@ impl BBEdge {
                 ctrl2,
                 end,
             } => {
-                let start = graph.node(*start).unwrap().position();
-                let end = graph.node(*end).unwrap().position();
-                Curve::from_points(
+                let start = graph.node(*start)?.position();
+                let end = graph.node(*end)?.position();
+                Ok(Curve::from_points(
                     v2_to_c2(start),
                     (v2_to_c2(*ctrl1), v2_to_c2(*ctrl2)),
                     v2_to_c2(end),
-                )
+                ))
             }
         }
     }
     pub fn subdivide_without_delete(&self, graph: &mut BBGraph, t: f32) -> BBResult<()> {
-        let curve = self.as_curve(graph);
+        let curve = self.as_curve(graph)?;
 
         let (curve1, curve2): (Curve<Coord2>, Curve<Coord2>) = curve.subdivide(t as f64);
 

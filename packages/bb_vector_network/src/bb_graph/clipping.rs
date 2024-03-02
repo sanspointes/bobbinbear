@@ -31,15 +31,16 @@ pub fn map_linear(v: f32, in_min: f32, in_max: f32, out_min: f32, out_max: f32) 
 impl BBGraph {
     ///
     pub fn expand_intersections(&mut self) -> BBResult<()> {
-        let beziers: Vec<(BBEdgeIndex, Curve<Coord2>, Bounds<Coord2>)> = self
+        let beziers: BBResult<Vec<(BBEdgeIndex, Curve<Coord2>, Bounds<Coord2>)>> = self
             .edges
             .iter()
             .map(|(idx, edge)| {
-                let bezier = edge.as_curve(self);
+                let bezier = edge.as_curve(self)?;
                 let bounds = bezier.bounding_box();
-                (*idx, bezier, bounds)
+                Ok((*idx, bezier, bounds))
             })
             .collect();
+        let beziers = beziers?;
 
         // Collect all edge -> edge intersections
         let mut intersections: HashMap<BBEdgeIndex, Vec<Intersection>> = HashMap::new();
@@ -91,7 +92,7 @@ impl BBGraph {
             let edge = *self.edge(*idx_a).unwrap();
             // 
             let mut prev_node = edge.start_idx();
-            let mut remaining_curve = edge.as_curve(self);
+            let mut remaining_curve = edge.as_curve(self)?;
             let mut t_offset = 0.0;
 
             for int in ints {

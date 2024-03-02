@@ -11,7 +11,8 @@ use std::{
     ops::{Mul, Sub},
 };
 
-use crate::prelude::Determinate;
+use crate::{bb_edge::v2_to_c2, prelude::Determinate};
+use flo_curves::{bezier::curve_intersects_line, line::Line2D, Line};
 use glam::{vec2, Mat2, Vec2};
 
 use super::{
@@ -614,23 +615,44 @@ impl BBGraph {
         }
 
         let mut best_idx = first_idx;
-        let mut best_dir = first_edge.calc_start_tangent(self)?;
+        let mut best_dir = first_edge.calc_start_tangent(self)?.normalize();
 
         for (idx, edge) in next_edge_dirs.iter() {
-            let dir = edge.calc_start_tangent(self)?;
-            let needs_convex_check = curr_dir.determinate(best_dir) > 0.;
+            let dir = edge.calc_start_tangent(self)?.normalize();
+            let curr_best_det = curr_dir.determinate(best_dir);
+            let curr_el_det = curr_dir.determinate(dir);
 
-            let ccw_of_curr = curr_dir.determinate(dir) < 0.;
-            let ccw_of_best = best_dir.determinate(dir) < 0.;
+            // Parallel
+            let is_parallel = curr_el_det == 0. && curr_best_det == 0.;
+            if is_parallel {
+                let start_point = self.node(node_idx)?.position();
+                let start_point = v2_to_c2(start_point);
+                let best_curve = self.edge(best_idx)?.as_curve(self)?;
 
-            if needs_convex_check {
-                if ccw_of_curr || ccw_of_best {
+                for step in 0..16 {
+                    let t_val = (step as f32) / 16.;
+                    let t_point = v2_to_c2(edge.t_point(self, t_val));
+                    let result = curve_intersects_line(&best_curve, &(start_point, t_point));
+                    if !result.is_empty() {
+                        best_idx = *idx;
+                        best_dir = dir;
+                    }
+                }
+            } else {
+                let needs_convex_check = curr_best_det >= 0.;
+
+                let ccw_of_curr = curr_el_det < 0.;
+                let ccw_of_best = best_dir.determinate(dir) < 0.;
+
+                if needs_convex_check {
+                    if ccw_of_curr || ccw_of_best {
+                        best_idx = *idx;
+                        best_dir = dir;
+                    }
+                } else if ccw_of_curr && ccw_of_best {
                     best_idx = *idx;
                     best_dir = dir;
                 }
-            } else if ccw_of_curr && ccw_of_best {
-                best_idx = *idx;
-                best_dir = dir;
             }
         }
 
@@ -638,7 +660,7 @@ impl BBGraph {
     }
 
     /// Given a node and a current direction, calculates which edge is the most counterclockwise.
-    /// It uses matrix2 determinates to calculate if it's counter clockwise.
+    /// It uses matrix2 determinates to calculate if it's clockwise.
     /// https://alexharri.medium.com/the-engineering-behind-figmas-vector-networks-688568e37110
     ///
     /// * `node_idx`: Current Node idx
@@ -660,23 +682,44 @@ impl BBGraph {
         }
 
         let mut best_idx = first_idx;
-        let mut best_dir = first_edge.calc_start_tangent(self)?;
+        let mut best_dir = first_edge.calc_start_tangent(self)?.normalize();
 
         for (idx, edge) in next_edge_dirs.iter() {
-            let dir = edge.calc_start_tangent(self)?;
-            let needs_convex_check = curr_dir.determinate(best_dir) <= 0.;
+            let dir = edge.calc_start_tangent(self)?.normalize();
+            let curr_best_det = curr_dir.determinate(best_dir);
+            let curr_el_det = curr_dir.determinate(dir);
 
-            let ccw_of_curr = curr_dir.determinate(dir) >= 0.;
-            let ccw_of_best = best_dir.determinate(dir) >= 0.;
+            // Parallel
+            let is_parallel = curr_el_det == 0. && curr_best_det == 0.;
+            if is_parallel {
+                let start_point = self.node(node_idx)?.position();
+                let start_point = v2_to_c2(start_point);
+                let best_curve = self.edge(best_idx)?.as_curve(self)?;
 
-            if needs_convex_check {
-                if ccw_of_curr || ccw_of_best {
+                for step in 0..16 {
+                    let t_val = (step as f32) / 16.;
+                    let t_point = v2_to_c2(edge.t_point(self, t_val));
+                    let result = curve_intersects_line(&best_curve, &(start_point, t_point));
+                    if !result.is_empty() {
+                        best_idx = *idx;
+                        best_dir = dir;
+                    }
+                }
+            } else {
+                let needs_convex_check = curr_best_det <= 0.;
+
+                let ccw_of_curr = curr_el_det >= 0.;
+                let ccw_of_best = best_dir.determinate(dir) >= 0.;
+
+                if needs_convex_check {
+                    if ccw_of_curr || ccw_of_best {
+                        best_idx = *idx;
+                        best_dir = dir;
+                    }
+                } else if ccw_of_curr && ccw_of_best {
                     best_idx = *idx;
                     best_dir = dir;
                 }
-            } else if ccw_of_curr && ccw_of_best {
-                best_idx = *idx;
-                best_dir = dir;
             }
         }
 
