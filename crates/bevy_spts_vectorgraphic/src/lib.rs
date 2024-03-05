@@ -14,13 +14,19 @@
 //! 5. Remesh the parent VectorGraphic if necessary.
 //!
 use bevy_app::{App, Plugin, PostUpdate};
-use bevy_ecs::schedule::{IntoSystemConfigs, SystemSet};
+use bevy_ecs::{
+    schedule::{IntoSystemConfigs, SystemSet},
+    system::IntoSystem,
+};
 use lifecycle::{
     sys_add_spawned_edges_to_vector_graphic, sys_add_spawned_endpoints_to_vector_graphic,
+    sys_build_vector_graph_paths, sys_check_vector_graphic_children_changed,
     sys_remove_despawned_edges_from_vector_graphic,
     sys_remove_despawned_endpoints_from_vector_graphic,
 };
+use prelude::sys_collect_vector_graph_path_endpoints;
 
+mod commands_ext;
 mod components;
 mod lifecycle;
 
@@ -44,7 +50,18 @@ impl Plugin for VectorGraphicPlugin {
             )
                 .in_set(VectorGraphicSet::UpdateParent),
         );
+        // app.add_systems(
+        //     PostUpdate,
+        //     sys_check_vector_graphic_children_changed
+        //         .pipe(sys_collect_vector_graph_path_endpoints)
+        //         .pipe(sys_build_vector_graph_paths)
+        //         .in_set(VectorGraphicSet::UpdateMesh),
+        // );
     }
 }
 
-
+pub mod prelude {
+    pub use crate::commands_ext::*;
+    pub use crate::components::*;
+    pub use crate::lifecycle::*;
+}
