@@ -35,8 +35,8 @@ pub mod lyon_path {
     pub use lyon_path::*;
 }
 
-use bevy_app::{App, Plugin, PostUpdate};
-use bevy_ecs::schedule::{IntoSystemConfigs, IntoSystemSetConfigs, SystemSet};
+use bevy::prelude::*;
+
 use systems::{
     sys_add_spawned_edges_to_vector_graphic, sys_add_spawned_endpoints_to_vector_graphic,
     sys_check_vector_graphic_children_changed, sys_collect_vector_graph_path_endpoints,

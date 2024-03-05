@@ -1,15 +1,18 @@
-use bevy_ecs::{
-    bundle::Bundle,
-    component::Component,
-    entity::{Entity, EntityHashSet},
-    query::QueryEntityError,
-    system::QueryLens,
+use bevy::{
+    ecs::{
+        entity::EntityHashSet, query::QueryEntityError, reflect::ReflectComponent,
+        system::QueryLens,
+    },
+    prelude::*,
 };
-use bevy_math::Vec2;
 use lyon_tessellation::path::Path;
 
-#[derive(Component, Clone, Copy, Default)]
+use crate::lyon_components::{FillOptions, StrokeOptions};
+
+#[derive(Component, Clone, Copy, Default, Debug)]
 #[allow(dead_code)]
+#[derive(Reflect)]
+#[reflect(Component)]
 pub struct Endpoint {
     /// Previous edge in loop
     pub(crate) next_edge: Option<Entity>,
@@ -54,10 +57,19 @@ impl Endpoint {
 #[derive(Bundle, Default)]
 pub struct EndpointBundle {
     pub endpoint: Endpoint,
+    pub transform: Transform,
+}
+impl EndpointBundle {
+    pub fn with_translation(mut self, translation: Vec3) -> Self {
+        self.transform.translation = translation;
+        self
+    }
 }
 
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, Debug)]
 #[allow(dead_code)]
+#[derive(Reflect)]
+#[reflect(Component)]
 pub struct Edge {
     /// Entity of start point
     pub(crate) next_endpoint: Entity,
@@ -88,7 +100,8 @@ impl Edge {
     }
 }
 
-#[derive(Component, Clone, Copy, Default)]
+#[derive(Component, Clone, Copy, Default, Reflect)]
+#[reflect(Component)]
 pub enum EdgeVariant {
     #[default]
     Line,
@@ -124,4 +137,6 @@ pub enum VectorGraphicPathStorage {
 pub struct VectorGraphicBundle {
     pub vector_graphic: VectorGraphic,
     pub path_storage: VectorGraphicPathStorage,
+    pub stroke_options: StrokeOptions,
+    pub fill_options: FillOptions,
 }

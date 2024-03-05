@@ -1,8 +1,4 @@
-use bevy_app::App;
-use bevy_ecs::{entity::Entity, world::World};
-use bevy_hierarchy::BuildWorldChildren;
-use bevy_math::{vec2, Vec3};
-use bevy_transform::{components::Transform, TransformBundle};
+use bevy::{math::vec2, prelude::*};
 
 use bevy_spts_vector_graphic::{commands_ext::VectorGraphicWorldExt, prelude::*};
 
@@ -87,8 +83,10 @@ pub fn build_box(world: &mut World) -> (Entity, (Entity, Entity, Entity, Entity)
 #[test]
 pub fn integration_test() {
     let mut app = App::new();
+    app.add_plugins(MinimalPlugins).add_plugins(AssetPlugin::default());
 
     app.add_plugins(VectorGraphicPlugin);
+    app.init_resource::<Assets<Mesh>>();
 
     app.update();
 

@@ -1,4 +1,5 @@
-use bevy_math::Vec2;
+use bevy::prelude::*;
+
 use lyon_tessellation::math::Point;
 
 pub trait ToPoint {

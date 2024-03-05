@@ -1,9 +1,4 @@
-use bevy_ecs::{
-    entity::Entity,
-    system::{Command, Commands, EntityCommands, QueryLens},
-    world::{EntityWorldMut, World},
-};
-use bevy_utils::tracing::warn;
+use bevy::{ecs::system::{Command, EntityCommands, QueryLens}, prelude::*};
 
 use crate::prelude::{Edge, EdgeVariant, Endpoint};
 
@@ -14,7 +9,7 @@ struct LinkEdgeCommand {
 }
 
 impl Command for LinkEdgeCommand {
-    fn apply(self, world: &mut bevy_ecs::world::World) {
+    fn apply(self, world: &mut World) {
         let LinkEdgeCommand {
             edge,
             next_endpoint,

@@ -1,7 +1,9 @@
-use bevy_ecs::component::Component;
+use bevy::prelude::*;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
+#[cfg_attr(feature = "reflect", reflect(Component))]
 pub enum LineCap {
     /// The stroke for each sub-path does not extend beyond its two endpoints.
     /// A zero length sub-path will therefore not have any stroke.
@@ -35,6 +37,8 @@ impl From<LineCap> for lyon_path::LineCap {
 /// See: <https://svgwg.org/specs/strokes/#StrokeLinejoinProperty>
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
+#[cfg_attr(feature = "reflect", reflect(Component))]
 pub enum LineJoin {
     /// A sharp corner is to be used to join path segments.
     Miter,
@@ -64,6 +68,8 @@ impl From<LineJoin> for lyon_path::LineJoin {
 /// Vertical or Horizontal.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
+#[cfg_attr(feature = "reflect", reflect(Component))]
 pub enum Orientation {
     Horizontal,
     Vertical,
@@ -84,6 +90,8 @@ pub type AttributeIndex = usize;
 /// Parameters for the tessellator.
 #[derive(Copy, Clone, Debug, PartialEq, Component)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
+#[cfg_attr(feature = "reflect", reflect(Component))]
 #[non_exhaustive]
 pub struct StrokeOptions {
     /// What cap to use at the start of each sub-path.
@@ -234,6 +242,8 @@ impl Default for StrokeOptions {
 /// See the SVG specification.
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
+#[cfg_attr(feature = "reflect", reflect(Component))]
 pub enum FillRule {
     EvenOdd,
     NonZero,
@@ -252,6 +262,8 @@ impl From<FillRule> for lyon_tessellation::FillRule {
 /// Parameters for the fill tessellator.
 #[derive(Copy, Clone, Debug, PartialEq, Component)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "reflect", derive(Reflect))]
+#[cfg_attr(feature = "reflect", reflect(Component))]
 #[non_exhaustive]
 pub struct FillOptions {
     /// Maximum allowed distance to the path when building an approximation.

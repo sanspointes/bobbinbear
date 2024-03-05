@@ -1,18 +1,17 @@
 //! Lifecycle methods for handling when edges/endpoints are spawned/despawned.
 
-use bevy_asset::Assets;
-use bevy_ecs::{
-    entity::{Entity, EntityHashSet},
-    query::{Added, Changed, Or, QueryEntityError, Without},
-    removal_detection::RemovedComponents,
-    system::{Commands, Query, QueryLens, ResMut},
+use bevy::{
+    ecs::{entity::EntityHashSet, query::QueryEntityError, system::QueryLens},
+    prelude::*,
+    render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
+    sprite::Mesh2dHandle,
+    utils::{hashbrown::HashSet, HashMap},
 };
-use bevy_hierarchy::Parent;
-use bevy_math::Vec3Swizzles;
-use bevy_render::{mesh::{Indices, Mesh}, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology};
-use bevy_transform::components::Transform;
-use bevy_utils::{tracing::warn, HashMap, HashSet};
-use lyon_tessellation::{path::Path, BuffersBuilder, FillTessellator, FillVertexConstructor, StrokeTessellator, StrokeVertexConstructor, VertexBuffers};
+
+use lyon_tessellation::{
+    path::Path, BuffersBuilder, FillTessellator, FillVertexConstructor, StrokeTessellator,
+    StrokeVertexConstructor, VertexBuffers,
+};
 
 use crate::{
     components::{Edge, Endpoint, VectorGraphic, VectorGraphicPathStorage},
@@ -131,48 +130,68 @@ fn traverse_endpoints(
     q_endpoints: &mut QueryLens<&Endpoint>,
     q_edges: &mut QueryLens<&Edge>,
 ) -> Result<Vec<Entity>, QueryEntityError> {
-    let mut endpoint_entity = start_endpoint;
+    println!("Start endpoint: {start_endpoint:?}.");
     let mut endpoint = Some(*q_endpoints.query().get(start_endpoint)?);
     let mut forward_endpoints = vec![start_endpoint];
 
     // Traverse forward
-    while endpoint.is_some() && endpoint_entity != start_endpoint {
+    let mut is_back_at_start = false;
+    loop {
         let Some(ep) = endpoint else {
             break;
         };
+        println!("Traversing forward from {ep:?}.");
         let Some(edge) = ep.next_edge(q_edges) else {
             break;
         };
+        println!("\tFound edge {edge:?}.");
         let edge = edge?;
         let ep = edge.next_endpoint(q_endpoints)?;
-        endpoint_entity = edge.next_endpoint_entity();
+        let endpoint_entity = edge.next_endpoint_entity();
         forward_endpoints.push(edge.next_endpoint_entity());
         endpoint = Some(ep);
+
+        is_back_at_start = endpoint_entity == start_endpoint;
+        if endpoint.is_none() || is_back_at_start {
+            break;
+        }
     }
 
-    let mut back_endpoints = vec![];
-    let mut endpoint_entity = start_endpoint;
-    let mut endpoint = Some(*q_endpoints.query().get(start_endpoint)?);
+    if is_back_at_start {
+        Ok(forward_endpoints)
+    } else {
+        let mut back_endpoints = vec![];
+        let mut endpoint = Some(*q_endpoints.query().get(start_endpoint)?);
 
-    // Traverse Backwards
-    while endpoint.is_some() && endpoint_entity != start_endpoint {
-        let Some(ep) = endpoint else {
-            break;
-        };
-        let Some(edge) = ep.prev_edge(q_edges) else {
-            break;
-        };
-        let edge = edge?;
-        let ep = edge.prev_endpoint(q_endpoints)?;
-        endpoint_entity = edge.prev_endpoint_entity();
-        forward_endpoints.push(edge.prev_endpoint_entity());
-        endpoint = Some(ep);
+        // Traverse Backwards
+        loop {
+            let Some(ep) = endpoint else {
+                break;
+            };
+            println!("Traversing backward from {ep:?}.");
+            let Some(edge) = ep.prev_edge(q_edges) else {
+                break;
+            };
+            println!("\tFound edge {edge:?}.");
+            let edge = edge?;
+            let ep = edge.prev_endpoint(q_endpoints)?;
+            let endpoint_entity = edge.prev_endpoint_entity();
+            forward_endpoints.push(edge.prev_endpoint_entity());
+            endpoint = Some(ep);
+
+            if endpoint.is_none() || endpoint_entity == start_endpoint {
+                break;
+            }
+        }
+        // Reverse backwards endpoints so it's facing forward again
+        back_endpoints.reverse();
+        back_endpoints.extend(forward_endpoints);
+
+        println!("\t Traverse complete with {back_endpoints:?}");
+
+        Ok(back_endpoints)
     }
-    // Reverse backwards endpoints so it's facing forward again
-    back_endpoints.reverse();
-    back_endpoints.extend(forward_endpoints);
 
-    Ok(back_endpoints)
 }
 
 /// Builds Vec<Vec<Entity>> of all endpoint paths that need to be regenerated.
@@ -223,7 +242,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
         };
 
         if endpoints.len() <= 1 {
-            warn!("sys_mark_vector_graph_path_starts: Endpoints path too short({endpoints:?}).");
+            panic!("sys_mark_vector_graph_path_starts: Endpoints path too short({endpoints:?}).");
             continue;
         }
 
@@ -346,42 +365,43 @@ pub fn sys_remesh_vector_graphic(
         )>,
     >,
 ) {
-    for (entity, path_storage, maybe_stroke_options, maybe_fill_options) in q_vector_graphic.iter() {
+    for (entity, path_storage, maybe_stroke_options, maybe_fill_options) in q_vector_graphic.iter()
+    {
         let VectorGraphicPathStorage::Calculated(path) = path_storage else {
             continue;
         };
         let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
 
         if let Some(stroke_options) = maybe_stroke_options {
-
             let mut tessellator = StrokeTessellator::new();
 
-            match tessellator.tessellate_path(path, &(*stroke_options).into(), 
+            match tessellator.tessellate_path(
+                path,
+                &(*stroke_options).into(),
                 &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
             ) {
                 Ok(()) => (),
                 Err(reason) => {
                     warn!("sys_remesh_vector_graphic: Failed to tessellate stroke {reason:?}.");
                     continue;
-                },
+                }
             }
-
         }
 
         if let Some(fill_options) = maybe_fill_options {
-
             let mut tessellator = FillTessellator::new();
 
-            match tessellator.tessellate_path(path, &(*fill_options).into(), 
+            match tessellator.tessellate_path(
+                path,
+                &(*fill_options).into(),
                 &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
             ) {
                 Ok(()) => (),
                 Err(reason) => {
                     warn!("sys_remesh_vector_graphic: Failed to tessellate fill {reason:?}.");
                     continue;
-                },
+                }
             }
-
         }
 
         let mut mesh = Mesh::new(
@@ -391,16 +411,20 @@ pub fn sys_remesh_vector_graphic(
 
         let VertexBuffers { vertices, indices } = geometry;
         mesh.insert_indices(Indices::U32(indices));
-        let (positions, normals): (Vec<[f32; 3]>, Vec<[f32; 2]>) = vertices.into_iter().map(|vert| {
-            let position: [f32; 3] = [vert.position[0], vert.position[1], 0.0];
-            let normal: [f32; 2] = vert.normal;
-            (position, normal)
-        }).unzip();
+        let (positions, normals): (Vec<[f32; 3]>, Vec<[f32; 3]>) = vertices
+            .into_iter()
+            .map(|vert| {
+                let position: [f32; 3] = [vert.position[0], vert.position[1], 0.0];
+                let normal: [f32; 3] = [vert.normal[0], vert.normal[1], 0.0];
+                (position, normal)
+            })
+            .unzip();
 
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
-        let handle = meshes.add(mesh);
+        println!("Mesh generated {mesh:?}");
+        let handle = Mesh2dHandle::from(meshes.add(mesh));
         commands.entity(entity).insert(handle);
     }
 }

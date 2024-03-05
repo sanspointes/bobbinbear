@@ -6,15 +6,19 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy_app = "0.13.0"
-bevy_asset = "0.13.0"
-bevy_ecs = "0.13.0"
-bevy_hierarchy = "0.13.0"
-bevy_math = "0.13.0"
-bevy_reflect = "0.13.0"
-bevy_render = "0.13.0"
-bevy_transform = "0.13.0"
-bevy_utils = "0.13.0"
+bevy = { version = "0.13.0", default-features = false, features = [
+    "bevy_sprite",
+    "bevy_render",
+    "bevy_core_pipeline",
+    "bevy_asset",
+]}
 lyon_path = "1.0.4"
 lyon_tessellation = "1.0.13"
 smallvec = "1.13.1"
+
+[dev-dependencies]
+bevy = { version = "0.13", default-features = false, features = [
+    "x11",
+    "bevy_asset",
+] }
+bevy-inspector-egui = "0.23.3"
