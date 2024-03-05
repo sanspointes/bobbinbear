@@ -38,7 +38,6 @@ impl Command for LinkEdgeCommand {
             endpoint.next_edge = Some(edge);
         } else {
             warn!("LinkEdgeCommand: Attempted to get Endpoint component on entity {prev_endpoint:?}, but none found.");
-            return;
         };
     }
 }

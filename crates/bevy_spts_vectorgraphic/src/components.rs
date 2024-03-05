@@ -1,5 +1,9 @@
 use bevy_ecs::{
-    bundle::Bundle, component::Component, entity::{Entity, EntityHashSet}, query::QueryEntityError, system::QueryLens
+    bundle::Bundle,
+    component::Component,
+    entity::{Entity, EntityHashSet},
+    query::QueryEntityError,
+    system::QueryLens,
 };
 use bevy_math::Vec2;
 use lyon_tessellation::path::Path;
@@ -88,8 +92,13 @@ impl Edge {
 pub enum EdgeVariant {
     #[default]
     Line,
-    Quadratic { ctrl1: Vec2 },
-    Cubic { ctrl1: Vec2, ctlr2: Vec2 },
+    Quadratic {
+        ctrl1: Vec2,
+    },
+    Cubic {
+        ctrl1: Vec2,
+        ctrl2: Vec2,
+    },
 }
 
 #[derive(Bundle)]
@@ -98,29 +107,17 @@ pub struct EdgeBundle {
     edge_variant: EdgeVariant,
 }
 
-
-
 #[derive(Component, Default)]
 pub struct VectorGraphic {
-    pub needs_redraw: bool,
     pub endpoints: EntityHashSet,
     pub edges: EntityHashSet,
 }
 
-
 #[derive(Component, Default)]
-pub struct VectorGraphicPathStorage {
-    paths: Vec<Path>,
-}
-
-impl VectorGraphicPathStorage {
-    pub fn clear(&mut self) {
-        self.paths.clear();
-    }
-
-    pub fn push_path(&mut self, path: Path) {
-        self.paths.push(path);
-    }
+pub enum VectorGraphicPathStorage {
+    #[default]
+    NeedsRecalculate,
+    Calculated(Path),
 }
 
 #[derive(Bundle, Default)]

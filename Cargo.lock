@@ -1082,12 +1082,15 @@ name = "bevy_spts_vector_graphic"
 version = "0.1.0"
 dependencies = [
  "bevy_app",
+ "bevy_asset",
  "bevy_ecs",
  "bevy_hierarchy",
  "bevy_math",
  "bevy_reflect",
+ "bevy_render",
  "bevy_transform",
  "bevy_utils",
+ "lyon_path",
  "lyon_tessellation",
  "smallvec",
 ]

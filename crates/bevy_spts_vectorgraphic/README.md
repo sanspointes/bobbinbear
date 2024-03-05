@@ -68,8 +68,7 @@ Rebuilds the lyon `Path` of the graphic so it's ready for mesh generation.
 
 Rebuilds the mesh of the graphic so the changes can be rendered.
 
-1. `sys_check_vector_graphic_style_changed` - Checks for changes to the fill/stroke to trigger a remesh using pre-calculated paths
-2. `sys_remesh_vector_graphic` - Remeshes the vector graphic with the latest path / styles.
+1. `sys_remesh_vector_graphic` - Remeshes the vector graphic with the latest path / styles.  This is triggered when `VectorGraphicPathStorage` changes or if the style components change. 
 
 
 
