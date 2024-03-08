@@ -37,7 +37,9 @@ fn setup(
 
     let vector_graphic = commands
         .spawn(VectorGraphicBundle::default())
+        .remove::<FillOptions>()
         .insert(SpatialBundle::default())
+        .insert(materials.add(Color::WHITE))
         .id();
 
     let p0 = commands

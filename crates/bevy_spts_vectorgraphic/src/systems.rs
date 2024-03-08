@@ -271,25 +271,22 @@ pub fn sys_collect_vector_graph_path_endpoints(
             if path.len() < 2 {
                 continue;
             }
-            println!("Path: {path:?}");
 
             let mut path_iter = path.iter();
 
-            let mut e_first = *path_iter.next().unwrap(); // Safety `path.len() < 2` above
-                                                             // TODO: Improve error message
+            let e_first = *path_iter.next().unwrap(); // Safety `path.len() < 2` above
             let (_, endpoint, _, transform) = q_endpoints
                 .get(e_first)
                 .expect("Could not get endpoint.");
 
-            let mut curr_endpoint = *endpoint;
-
             pb.begin(transform.translation.xy().to_point());
 
+            let mut curr_endpoint = *endpoint;
             let mut e_last = e_first;
+
             for e_endpoint in path_iter {
                 let (edge_entity, edge, edge_variant, _) =
                     q_edges.get(curr_endpoint.next_edge_entity().unwrap()).unwrap();
-                let next_endpoint = edge.next_endpoint_entity();
                 let (e_next_endpoint, next_endpoint, _, transform) =
                     q_endpoints.get(edge.next_endpoint_entity()).unwrap();
 
@@ -309,27 +306,11 @@ pub fn sys_collect_vector_graph_path_endpoints(
                         pb.cubic_bezier_to(ctrl1.to_point(), ctrl2.to_point(), to_point);
                     }
                 }
+
                 curr_endpoint = *next_endpoint;
                 e_last = *e_endpoint;
             }
 
-            // let mut last = first;
-            // for endpoint_entity in path_iter {
-            //     last = *endpoint_entity;
-            //
-            //     // Safety: Only valid values collected above?? TODO: Make this an error.
-            //     let (entity, endpoint, _, transform) = q_endpoints
-            //         .get(*endpoint_entity)
-            //         .expect("Could not get endpoint");
-            //
-            //
-            //     // Safety: Valid connected paths collected above??
-            //     let (edge_entity, _, edge_variant, _) = q_edges
-            //         .get(endpoint.prev_edge_entity().unwrap())
-            //         .expect("Could not get edge");
-            //
-            // }
-            //
             let is_closed = e_last == e_first;
             pb.end(is_closed);
         }
@@ -355,7 +336,7 @@ impl FillVertexConstructor<RemeshVertex> for RemeshVertexConstructor {
 impl StrokeVertexConstructor<RemeshVertex> for RemeshVertexConstructor {
     fn new_vertex(&mut self, vertex: lyon_tessellation::StrokeVertex) -> RemeshVertex {
         RemeshVertex {
-            position: vertex.position_on_path().to_array(),
+            position: vertex.position().to_array(),
             normal: vertex.normal().to_array(),
         }
     }
@@ -396,6 +377,7 @@ pub fn sys_remesh_vector_graphic(
         let mut geometry = VertexBuffers::new();
 
         if let Some(stroke_options) = maybe_stroke_options {
+            println!("Tessellating {stroke_options:?} on path {path:?}.");
             if let Err(reason) = stroke_tesellator.tessellate_path(
                 path,
                 &(*stroke_options).into(),
