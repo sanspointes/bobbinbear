@@ -1,12 +1,19 @@
-use bevy::{
-    math::{vec2, vec3},
-    prelude::*,
-    sprite::MaterialMesh2dBundle,
-};
-use bevy_inspector_egui::quick::WorldInspectorPlugin;
+//! The way the meshes are generated are NOT performant whatsoever but none the less it's cool to
+//! be able to see how you can hook your vector graphics editor into a number of different
+//! processes.  I would not recommend doing this ever.
+//!
+//!
+
+use bevy::{math::vec3, prelude::*, sprite::MaterialMesh2dBundle};
+
 use bevy_spts_vector_graphic::{commands_ext::VectorGraphicCommandsExt, prelude::*};
+
 use bevy_xpbd_2d::{
-    components::{MassPropertiesBundle, RigidBody}, constraints::{DistanceJoint, Joint}, math::Vector, plugins::{collision::Collider, PhysicsPlugins}, resources::{Gravity, SubstepCount}
+    components::{MassPropertiesBundle, RigidBody},
+    constraints::{DistanceJoint, Joint},
+    math::Vector,
+    plugins::{collision::Collider, PhysicsPlugins},
+    resources::{Gravity, SubstepCount},
 };
 
 pub fn main() {
@@ -35,16 +42,14 @@ fn setup(
 ) {
     commands.spawn(Camera2dBundle::default());
 
-    commands.spawn(MaterialMesh2dBundle {
-        mesh: meshes.add(Rectangle::new(500., 25.)).into(),
-        transform: Transform::default()
-            .with_translation(vec3(0., -300., 0.)),
-        material: materials.add(Color::PURPLE),
-        ..default()
-    }).insert((
-            RigidBody::Static,
-            Collider::rectangle(500.0, 25.0),
-        ));
+    commands
+        .spawn(MaterialMesh2dBundle {
+            mesh: meshes.add(Rectangle::new(500., 25.)).into(),
+            transform: Transform::default().with_translation(vec3(0., -300., 0.)),
+            material: materials.add(Color::PURPLE),
+            ..default()
+        })
+        .insert((RigidBody::Static, Collider::rectangle(500.0, 25.0)));
 
     let vector_graphic = commands
         .spawn(VectorGraphicBundle::default())

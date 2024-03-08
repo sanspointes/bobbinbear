@@ -1,9 +1,10 @@
 use bevy::prelude::*;
 
+use bevy::ecs::reflect::ReflectComponent;
+
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "reflect", derive(Reflect))]
-#[cfg_attr(feature = "reflect", reflect(Component))]
 pub enum LineCap {
     /// The stroke for each sub-path does not extend beyond its two endpoints.
     /// A zero length sub-path will therefore not have any stroke.
@@ -38,7 +39,6 @@ impl From<LineCap> for lyon_path::LineCap {
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "reflect", derive(Reflect))]
-#[cfg_attr(feature = "reflect", reflect(Component))]
 pub enum LineJoin {
     /// A sharp corner is to be used to join path segments.
     Miter,
@@ -69,7 +69,6 @@ impl From<LineJoin> for lyon_path::LineJoin {
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "reflect", derive(Reflect))]
-#[cfg_attr(feature = "reflect", reflect(Component))]
 pub enum Orientation {
     Horizontal,
     Vertical,
@@ -243,7 +242,6 @@ impl Default for StrokeOptions {
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "serialization", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "reflect", derive(Reflect))]
-#[cfg_attr(feature = "reflect", reflect(Component))]
 pub enum FillRule {
     EvenOdd,
     NonZero,

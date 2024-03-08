@@ -52,9 +52,20 @@ pub enum VectorGraphicSet {
     Remesh,
 }
 
+#[derive(Resource, Deref, DerefMut)]
+pub struct SptsFillTessellator(lyon_tessellation::FillTessellator);
+
+#[derive(Resource, Deref, DerefMut)]
+pub struct SptsStrokeTessellator(lyon_tessellation::StrokeTessellator);
+
 pub struct VectorGraphicPlugin;
 impl Plugin for VectorGraphicPlugin {
     fn build(&self, app: &mut App) {
+        let fill_tess = lyon_tessellation::FillTessellator::new();
+        let stroke_tess = lyon_tessellation::StrokeTessellator::new();
+        app.insert_resource(SptsFillTessellator(fill_tess))
+            .insert_resource(SptsStrokeTessellator(stroke_tess));
+
         app.configure_sets(
             PostUpdate,
             (

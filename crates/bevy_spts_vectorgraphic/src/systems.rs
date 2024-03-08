@@ -18,6 +18,7 @@ use crate::{
     lyon_components::{FillOptions, StrokeOptions},
     prelude::EdgeVariant,
     utils::ToPoint,
+    SptsFillTessellator, SptsStrokeTessellator,
 };
 
 /// Adds any added endpoints to the hashset within the parent VectorGraphic
@@ -125,73 +126,62 @@ pub fn sys_check_vector_graphic_children_changed(
     }
 }
 
+/// Start at endpoint e3,
+/// iter forward e4, e5, e6, end
+/// iter back e2, e1, reverse it so it's e1, e2
+/// Add forward to back so it's e1 ... e6
+
 fn traverse_endpoints(
     start_endpoint: Entity,
     q_endpoints: &mut QueryLens<&Endpoint>,
     q_edges: &mut QueryLens<&Edge>,
 ) -> Result<Vec<Entity>, QueryEntityError> {
     println!("Start endpoint: {start_endpoint:?}.");
-    let mut endpoint = Some(*q_endpoints.query().get(start_endpoint)?);
-    let mut forward_endpoints = vec![start_endpoint];
+    let first = *q_endpoints.query().get(start_endpoint)?;
 
-    // Traverse forward
-    let mut is_back_at_start = false;
-    loop {
-        let Some(ep) = endpoint else {
-            break;
-        };
-        println!("Traversing forward from {ep:?}.");
-        let Some(edge) = ep.next_edge(q_edges) else {
-            break;
-        };
-        println!("\tFound edge {edge:?}.");
-        let edge = edge?;
-        let ep = edge.next_endpoint(q_endpoints)?;
-        let endpoint_entity = edge.next_endpoint_entity();
-        forward_endpoints.push(edge.next_endpoint_entity());
-        endpoint = Some(ep);
+    let mut needs_reverse = true;
+    let mut endpoints = vec![];
 
-        is_back_at_start = endpoint_entity == start_endpoint;
-        if endpoint.is_none() || is_back_at_start {
-            break;
-        }
-    }
-
-    if is_back_at_start {
-        Ok(forward_endpoints)
-    } else {
-        let mut back_endpoints = vec![];
-        let mut endpoint = Some(*q_endpoints.query().get(start_endpoint)?);
-
-        // Traverse Backwards
+    if first.next_edge_entity().is_some() {
+        let mut curr = first;
+        endpoints.push(start_endpoint);
         loop {
-            let Some(ep) = endpoint else {
+            let Some(edge) = curr.next_edge(q_edges) else {
                 break;
             };
-            println!("Traversing backward from {ep:?}.");
-            let Some(edge) = ep.prev_edge(q_edges) else {
-                break;
-            };
-            println!("\tFound edge {edge:?}.");
             let edge = edge?;
-            let ep = edge.prev_endpoint(q_endpoints)?;
-            let endpoint_entity = edge.prev_endpoint_entity();
-            forward_endpoints.push(edge.prev_endpoint_entity());
-            endpoint = Some(ep);
-
-            if endpoint.is_none() || endpoint_entity == start_endpoint {
+            let endpoint_entity = edge.next_endpoint_entity();
+            curr = *q_endpoints.query().get(endpoint_entity)?;
+            endpoints.push(endpoint_entity);
+            if endpoint_entity == start_endpoint {
+                needs_reverse = false; // Loop complete
                 break;
             }
         }
-        // Reverse backwards endpoints so it's facing forward again
-        back_endpoints.reverse();
-        back_endpoints.extend(forward_endpoints);
+    }
+    if first.prev_edge_entity().is_some() && needs_reverse {
+        let mut curr = first;
+        let mut reverse_endpoints = vec![];
+        loop {
+            let Some(edge) = curr.prev_edge(q_edges) else {
+                break;
+            };
+            let edge = edge?;
+            let endpoint_entity = edge.prev_endpoint_entity();
+            if endpoint_entity == start_endpoint {
+                break;
+            }
+            curr = *q_endpoints.query().get(endpoint_entity)?;
+            reverse_endpoints.push(endpoint_entity);
+        }
 
-        println!("\t Traverse complete with {back_endpoints:?}");
+        reverse_endpoints.reverse();
+        reverse_endpoints.extend(endpoints.iter());
 
-        Ok(back_endpoints)
+        endpoints = reverse_endpoints;
     }
 
+    Ok(endpoints)
 }
 
 /// Builds Vec<Vec<Entity>> of all endpoint paths that need to be regenerated.
@@ -236,18 +226,26 @@ pub fn sys_collect_vector_graph_path_endpoints(
             &mut q_endpoints.transmute_lens::<&Endpoint>(),
             &mut q_edges.transmute_lens::<&Edge>(),
         );
+
         let Ok(endpoints) = endpoints else {
             warn!("sys_mark_vector_graph_path_starts: Could not get endpoints of group.  Reason {endpoints:?}");
             continue;
         };
 
-        if endpoints.len() <= 1 {
-            panic!("sys_mark_vector_graph_path_starts: Endpoints path too short({endpoints:?}).");
-            continue;
-        }
+        let result: Vec<_> = endpoints
+            .iter()
+            .map(|e| (e, q_endpoints.get(*e).unwrap().1))
+            .collect();
+        println!("Endpoints: {result:?}");
 
+        unvisited.remove(&(entity, parent));
         for e in endpoints.iter() {
             unvisited.remove(&(*e, parent));
+        }
+
+        if endpoints.len() <= 1 {
+            // panic!("sys_mark_vector_graph_path_starts: Endpoints path too short({endpoints:?}).");
+            continue;
         }
 
         let entry = vector_graphic_path_endpoints.entry(parent);
@@ -260,6 +258,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
         let paths = vector_graphic_path_endpoints
             .get(&vector_grapic_entity)
             .unwrap();
+        println!("Paths: {paths:?}");
 
         let Ok((_, _, mut path_storage)) = q_vector_graphic.get_mut(vector_grapic_entity) else {
             warn!("sys_mark_vector_graph_path_starts: Tried to get VectorGraphicPathStorage for changed path but entity or component on entity does not exist.  Entity: {vector_grapic_entity:?}");
@@ -272,44 +271,66 @@ pub fn sys_collect_vector_graph_path_endpoints(
             if path.len() < 2 {
                 continue;
             }
+            println!("Path: {path:?}");
 
             let mut path_iter = path.iter();
 
-            let first = *path_iter.next().unwrap(); // Safety `path.len() < 2` above
-                                                    // TODO: Improve error message
-            let (_, _, _, transform) = q_endpoints.get(first).expect("Could not get endpoint.");
+            let mut e_first = *path_iter.next().unwrap(); // Safety `path.len() < 2` above
+                                                             // TODO: Improve error message
+            let (_, endpoint, _, transform) = q_endpoints
+                .get(e_first)
+                .expect("Could not get endpoint.");
+
+            let mut curr_endpoint = *endpoint;
+
             pb.begin(transform.translation.xy().to_point());
 
-            let mut last = first;
-            for endpoint_entity in path_iter {
-                last = *endpoint_entity;
-
-                // Safety: Only valid values collected above?? TODO: Make this an error.
-                let (_, endpoint, _, transform) = q_endpoints
-                    .get(*endpoint_entity)
-                    .expect("Could not get endpoint");
+            let mut e_last = e_first;
+            for e_endpoint in path_iter {
+                let (edge_entity, edge, edge_variant, _) =
+                    q_edges.get(curr_endpoint.next_edge_entity().unwrap()).unwrap();
+                let next_endpoint = edge.next_endpoint_entity();
+                let (e_next_endpoint, next_endpoint, _, transform) =
+                    q_endpoints.get(edge.next_endpoint_entity()).unwrap();
 
                 let to_point = transform.translation.xy().to_point();
 
-                // Safety: Valid connected paths collected above??
-                let (_, _, edge_variant, _) = q_edges
-                    .get(endpoint.prev_edge_entity().unwrap())
-                    .expect("Could not get edge");
-
                 match edge_variant {
                     EdgeVariant::Line => {
+                        println!("-> line_to {e_next_endpoint:?} via edge {edge_entity:?} ({endpoint:?}, {to_point:?})");
                         pb.line_to(to_point);
                     }
                     EdgeVariant::Quadratic { ctrl1 } => {
+                        println!("-> quadratic_bezier_to {e_next_endpoint:?} via edge {edge_entity:?} ({endpoint:?}, {to_point:?})");
                         pb.quadratic_bezier_to(ctrl1.to_point(), to_point);
                     }
                     EdgeVariant::Cubic { ctrl1, ctrl2 } => {
+                        println!("-> cubic_bezier_to {e_next_endpoint:?} via edge {edge_entity:?} ({endpoint:?}, {to_point:?})");
                         pb.cubic_bezier_to(ctrl1.to_point(), ctrl2.to_point(), to_point);
                     }
                 }
+                curr_endpoint = *next_endpoint;
+                e_last = *e_endpoint;
             }
 
-            let is_closed = last == first;
+            // let mut last = first;
+            // for endpoint_entity in path_iter {
+            //     last = *endpoint_entity;
+            //
+            //     // Safety: Only valid values collected above?? TODO: Make this an error.
+            //     let (entity, endpoint, _, transform) = q_endpoints
+            //         .get(*endpoint_entity)
+            //         .expect("Could not get endpoint");
+            //
+            //
+            //     // Safety: Valid connected paths collected above??
+            //     let (edge_entity, _, edge_variant, _) = q_edges
+            //         .get(endpoint.prev_edge_entity().unwrap())
+            //         .expect("Could not get edge");
+            //
+            // }
+            //
+            let is_closed = e_last == e_first;
             pb.end(is_closed);
         }
 
@@ -364,43 +385,35 @@ pub fn sys_remesh_vector_graphic(
             Changed<FillOptions>,
         )>,
     >,
+    mut fill_tessellator: ResMut<SptsFillTessellator>,
+    mut stroke_tesellator: ResMut<SptsStrokeTessellator>,
 ) {
     for (entity, path_storage, maybe_stroke_options, maybe_fill_options) in q_vector_graphic.iter()
     {
         let VectorGraphicPathStorage::Calculated(path) = path_storage else {
             continue;
         };
-        let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
+        let mut geometry = VertexBuffers::new();
 
         if let Some(stroke_options) = maybe_stroke_options {
-            let mut tessellator = StrokeTessellator::new();
-
-            match tessellator.tessellate_path(
+            if let Err(reason) = stroke_tesellator.tessellate_path(
                 path,
                 &(*stroke_options).into(),
                 &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
             ) {
-                Ok(()) => (),
-                Err(reason) => {
-                    warn!("sys_remesh_vector_graphic: Failed to tessellate stroke {reason:?}.");
-                    continue;
-                }
+                warn!("sys_remesh_vector_graphic: Failed to tessellate stroke {reason:?}.");
+                continue;
             }
         }
 
         if let Some(fill_options) = maybe_fill_options {
-            let mut tessellator = FillTessellator::new();
-
-            match tessellator.tessellate_path(
+            if let Err(reason) = fill_tessellator.tessellate_path(
                 path,
                 &(*fill_options).into(),
                 &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
             ) {
-                Ok(()) => (),
-                Err(reason) => {
-                    warn!("sys_remesh_vector_graphic: Failed to tessellate fill {reason:?}.");
-                    continue;
-                }
+                warn!("sys_remesh_vector_graphic: Failed to tessellate fill {reason:?}.");
+                continue;
             }
         }
 

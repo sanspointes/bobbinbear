@@ -14,6 +14,8 @@ pub fn main() {
     app.register_type::<Endpoint>()
         .register_type::<Edge>()
         .register_type::<EdgeVariant>()
+        .register_type::<FillOptions>()
+        .register_type::<StrokeOptions>()
     ;
 
     app.run();
