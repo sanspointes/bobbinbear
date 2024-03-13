@@ -1,6 +1,6 @@
 use bevy::{
     ecs::{
-        entity::EntityHashSet, query::QueryEntityError, reflect::ReflectComponent,
+        entity::{EntityHashSet, MapEntities}, query::QueryEntityError, reflect::{ReflectComponent, ReflectMapEntities},
         system::QueryLens,
     },
     prelude::*,
@@ -13,6 +13,7 @@ use crate::lyon_components::{FillOptions, StrokeOptions};
 #[allow(dead_code)]
 #[derive(Reflect)]
 #[reflect(Component)]
+#[reflect(MapEntities)]
 pub struct Endpoint {
     /// Previous edge in loop
     pub(crate) next_edge: Option<Entity>,
@@ -45,6 +46,13 @@ impl Endpoint {
         })
     }
 }
+
+impl MapEntities for Endpoint {
+    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
+        self.next_edge = self.next_edge.map(|e| entity_mapper.map_entity(e));
+        self.prev_edge = self.prev_edge.map(|e| entity_mapper.map_entity(e));
+    }
+}
 //
 // #[derive(Component, Clone, Default)]
 // #[allow(dead_code)]
@@ -70,6 +78,7 @@ impl EndpointBundle {
 #[allow(dead_code)]
 #[derive(Reflect)]
 #[reflect(Component)]
+#[reflect(MapEntities)]
 pub struct Edge {
     /// Entity of start point
     pub(crate) next_endpoint: Entity,
@@ -97,6 +106,13 @@ impl Edge {
         q_endpoints: &mut QueryLens<&Endpoint>,
     ) -> Result<Endpoint, QueryEntityError> {
         q_endpoints.query().get(self.next_endpoint).copied()
+    }
+}
+
+impl MapEntities for Edge {
+    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
+        self.next_endpoint = entity_mapper.map_entity(self.next_endpoint);
+        self.prev_endpoint = entity_mapper.map_entity(self.prev_endpoint);
     }
 }
 
