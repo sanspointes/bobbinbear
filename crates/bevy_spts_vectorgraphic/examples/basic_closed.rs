@@ -1,5 +1,6 @@
 use bevy::{math::{vec2, vec3}, prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_spts_uid::extension::EntityCommandsExt;
 use bevy_spts_vector_graphic::{commands_ext::VectorGraphicCommandsExt, prelude::*};
 
 pub fn main() {
@@ -44,19 +45,19 @@ fn setup(
     let p0 = commands
         .spawn(EndpointBundle::default())
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p1 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(100., 0., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p2 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(100., 100., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p3 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(0., 100., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
 
     commands
         .spawn_edge(EdgeVariant::Quadratic { ctrl1: vec2(50., 50.) }, p0, p1)

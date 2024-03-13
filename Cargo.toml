@@ -5,7 +5,7 @@ members = [
     "bb_core",
     "bb_desktop",
     "crates/bevy_spts_changeset",
-    "crates/bevy_spts_fragments",
+    "crates/bevy_spts_fragments", "crates/bevy_spts_uid",
     "crates/bevy_spts_vectorgraphic",
     "packages/bb_vector_network",
 ]

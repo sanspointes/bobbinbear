@@ -10,7 +10,7 @@ use bevy_reflect::{Reflect, TypeInfo, TypeRegistry};
 use bevy_scene::SceneFilter;
 use thiserror::Error;
 
-use crate::uid::Uid;
+use crate::prelude::Uid;
 
 #[derive(Debug, Clone, Error)]
 pub enum ComponentFragmentError {

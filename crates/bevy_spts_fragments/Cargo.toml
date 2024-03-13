@@ -16,6 +16,7 @@ serde = { version = "1.0.197", features = ["derive"], optional = true }
 smallvec = "1.13.1"
 thiserror = "1.0.57"
 uuid = { version = "1.7.0", features = ["serde"] }
+bevy_spts_uid = { version = "0.1.0", path = "../bevy_spts_uid" }
 
 [features]
 serde = ["dep:serde"]

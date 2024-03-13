@@ -6,7 +6,7 @@ use bevy_reflect::TypeRegistry;
 use smallvec::SmallVec;
 use thiserror::Error;
 
-use crate::uid::Uid;
+use crate::prelude::Uid;
 
 use super::{
     entity::{EntityFragmentNewError, EntityFragmentSpawnError},

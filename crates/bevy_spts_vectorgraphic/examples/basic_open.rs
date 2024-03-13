@@ -1,5 +1,6 @@
-use bevy::{math::{vec2, vec3}, prelude::*, sprite::MaterialMesh2dBundle};
+use bevy::{math::vec3, prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_spts_uid::extension::EntityCommandsExt;
 use bevy_spts_vector_graphic::{commands_ext::VectorGraphicCommandsExt, prelude::*};
 
 pub fn main() {
@@ -15,8 +16,7 @@ pub fn main() {
         .register_type::<Edge>()
         .register_type::<EdgeVariant>()
         .register_type::<StrokeOptions>()
-        .register_type::<FillOptions>()
-    ;
+        .register_type::<FillOptions>();
 
     app.run();
 }
@@ -45,54 +45,60 @@ fn setup(
     let p0 = commands
         .spawn(EndpointBundle::default())
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p1 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(50., 20., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p2 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(100., 0., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p3 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(120., 50., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p4 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(100., 100., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p5 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(50., 120., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p6 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(0., 100., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     let p7 = commands
         .spawn(EndpointBundle::default().with_translation(vec3(20., 50., 0.)))
         .set_parent(vector_graphic)
-        .id();
+        .uid();
     println!("Endpoints {:?}", [p0, p1, p2, p3, p4, p5, p6, p7]);
 
     let e0 = commands
         .spawn_edge(EdgeVariant::Line, p4, p5)
-        .set_parent(vector_graphic).id();
+        .set_parent(vector_graphic)
+        .id();
     let e1 = commands
         .spawn_edge(EdgeVariant::Line, p5, p6)
-        .set_parent(vector_graphic).id();
+        .set_parent(vector_graphic)
+        .id();
     let e2 = commands
         .spawn_edge(EdgeVariant::Line, p6, p7)
-        .set_parent(vector_graphic).id();
+        .set_parent(vector_graphic)
+        .id();
     let e3 = commands
         .spawn_edge(EdgeVariant::Line, p7, p0)
-        .set_parent(vector_graphic).id();
+        .set_parent(vector_graphic)
+        .id();
     let e4 = commands
         .spawn_edge(EdgeVariant::Line, p0, p1)
-        .set_parent(vector_graphic).id();
+        .set_parent(vector_graphic)
+        .id();
     let e5 = commands
         .spawn_edge(EdgeVariant::Line, p1, p2)
-        .set_parent(vector_graphic).id();
+        .set_parent(vector_graphic)
+        .id();
     println!("Edges {:?}", [e0, e1, e2, e3, e4, e5]);
 }

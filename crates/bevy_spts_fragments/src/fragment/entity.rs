@@ -9,7 +9,7 @@ use thiserror::Error;
 // #[cfg(feature = "serde")]
 // use serde::{Serialize, Deserialize};
 
-use crate::uid::Uid;
+use crate::prelude::Uid;
 
 use super::component::{ComponentFragment, ComponentFragmentError};
 

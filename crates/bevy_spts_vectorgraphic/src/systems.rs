@@ -1,16 +1,20 @@
 //! Lifecycle methods for handling when edges/endpoints are spawned/despawned.
 
 use bevy::{
-    ecs::{entity::EntityHashSet, query::QueryEntityError, system::QueryLens},
+    ecs::{
+        entity::{EntityHashMap, EntityHashSet},
+        query::QueryEntityError,
+        system::QueryLens,
+    },
     prelude::*,
     render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
     sprite::Mesh2dHandle,
-    utils::{hashbrown::HashSet, HashMap},
+    utils::HashMap,
 };
 
+use bevy_spts_uid::{Uid, index::Index};
 use lyon_tessellation::{
-    path::Path, BuffersBuilder, FillTessellator, FillVertexConstructor, StrokeTessellator,
-    StrokeVertexConstructor, VertexBuffers,
+    path::Path, BuffersBuilder, FillVertexConstructor, StrokeVertexConstructor, VertexBuffers,
 };
 
 use crate::{
@@ -132,28 +136,33 @@ pub fn sys_check_vector_graphic_children_changed(
 /// Add forward to back so it's e1 ... e6
 
 fn traverse_endpoints(
-    start_endpoint: Entity,
+    start_endpoint: Uid,
     q_endpoints: &mut QueryLens<&Endpoint>,
     q_edges: &mut QueryLens<&Edge>,
+    index: &mut Index<Uid>,
 ) -> Result<Vec<Entity>, QueryEntityError> {
     println!("Start endpoint: {start_endpoint:?}.");
-    let first = *q_endpoints.query().get(start_endpoint)?;
+    let first_e = index.single(&start_endpoint);
+    let first = *q_endpoints.query().get(first_e)?;
 
     let mut needs_reverse = true;
     let mut endpoints = vec![];
 
     if first.next_edge_entity().is_some() {
         let mut curr = first;
-        endpoints.push(start_endpoint);
+        endpoints.push(first_e);
         loop {
-            let Some(edge) = curr.next_edge(q_edges) else {
+            let Some(edge) = curr.next_edge(q_edges, index) else {
                 break;
             };
             let edge = edge?;
-            let endpoint_entity = edge.next_endpoint_entity();
+
+            let endpoint_uid = edge.next_endpoint_uid();
+            let endpoint_entity = index.single(&endpoint_uid);
             curr = *q_endpoints.query().get(endpoint_entity)?;
             endpoints.push(endpoint_entity);
-            if endpoint_entity == start_endpoint {
+
+            if endpoint_uid == start_endpoint {
                 needs_reverse = false; // Loop complete
                 break;
             }
@@ -163,12 +172,13 @@ fn traverse_endpoints(
         let mut curr = first;
         let mut reverse_endpoints = vec![];
         loop {
-            let Some(edge) = curr.prev_edge(q_edges) else {
+            let Some(edge) = curr.prev_edge(q_edges, index) else {
                 break;
             };
             let edge = edge?;
-            let endpoint_entity = edge.prev_endpoint_entity();
-            if endpoint_entity == start_endpoint {
+            let endpoint_uid = edge.prev_endpoint_uid();
+            let endpoint_entity = index.single(&endpoint_uid);
+            if endpoint_uid == start_endpoint {
                 break;
             }
             curr = *q_endpoints.query().get(endpoint_entity)?;
@@ -191,8 +201,9 @@ fn traverse_endpoints(
 /// * `q_edges`:
 pub fn sys_collect_vector_graph_path_endpoints(
     mut q_vector_graphic: Query<(Entity, &VectorGraphic, &mut VectorGraphicPathStorage)>,
-    mut q_endpoints: Query<(Entity, &Endpoint, &Parent, &Transform)>,
+    mut q_endpoints: Query<(Entity, &Uid, &Endpoint, &Parent, &Transform)>,
     mut q_edges: Query<(Entity, &Edge, &EdgeVariant, &Parent)>,
+    mut index: Index<Uid>,
 ) {
     let changed_vector_graphics: Vec<_> = q_vector_graphic
         .iter()
@@ -206,11 +217,11 @@ pub fn sys_collect_vector_graph_path_endpoints(
         .collect();
 
     // Hashset storing endpoint entity(0) and their parent(1)
-    let mut unvisited: HashSet<_> = q_endpoints
+    let mut unvisited: EntityHashMap<_> = q_endpoints
         .iter()
-        .filter_map(|(entity, _, parent, _)| {
+        .filter_map(|(entity, uid, _, parent, _)| {
             if changed_vector_graphics.contains(&parent.get()) {
-                Some((entity, parent.get()))
+                Some((entity, (*uid, parent.get())))
             } else {
                 None
             }
@@ -219,12 +230,16 @@ pub fn sys_collect_vector_graph_path_endpoints(
 
     let mut vector_graphic_path_endpoints = HashMap::new();
 
-    while let Some((entity, parent)) = unvisited.iter().copied().next() {
+    while let Some(entity) = unvisited.keys().copied().next() {
+        let Some((uid, parent)) = unvisited.get(&entity).copied() else {
+            continue;
+        };
         // Collect endpoints in path
         let endpoints = traverse_endpoints(
-            entity,
+            uid,
             &mut q_endpoints.transmute_lens::<&Endpoint>(),
             &mut q_edges.transmute_lens::<&Edge>(),
+            &mut index,
         );
 
         let Ok(endpoints) = endpoints else {
@@ -238,9 +253,9 @@ pub fn sys_collect_vector_graph_path_endpoints(
             .collect();
         println!("Endpoints: {result:?}");
 
-        unvisited.remove(&(entity, parent));
+        unvisited.remove(&entity);
         for e in endpoints.iter() {
-            unvisited.remove(&(*e, parent));
+            unvisited.remove(e);
         }
 
         if endpoints.len() <= 1 {
@@ -275,9 +290,8 @@ pub fn sys_collect_vector_graph_path_endpoints(
             let mut path_iter = path.iter();
 
             let e_first = *path_iter.next().unwrap(); // Safety `path.len() < 2` above
-            let (_, endpoint, _, transform) = q_endpoints
-                .get(e_first)
-                .expect("Could not get endpoint.");
+            let (_, uid, endpoint, _, transform) =
+                q_endpoints.get(e_first).expect("Could not get endpoint.");
 
             pb.begin(transform.translation.xy().to_point());
 
@@ -285,10 +299,13 @@ pub fn sys_collect_vector_graph_path_endpoints(
             let mut e_last = e_first;
 
             for e_endpoint in path_iter {
-                let (edge_entity, edge, edge_variant, _) =
-                    q_edges.get(curr_endpoint.next_edge_entity().unwrap()).unwrap();
-                let (e_next_endpoint, next_endpoint, _, transform) =
-                    q_endpoints.get(edge.next_endpoint_entity()).unwrap();
+                let next_edge_uid = curr_endpoint.next_edge_entity().unwrap();
+                let (edge_entity, edge, edge_variant, _) = q_edges
+                    .get(index.single(&next_edge_uid))
+                    .unwrap();
+                let next_endpoint_uid = edge.next_endpoint_uid();
+                let (e_next_endpoint, _, next_endpoint, _, transform) =
+                    q_endpoints.get(index.single(&next_edge_uid)).unwrap();
 
                 let to_point = transform.translation.xy().to_point();
 

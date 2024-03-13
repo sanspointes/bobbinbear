@@ -18,6 +18,7 @@ bevy = { version = "0.13.0", default-features = false, features = [
 lyon_path = "1.0.4"
 lyon_tessellation = "1.0.13"
 smallvec = "1.13.1"
+bevy_spts_uid = { version = "0.1.0", path = "../bevy_spts_uid" }
 
 [dev-dependencies]
 bevy = { version = "0.13", default-features = false, features = [

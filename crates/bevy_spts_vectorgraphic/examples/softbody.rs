@@ -6,6 +6,7 @@
 
 use bevy::{math::vec3, prelude::*, sprite::MaterialMesh2dBundle};
 
+use bevy_spts_uid::extension::EntityCommandsExt;
 use bevy_spts_vector_graphic::{commands_ext::VectorGraphicCommandsExt, prelude::*};
 
 use bevy_xpbd_2d::{
@@ -66,12 +67,12 @@ fn setup(
     const JOINT_LENGTH: f32 = 2. * std::f32::consts::PI * 100. / STEPS as f32;
 
     let mut first_endpoint = None;
-    let mut prev_endpoint = None;
+    let mut prev_endpoint: Option<(Entity, bevy_spts_uid::Uid)> = None;
 
     for i in 0..STEPS {
         let t = i as f32 / STEPS as f32 * std::f32::consts::PI * 2.;
 
-        let endpoint = commands
+        let (endpoint, endpoint_uid) = commands
             .spawn(EndpointBundle::default().with_translation(vec3(
                 t.sin() * 100.,
                 t.cos() * 100.,
@@ -83,10 +84,10 @@ fn setup(
                 MassPropertiesBundle::new_computed(&Collider::circle(10.), 1.0),
                 Collider::circle(10.),
             ))
-            .id();
+            .id_uid();
 
         if first_endpoint.is_none() {
-            first_endpoint = Some(endpoint);
+            first_endpoint = Some((endpoint, endpoint_uid));
         }
 
         commands.spawn(
@@ -99,9 +100,9 @@ fn setup(
                 .with_compliance(0.000002),
         );
 
-        if let Some(prev_endpoint) = prev_endpoint {
+        if let Some((prev_endpoint, prev_endpoint_uid)) = prev_endpoint {
             commands
-                .spawn_edge(EdgeVariant::Line, prev_endpoint, endpoint)
+                .spawn_edge(EdgeVariant::Line, prev_endpoint_uid, endpoint_uid)
                 .set_parent(vector_graphic);
 
             commands.spawn(
@@ -113,12 +114,12 @@ fn setup(
             );
         }
 
-        prev_endpoint = Some(endpoint);
+        prev_endpoint = Some((endpoint, endpoint_uid));
     }
 
-    if let (Some(first_endpoint), Some(last_endpoint)) = (first_endpoint, prev_endpoint) {
+    if let (Some((first_endpoint, first_endpoint_uid)), Some((last_endpoint, last_endpoint_uid))) = (first_endpoint, prev_endpoint) {
         commands
-            .spawn_edge(EdgeVariant::Line, last_endpoint, first_endpoint)
+            .spawn_edge(EdgeVariant::Line, last_endpoint_uid, first_endpoint_uid)
             .set_parent(vector_graphic);
         commands.spawn(
             DistanceJoint::new(last_endpoint, first_endpoint)

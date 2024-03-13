@@ -882,6 +882,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy_mod_index"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4ecddf022c505c48cf1797b756c33996931fa46743658d2239202b8f9fb7b8d1"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "bevy_pbr"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1057,6 +1066,7 @@ dependencies = [
  "bevy_reflect",
  "bevy_scene",
  "bevy_spts_fragments",
+ "bevy_spts_uid",
  "serde",
  "uuid",
 ]
@@ -1070,10 +1080,22 @@ dependencies = [
  "bevy_hierarchy",
  "bevy_reflect",
  "bevy_scene",
+ "bevy_spts_uid",
  "bevy_utils",
  "serde",
  "smallvec",
  "thiserror",
+ "uuid",
+]
+
+[[package]]
+name = "bevy_spts_uid"
+version = "0.1.0"
+dependencies = [
+ "bevy_ecs",
+ "bevy_mod_index",
+ "bevy_reflect",
+ "bevy_utils",
  "uuid",
 ]
 
@@ -1083,6 +1105,7 @@ version = "0.1.0"
 dependencies = [
  "bevy",
  "bevy-inspector-egui",
+ "bevy_spts_uid",
  "bevy_xpbd_2d",
  "lyon_path",
  "lyon_tessellation",

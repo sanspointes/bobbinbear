@@ -1,0 +1,13 @@
+[package]
+name = "bevy_spts_uid"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+bevy_ecs = "0.13.0"
+bevy_mod_index = "0.4.0"
+bevy_reflect = "0.13.0"
+bevy_utils = "0.13.0"
+uuid = "1.7.0"

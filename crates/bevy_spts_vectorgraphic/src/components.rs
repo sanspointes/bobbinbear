@@ -1,10 +1,11 @@
 use bevy::{
     ecs::{
-        entity::{EntityHashSet, MapEntities}, query::QueryEntityError, reflect::{ReflectComponent, ReflectMapEntities},
+        entity::EntityHashSet, query::QueryEntityError, reflect::ReflectComponent,
         system::QueryLens,
     },
     prelude::*,
 };
+use bevy_spts_uid::{Uid, index::Index};
 use lyon_tessellation::path::Path;
 
 use crate::lyon_components::{FillOptions, StrokeOptions};
@@ -13,46 +14,43 @@ use crate::lyon_components::{FillOptions, StrokeOptions};
 #[allow(dead_code)]
 #[derive(Reflect)]
 #[reflect(Component)]
-#[reflect(MapEntities)]
 pub struct Endpoint {
     /// Previous edge in loop
-    pub(crate) next_edge: Option<Entity>,
+    pub(crate) next_edge: Option<Uid>,
     /// Next edge in loop
-    pub(crate) prev_edge: Option<Entity>,
+    pub(crate) prev_edge: Option<Uid>,
 }
 impl Endpoint {
-    pub fn next_edge_entity(&self) -> Option<Entity> {
+    pub fn next_edge_entity(&self) -> Option<Uid> {
         self.next_edge
     }
     pub fn next_edge(
         &self,
         q_edges: &mut QueryLens<&Edge>,
+        index: &mut Index<Uid>,
     ) -> Option<Result<Edge, QueryEntityError>> {
-        self.next_edge.map(|entity| {
+        self.next_edge.map(|uid| {
             let q_edges = q_edges.query();
+            let entity = index.single(&uid);
             q_edges.get(entity).copied()
         })
     }
-    pub fn prev_edge_entity(&self) -> Option<Entity> {
+    pub fn prev_edge_entity(&self) -> Option<Uid> {
         self.prev_edge
     }
     pub fn prev_edge(
         &self,
         q_edges: &mut QueryLens<&Edge>,
+        index: &mut Index<Uid>,
     ) -> Option<Result<Edge, QueryEntityError>> {
-        self.prev_edge.map(|entity| {
+        self.prev_edge.map(|uid| {
             let q_edges = q_edges.query();
+            let entity = index.single(&uid);
             q_edges.get(entity).copied()
         })
     }
 }
 
-impl MapEntities for Endpoint {
-    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
-        self.next_edge = self.next_edge.map(|e| entity_mapper.map_entity(e));
-        self.prev_edge = self.prev_edge.map(|e| entity_mapper.map_entity(e));
-    }
-}
 //
 // #[derive(Component, Clone, Default)]
 // #[allow(dead_code)]
@@ -64,6 +62,7 @@ impl MapEntities for Endpoint {
 
 #[derive(Bundle, Default)]
 pub struct EndpointBundle {
+    pub uid: Uid,
     pub endpoint: Endpoint,
     pub transform: Transform,
 }
@@ -78,41 +77,37 @@ impl EndpointBundle {
 #[allow(dead_code)]
 #[derive(Reflect)]
 #[reflect(Component)]
-#[reflect(MapEntities)]
 pub struct Edge {
     /// Entity of start point
-    pub(crate) next_endpoint: Entity,
+    pub(crate) next_endpoint: Uid,
     /// Entity of end point
-    pub(crate) prev_endpoint: Entity,
+    pub(crate) prev_endpoint: Uid,
 }
 impl Edge {
-    pub fn next_endpoint_entity(&self) -> Entity {
+    pub fn next_endpoint_uid(&self) -> Uid {
         self.next_endpoint
     }
 
     pub fn prev_endpoint(
         &self,
         q_endpoints: &mut QueryLens<&Endpoint>,
+        index: &mut Index<Uid>,
     ) -> Result<Endpoint, QueryEntityError> {
-        q_endpoints.query().get(self.prev_endpoint).copied()
+        let entity = index.single(&self.prev_endpoint);
+        q_endpoints.query().get(entity).copied()
     }
 
-    pub fn prev_endpoint_entity(&self) -> Entity {
+    pub fn prev_endpoint_uid(&self) -> Uid {
         self.prev_endpoint
     }
 
     pub fn next_endpoint(
         &self,
         q_endpoints: &mut QueryLens<&Endpoint>,
+        index: &mut Index<Uid>,
     ) -> Result<Endpoint, QueryEntityError> {
-        q_endpoints.query().get(self.next_endpoint).copied()
-    }
-}
-
-impl MapEntities for Edge {
-    fn map_entities<M: EntityMapper>(&mut self, entity_mapper: &mut M) {
-        self.next_endpoint = entity_mapper.map_entity(self.next_endpoint);
-        self.prev_endpoint = entity_mapper.map_entity(self.prev_endpoint);
+        let entity = index.single(&self.next_endpoint);
+        q_endpoints.query().get(entity).copied()
     }
 }
 
