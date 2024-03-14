@@ -1,13 +1,14 @@
 use bevy::{math::vec2, prelude::*};
 
+use bevy_spts_uid::extension::EntityCommandsExt;
 use bevy_spts_vector_graphic::{commands_ext::VectorGraphicWorldExt, prelude::*};
 
-pub fn build_endpoints(world: &mut World) -> (Entity, (Entity, Entity, Entity, Entity)) {
+pub fn build_endpoints(world: &mut World) -> (Entity, (bevy_spts_uid::Uid, bevy_spts_uid::Uid, bevy_spts_uid::Uid, bevy_spts_uid::Uid)) {
     let vg = world.spawn(VectorGraphicBundle::default()).id();
     let p0 = world
         .spawn((TransformBundle::default(), Endpoint::default()))
         .set_parent(vg)
-        .id();
+        .uid();
     let p1 = world
         .spawn((
             TransformBundle {
@@ -20,7 +21,7 @@ pub fn build_endpoints(world: &mut World) -> (Entity, (Entity, Entity, Entity, E
             Endpoint::default(),
         ))
         .set_parent(vg)
-        .id();
+        .uid();
 
     let p2 = world
         .spawn((
@@ -34,7 +35,7 @@ pub fn build_endpoints(world: &mut World) -> (Entity, (Entity, Entity, Entity, E
             Endpoint::default(),
         ))
         .set_parent(vg)
-        .id();
+        .uid();
 
     let p3 = world
         .spawn((
@@ -48,12 +49,12 @@ pub fn build_endpoints(world: &mut World) -> (Entity, (Entity, Entity, Entity, E
             Endpoint::default(),
         ))
         .set_parent(vg)
-        .id();
+        .uid();
 
     (vg, (p0, p1, p2, p3))
 }
 
-pub fn build_box(world: &mut World) -> (Entity, (Entity, Entity, Entity, Entity)) {
+pub fn build_box(world: &mut World) -> (Entity, (bevy_spts_uid::Uid, bevy_spts_uid::Uid, bevy_spts_uid::Uid, bevy_spts_uid::Uid)) {
     let (vg, (p0, p1, p2, p3)) = build_endpoints(world);
     world.spawn_edge(EdgeVariant::Line, p0, p1).set_parent(vg);
     world
@@ -81,7 +82,7 @@ pub fn build_box(world: &mut World) -> (Entity, (Entity, Entity, Entity, Entity)
 }
 
 pub fn retry(attempts: usize, method: impl Fn()) {
-    for i in 0..attempts {
+    for _ in 0..attempts {
         (method)();
     }
 }
@@ -121,7 +122,7 @@ pub fn it_works_with_an_open_shape() {
         app.update();
 
         let world = &mut app.world;
-        let (vg, (p0, p1, p2, p3)) = build_endpoints(world);
+        let (vg, (p0, p1, p2, _)) = build_endpoints(world);
         world.spawn_edge(EdgeVariant::Line, p0, p1).set_parent(vg);
         world
             .spawn_edge(
