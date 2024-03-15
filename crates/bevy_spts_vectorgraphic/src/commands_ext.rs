@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use bevy::{
     ecs::system::{Command, EntityCommands, QueryLens, SystemState},
     prelude::*,
@@ -6,6 +8,7 @@ use bevy_spts_uid::{index::Index, Uid};
 
 use crate::prelude::{Edge, EdgeVariant, Endpoint};
 
+#[derive(Debug)]
 struct LinkEdgeCommand {
     pub edge: Uid,
     pub next_endpoint: Uid,
@@ -13,7 +16,6 @@ struct LinkEdgeCommand {
 }
 
 impl Command for LinkEdgeCommand {
-
     fn apply(self, world: &mut World) {
         let LinkEdgeCommand {
             edge,
@@ -209,3 +211,5 @@ impl VectorGraphicWorldExt for World {
         endpoint.next_edge = None
     }
 }
+
+

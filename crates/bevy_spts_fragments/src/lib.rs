@@ -1,5 +1,4 @@
 mod fragment;
-mod uid;
 
 pub mod prelude {
     pub use crate::fragment::*;

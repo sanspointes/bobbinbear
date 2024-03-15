@@ -19,6 +19,9 @@ pub mod lyon_components;
 pub mod systems;
 mod utils;
 
+#[cfg(feature = "changeset")]
+mod changeset;
+
 pub mod prelude {
     pub use super::{VectorGraphicPlugin, VectorGraphicSet};
     pub use crate::commands_ext;
