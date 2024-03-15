@@ -141,7 +141,6 @@ fn traverse_endpoints(
     q_edges: &mut QueryLens<&Edge>,
     index: &mut Index<Uid>,
 ) -> Result<Vec<Entity>, QueryEntityError> {
-    println!("Start endpoint: {start_endpoint:?}.");
     let first_e = index.single(&start_endpoint);
     let first = *q_endpoints.query().get(first_e)?;
 
@@ -251,7 +250,6 @@ pub fn sys_collect_vector_graph_path_endpoints(
             .iter()
             .map(|e| (e, q_endpoints.get(*e).unwrap().1))
             .collect();
-        println!("Endpoints: {result:?}");
 
         unvisited.remove(&entity);
         for e in endpoints.iter() {
@@ -273,7 +271,6 @@ pub fn sys_collect_vector_graph_path_endpoints(
         let paths = vector_graphic_path_endpoints
             .get(&vector_grapic_entity)
             .unwrap();
-        println!("Paths: {paths:?}");
 
         let Ok((_, _, mut path_storage)) = q_vector_graphic.get_mut(vector_grapic_entity) else {
             warn!("sys_mark_vector_graph_path_starts: Tried to get VectorGraphicPathStorage for changed path but entity or component on entity does not exist.  Entity: {vector_grapic_entity:?}");
@@ -290,7 +287,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
             let mut path_iter = path.iter();
 
             let e_first = *path_iter.next().unwrap(); // Safety `path.len() < 2` above
-            let (_, uid, endpoint, _, transform) =
+            let (_, _, endpoint, _, transform) =
                 q_endpoints.get(e_first).expect("Could not get endpoint.");
 
             pb.begin(transform.translation.xy().to_point());
@@ -300,26 +297,23 @@ pub fn sys_collect_vector_graph_path_endpoints(
 
             for e_endpoint in path_iter {
                 let next_edge_uid = curr_endpoint.next_edge_entity().unwrap();
-                let (edge_entity, edge, edge_variant, _) = q_edges
+                let (_, edge, edge_variant, _) = q_edges
                     .get(index.single(&next_edge_uid))
                     .unwrap();
                 let next_endpoint_uid = edge.next_endpoint_uid();
-                let (e_next_endpoint, _, next_endpoint, _, transform) =
-                    q_endpoints.get(index.single(&next_edge_uid)).unwrap();
+                let (_, _, next_endpoint, _, transform) =
+                    q_endpoints.get(index.single(&next_endpoint_uid)).unwrap();
 
                 let to_point = transform.translation.xy().to_point();
 
                 match edge_variant {
                     EdgeVariant::Line => {
-                        println!("-> line_to {e_next_endpoint:?} via edge {edge_entity:?} ({endpoint:?}, {to_point:?})");
                         pb.line_to(to_point);
                     }
                     EdgeVariant::Quadratic { ctrl1 } => {
-                        println!("-> quadratic_bezier_to {e_next_endpoint:?} via edge {edge_entity:?} ({endpoint:?}, {to_point:?})");
                         pb.quadratic_bezier_to(ctrl1.to_point(), to_point);
                     }
                     EdgeVariant::Cubic { ctrl1, ctrl2 } => {
-                        println!("-> cubic_bezier_to {e_next_endpoint:?} via edge {edge_entity:?} ({endpoint:?}, {to_point:?})");
                         pb.cubic_bezier_to(ctrl1.to_point(), ctrl2.to_point(), to_point);
                     }
                 }
@@ -333,7 +327,6 @@ pub fn sys_collect_vector_graph_path_endpoints(
         }
 
         let path = pb.build();
-        println!("Built path for {vector_grapic_entity:?} {path:?}");
         *path_storage = VectorGraphicPathStorage::Calculated(path);
     }
 }
@@ -394,7 +387,6 @@ pub fn sys_remesh_vector_graphic(
         let mut geometry = VertexBuffers::new();
 
         if let Some(stroke_options) = maybe_stroke_options {
-            println!("Tessellating {stroke_options:?} on path {path:?}.");
             if let Err(reason) = stroke_tesellator.tessellate_path(
                 path,
                 &(*stroke_options).into(),
@@ -435,7 +427,6 @@ pub fn sys_remesh_vector_graphic(
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
 
-        println!("Mesh generated {mesh:?}");
         let handle = Mesh2dHandle::from(meshes.add(mesh));
         commands.entity(entity).insert(handle);
     }
