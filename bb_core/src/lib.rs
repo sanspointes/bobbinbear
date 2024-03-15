@@ -9,6 +9,7 @@ use bevy::prelude::*;
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
 use plugins::bounds2d::Bounds2DPlugin;
+use plugins::effect::EffectPlugin;
 use plugins::viewport::ViewportPlugin;
 use undoredo::UndoRedoPlugin;
 use wasm_bindgen::prelude::*;
@@ -25,6 +26,7 @@ pub fn setup_bb_core(canvas_id: String) {
         primary_window: Some(Window {
             title: "Bobbin Bear :: Embroidery Editor".to_string(),
             canvas: Some(canvas_id),
+            resizable: true,
             ..Default::default()
         }),
         ..Default::default()
@@ -41,5 +43,5 @@ pub fn setup(app: &mut App) {
         // App plugins
         .add_plugins(BevyWasmApiPlugin)
         .add_plugins(VectorGraphicPlugin)
-        .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin));
+        .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin, EffectPlugin));
 }

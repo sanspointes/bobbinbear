@@ -329,6 +329,7 @@ dependencies = [
  "bevy-wasm-api",
  "bevy_spts_changeset",
  "bevy_spts_fragments",
+ "bevy_spts_uid",
  "bevy_spts_vectorgraphic",
  "console_error_panic_hook",
  "futures",
@@ -1096,6 +1097,7 @@ dependencies = [
  "bevy_mod_index",
  "bevy_reflect",
  "bevy_utils",
+ "serde",
  "uuid",
 ]
 

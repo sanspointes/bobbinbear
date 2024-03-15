@@ -4,7 +4,7 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::undoredo::UndoRedoApi;
+use crate::{undoredo::{UndoRedoApi, UndoRedoResult}, plugins::effect::{EffectQue, Effect}};
 
 use super::Selected;
 
@@ -47,6 +47,10 @@ impl SelectedApi {
 
         let changeset = changeset.build();
         UndoRedoApi::execute(world, changeset)?;
+
+        let que = world.get_resource_mut::<EffectQue>().unwrap();
+        que.push_effect(Effect::SelectionChanged(vec![]));
+
         Ok(())
     }
 
@@ -56,6 +60,11 @@ impl SelectedApi {
 
         let changeset = changeset.build();
         UndoRedoApi::execute(world, changeset)?;
+
+        let selected = SelectedApi::query_selected_uids(world);
+        let que = world.get_resource_mut::<EffectQue>().unwrap();
+        que.push_effect(Effect::SelectionChanged(selected));
+
         Ok(())
     }
 
@@ -70,6 +79,11 @@ impl SelectedApi {
 
         let changeset = changeset.build();
         UndoRedoApi::execute(world, changeset)?;
+
+        let selected = SelectedApi::query_selected_uids(world);
+        let que = world.get_resource_mut::<EffectQue>().unwrap();
+        que.push_effect(Effect::SelectionChanged(selected));
+
         Ok(())
     }
 }

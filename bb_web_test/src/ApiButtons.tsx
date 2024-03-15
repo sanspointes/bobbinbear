@@ -2,11 +2,7 @@ import { DebugApi, UndoRedoApi, ViewportApi } from 'bb_core';
 import { Button } from './components/button';
 import { createEffect, createSignal } from 'solid-js';
 
-type ApiButtonsProps = {
-    field1?: number;
-};
-
-export function ApiButtons(props: ApiButtonsProps) {
+export function ApiButtons() {
     const debugApi = new DebugApi();
     const undoRedoApi = new UndoRedoApi();
     const viewportApi = new ViewportApi();

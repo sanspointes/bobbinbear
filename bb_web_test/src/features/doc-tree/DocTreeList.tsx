@@ -3,23 +3,31 @@ import { DescribedObject } from 'bb_core';
 import { Button } from '../../components/button';
 import { For, Show } from 'solid-js';
 import { TbEye, TbEyeClosed } from 'solid-icons/tb';
-import { useDocTreeContext } from './createDocTreeState';
+import { useBobbinBear } from '../../hooks/useBobbinBear';
 
 type DocTreeNodeProps = {
     object: DescribedObject;
     indent: number;
 };
 export function DocTreeNode(props: DocTreeNodeProps) {
-    const [_, { setVisible }] = useDocTreeContext();
+    const { document } = useBobbinBear();
+    const { setVisible, selectSingle } = document;
     return (
         <Collapsible.Root style={{ 'margin-left': `${props.indent * 20}px` }}>
-            <div class="flex justify-between select-none hover:outline">
+            <div
+                class="flex items-center gap-2 select-none hover:outline"
+                onClick={async (e) => {
+                    selectSingle(props.object.uid);
+                    e.stopPropagation();
+                }}
+            >
                 <Button
                     size="small"
                     class="bg-transparent bg-opacity-50 hover:bg-orange-50"
-                    onClick={() =>
-                        setVisible(props.object.uid, !props.object.visible)
-                    }
+                    onClick={(e) => {
+                        setVisible(props.object.uid, !props.object.visible);
+                        e.stopPropagation();
+                    }}
                 >
                     <Show
                         when={props.object.visible}
@@ -36,11 +44,11 @@ export function DocTreeNode(props: DocTreeNodeProps) {
 }
 
 export function DocTreeList() {
-    const [items, _] = useDocTreeContext();
+    const { document } = useBobbinBear();
 
     return (
         <div>
-            <For each={items()}>
+            <For each={document.objects()}>
                 {(object) => <DocTreeNode object={object} indent={1} />}
             </For>
         </div>

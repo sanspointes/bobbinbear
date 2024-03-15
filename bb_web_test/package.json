@@ -11,9 +11,12 @@
   "dependencies": {
     "@kobalte/core": "^0.12.1",
     "bb_core": "workspace:^",
+    "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "solid-icons": "^1.1.0",
     "solid-js": "^1.8.14",
+    "tailwind-merge": "^2.2.1",
+    "tailwindcss-animate": "^1.0.7",
     "vite-plugin-wasm": "^3.3.0"
   },
   "devDependencies": {
@@ -24,6 +27,7 @@
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
     "vite": "^5.1.0",
-    "vite-plugin-solid": "^2.9.1"
+    "vite-plugin-solid": "^2.9.1",
+    "vite-tsconfig-paths": "^4.3.2"
   }
 }

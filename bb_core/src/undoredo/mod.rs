@@ -20,6 +20,8 @@ pub use api::{UndoRedoApi, UndoRedoResult};
 use bevy_spts_fragments::prelude::Uid;
 use bevy_spts_vectorgraphic::prelude::*;
 
+use crate::selected::Selected;
+
 pub struct UndoRedoPlugin;
 
 #[derive(Default)]
@@ -36,6 +38,7 @@ impl Plugin for UndoRedoPlugin {
         type_registry.register::<Visibility>();
         type_registry.register::<ViewVisibility>();
         type_registry.register::<InheritedVisibility>();
+        // Vector graphics
         type_registry.register::<VectorGraphic>();
         type_registry.register::<VectorGraphicPathStorage>();
         type_registry.register::<Endpoint>();
@@ -43,6 +46,8 @@ impl Plugin for UndoRedoPlugin {
         type_registry.register::<EdgeVariant>();
         type_registry.register::<StrokeOptions>();
         type_registry.register::<FillOptions>();
+        // State tags
+        type_registry.register::<Selected>();
 
         app.register_type::<Uid>();
         app.register_type::<VectorGraphic>();

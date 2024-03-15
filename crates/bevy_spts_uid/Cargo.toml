@@ -10,4 +10,9 @@ bevy_ecs = "0.13.0"
 bevy_mod_index = "0.4.0"
 bevy_reflect = "0.13.0"
 bevy_utils = "0.13.0"
+serde = { version = "1.0.197", features = ["derive"], optional = true }
 uuid = "1.7.0"
+
+[features]
+serde = ["dep:serde"]
+
