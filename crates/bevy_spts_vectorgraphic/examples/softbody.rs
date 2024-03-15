@@ -7,7 +7,7 @@
 use bevy::{math::vec3, prelude::*, sprite::MaterialMesh2dBundle};
 
 use bevy_spts_uid::extension::EntityCommandsExt;
-use bevy_spts_vector_graphic::{commands_ext::VectorGraphicCommandsExt, prelude::*};
+use bevy_spts_vectorgraphic::{commands_ext::VectorGraphicCommandsExt, prelude::*};
 
 use bevy_xpbd_2d::{
     components::{MassPropertiesBundle, RigidBody},

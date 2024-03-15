@@ -4,6 +4,10 @@ version = "0.1.0"
 edition = "2021"
 resolver = "2"
 
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
+rustflags = ["-Clink-arg=-fuse-ld=lld", "-Zshare-generics=y"]
+
 [lib]
 name = "bb_core"
 path = "src/lib.rs"
@@ -29,8 +33,8 @@ serde-wasm-bindgen = "0.6.3"
 bevy-wasm-api = { git = "https://github.com/sanspointes/bevy-wasm-api", version = "0.1.0" }
 bevy_spts_changeset = { version = "0.1.0", path = "../crates/bevy_spts_changeset" }
 bevy_spts_fragments = { version = "0.1.0", path = "../crates/bevy_spts_fragments", features = ["serde"] }
+bevy_spts_vectorgraphic = { version = "0.1.0", path = "../crates/bevy_spts_vectorgraphic", features = ["reflect", "changeset"] }
 uuid = { version = "1.7.0", features = ["serde"] }
-bb_vector_network = { version = "0.1.0", path = "../packages/bb_vector_network" }
 
 [features] 
 default = ["minimal_bevy"]

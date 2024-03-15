@@ -35,12 +35,16 @@
 
                 rustPlatform.bindgenHook
 
+                pkgs.lld
+                pkgs.clang
+
                 pkgs.openssl
                 pkgs.binaryen
                 pkgs.pkg-config
                 pkgs.udev
                 pkgs.alsa-lib
                 pkgs.vulkan-loader
+                pkgs.libxkbcommon
 
                 pkgs.xorg.libX11
                 pkgs.xorg.libXcursor

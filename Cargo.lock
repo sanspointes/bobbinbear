@@ -325,11 +325,11 @@ name = "bb_core"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bb_vector_network",
  "bevy",
  "bevy-wasm-api",
  "bevy_spts_changeset",
  "bevy_spts_fragments",
+ "bevy_spts_vectorgraphic",
  "console_error_panic_hook",
  "futures",
  "js-sys",
@@ -1100,7 +1100,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bevy_spts_vector_graphic"
+name = "bevy_spts_vectorgraphic"
 version = "0.1.0"
 dependencies = [
  "anyhow",

@@ -1,9 +1,19 @@
 use bevy::{math::vec2, prelude::*};
 
 use bevy_spts_uid::extension::EntityCommandsExt;
-use bevy_spts_vector_graphic::{commands_ext::VectorGraphicWorldExt, prelude::*};
+use bevy_spts_vectorgraphic::{commands_ext::VectorGraphicWorldExt, prelude::*};
 
-pub fn build_endpoints(world: &mut World) -> (Entity, (bevy_spts_uid::Uid, bevy_spts_uid::Uid, bevy_spts_uid::Uid, bevy_spts_uid::Uid)) {
+pub fn build_endpoints(
+    world: &mut World,
+) -> (
+    Entity,
+    (
+        bevy_spts_uid::Uid,
+        bevy_spts_uid::Uid,
+        bevy_spts_uid::Uid,
+        bevy_spts_uid::Uid,
+    ),
+) {
     let vg = world.spawn(VectorGraphicBundle::default()).id();
     let p0 = world
         .spawn((TransformBundle::default(), Endpoint::default()))
@@ -54,7 +64,17 @@ pub fn build_endpoints(world: &mut World) -> (Entity, (bevy_spts_uid::Uid, bevy_
     (vg, (p0, p1, p2, p3))
 }
 
-pub fn build_box(world: &mut World) -> (Entity, (bevy_spts_uid::Uid, bevy_spts_uid::Uid, bevy_spts_uid::Uid, bevy_spts_uid::Uid)) {
+pub fn build_box(
+    world: &mut World,
+) -> (
+    Entity,
+    (
+        bevy_spts_uid::Uid,
+        bevy_spts_uid::Uid,
+        bevy_spts_uid::Uid,
+        bevy_spts_uid::Uid,
+    ),
+) {
     let (vg, (p0, p1, p2, p3)) = build_endpoints(world);
     world.spawn_edge(EdgeVariant::Line, p0, p1).set_parent(vg);
     world
@@ -90,7 +110,8 @@ pub fn retry(attempts: usize, method: impl Fn()) {
 #[test]
 pub fn it_works_with_a_closed_shape() {
     let mut app = App::new();
-    app.add_plugins(MinimalPlugins).add_plugins(AssetPlugin::default());
+    app.add_plugins(MinimalPlugins)
+        .add_plugins(AssetPlugin::default());
 
     app.add_plugins(VectorGraphicPlugin);
     app.init_resource::<Assets<Mesh>>();
@@ -114,7 +135,8 @@ pub fn it_works_with_a_closed_shape() {
 pub fn it_works_with_an_open_shape() {
     retry(10, || {
         let mut app = App::new();
-        app.add_plugins(MinimalPlugins).add_plugins(AssetPlugin::default());
+        app.add_plugins(MinimalPlugins)
+            .add_plugins(AssetPlugin::default());
 
         app.add_plugins(VectorGraphicPlugin);
         app.init_resource::<Assets<Mesh>>();

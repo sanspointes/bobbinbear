@@ -39,7 +39,7 @@ pub fn sys_add_spawned_endpoints_to_vector_graphic(
             continue;
         };
         vg.edges.remove(&entity);
-        *path_storage = VectorGraphicPathStorage::NeedsRecalculate;
+        path_storage.set_dirty();
     }
 }
 
@@ -57,7 +57,7 @@ pub fn sys_add_spawned_edges_to_vector_graphic(
             continue;
         };
         vg.edges.remove(&entity);
-        *path_storage = VectorGraphicPathStorage::NeedsRecalculate;
+        path_storage.set_dirty();
     }
 }
 
@@ -79,7 +79,7 @@ pub fn sys_remove_despawned_endpoints_from_vector_graphic(
             continue;
         };
         vg.edges.remove(&entity);
-        *path_storage = VectorGraphicPathStorage::NeedsRecalculate;
+        path_storage.set_dirty();
     }
 }
 
@@ -101,7 +101,7 @@ pub fn sys_remove_despawned_edges_from_vector_graphic(
             continue;
         };
         vg.edges.remove(&entity);
-        *path_storage = VectorGraphicPathStorage::NeedsRecalculate;
+        path_storage.set_dirty();
     }
 }
 
@@ -109,9 +109,9 @@ pub fn sys_remove_despawned_edges_from_vector_graphic(
 pub fn sys_check_vector_graphic_children_changed(
     q_changed_endpoint: Query<
         &Parent,
-        (Or<(Changed<Endpoint>, Changed<Transform>)>, Without<Edge>),
+        (Or<(Changed<Endpoint>, Changed<Transform>)>, Without<Edge>, With<Endpoint>),
     >,
-    q_changed_edge: Query<&Parent, (Or<(Changed<Edge>, Changed<EdgeVariant>)>, Without<Endpoint>)>,
+    q_changed_edge: Query<&Parent, (Or<(Changed<Edge>, Changed<EdgeVariant>)>, Without<Endpoint>, With<Edge>)>,
     mut q_vector_graphic: Query<
         (&mut VectorGraphic, &mut VectorGraphicPathStorage),
         Without<Endpoint>,
@@ -125,8 +125,9 @@ pub fn sys_check_vector_graphic_children_changed(
         changed.insert(parent.get());
     }
     for vector_grapic_entity in changed {
+        println!("Found Vector Graphic Entity {vector_grapic_entity:?}");
         let (_, mut path_storage) = q_vector_graphic.get_mut(vector_grapic_entity).unwrap();
-        *path_storage = VectorGraphicPathStorage::NeedsRecalculate;
+        path_storage.set_dirty();
     }
 }
 
@@ -207,7 +208,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
     let changed_vector_graphics: Vec<_> = q_vector_graphic
         .iter()
         .filter_map(|(e, _, path_storage)| {
-            if matches!(path_storage, VectorGraphicPathStorage::NeedsRecalculate) {
+            if path_storage.needs_recalculate() {
                 Some(e)
             } else {
                 None
@@ -265,6 +266,8 @@ pub fn sys_collect_vector_graph_path_endpoints(
         let paths = entry.or_insert(vec![]);
         paths.push(endpoints);
     }
+
+    dbg!(&vector_graphic_path_endpoints);
 
     // Build the paths
     for vector_grapic_entity in changed_vector_graphics {
@@ -327,7 +330,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
         }
 
         let path = pb.build();
-        *path_storage = VectorGraphicPathStorage::Calculated(path);
+        path_storage.set_path(path);
     }
 }
 
@@ -381,7 +384,7 @@ pub fn sys_remesh_vector_graphic(
 ) {
     for (entity, path_storage, maybe_stroke_options, maybe_fill_options) in q_vector_graphic.iter()
     {
-        let VectorGraphicPathStorage::Calculated(path) = path_storage else {
+        let Some(path) = path_storage.path() else {
             continue;
         };
         let mut geometry = VertexBuffers::new();
@@ -429,5 +432,6 @@ pub fn sys_remesh_vector_graphic(
 
         let handle = Mesh2dHandle::from(meshes.add(mesh));
         commands.entity(entity).insert(handle);
+        println!("Remeshed {entity:?}");
     }
 }

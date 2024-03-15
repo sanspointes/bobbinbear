@@ -1,5 +1,5 @@
 [package]
-name = "bevy_spts_vector_graphic"
+name = "bevy_spts_vectorgraphic"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,7 +7,7 @@ edition = "2021"
 
 [features]
 reflect = []
-changeset = ["dep:bevy_spts_changeset", "dep:anyhow"]
+changeset = ['dep:bevy_spts_changeset', 'dep:anyhow']
 
 [dependencies]
 bevy = { version = "0.13.0", default-features = false, features = [

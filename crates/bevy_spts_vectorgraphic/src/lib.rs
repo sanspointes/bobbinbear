@@ -28,6 +28,8 @@ pub mod prelude {
     pub use crate::components::*;
     pub use crate::lyon_components::*;
     pub use crate::systems::*;
+    #[cfg(feature = "changeset")]
+    pub use crate::changeset::*;
 }
 
 // Re-export lyon

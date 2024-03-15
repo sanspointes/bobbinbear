@@ -1,4 +1,4 @@
-import initBBCore, { AppApi, setup_bb_core } from 'bb_core';
+import start, { AppApi, setup_bb_core } from 'bb_core';
 import { createSignal, onCleanup } from 'solid-js';
 
 export function useBBCore() {
@@ -14,7 +14,7 @@ export function useBBCore() {
 
     const handleInit = async (canvasSelector: string) => {
         try {
-            await initBBCore();
+            await start();
         } catch (reason) {
             console.warn('init with error: ', reason);
         }

@@ -1,6 +1,6 @@
-mod scene;
-mod debug;
-mod viewport;
+pub mod scene;
+pub mod debug;
+pub mod viewport;
 
 use bevy::{app::AppExit, prelude::*};
 use bevy_wasm_api::bevy_wasm_api;

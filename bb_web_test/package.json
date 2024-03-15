@@ -13,7 +13,8 @@
     "bb_core": "workspace:^",
     "clsx": "^2.1.0",
     "solid-icons": "^1.1.0",
-    "solid-js": "^1.8.14"
+    "solid-js": "^1.8.14",
+    "vite-plugin-wasm": "^3.3.0"
   },
   "devDependencies": {
     "@kobalte/tailwindcss": "^0.9.0",

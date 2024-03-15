@@ -1,13 +1,13 @@
 //! Displays a single [`Sprite`], created from an image.
-mod api;
+pub mod api;
 mod ecs;
 mod plugins;
 mod selected;
 mod undoredo;
 
 use bevy::prelude::*;
+use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
-use ecs::node::{sys_derived_material_for_node, sys_derived_mesh_for_node};
 use plugins::bounds2d::Bounds2DPlugin;
 use plugins::viewport::ViewportPlugin;
 use undoredo::UndoRedoPlugin;
@@ -31,18 +31,15 @@ pub fn setup_bb_core(canvas_id: String) {
     });
     app.add_plugins(default_plugins);
 
-    setup(app);
+    setup(&mut app);
+
+    app.run()
 }
 
-pub fn setup(mut app: App) {
+pub fn setup(app: &mut App) {
     app
         // App plugins
         .add_plugins(BevyWasmApiPlugin)
-        .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin))
-        .add_systems(
-            PostUpdate,
-            (sys_derived_mesh_for_node, sys_derived_material_for_node),
-        );
-
-    app.run();
+        .add_plugins(VectorGraphicPlugin)
+        .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin));
 }

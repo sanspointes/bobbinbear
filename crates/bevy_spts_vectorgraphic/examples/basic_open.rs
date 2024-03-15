@@ -1,7 +1,7 @@
 use bevy::{math::vec3, prelude::*, sprite::MaterialMesh2dBundle};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_spts_uid::extension::EntityCommandsExt;
-use bevy_spts_vector_graphic::{commands_ext::VectorGraphicCommandsExt, prelude::*};
+use bevy_spts_vectorgraphic::{commands_ext::VectorGraphicCommandsExt, prelude::*};
 
 pub fn main() {
     let mut app = App::new();

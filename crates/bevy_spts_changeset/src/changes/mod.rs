@@ -71,7 +71,7 @@ impl<'w> ChangesetBuilder<'w> {
         }
     }
 
-    fn push(&mut self, change: Arc<dyn Change>) {
+    pub fn push(&mut self, change: Arc<dyn Change>) {
         self.changes.push(change);
     }
 

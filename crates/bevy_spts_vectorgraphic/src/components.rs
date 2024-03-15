@@ -1,9 +1,9 @@
 use bevy::{
     ecs::{
-        entity::EntityHashSet, query::QueryEntityError, reflect::ReflectComponent,
+        query::QueryEntityError, reflect::ReflectComponent,
         system::QueryLens,
     },
-    prelude::*,
+    prelude::*, utils::{StableHashSet, HashSet},
 };
 use bevy_spts_uid::{Uid, index::Index};
 use lyon_tessellation::path::Path;
@@ -131,17 +131,39 @@ pub struct EdgeBundle {
     edge_variant: EdgeVariant,
 }
 
-#[derive(Component, Default)]
+#[derive(Component, Default, Reflect)]
+#[reflect(Component)]
 pub struct VectorGraphic {
-    pub endpoints: EntityHashSet,
-    pub edges: EntityHashSet,
+    pub endpoints: HashSet<Entity>,
+    pub edges: HashSet<Entity>,
 }
 
-#[derive(Component, Default)]
-pub enum VectorGraphicPathStorage {
-    #[default]
-    NeedsRecalculate,
-    Calculated(Path),
+#[derive(Component, Reflect)]
+#[reflect(Component)]
+pub struct VectorGraphicPathStorage {
+    #[reflect(ignore)]
+    path: Option<Path>,
+}
+impl Default for VectorGraphicPathStorage {
+    fn default() -> Self {
+        Self {
+            path: None,
+        }
+    }
+}
+impl VectorGraphicPathStorage {
+    pub fn needs_recalculate(&self) -> bool {
+        self.path.is_none()
+    }
+    pub fn set_path(&mut self, path: Path) {
+        self.path = Some(path);
+    }
+    pub fn path(&self) -> Option<&Path> {
+        self.path.as_ref()
+    }
+    pub fn set_dirty(&mut self) {
+        self.path = None;
+    }
 }
 
 #[derive(Bundle, Default)]

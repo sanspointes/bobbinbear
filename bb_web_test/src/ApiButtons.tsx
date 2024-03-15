@@ -14,7 +14,7 @@ export function ApiButtons(props: ApiButtonsProps) {
         const x = -100 + Math.random() * 200;
         const y = -100 + Math.random() * 200;
         console.log(`JS: Trying to spawn circle at ${x} ${y}`);
-        const result = await debugApi.spawn_circle();
+        const result = await debugApi.spawn_box();
         console.log(`JS: (returned data from rust) ${result}`);
     };
 
