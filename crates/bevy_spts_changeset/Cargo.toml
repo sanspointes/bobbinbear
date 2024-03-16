@@ -1,0 +1,22 @@
+[package]
+name = "bevy_spts_changeset"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.80"
+bevy_app = "0.13"
+bevy_ecs = "0.13"
+bevy_hierarchy = "0.13"
+bevy_reflect = "0.13"
+bevy_scene = "0.13"
+serde = { version = "1.0.196", features = ["derive"], optional = true }
+uuid = { version = "1.7.0", features = ["v4", "serde"] }
+
+bevy_spts_fragments = { version = "0.1.0", path = "../bevy_spts_fragments" }
+bevy_spts_uid = { version = "0.1.0", path = "../bevy_spts_uid" }
+
+[features]
+serde = ["dep:serde"]

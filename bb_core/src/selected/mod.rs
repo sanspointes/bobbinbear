@@ -1,0 +1,80 @@
+//! Module for selected component and selection box components.
+
+mod api;
+mod material;
+
+use bevy::{ecs::reflect::ReflectComponent, prelude::*, sprite::Material2dPlugin};
+
+use self::material::SelectionBoundsMaterial;
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+/// Component defining whether or not object is selected.
+pub enum Selected {
+    #[default]
+    Deselected,
+    Selected,
+}
+impl From<bool> for Selected {
+    fn from(value: bool) -> Self {
+        if value {
+            Selected::Selected
+        } else {
+            Selected::Deselected
+        }
+    }
+}
+impl From<Selected> for bool {
+    fn from(value: Selected) -> Self {
+        match value {
+            Selected::Selected => true,
+            Selected::Deselected => false,
+        }
+    }
+}
+
+
+#[derive(Component, Reflect, Default)]
+#[reflect(Component)]
+/// Component defining whether or not component is selectable.
+pub enum Selectable {
+    #[default]
+    Default,
+    Locked,
+}
+impl From<bool> for Selectable {
+    fn from(value: bool) -> Self {
+        if value {
+            Selectable::Default
+        } else {
+            Selectable::Locked
+        }
+    }
+}
+impl From<Selectable> for bool {
+    fn from(value: Selectable) -> Self {
+        match value {
+            Selectable::Default => true,
+            Selectable::Locked => false,
+        }
+    }
+}
+
+pub struct SelectedPlugin;
+impl Plugin for SelectedPlugin {
+    fn build(&self, app: &mut App) {
+        app.add_plugins(Material2dPlugin::<SelectionBoundsMaterial>::default());
+        // app.add_systems(PostStartup, sys_setup_selection_bounds)
+        //     .add_systems(PostUpdate, sys_selection_bounds_handle_change.after(sys_update_global_bounds_2d).in_set(EditorSet::PostPlugins));
+        //
+        // app.add_plugins(DeferredRaycastingPlugin::<Selectable>::default())
+        //     .add_systems(PostStartup, sys_setup_selection_raycast)
+        //     .add_systems(
+        //         First,
+        //         sys_selection_raycast_update_ray.before(RaycastSystem::BuildRays::<Selectable>),
+        //     );
+        //
+        // app.register_type::<Selected>()
+        //     .register_type::<Selectable>();
+    }
+}

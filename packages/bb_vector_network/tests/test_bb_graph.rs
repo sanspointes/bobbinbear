@@ -1,5 +1,7 @@
 #[allow(unused_variables)]
 
+mod common;
+
 mod edges_from_closed_walk {
     use bb_vector_network::prelude::*;
     use glam::Vec2;
@@ -283,6 +285,8 @@ mod get_cw_edge_of_node {
     use bb_vector_network::prelude::*;
     use glam::vec2;
 
+    use crate::common::draw::{draw_edge, draw_edge_list, SnapshotCtx};
+
     #[test]
     fn test_simple() {
         let mut g = BBGraph::new();
@@ -293,9 +297,10 @@ mod get_cw_edge_of_node {
 
         let edge = g.get_cw_edge_of_node(f.end_idx(), f.calc_end_tangent(&g).unwrap(), Some(e0)).unwrap();
 
-        println!("{}", g);
-
-        assert_eq!(edge, e2);
+        let mut ctx = SnapshotCtx::default();
+        draw_edge_list(&mut ctx, &g, &[e0, e1, e2, e3]).unwrap();
+        let difference = ctx.save_or_difference_with_disk("./tests/images/test_simple_sharp_angle.png");
+        assert!(difference < 0.01);
     }
 
     #[test]
@@ -308,9 +313,10 @@ mod get_cw_edge_of_node {
 
         let edge = g.get_cw_edge_of_node(f.end_idx(), f.calc_end_tangent(&g).unwrap(), Some(e0)).unwrap();
 
-        println!("{}", g);
-
-        assert_eq!(edge, e2);
+        let mut ctx = SnapshotCtx::default();
+        draw_edge_list(&mut ctx, &g, &[e0, e1, e2, e3]).unwrap();
+        let difference = ctx.save_or_difference_with_disk("./tests/images/test_simple_sharp_angle.png");
+        assert!(difference < 0.01);
     }
 }
 

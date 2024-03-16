@@ -152,6 +152,13 @@ fn update(state: &mut GameState, _c: &mut EngineContext) {
 
     let mut needs_update_regions = false;
 
+    // Operations
+    if is_key_released(KeyCode::E) {
+        state.graph.expand_intersections().unwrap();
+        state.rebuild_game_nodes();
+        needs_update_regions = true;
+    }
+
     match update_result {
         Ok(ToolUpdateResult::Noop) => (),
         Ok(ToolUpdateResult::RegenerateMesh) => {

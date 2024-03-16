@@ -1,0 +1,23 @@
+{
+  "name": "bb_core",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "files": [
+    "pkg/bb_core_bg.wasm",
+    "pkg/bb_core.js",
+    "pkg/bb_core.d.ts"
+  ],
+  "module": "pkg/bb_core.js",
+  "types": "pkg/bb_core.d.ts",
+  "scripts": {
+    "dev": "watch 'wasm-pack build --target web --dev' ./src/",
+    "build": "wasm-pack build --target web"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "watch": "^1.0.2"
+  }
+}
