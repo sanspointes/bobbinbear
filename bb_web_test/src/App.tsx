@@ -39,7 +39,9 @@ function App() {
                     </BobbinBearContext.Provider>
                 </Show>
                 <div class="bg-red-500 grow">
-                    <canvas id="bb-canvas" class="w-full h-full" />
+                    <div class="w-full h-full">
+                        <canvas id="bb-canvas" class="w-full h-full" />
+                    </div>
                 </div>
                 <Show when={loading() === 1}>
                     <BobbinBearContext.Provider value={ctx()}>

@@ -1,40 +1,98 @@
 //! Contains logic for effects (side effect events) to keep the JS state synced with the bevy
 //! state.
 
-use bevy::prelude::*;
+use bevy::{prelude::*, reflect::Typed};
 
 mod js_event_que;
 
+use bevy_spts_changeset::events::ChangesetEvent;
+use bevy_spts_uid::Uid;
 pub use effects::*;
 pub use js_event_que::EffectQue;
+
+use crate::selected::Selected;
 
 pub struct EffectPlugin;
 
 impl Plugin for EffectPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
         app.insert_resource(EffectQue::new());
-        app.add_systems(Last, sys_emit_effects);
+        app.add_systems(
+            Last,
+            (sys_collect_changeset_events, sys_emit_effects).chain(),
+        );
     }
 }
 
-pub fn sys_emit_effects(
-    mut res: ResMut<EffectQue>,
+pub fn sys_collect_changeset_events(
+    res: ResMut<EffectQue>,
+    mut ev_spawned: EventReader<ChangesetEvent>,
+    mut q_all: ParamSet<(Query<(&Uid, &Selected)>,)>,
 ) {
-    res.forward_effects_to_js();
+    let mut spawned_uids = vec![];
+    let mut despawned_uids = vec![];
+    let mut changed_uids = vec![];
+
+    let mut selection_changed = false;
+
+    for ev in ev_spawned.read() {
+        match ev {
+            ChangesetEvent::Spawned(uid) => spawned_uids.push(*uid),
+            ChangesetEvent::Despawned(uid) => despawned_uids.push(*uid),
+            ChangesetEvent::Changed(uid, type_id) => {
+                changed_uids.push(*uid);
+                if *type_id == Selected::type_info().type_id() {
+                    selection_changed = true;
+                }
+            }
+        }
+    }
+
+    if !despawned_uids.is_empty() {
+        res.push_effect(Effect::EntitiesDespawned(despawned_uids));
+    }
+    if !spawned_uids.is_empty() {
+        res.push_effect(Effect::EntitiesSpawned(spawned_uids));
+    }
+    if !changed_uids.is_empty() {
+        res.push_effect(Effect::EntitiesChanged(changed_uids));
+    }
+    if selection_changed {
+        res.push_effect(Effect::SelectionChanged(
+            q_all
+                .p0()
+                .iter()
+                .filter_map(|(uid, selected)| {
+                    if matches!(*selected, Selected::Selected) {
+                        Some(*uid)
+                    } else {
+                        None
+                    }
+                })
+                .collect(),
+        ))
+    }
 }
 
+pub fn sys_emit_effects(mut res: ResMut<EffectQue>) {
+    res.forward_effects_to_js();
+}
 
 #[allow(non_snake_case)]
 mod effects {
     use bevy_spts_fragments::prelude::Uid;
-    use serde::{Serialize, Deserialize};
+    use serde::{Deserialize, Serialize};
     use tsify::Tsify;
 
     #[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
-    #[serde(tag = "tag", content = "value" )]
+    #[serde(tag = "tag", content = "value")]
     pub enum Effect {
+        // Whenever the selection changes
         SelectionChanged(Vec<Uid>),
-        DocumentChanged,
+
+        EntitiesSpawned(Vec<Uid>),
+        EntitiesChanged(Vec<Uid>),
+        EntitiesDespawned(Vec<Uid>),
     }
 }

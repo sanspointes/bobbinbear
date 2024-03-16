@@ -4,6 +4,7 @@ use bevy_ecs::{
 };
 use bevy_hierarchy::BuildWorldChildren;
 use bevy_reflect::TypeRegistry;
+use bevy_scene::SceneFilter;
 use thiserror::Error;
 
 // #[cfg(feature = "serde")]
@@ -53,6 +54,7 @@ impl EntityFragment {
     pub(crate) fn components_from_entity(
         world: &mut World,
         type_registry: &TypeRegistry,
+        filter: &SceneFilter,
         entity: Entity,
     ) -> Result<Vec<ComponentFragment>, EntityFragmentNewError> {
         let entity_ref = world
@@ -65,6 +67,13 @@ impl EntityFragment {
                 .components()
                 .get_info(comp_id)
                 .and_then(|c| c.type_id())
+                .and_then(|id| {
+                    if filter.is_allowed_by_id(id) {
+                        Some(id)
+                    } else {
+                        None
+                    }
+                })
                 .and_then(|id| ComponentFragment::from_type_id(type_registry, &entity_ref, id));
 
             if let Some(cf) = component_fragment {
@@ -78,24 +87,26 @@ impl EntityFragment {
     pub fn from_world_uid(
         world: &mut World,
         type_registry: &TypeRegistry,
+        filter: &SceneFilter,
         uid: Uid,
     ) -> Result<Self, EntityFragmentNewError> {
         let entity = uid
             .entity(world)
             .ok_or(EntityFragmentNewError::NoMatchingUid { uid })?;
-        let components = EntityFragment::components_from_entity(world, type_registry, entity)?;
+        let components = EntityFragment::components_from_entity(world, type_registry, filter, entity)?;
         Ok(EntityFragment::new(uid, components))
     }
 
     pub fn from_world_entity(
         world: &mut World,
         type_registry: &TypeRegistry,
+        filter: &SceneFilter,
         entity: Entity,
     ) -> Result<Self, EntityFragmentNewError> {
         let uid = *world
             .get::<Uid>(entity)
             .ok_or(EntityFragmentNewError::NoMatchingEntity { entity })?;
-        let components = EntityFragment::components_from_entity(world, type_registry, entity)?;
+        let components = EntityFragment::components_from_entity(world, type_registry, filter, entity)?;
         Ok(EntityFragment::new(uid, components))
     }
 

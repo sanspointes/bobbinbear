@@ -1,38 +1,41 @@
-import {
-    DescribedObject,
-    DetailedObject,
-    Effect,
-    SceneApi,
-    SelectedApi,
-} from 'bb_core';
-import { createSignal } from 'solid-js';
+import { DetailedObject, Effect, SceneApi, SelectedApi, Uid } from 'bb_core';
+import { createMemo, createSignal } from 'solid-js';
+import { ReactiveMap } from '@solid-primitives/map';
 
 export type BBDocument = ReturnType<typeof useBBDocument>;
 
 export function useBBDocument() {
     const sceneApi = new SceneApi();
     const selectedApi = new SelectedApi();
-    const [objects, setObjects] = createSignal<DescribedObject[]>([]);
-    const [selectedObject, setSelectedObject] = createSignal<
-        DetailedObject | undefined
-    >(undefined);
 
-    async function refresh() {
-        const objects = await sceneApi.describe_document();
-        console.log(objects);
-        setObjects(objects);
-    }
+    const objects = new ReactiveMap<string, DetailedObject>();
+    const [selectedObjectUid, setSelectedObjectUid] = createSignal<
+        string | undefined
+    >(undefined);
+    const selectedObject = createMemo(() => {
+        const uid = selectedObjectUid();
+        if (uid) return objects.get(uid);
+        else return undefined;
+    });
 
     const handleEffect = (effect: Effect) => {
-        if (effect.tag === 'DocumentChanged') {
-            refresh();
+        console.log(effect);
+        if (
+            effect.tag === 'EntitiesSpawned' ||
+            effect.tag === 'EntitiesChanged'
+        ) {
+            for (const uid of effect.value) {
+                sceneApi.describe_object(uid).then((obj) => {
+                    if (obj) objects.set(uid, obj);
+                });
+            }
+        } else if (effect.tag === 'EntitiesDespawned') {
+            for (const uid of effect.value) {
+                objects.delete(uid);
+            }
         } else if (effect.tag === 'SelectionChanged') {
             const [first] = effect.value;
-            console.log(first);
-            sceneApi.describe_object(first).then((object) => {
-                console.log(object);
-                setSelectedObject(object);
-            });
+            setSelectedObjectUid(first);
         }
     };
     // @ts-expect-error: untyped...
@@ -54,6 +57,7 @@ export function useBBDocument() {
 
     return {
         objects,
+        selectedObjectUid,
         selectedObject,
 
         setVisible,

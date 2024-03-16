@@ -1,10 +1,12 @@
 use std::marker::PhantomData;
 
 use bevy_ecs::{
+    reflect::AppTypeRegistry,
     system::Resource,
     world::{Mut, World},
 };
 use bevy_reflect::TypeRegistry;
+use bevy_scene::SceneFilter;
 
 #[derive(Resource, Default)]
 /// Resource containing filter data for when creating / applying
@@ -12,16 +14,20 @@ use bevy_reflect::TypeRegistry;
 /// * `filter`: Scene filter for when building the changesets.  Which components to include.
 /// * `pd`: PhantomData for tagging changeset resource incase you want multiple.
 pub struct ChangesetResource<TTag: Sync + Send + Default + 'static> {
-    type_registry: TypeRegistry,
     pd: PhantomData<TTag>,
+    pub filter: SceneFilter,
 }
 
 impl<TTag: Sync + Send + Default + 'static> ChangesetResource<TTag> {
-    pub fn new(type_registry: TypeRegistry) -> Self {
+    pub fn new() -> Self {
         Self {
-            type_registry,
             pd: PhantomData::<TTag>,
+            filter: SceneFilter::Unset,
         }
+    }
+    pub fn with_filter(mut self, filter: SceneFilter) -> Self {
+        self.filter = filter;
+        self
     }
     /// Creates a resource scope with this changeset resource.  Useful for when trying to access
     /// This ChangesetResource while still having full &mut World access.
@@ -40,16 +46,23 @@ impl<TTag: Sync + Send + Default + 'static> ChangesetResource<TTag> {
     ///
     /// * `world`:
     /// * `scope_fn`:
-    pub fn context_scope<U>(world: &mut World, scope_fn: impl FnOnce(&mut World, &mut ChangesetContext) -> U) -> U {
-        Self::changeset_scope::<U>(world, |world, changeset_resource| {
-            let mut cx = ChangesetContext {
-                type_registry: &changeset_resource.type_registry,
-            };
-            (scope_fn)(world, &mut cx)
+    pub fn context_scope<U>(
+        world: &mut World,
+        scope_fn: impl FnOnce(&mut World, &mut ChangesetContext) -> U,
+    ) -> U {
+        world.resource_scope::<AppTypeRegistry, U>(|world, type_registry| {
+            Self::changeset_scope(world, |world, res| {
+                let mut cx = ChangesetContext {
+                    type_registry: &(type_registry.read()),
+                    filter: &res.filter,
+                };
+                (scope_fn)(world, &mut cx)
+            })
         })
     }
 }
 
 pub struct ChangesetContext<'a> {
     pub(crate) type_registry: &'a TypeRegistry,
+    pub(crate) filter: &'a SceneFilter,
 }

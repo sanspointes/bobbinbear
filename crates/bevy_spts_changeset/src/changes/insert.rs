@@ -2,10 +2,10 @@ use anyhow::anyhow;
 
 use std::{any::TypeId, fmt::Debug, sync::Arc};
 
-use bevy_ecs::{reflect::ReflectComponent, world::World};
+use bevy_ecs::{event::Events, reflect::ReflectComponent, world::World};
 use bevy_spts_fragments::prelude::{ComponentFragment, Uid};
 
-use crate::resource::ChangesetContext;
+use crate::{events::ChangesetEvent, resource::ChangesetContext};
 
 use super::Change;
 
@@ -35,6 +35,12 @@ impl Change for InsertChange {
 
         self.component.insert(&mut entity_mut, cx.type_registry)?;
         let type_id = self.component.try_type_id(cx.type_registry).unwrap();
+
+        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+        events.send(ChangesetEvent::Changed(
+            self.target,
+            type_id,
+        ));
 
         Ok(Arc::new(RemoveChange::new(self.target, type_id)))
     }
@@ -66,6 +72,12 @@ impl Change for ApplyChange {
 
         let mut component = self.component.clone();
         component.swap(&mut entity_mut, cx.type_registry).unwrap();
+
+        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+        events.send(ChangesetEvent::Changed(
+            self.target,
+            component.try_type_id(cx.type_registry).unwrap(),
+        ));
 
         Ok(Arc::new(ApplyChange::new(self.target, component)))
     }
@@ -103,6 +115,13 @@ impl Change for RemoveChange {
         let component = reflect_component.reflect_mut(&mut entity_mut).unwrap();
 
         let cf = ComponentFragment::new(component.clone_value().into());
+
+        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+        events.send(ChangesetEvent::Changed(
+            self.target,
+            cf.try_type_id(cx.type_registry).unwrap(),
+        ));
+
         Ok(Arc::new(InsertChange::new(self.target, cf)))
     }
 }

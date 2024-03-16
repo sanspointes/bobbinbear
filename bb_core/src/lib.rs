@@ -6,6 +6,8 @@ mod selected;
 mod undoredo;
 
 use bevy::prelude::*;
+use bevy::window::{WindowMode, WindowResolution};
+use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
 use plugins::bounds2d::Bounds2DPlugin;
@@ -27,11 +29,14 @@ pub fn setup_bb_core(canvas_id: String) {
             title: "Bobbin Bear :: Embroidery Editor".to_string(),
             canvas: Some(canvas_id),
             resizable: true,
+            mode: WindowMode::Windowed,
             ..Default::default()
         }),
         ..Default::default()
     });
     app.add_plugins(default_plugins);
+
+    app.add_event::<ChangesetEvent>();
 
     setup(&mut app);
 

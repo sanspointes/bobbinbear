@@ -12,7 +12,9 @@ export function Name(props: NameProps) {
     const { setName } = document;
     return (
         <Card>
-            <CardTitle class="mb-2">Name</CardTitle>
+            <CardTitle class="mb-2">
+                Name <span class="text-xs text-gray-400 font-thin">{props.uid}</span>
+            </CardTitle>
             <Input
                 placeholder="Name"
                 value={props.name}

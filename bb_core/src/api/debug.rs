@@ -5,7 +5,7 @@ use bevy_spts_vectorgraphic::prelude::*;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::{undoredo::{UndoRedoApi, UndoRedoResult}, plugins::effect::{Effect, EffectQue}, selected::Selected};
+use crate::{undoredo::{UndoRedoApi, UndoRedoResult}, selected::Selected};
 
 pub struct DebugApi;
 
@@ -101,9 +101,6 @@ impl DebugApi {
         let changeset = builder.build();
 
         let result = UndoRedoApi::execute(world, changeset)?;
-
-        let que = world.get_resource_mut::<EffectQue>().unwrap();
-        que.push_effect(Effect::DocumentChanged);
 
         Ok(result)
     }

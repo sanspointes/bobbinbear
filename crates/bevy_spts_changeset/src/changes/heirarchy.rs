@@ -2,11 +2,12 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 
-use bevy_ecs::world::World;
-use bevy_hierarchy::{BuildWorldChildren, Parent};
+use bevy_ecs::{world::World, event::Events};
+use bevy_hierarchy::{BuildWorldChildren, Parent, Children};
+use bevy_reflect::Typed;
 use bevy_spts_fragments::prelude::{HierarchyFragment, Uid};
 
-use crate::resource::ChangesetContext;
+use crate::{resource::ChangesetContext, events::ChangesetEvent};
 
 use super::Change;
 
@@ -68,6 +69,12 @@ impl Change for SetParentChange {
             }
         }
 
+        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+        events.send(ChangesetEvent::Changed(self.target, Parent::type_info().type_id()));
+        if let Some(parent) = self.parent {
+            events.send(ChangesetEvent::Changed(parent, Children::type_info().type_id()));
+        }
+
         Ok(Arc::new(SetParentChange {
             target: self.target,
             parent: prev_parent,
@@ -102,6 +109,12 @@ impl Change for SpawnRecursiveChange {
             None => hierarchy_fragment.spawn_in_world(world, cx.type_registry)?,
         };
         hierarchy_fragment.spawn_in_world(world, cx.type_registry)?;
+
+        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+        for uid in hierarchy_fragment.all_uids() {
+            events.send(ChangesetEvent::Spawned(*uid));
+        }
+
         Ok(Arc::new(DespawnRecursiveChange::new(
             hierarchy_fragment.root_uid(),
         )))
@@ -135,9 +148,14 @@ impl Change for DespawnRecursiveChange {
             .copied();
 
         let hierarchy_fragment =
-            HierarchyFragment::from_world_uid(world, cx.type_registry, self.uid)?;
+            HierarchyFragment::from_world_uid(world, cx.type_registry, cx.filter, self.uid)?;
 
         world.despawn(entity);
+
+        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+        for uid in hierarchy_fragment.all_uids() {
+            events.send(ChangesetEvent::Despawned(*uid));
+        }
 
         Ok(Arc::new(SpawnRecursiveChange::new(hierarchy_fragment, parent)))
     }

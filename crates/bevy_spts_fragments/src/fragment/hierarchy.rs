@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use bevy_ecs::{entity::Entity, world::World};
 use bevy_hierarchy::Children;
 use bevy_reflect::TypeRegistry;
+use bevy_scene::SceneFilter;
 use smallvec::SmallVec;
 use thiserror::Error;
 
@@ -76,6 +77,10 @@ impl HierarchyFragment {
         self.root_uid
     }
 
+    pub fn all_uids(&self) -> impl Iterator<Item = &Uid> {
+        self.entities.keys()
+    }
+
     pub(crate) fn root(&self) -> &HierarchyFragmentEntity {
         self.entities.get(&self.root_uid).unwrap()
     }
@@ -87,10 +92,11 @@ impl HierarchyFragment {
     fn populate_entites_map_recursive(
         world: &mut World,
         type_registry: &TypeRegistry,
+        filter: &SceneFilter,
         entity: Entity,
         entities: &mut BTreeMap<Uid, HierarchyFragmentEntity>,
     ) -> Result<(), EntityFragmentNewError> {
-        let entity_fragment = EntityFragment::from_world_entity(world, type_registry, entity)?;
+        let entity_fragment = EntityFragment::from_world_entity(world, type_registry, filter, entity)?;
 
         let child_entities: Option<SmallVec<[Entity; 8]>> = world
             .get::<Children>(entity)
@@ -113,7 +119,7 @@ impl HierarchyFragment {
 
         if let Some(child_entities) = child_entities {
             for child in child_entities.iter() {
-                Self::populate_entites_map_recursive(world, type_registry, *child, entities)?;
+                Self::populate_entites_map_recursive(world, type_registry, filter, *child, entities)?;
             }
         }
 
@@ -129,12 +135,13 @@ impl HierarchyFragment {
     pub fn from_world_uid(
         world: &mut World,
         type_registry: &TypeRegistry,
+        filter: &SceneFilter,
         uid: Uid,
     ) -> Result<HierarchyFragment, HierarchyFragmentNewError> {
         let entity = uid.entity(world).unwrap();
 
         let mut entities = BTreeMap::new();
-        Self::populate_entites_map_recursive(world, type_registry, entity, &mut entities)?;
+        Self::populate_entites_map_recursive(world, type_registry, filter, entity, &mut entities)?;
 
         Ok(Self::new(uid, entities))
     }
@@ -148,6 +155,7 @@ impl HierarchyFragment {
     pub fn from_world_entity(
         world: &mut World,
         type_registry: &TypeRegistry,
+        filter: &SceneFilter,
         entity: Entity,
     ) -> Result<HierarchyFragment, HierarchyFragmentNewError> {
         let uid = *world
@@ -155,7 +163,7 @@ impl HierarchyFragment {
             .ok_or(HierarchyFragmentNewError::NoUidOnEntity(entity))?;
 
         let mut entities = BTreeMap::new();
-        Self::populate_entites_map_recursive(world, type_registry, entity, &mut entities)?;
+        Self::populate_entites_map_recursive(world, type_registry, filter, entity, &mut entities)?;
 
         Ok(Self::new(uid, entities))
     }

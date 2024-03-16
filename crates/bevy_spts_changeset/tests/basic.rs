@@ -1,7 +1,7 @@
 use bevy_app::App;
-use bevy_spts_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
 use bevy_ecs::{component::Component, reflect::ReflectComponent};
 use bevy_reflect::{Reflect, TypeRegistry};
+use bevy_spts_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
 use bevy_spts_fragments::prelude::Uid;
 
 #[derive(Default)]
@@ -47,11 +47,11 @@ struct MyOtherTag;
 #[test]
 pub fn spawns_with_components() {
     let mut app = App::new();
-
-    let mut changeset_type_registry = TypeRegistry::new();
-    changeset_type_registry.register::<MyTag>();
-    changeset_type_registry.register::<MyOtherTag>();
-    app.insert_resource(ChangesetResource::<DefaultChangesetTag>::new(changeset_type_registry));
+    app.register_type::<MyTag>();
+    app.register_type::<MyOtherTag>();
+    let mut res = ChangesetResource::<DefaultChangesetTag>::new();
+    res.filter = res.filter.allow::<MyTag>().allow::<MyOtherTag>();
+    app.insert_resource(res);
 
     let world = &mut app.world;
 
@@ -81,20 +81,19 @@ pub fn spawns_with_components() {
             .get_single(world)
             .unwrap_err();
     });
-
 }
 
 #[test]
 pub fn respawns_despawned_components() {
     let mut app = App::new();
 
-    let mut changeset_type_registry = TypeRegistry::new();
-    changeset_type_registry.register::<MyTag>();
-    changeset_type_registry.register::<MyOtherTag>();
-    app.insert_resource(ChangesetResource::<DefaultChangesetTag>::new(changeset_type_registry));
+    app.register_type::<MyTag>();
+    app.register_type::<MyOtherTag>();
+    let mut res = ChangesetResource::<DefaultChangesetTag>::new();
+    res.filter = res.filter.allow::<MyTag>().allow::<MyOtherTag>();
+    app.insert_resource(res);
 
     let world = &mut app.world;
-
 
     ChangesetResource::<DefaultChangesetTag>::context_scope(world, |world, cx| {
         let mut builder = world.changeset();
@@ -109,6 +108,9 @@ pub fn respawns_despawned_components() {
 
         undo.apply(world, cx).unwrap();
 
-        world.query::<(&Uid, &MyTag)>().get_single(world).expect("Did not respawn the `MyTag` component with error");
+        world
+            .query::<(&Uid, &MyTag)>()
+            .get_single(world)
+            .expect("Did not respawn the `MyTag` component with error");
     });
 }

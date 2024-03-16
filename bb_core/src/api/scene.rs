@@ -5,7 +5,10 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::undoredo::{UndoRedoApi, UndoRedoResult};
+use crate::{
+    selected::Selected,
+    undoredo::{UndoRedoApi, UndoRedoResult},
+};
 
 #[allow(unused_imports)]
 pub use self::definitions::*;
@@ -18,9 +21,9 @@ mod definitions {
     use wasm_bindgen::prelude::*;
     #[wasm_bindgen(typescript_custom_section)]
     const TS_APPEND_CONTENT: &'static str = r#"
-    export type Vec2 = [number, number]; 
+export type Vec2 = [number, number]; 
+export type Uid = string; 
     "#;
-
 
     #[derive(Tsify, Serialize, Deserialize)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -28,6 +31,7 @@ mod definitions {
         pub uid: String,
         pub name: Option<String>,
         pub visible: bool,
+        pub selected: bool,
     }
 
     #[derive(Tsify, Serialize, Deserialize)]
@@ -36,6 +40,7 @@ mod definitions {
         pub uid: String,
         pub name: Option<String>,
         pub visible: bool,
+        pub selected: bool,
         pub position: Vec2,
     }
 }
@@ -51,12 +56,13 @@ impl SceneApi {
     /// * `world`:
     pub fn describe_document(world: &mut World) -> Vec<DescribedObject> {
         world
-            .query::<(&Uid, Option<&Name>, &Visibility)>()
+            .query::<(&Uid, Option<&Name>, &Visibility, &Selected)>()
             .iter(world)
-            .map(|(uid, name, visibility)| DescribedObject {
+            .map(|(uid, name, visibility, selected)| DescribedObject {
                 uid: uid.into(),
                 name: name.map(|name| name.to_string()),
                 visible: matches!(visibility, Visibility::Visible),
+                selected: matches!(selected, Selected::Selected),
             })
             .collect()
     }
@@ -73,15 +79,18 @@ impl SceneApi {
             return Ok(None);
         };
         Ok(world
-            .query::<(&Uid, Option<&Name>, &Visibility, &Transform)>()
+            .query::<(&Uid, Option<&Name>, &Visibility, &Transform, &Selected)>()
             .get(world, entity)
             .ok()
-            .map(|(uid, name, visibility, transform)| DetailedObject {
-                uid: uid.into(),
-                name: name.map(|name| name.to_string()),
-                visible: matches!(visibility, Visibility::Visible),
-                position: transform.translation.xy(),
-            }))
+            .map(
+                |(uid, name, visibility, transform, selected)| DetailedObject {
+                    uid: uid.into(),
+                    name: name.map(|name| name.to_string()),
+                    visible: matches!(visibility, Visibility::Visible),
+                    position: transform.translation.xy(),
+                    selected: matches!(selected, Selected::Selected),
+                },
+            ))
     }
 
     pub fn log_scene(world: &mut World) -> String {
@@ -111,6 +120,7 @@ impl SceneApi {
             true => *visibility = Visibility::Visible,
             false => *visibility = Visibility::Hidden,
         }
+
         Ok(())
     }
 
@@ -126,7 +136,9 @@ impl SceneApi {
 
         let changeset = builder.build();
 
-        UndoRedoApi::execute(world, changeset)
+        let result = UndoRedoApi::execute(world, changeset)?;
+
+        Ok(result)
     }
 
     pub fn set_position(
@@ -151,6 +163,8 @@ impl SceneApi {
 
         let changeset = builder.build();
 
-        UndoRedoApi::execute(world, changeset)
+        let result = UndoRedoApi::execute(world, changeset)?;
+
+        Ok(result)
     }
 }

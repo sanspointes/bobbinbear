@@ -1,11 +1,11 @@
 use std::{fmt::Debug, sync::Arc};
 
 use anyhow::anyhow;
-use bevy_ecs::world::World;
+use bevy_ecs::{world::World, event::Events};
 use bevy_hierarchy::Parent;
 use bevy_spts_fragments::prelude::{EntityFragment, Uid};
 
-use crate::resource::ChangesetContext;
+use crate::{resource::ChangesetContext, events::ChangesetEvent};
 
 use super::Change;
 
@@ -33,6 +33,10 @@ impl Change for SpawnChange {
             }
             None => entity_fragment.spawn_in_world(world, cx.type_registry)?,
         };
+
+        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+        events.send(ChangesetEvent::Spawned(self.entity.uid()));
+
         Ok(Arc::new(DespawnChange::new(entity_fragment.uid())))
     }
 }
@@ -63,9 +67,12 @@ impl Change for DespawnChange {
             .and_then(|p| world.get::<Uid>(p))
             .copied();
 
-        let entity_fragment = EntityFragment::from_world_uid(world, cx.type_registry, self.uid)?;
+        let entity_fragment = EntityFragment::from_world_uid(world, cx.type_registry, cx.filter, self.uid)?;
 
         world.despawn(entity);
+
+        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+        events.send(ChangesetEvent::Despawned(self.uid));
 
         Ok(Arc::new(SpawnChange::new(entity_fragment, parent)))
     }

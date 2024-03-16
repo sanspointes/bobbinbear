@@ -7,7 +7,8 @@ export function Inspector() {
     const { document } = useBobbinBear();
     const { selectedObject } = document;
     return (
-        <div class="p-4 flex flex-col gap-4">
+        <div class="flex flex-col gap-4 p-4">
+            <h1>Inspector</h1>
             <Show when={selectedObject()}>
                 {(obj) => (
                     <>
@@ -16,6 +17,7 @@ export function Inspector() {
                     </>
                 )}
             </Show>
+            <pre>{JSON.stringify(selectedObject(), null, 2)}</pre>
         </div>
     );
 }
