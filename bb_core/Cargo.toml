@@ -18,18 +18,7 @@ crate-type = ["cdylib", "rlib"]
 bevy = { version = "0.13", default-features = false }
 serde = {version = "1.0.196", features = ["serde_derive"] }
 
-futures = "0.3.30"
-# Wasm
-console_error_panic_hook = "0.1.7"
-js-sys = "0.3.68"
-lazy_static = "1.4.0"
-thread_local = "1.1.7"
-wasm-bindgen = "0.2.91"
-wasm-bindgen-futures = "0.4.41"
-anyhow = "1.0.79"
-rmp-serde = "1.1.2"
-tsify = {version = "0.4.5", default-features = false, features = ["js", "wasm-bindgen"]}
-serde-wasm-bindgen = "0.6.3"
+# App Crates
 bevy-wasm-api = { git = "https://github.com/sanspointes/bevy-wasm-api", version = "0.1.0" }
 bevy_spts_uid = { version = "0.1.0", path = "../crates/bevy_spts_uid", features = ["serde"] }
 bevy_spts_changeset = { version = "0.1.0", path = "../crates/bevy_spts_changeset", features = ["serde"] }
@@ -37,6 +26,17 @@ bevy_spts_fragments = { version = "0.1.0", path = "../crates/bevy_spts_fragments
 bevy_spts_vectorgraphic = { version = "0.1.0", path = "../crates/bevy_spts_vectorgraphic", features = ["reflect", "changeset"] }
 uuid = { version = "1.7.0", features = ["serde"] }
 
+# Wasm
+console_error_panic_hook = "0.1.7"
+js-sys = "0.3.68"
+wasm-bindgen = "0.2.91"
+serde-wasm-bindgen = "0.6.3"
+wasm-bindgen-futures = "0.4.41"
+anyhow = "1.0.79"
+tsify = {version = "0.4.5", default-features = false, features = ["js", "wasm-bindgen"]}
+
+
+
 [features] 
 default = ["minimal_bevy"]
-minimal_bevy = ["bevy/bevy_render", "bevy/bevy_scene", "bevy/bevy_sprite", "bevy/bevy_winit", "bevy/serialize", "bevy/webgl2"]
+minimal_bevy = ["bevy/bevy_render", "bevy/bevy_scene", "bevy/bevy_sprite", "bevy/bevy_winit", "bevy/serialize", "bevy/webgl2", "bevy/bevy_ui"]
