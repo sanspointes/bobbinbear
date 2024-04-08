@@ -7,7 +7,7 @@ use bevy_hierarchy::{BuildWorldChildren, Parent, Children};
 use bevy_reflect::Typed;
 use bevy_spts_fragments::prelude::{HierarchyFragment, Uid};
 
-use crate::{resource::ChangesetContext, events::ChangesetEvent};
+use crate::{resource::ChangesetContext, events::{ChangesetEvent, ChangedType}};
 
 use super::Change;
 
@@ -70,9 +70,15 @@ impl Change for SetParentChange {
         }
 
         let mut events = world.resource_mut::<Events<ChangesetEvent>>();
-        events.send(ChangesetEvent::Changed(self.target, Parent::type_info().type_id()));
+
+        let changed_type = if self.parent.is_some() {
+            ChangedType::Mutated
+        } else {
+            ChangedType::Inserted
+        };
+        events.send(ChangesetEvent::Changed(self.target, Parent::type_info().type_id(), changed_type));
         if let Some(parent) = self.parent {
-            events.send(ChangesetEvent::Changed(parent, Children::type_info().type_id()));
+            events.send(ChangesetEvent::Changed(parent, Children::type_info().type_id(), ChangedType::Removed));
         }
 
         Ok(Arc::new(SetParentChange {

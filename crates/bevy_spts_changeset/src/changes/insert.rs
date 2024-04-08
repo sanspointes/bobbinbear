@@ -5,7 +5,7 @@ use std::{any::TypeId, fmt::Debug, sync::Arc};
 use bevy_ecs::{event::Events, reflect::ReflectComponent, world::World};
 use bevy_spts_fragments::prelude::{ComponentFragment, Uid};
 
-use crate::{events::ChangesetEvent, resource::ChangesetContext};
+use crate::{events::{ChangesetEvent, ChangedType}, resource::ChangesetContext};
 
 use super::Change;
 
@@ -40,6 +40,7 @@ impl Change for InsertChange {
         events.send(ChangesetEvent::Changed(
             self.target,
             type_id,
+            ChangedType::Inserted
         ));
 
         Ok(Arc::new(RemoveChange::new(self.target, type_id)))
@@ -77,6 +78,7 @@ impl Change for ApplyChange {
         events.send(ChangesetEvent::Changed(
             self.target,
             component.try_type_id(cx.type_registry).unwrap(),
+            ChangedType::Applied,
         ));
 
         Ok(Arc::new(ApplyChange::new(self.target, component)))
@@ -121,6 +123,7 @@ impl Change for RemoveChange {
         events.send(ChangesetEvent::Changed(
             self.target,
             cf.try_type_id(cx.type_registry).unwrap(),
+            ChangedType::Removed,
         ));
 
         Ok(Arc::new(InsertChange::new(self.target, cf)))
