@@ -3,8 +3,9 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
-    "dev:editor": "WASM32=1 turbo run --filter ./apps/editor --filter ./apps/bobbinbear_core/ dev",
-    "build:editor": "WASM32=1 turbo run --filter ./apps/editor --filter ./apps/bobbinbear_core/ build",
+    "dev:editor": "WASM32=1 turbo run dev --filter ./bb_web_test/ --filter ./bb_core",
+    "build:editor": "WASM32=1 turbo run build --filter ./bb_web_test/ --filter ./bb_core",
+    "deploy:editor": "WASM32=1 turbo run deploy --filter ./bb_web_test/ --filter ./bb_core",
     "dev:packages": "turbo run --filter=\"./packages/*\" dev",
     "playground:constructables": "turbo run --filter ./packages/constructables playground",
     "playground:solixi": "turbo run --filter ./packages/solixi playground",
