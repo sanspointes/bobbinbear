@@ -5,12 +5,12 @@ use bevy::{prelude::*, reflect::Typed};
 
 mod js_event_que;
 
-use bevy_spts_changeset::events::ChangesetEvent;
+use bevy_spts_changeset::events::{ChangesetEvent, ChangedType};
 use bevy_spts_uid::Uid;
 pub use effects::*;
 pub use js_event_que::EffectQue;
 
-use crate::selected::Selected;
+use crate::{selected::Selected, inspecting::Inspected};
 
 pub struct EffectPlugin;
 
@@ -35,15 +35,25 @@ pub fn sys_collect_changeset_events(
     let mut changed_uids = vec![];
 
     let mut selection_changed = false;
+    let mut inspected = None;
+    let mut uninspected = None;
 
     for ev in ev_spawned.read() {
         match ev {
             ChangesetEvent::Spawned(uid) => spawned_uids.push(*uid),
             ChangesetEvent::Despawned(uid) => despawned_uids.push(*uid),
-            ChangesetEvent::Changed(uid, type_id) => {
+            ChangesetEvent::Changed(uid, type_id, changed_type) => {
                 changed_uids.push(*uid);
                 if *type_id == Selected::type_info().type_id() {
                     selection_changed = true;
+                }
+
+                if *type_id == Inspected::type_info().type_id() {
+                    if matches!(changed_type, ChangedType::Inserted | ChangedType::Applied) {
+                        inspected = Some(*uid);
+                    } else if matches!(changed_type, ChangedType::Removed) {
+                        uninspected = Some(*uid);
+                    }
                 }
             }
         }
@@ -73,6 +83,10 @@ pub fn sys_collect_changeset_events(
                 .collect(),
         ))
     }
+
+    if inspected.is_some() || uninspected.is_some() {
+        res.push_effect(Effect::InspectionChanged { inspected, uninspected })
+    }
 }
 
 pub fn sys_emit_effects(mut res: ResMut<EffectQue>) {
@@ -95,5 +109,10 @@ mod effects {
         EntitiesSpawned(Vec<Uid>),
         EntitiesChanged(Vec<Uid>),
         EntitiesDespawned(Vec<Uid>),
+
+        InspectionChanged {
+            inspected: Option<Uid>,
+            uninspected: Option<Uid>,
+        }
     }
 }

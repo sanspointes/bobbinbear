@@ -1,12 +1,13 @@
 //! Displays a single [`Sprite`], created from an image.
 pub mod api;
 mod ecs;
+mod inspecting;
 mod plugins;
 mod selected;
 mod undoredo;
 
 use bevy::prelude::*;
-use bevy::window::{WindowMode, WindowResolution};
+use bevy::window::WindowMode;
 use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;

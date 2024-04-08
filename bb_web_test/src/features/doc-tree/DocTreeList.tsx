@@ -2,7 +2,7 @@ import { Collapsible } from '@kobalte/core';
 import { DescribedObject } from 'bb_core';
 import { Button } from '../../components/button';
 import { For, Show, createMemo } from 'solid-js';
-import { TbEye, TbEyeClosed } from 'solid-icons/tb';
+import { TbEye, TbEyeClosed, TbFocus } from 'solid-icons/tb';
 import { useBobbinBear } from '../../hooks/useBobbinBear';
 import { cn } from '../../lib/utils';
 
@@ -40,6 +40,9 @@ export function DocTreeNode(props: DocTreeNodeProps) {
                         <TbEye />
                     </Show>
                 </Button>
+                <Show when={props.object.inspected}>
+                    <TbFocus />
+                </Show>
 
                 {props.object.name ?? 'Unknown'}
             </div>

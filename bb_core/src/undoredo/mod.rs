@@ -19,7 +19,7 @@ use bevy_spts_changeset::{changes::ChangeSet, resource::ChangesetResource};
 pub use api::{UndoRedoApi, UndoRedoResult};
 use bevy_spts_vectorgraphic::prelude::*;
 
-use crate::selected::Selected;
+use crate::{selected::Selected, inspecting::Inspected};
 
 pub struct UndoRedoPlugin;
 
@@ -46,7 +46,8 @@ impl Plugin for UndoRedoPlugin {
             .allow::<StrokeOptions>()
             .allow::<FillOptions>()
             // State tags
-            .allow::<Selected>();
+            .allow::<Selected>()
+            .allow::<Inspected>();
 
         app.register_type::<Transform>();
         app.register_type::<GlobalTransform>();
@@ -66,6 +67,7 @@ impl Plugin for UndoRedoPlugin {
         app.register_type::<FillOptions>();
         // State tags
         app.register_type::<Selected>();
+        app.register_type::<Inspected>();
 
         let changeset_res = ChangesetResource::<UndoRedoTag>::new().with_filter(filter);
         app.insert_resource(changeset_res);

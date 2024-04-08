@@ -50,6 +50,12 @@ export function useBBDocument() {
     const setPosition = (uid: string, x: number, y: number) => {
         return sceneApi.set_position(uid, x, y);
     };
+    const inspect = (uid: string) => {
+        return sceneApi.inspect(uid);
+    };
+    const uninspect = () => {
+        return sceneApi.uninspect();
+    };
 
     const selectSingle = (uid: string) => {
         return selectedApi.deselect_all_set_object_selected_js(uid, true);
@@ -63,6 +69,8 @@ export function useBBDocument() {
         setVisible,
         setName,
         setPosition,
+        inspect,
+        uninspect,
 
         selectSingle,
     };

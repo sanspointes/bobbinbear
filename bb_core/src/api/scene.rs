@@ -6,6 +6,7 @@ use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
 use crate::{
+    inspecting::Inspected,
     selected::Selected,
     undoredo::{UndoRedoApi, UndoRedoResult},
 };
@@ -32,6 +33,7 @@ export type Uid = string;
         pub name: Option<String>,
         pub visible: bool,
         pub selected: bool,
+        pub inspected: bool,
     }
 
     #[derive(Tsify, Serialize, Deserialize)]
@@ -41,6 +43,7 @@ export type Uid = string;
         pub name: Option<String>,
         pub visible: bool,
         pub selected: bool,
+        pub inspected: bool,
         pub position: Vec2,
     }
 }
@@ -56,13 +59,14 @@ impl SceneApi {
     /// * `world`:
     pub fn describe_document(world: &mut World) -> Vec<DescribedObject> {
         world
-            .query::<(&Uid, Option<&Name>, &Visibility, &Selected)>()
+            .query::<(&Uid, Option<&Name>, &Visibility, &Selected, Option<&Inspected>)>()
             .iter(world)
-            .map(|(uid, name, visibility, selected)| DescribedObject {
+            .map(|(uid, name, visibility, selected, inspected)| DescribedObject {
                 uid: uid.into(),
                 name: name.map(|name| name.to_string()),
                 visible: matches!(visibility, Visibility::Inherited),
                 selected: matches!(selected, Selected::Selected),
+                inspected: inspected.is_some(),
             })
             .collect()
     }
@@ -79,16 +83,17 @@ impl SceneApi {
             return Ok(None);
         };
         Ok(world
-            .query::<(&Uid, Option<&Name>, &Visibility, &Transform, &Selected)>()
+            .query::<(&Uid, Option<&Name>, &Visibility, &Transform, &Selected, Option<&Inspected>)>()
             .get(world, entity)
             .ok()
             .map(
-                |(uid, name, visibility, transform, selected)| DetailedObject {
+                |(uid, name, visibility, transform, selected, inspected)| DetailedObject {
                     uid: uid.into(),
                     name: name.map(|name| name.to_string()),
                     visible: matches!(visibility, Visibility::Inherited),
                     position: transform.translation.xy(),
                     selected: matches!(selected, Selected::Selected),
+                    inspected: inspected.is_some(),
                 },
             ))
     }
@@ -108,7 +113,11 @@ impl SceneApi {
         format!("{info:?}").to_string()
     }
 
-    pub fn set_visible(world: &mut World, uid: String, visible: bool) -> Result<UndoRedoResult, anyhow::Error> {
+    pub fn set_visible(
+        world: &mut World,
+        uid: String,
+        visible: bool,
+    ) -> Result<UndoRedoResult, anyhow::Error> {
         let uid: Uid = (&uid).try_into()?;
         let visible = if matches!(visible, true) {
             Visibility::Inherited
@@ -160,11 +169,49 @@ impl SceneApi {
 
         let mut builder = world.changeset();
         builder.entity(uid).apply(transform);
-
         let changeset = builder.build();
 
         let result = UndoRedoApi::execute(world, changeset)?;
 
         Ok(result)
+    }
+
+    /// Inspects an object, uninspects the current inspected object if it has to.
+    pub fn inspect(world: &mut World, uid: String) -> Result<UndoRedoResult, anyhow::Error> {
+        let uid = Uid::try_from(&uid)?;
+
+        let prev_inspected = world
+            .query_filtered::<&Uid, With<Inspected>>()
+            .get_single(world)
+            .copied();
+
+        let mut builder = world.changeset();
+
+        if let Ok(uid) = prev_inspected {
+            builder.entity(uid).remove::<Inspected>();
+        }
+
+        builder.entity(uid).insert(Inspected);
+        let changeset = builder.build();
+
+        UndoRedoApi::execute(world, changeset)
+    }
+
+    /// Uninspects the currently inspected object (if there is one).
+    pub fn uninspect(world: &mut World) -> Result<UndoRedoResult, anyhow::Error> {
+        let prev_inspected = world
+            .query_filtered::<&Uid, With<Inspected>>()
+            .get_single(world)
+            .copied();
+
+        let mut builder = world.changeset();
+
+        if let Ok(uid) = prev_inspected {
+            builder.entity(uid).remove::<Inspected>();
+        }
+
+        let changeset = builder.build();
+
+        UndoRedoApi::execute(world, changeset)
     }
 }
