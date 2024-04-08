@@ -52,6 +52,9 @@ importers:
       '@solid-primitives/map':
         specifier: ^0.4.11
         version: 0.4.11(solid-js@1.8.14)
+      '@solid-primitives/resize-observer':
+        specifier: ^2.0.25
+        version: 2.0.25(solid-js@1.8.14)
       bb_core:
         specifier: workspace:^
         version: link:../bb_core
@@ -1221,7 +1224,6 @@ packages:
     dependencies:
       '@solid-primitives/utils': 6.2.3(solid-js@1.8.14)
       solid-js: 1.8.14
-    dev: true
 
   /@solid-primitives/keyboard@1.2.8(solid-js@1.8.14):
     resolution: {integrity: sha512-pJtcbkjozS6L1xvTht9rPpyPpX55nAkfBzbFWdf3y0Suwh6qClTibvvObzKOf7uzQ+8aZRDH4LsoGmbTKXtJjQ==}
@@ -1297,7 +1299,6 @@ packages:
       '@solid-primitives/static-store': 0.0.8(solid-js@1.8.14)
       '@solid-primitives/utils': 6.2.3(solid-js@1.8.14)
       solid-js: 1.8.14
-    dev: true
 
   /@solid-primitives/rootless@1.4.3(solid-js@1.8.14):
     resolution: {integrity: sha512-IPsfUhKsqQOxLtRMQWK2EZAYbL9RKJMLBelLwpaXl9+oa1tl5aNvA6GHgrNrK+85oUhiYh7/OuogO18AuHepqQ==}
@@ -1314,7 +1315,6 @@ packages:
     dependencies:
       '@solid-primitives/utils': 6.2.3(solid-js@1.8.14)
       solid-js: 1.8.14
-    dev: true
 
   /@solid-primitives/scheduled@1.4.3(solid-js@1.8.14):
     resolution: {integrity: sha512-HfWN5w7b7FEc6VPLBKnnE302h90jsLMuR28Fcf7neRGGf8jBj6wm6/UFQ00VlKexHFMR6KQ2u4VBh5a1ZcqM8g==}
@@ -1348,7 +1348,6 @@ packages:
     dependencies:
       '@solid-primitives/utils': 6.2.3(solid-js@1.8.14)
       solid-js: 1.8.14
-    dev: true
 
   /@solid-primitives/styles@0.0.111(solid-js@1.8.14):
     resolution: {integrity: sha512-1mBxOGAPXmfD5oYCvqjKBDN7SuNjz2qz7RdH7KtsuNLQh6lpuSKadtHnLvru0Y8Vz1InqTJisBIy/6P5kyDmPw==}

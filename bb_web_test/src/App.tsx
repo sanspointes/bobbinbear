@@ -33,19 +33,19 @@ function App() {
             <div class="flex items-stretch grow">
                 <Show when={loading() === 1}>
                     <BobbinBearContext.Provider value={ctx()}>
-                        <div class="min-w-52">
+                        <div class="w-[300px]">
                             <DocTree />
                         </div>
                     </BobbinBearContext.Provider>
                 </Show>
                 <div class="bg-red-500 grow">
-                    <div class="w-full h-full">
-                        <canvas id="bb-canvas" class="w-full h-full" />
+                    <div class="w-full h-full relative">
+                        <canvas id="bb-canvas" class="absolute top-0 left-0" />
                     </div>
                 </div>
                 <Show when={loading() === 1}>
                     <BobbinBearContext.Provider value={ctx()}>
-                        <div class="min-w-52">
+                        <div class="w-[300px]">
                             <Inspector />
                         </div>
                     </BobbinBearContext.Provider>

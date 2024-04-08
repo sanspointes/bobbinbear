@@ -13,6 +13,7 @@
   "dependencies": {
     "@kobalte/core": "^0.12.1",
     "@solid-primitives/map": "^0.4.11",
+    "@solid-primitives/resize-observer": "^2.0.25",
     "bb_core": "workspace:^",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
