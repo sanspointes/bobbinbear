@@ -163,7 +163,7 @@ impl ComponentFragment {
         type_registry: &TypeRegistry,
     ) -> Result<(), ComponentFragmentError> {
         let comp = self.get_reflect_component(type_registry)?;
-        comp.apply_or_insert(entity, &*self.component, type_registry);
+        comp.remove(entity);
         Ok(())
     }
     pub fn swap(

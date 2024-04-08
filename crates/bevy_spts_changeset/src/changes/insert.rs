@@ -115,6 +115,7 @@ impl Change for RemoveChange {
         let component = reflect_component.reflect_mut(&mut entity_mut).unwrap();
 
         let cf = ComponentFragment::new(component.clone_value().into());
+        cf.remove(&mut entity_mut, cx.type_registry).unwrap();
 
         let mut events = world.resource_mut::<Events<ChangesetEvent>>();
         events.send(ChangesetEvent::Changed(
