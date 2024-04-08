@@ -61,7 +61,7 @@ impl SceneApi {
             .map(|(uid, name, visibility, selected)| DescribedObject {
                 uid: uid.into(),
                 name: name.map(|name| name.to_string()),
-                visible: matches!(visibility, Visibility::Visible),
+                visible: matches!(visibility, Visibility::Inherited),
                 selected: matches!(selected, Selected::Selected),
             })
             .collect()
@@ -86,7 +86,7 @@ impl SceneApi {
                 |(uid, name, visibility, transform, selected)| DetailedObject {
                     uid: uid.into(),
                     name: name.map(|name| name.to_string()),
-                    visible: matches!(visibility, Visibility::Visible),
+                    visible: matches!(visibility, Visibility::Inherited),
                     position: transform.translation.xy(),
                     selected: matches!(selected, Selected::Selected),
                 },
@@ -108,20 +108,20 @@ impl SceneApi {
         format!("{info:?}").to_string()
     }
 
-    pub fn set_visible(world: &mut World, uid: String, visible: bool) -> Result<(), anyhow::Error> {
+    pub fn set_visible(world: &mut World, uid: String, visible: bool) -> Result<UndoRedoResult, anyhow::Error> {
         let uid: Uid = (&uid).try_into()?;
-        let entity = uid
-            .entity(world)
-            .ok_or_else(|| anyhow!("No entity for uid {uid}."))?;
-        let mut visibility = world
-            .get_mut::<Visibility>(entity)
-            .ok_or_else(|| anyhow!("No `Visibility` component on entity with uid {uid}."))?;
-        match visible {
-            true => *visibility = Visibility::Visible,
-            false => *visibility = Visibility::Hidden,
-        }
+        let visible = if matches!(visible, true) {
+            Visibility::Inherited
+        } else {
+            Visibility::Hidden
+        };
 
-        Ok(())
+        let mut builder = world.changeset();
+        builder.entity(uid).apply(visible);
+
+        let changeset = builder.build();
+
+        UndoRedoApi::execute(world, changeset)
     }
 
     pub fn set_name(

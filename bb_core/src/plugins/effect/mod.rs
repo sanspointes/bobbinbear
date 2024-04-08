@@ -24,10 +24,11 @@ impl Plugin for EffectPlugin {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub fn sys_collect_changeset_events(
     res: ResMut<EffectQue>,
     mut ev_spawned: EventReader<ChangesetEvent>,
-    mut q_all: ParamSet<(Query<(&Uid, &Selected)>,)>,
+    mut q_all: ParamSet<(Query<(&Uid, &Selected, &Visibility)>,)>,
 ) {
     let mut spawned_uids = vec![];
     let mut despawned_uids = vec![];
@@ -62,7 +63,7 @@ pub fn sys_collect_changeset_events(
             q_all
                 .p0()
                 .iter()
-                .filter_map(|(uid, selected)| {
+                .filter_map(|(uid, selected, _)| {
                     if matches!(*selected, Selected::Selected) {
                         Some(*uid)
                     } else {
