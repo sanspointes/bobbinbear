@@ -5,17 +5,18 @@ use bevy::{prelude::*, reflect::Typed};
 
 mod js_event_que;
 
-use bevy_spts_changeset::events::{ChangesetEvent, ChangedType};
+use bevy_spts_changeset::events::{ChangedType, ChangesetEvent};
 use bevy_spts_uid::Uid;
 pub use effects::*;
 pub use js_event_que::EffectQue;
 
-use crate::{selected::Selected, inspecting::Inspected};
+use crate::{inspecting::Inspected, selected::Selected};
 
 pub struct EffectPlugin;
 
 impl Plugin for EffectPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_event::<Effect>();
         app.insert_resource(EffectQue::new());
         app.add_systems(
             Last,
@@ -25,10 +26,11 @@ impl Plugin for EffectPlugin {
 }
 
 #[allow(clippy::type_complexity)]
+/// Collects all the changeset events into effect events.  Sends them via EventWriter
 pub fn sys_collect_changeset_events(
-    res: ResMut<EffectQue>,
     mut ev_spawned: EventReader<ChangesetEvent>,
     mut q_all: ParamSet<(Query<(&Uid, &Selected, &Visibility)>,)>,
+    mut effect_writer: EventWriter<Effect>,
 ) {
     let mut spawned_uids = vec![];
     let mut despawned_uids = vec![];
@@ -60,16 +62,16 @@ pub fn sys_collect_changeset_events(
     }
 
     if !despawned_uids.is_empty() {
-        res.push_effect(Effect::EntitiesDespawned(despawned_uids));
+        effect_writer.send(Effect::EntitiesDespawned(despawned_uids));
     }
     if !spawned_uids.is_empty() {
-        res.push_effect(Effect::EntitiesSpawned(spawned_uids));
+        effect_writer.send(Effect::EntitiesSpawned(spawned_uids));
     }
     if !changed_uids.is_empty() {
-        res.push_effect(Effect::EntitiesChanged(changed_uids));
+        effect_writer.send(Effect::EntitiesChanged(changed_uids));
     }
     if selection_changed {
-        res.push_effect(Effect::SelectionChanged(
+        effect_writer.send(Effect::SelectionChanged(
             q_all
                 .p0()
                 .iter()
@@ -81,25 +83,32 @@ pub fn sys_collect_changeset_events(
                     }
                 })
                 .collect(),
-        ))
+        ));
     }
 
     if inspected.is_some() || uninspected.is_some() {
-        res.push_effect(Effect::InspectionChanged { inspected, uninspected })
+        effect_writer.send(Effect::InspectionChanged {
+            inspected,
+            uninspected,
+        });
     }
 }
 
-pub fn sys_emit_effects(mut res: ResMut<EffectQue>) {
+pub fn sys_emit_effects(mut res: ResMut<EffectQue>, mut ev_effects: EventReader<Effect>) {
+    for ev in ev_effects.read() {
+        res.push_effect(ev.clone());
+    }
     res.forward_effects_to_js();
 }
 
 #[allow(non_snake_case)]
 mod effects {
+    use bevy::ecs::event::Event;
     use bevy_spts_fragments::prelude::Uid;
     use serde::{Deserialize, Serialize};
     use tsify::Tsify;
 
-    #[derive(Tsify, Serialize, Deserialize, Debug, Clone)]
+    #[derive(Event, Tsify, Serialize, Deserialize, Debug, Clone)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     #[serde(tag = "tag", content = "value")]
     pub enum Effect {
@@ -113,6 +122,6 @@ mod effects {
         InspectionChanged {
             inspected: Option<Uid>,
             uninspected: Option<Uid>,
-        }
+        },
     }
 }
