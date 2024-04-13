@@ -12,7 +12,7 @@
   "types": "pkg/bb_core.d.ts",
   "scripts": {
     "dev": "watch 'wasm-pack build --target web --dev' ./src/",
-    "build": "wasm-pack build --target web"
+    "build": "wasm-pack build --target web --release"
   },
   "keywords": [],
   "author": "",

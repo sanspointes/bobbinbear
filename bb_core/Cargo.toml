@@ -40,3 +40,7 @@ tsify = {version = "0.4.5", default-features = false, features = ["js", "wasm-bi
 [features] 
 default = ["minimal_bevy"]
 minimal_bevy = ["bevy/bevy_render", "bevy/bevy_scene", "bevy/bevy_sprite", "bevy/bevy_winit", "bevy/serialize", "bevy/webgl2", "bevy/bevy_ui"]
+
+[profile.release]
+lto = true
+opt-level = 's'
