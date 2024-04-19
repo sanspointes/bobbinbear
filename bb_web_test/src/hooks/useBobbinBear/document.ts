@@ -1,5 +1,5 @@
-import { DetailedObject, Effect, SceneApi, SelectedApi, Uid } from 'bb_core';
-import { createMemo, createSignal } from 'solid-js';
+import { DetailedObject, Effect, SceneApi, SelectedApi } from 'bb_core';
+import { batch, createMemo, createSignal } from 'solid-js';
 import { ReactiveMap } from '@solid-primitives/map';
 
 export type BBDocument = ReturnType<typeof useBBDocument>;

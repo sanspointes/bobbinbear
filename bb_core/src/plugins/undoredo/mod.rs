@@ -19,7 +19,7 @@ use bevy_spts_changeset::{changes::ChangeSet, resource::ChangesetResource};
 pub use api::{UndoRedoApi, UndoRedoResult};
 use bevy_spts_vectorgraphic::prelude::*;
 
-use crate::{selected::Selected, inspecting::Inspected};
+use crate::plugins::{selected::Selected, inspecting::Inspected};
 
 pub struct UndoRedoPlugin;
 

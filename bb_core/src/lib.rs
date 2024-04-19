@@ -1,21 +1,22 @@
 //! Displays a single [`Sprite`], created from an image.
 pub mod api;
 mod ecs;
-mod inspecting;
 mod plugins;
-mod selected;
-mod undoredo;
 
 use bevy::prelude::*;
+use bevy::transform::TransformSystem;
 use bevy::window::WindowMode;
+
 use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
+use ecs::synced_position::sys_sync_positions;
+use wasm_bindgen::prelude::*;
+
 use plugins::bounds2d::Bounds2DPlugin;
 use plugins::effect::EffectPlugin;
+use plugins::undoredo::UndoRedoPlugin;
 use plugins::viewport::ViewportPlugin;
-use undoredo::UndoRedoPlugin;
-use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen(start)]
 pub fn start() {
@@ -37,17 +38,20 @@ pub fn setup_bb_core(canvas_id: String) {
     });
     app.add_plugins(default_plugins);
 
-    app.add_event::<ChangesetEvent>();
-
     setup(&mut app);
 
     app.run()
 }
 
 pub fn setup(app: &mut App) {
+
+    app.add_event::<ChangesetEvent>();
+
+    app.add_systems(PostUpdate, sys_sync_positions.before(TransformSystem::TransformPropagate));
+
     app
         // App plugins
-        .add_plugins(BevyWasmApiPlugin)
+        .add_plugins(BevyWasmApiPlugin::default().with_end_schedule(PostUpdate))
         .add_plugins(VectorGraphicPlugin)
         .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin, EffectPlugin));
 }

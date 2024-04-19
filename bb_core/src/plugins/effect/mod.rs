@@ -1,6 +1,8 @@
 //! Contains logic for effects (side effect events) to keep the JS state synced with the bevy
 //! state.
 
+use std::collections::VecDeque;
+
 use bevy::{prelude::*, reflect::Typed};
 
 mod js_event_que;
@@ -10,18 +12,16 @@ use bevy_spts_uid::Uid;
 pub use effects::*;
 pub use js_event_que::EffectQue;
 
-use crate::{inspecting::Inspected, selected::Selected};
+use crate::plugins::{inspecting::Inspected, selected::Selected};
+
+use super::inspecting::handle_inspection_changed;
 
 pub struct EffectPlugin;
 
 impl Plugin for EffectPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        app.add_event::<Effect>();
         app.insert_resource(EffectQue::new());
-        app.add_systems(
-            Last,
-            (sys_collect_changeset_events, sys_emit_effects).chain(),
-        );
+        app.add_systems(Last, sys_collect_changeset_events.pipe(sys_emit_effects));
     }
 }
 
@@ -30,8 +30,7 @@ impl Plugin for EffectPlugin {
 pub fn sys_collect_changeset_events(
     mut ev_spawned: EventReader<ChangesetEvent>,
     mut q_all: ParamSet<(Query<(&Uid, &Selected, &Visibility)>,)>,
-    mut effect_writer: EventWriter<Effect>,
-) {
+) -> Vec<Effect> {
     let mut spawned_uids = vec![];
     let mut despawned_uids = vec![];
     let mut changed_uids = vec![];
@@ -61,17 +60,18 @@ pub fn sys_collect_changeset_events(
         }
     }
 
+    let mut effects = vec![];
     if !despawned_uids.is_empty() {
-        effect_writer.send(Effect::EntitiesDespawned(despawned_uids));
+        effects.push(Effect::EntitiesDespawned(despawned_uids));
     }
     if !spawned_uids.is_empty() {
-        effect_writer.send(Effect::EntitiesSpawned(spawned_uids));
+        effects.push(Effect::EntitiesSpawned(spawned_uids));
     }
     if !changed_uids.is_empty() {
-        effect_writer.send(Effect::EntitiesChanged(changed_uids));
+        effects.push(Effect::EntitiesChanged(changed_uids));
     }
     if selection_changed {
-        effect_writer.send(Effect::SelectionChanged(
+        effects.push(Effect::SelectionChanged(
             q_all
                 .p0()
                 .iter()
@@ -87,17 +87,33 @@ pub fn sys_collect_changeset_events(
     }
 
     if inspected.is_some() || uninspected.is_some() {
-        effect_writer.send(Effect::InspectionChanged {
+        effects.push(Effect::InspectionChanged {
             inspected,
             uninspected,
         });
     }
+
+    effects
 }
 
-pub fn sys_emit_effects(mut res: ResMut<EffectQue>, mut ev_effects: EventReader<Effect>) {
-    for ev in ev_effects.read() {
+pub fn sys_emit_effects(
+    In(effects): In<Vec<Effect>>,
+    world: &mut World,
+) {
+    let mut effects: VecDeque<Effect> = effects.into();
+    while let Some(ev) = effects.pop_front() {
+        let mut res = world.get_resource_mut::<EffectQue>().unwrap();
         res.push_effect(ev.clone());
+            
+        match ev {
+            Effect::InspectionChanged {
+                inspected,
+                uninspected,
+            } => handle_inspection_changed(&mut effects, world, inspected, uninspected),
+            _ => (),
+        }
     }
+    let mut res = world.get_resource_mut::<EffectQue>().unwrap();
     res.forward_effects_to_js();
 }
 

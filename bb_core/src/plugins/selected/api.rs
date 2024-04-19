@@ -4,7 +4,7 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::undoredo::UndoRedoApi;
+use crate::plugins::undoredo::UndoRedoApi;
 
 use super::Selected;
 

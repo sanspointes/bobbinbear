@@ -13,4 +13,4 @@ pub struct Inspected;
 #[derive(Component, Reflect, Default, Clone, Copy, serde::Serialize, serde::Deserialize)]
 /// Tags a scene object as temporary, existing because another element is inspected.
 /// Stores the uid of the inspected object.
-pub struct BecauseInspected(Uid);
+pub struct BecauseInspected(pub Uid);

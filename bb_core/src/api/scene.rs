@@ -1,11 +1,12 @@
 use anyhow::anyhow;
+
 use bevy::prelude::*;
 use bevy_spts_changeset::prelude::WorldChangesetExt;
 use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::{
+use crate::plugins::{
     inspecting::Inspected,
     selected::Selected,
     undoredo::{UndoRedoApi, UndoRedoResult},
@@ -16,6 +17,7 @@ pub use self::definitions::*;
 
 #[allow(non_snake_case)]
 mod definitions {
+    use bevy_spts_uid::Uid;
     use bevy::math::Vec2;
     use serde::{Deserialize, Serialize};
     use tsify::Tsify;
@@ -28,23 +30,15 @@ export type Uid = string;
 
     #[derive(Tsify, Serialize, Deserialize)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
-    pub struct DescribedObject {
-        pub uid: String,
-        pub name: Option<String>,
-        pub visible: bool,
-        pub selected: bool,
-        pub inspected: bool,
-    }
-
-    #[derive(Tsify, Serialize, Deserialize)]
-    #[tsify(into_wasm_abi, from_wasm_abi)]
     pub struct DetailedObject {
         pub uid: String,
+        pub parent: Option<Uid>,
         pub name: Option<String>,
         pub visible: bool,
         pub selected: bool,
         pub inspected: bool,
         pub position: Vec2,
+        pub children: Option<Vec<Uid>>,
     }
 }
 
@@ -54,23 +48,6 @@ pub struct SceneApi;
 #[allow(dead_code)]
 #[bevy_wasm_api]
 impl SceneApi {
-    /// JS ONLY:
-    /// Returns a Vec<DescribedObject> for all the objects within a scene.
-    /// * `world`:
-    pub fn describe_document(world: &mut World) -> Vec<DescribedObject> {
-        world
-            .query::<(&Uid, Option<&Name>, &Visibility, &Selected, Option<&Inspected>)>()
-            .iter(world)
-            .map(|(uid, name, visibility, selected, inspected)| DescribedObject {
-                uid: uid.into(),
-                name: name.map(|name| name.to_string()),
-                visible: matches!(visibility, Visibility::Inherited),
-                selected: matches!(selected, Selected::Selected),
-                inspected: inspected.is_some(),
-            })
-            .collect()
-    }
-
     /// JS ONLY:
     /// Returns a DescribedObject for a single object if it exists.
     /// * `world`:
@@ -82,6 +59,16 @@ impl SceneApi {
         let Some(entity) = uid.entity(world) else {
             return Ok(None);
         };
+        let parent = world.query::<&Parent>().get(world, entity).ok();
+        let parent = parent.and_then(|parent| {
+            world.get::<Uid>(**parent).copied()
+        });
+        let children = world.query::<&Children>().get(world, entity).ok().map(|c| c.to_vec());
+        let children = children.map(|children| {
+            let mut q_uids = world.query::<&Uid>();
+            children.iter().filter_map(|e| q_uids.get(world, *e).ok().copied()).collect::<Vec<_>>()
+        });
+
         Ok(world
             .query::<(&Uid, Option<&Name>, &Visibility, &Transform, &Selected, Option<&Inspected>)>()
             .get(world, entity)
@@ -90,18 +77,23 @@ impl SceneApi {
                 |(uid, name, visibility, transform, selected, inspected)| DetailedObject {
                     uid: uid.into(),
                     name: name.map(|name| name.to_string()),
+
+                    parent,
+                    children,
+
                     visible: matches!(visibility, Visibility::Inherited),
-                    position: transform.translation.xy(),
                     selected: matches!(selected, Selected::Selected),
                     inspected: inspected.is_some(),
+
+                    position: transform.translation.xy(),
                 },
             ))
     }
 
     pub fn log_scene(world: &mut World) -> String {
-        let e: Vec<_> = world.query::<Entity>().iter(world).collect();
+        let entities: Vec<Entity> = world.query::<Entity>().iter(world).collect();
 
-        let info: Vec<_> = e
+        let info: Vec<_> = entities
             .iter()
             .map(|e| {
                 let v = world.inspect_entity(*e);

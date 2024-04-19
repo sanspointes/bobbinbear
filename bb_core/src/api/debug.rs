@@ -5,7 +5,7 @@ use bevy_spts_vectorgraphic::prelude::*;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::{undoredo::{UndoRedoApi, UndoRedoResult}, selected::Selected};
+use crate::plugins::{undoredo::{UndoRedoApi, UndoRedoResult}, selected::Selected};
 
 pub struct DebugApi;
 
@@ -52,10 +52,12 @@ impl DebugApi {
             .insert(Visibility::default())
             .insert(ViewVisibility::default())
             .insert(InheritedVisibility::default())
+
             .insert(VectorGraphic::default())
             .insert(VectorGraphicPathStorage::default())
             .insert(StrokeOptions::default())
             .insert(FillOptions::default())
+
             .insert(Selected::Deselected)
             .insert(material)
             .uid();
