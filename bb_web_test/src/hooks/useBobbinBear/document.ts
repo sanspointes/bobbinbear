@@ -24,11 +24,22 @@ export function useBBDocument() {
             effect.tag === 'EntitiesSpawned' ||
             effect.tag === 'EntitiesChanged'
         ) {
-            for (const uid of effect.value) {
-                sceneApi.describe_object(uid).then((obj) => {
-                    if (obj) objects.set(uid, obj);
+            const results = effect.value.map((uid) =>
+                sceneApi
+                    .describe_object(uid)
+                    .then((obj) => [uid, obj] as const),
+            );
+
+            Promise.allSettled(results).then((results) => {
+                batch(() => {
+                    for (const result of results) {
+                        if (result.status === 'rejected') continue;
+
+                        const [uid, obj] = result.value;
+                        if (obj) objects.set(uid, obj);
+                    }
                 });
-            }
+            });
         } else if (effect.tag === 'EntitiesDespawned') {
             for (const uid of effect.value) {
                 objects.delete(uid);
@@ -39,7 +50,14 @@ export function useBBDocument() {
         }
     };
     // @ts-expect-error: untyped...
-    window.receiveRustEvents = handleEffect;
+    window.receiveRustEvents = (effects: Effect[]) => {
+        batch(() => {
+            console.debug(`Received ${effects.length} effects to handle.`);
+            for (const eff of effects) {
+                handleEffect(eff);
+            }
+        });
+    };
 
     const setVisible = (uid: string, visible: boolean) => {
         return sceneApi.set_visible(uid, visible);

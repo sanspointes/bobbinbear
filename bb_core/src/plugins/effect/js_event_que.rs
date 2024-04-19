@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy_wasm_api::convert::JsArrayBuilder;
 use std::sync::{
     mpsc::{channel, Receiver, Sender, TryRecvError},
     Arc, Mutex,
@@ -35,15 +36,17 @@ impl EffectQue {
 
     pub fn forward_effects_to_js(&mut self) {
         // Drain the receiver and push all events to the events vector
+        let mut events_array = JsArrayBuilder::new();
         loop {
             match self.receiver.lock().unwrap().try_recv() {
                 Ok(event) => {
-                    let js_value = serde_wasm_bindgen::to_value(&event).unwrap();
-                    receiveRustEvents(js_value);
+                    events_array = events_array.with_js_value(&serde_wasm_bindgen::to_value(&event).unwrap());
                 },
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => break,
             }
         }
+
+        receiveRustEvents(events_array.build_as_js_value());
     }
 }
