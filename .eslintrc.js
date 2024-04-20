@@ -1,9 +1,3 @@
-const PRETTIER_CONFIG = {
-    endOfLine: 'auto',
-    singleQuote: true,
-    tabWidth: 4,
-};
-
 module.exports = {
     env: {
         browser: true,
@@ -20,7 +14,6 @@ module.exports = {
         'plugin:import/recommended',
         'plugin:@typescript-eslint/recommended',
         'plugin:solid/typescript',
-        'plugin:prettier/recommended',
     ],
     parserOptions: {
         ecmaVersion: 'latest',
@@ -32,6 +25,5 @@ module.exports = {
             'warn',
             { argsIgnorePattern: '^_' },
         ],
-        'prettier/prettier': ['warn', PRETTIER_CONFIG],
     },
 };
