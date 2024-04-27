@@ -58,23 +58,28 @@ pub fn sys_update_viewport_debug_positions(
     mut q_viewport_debug: Query<(&ViewportDebug, &mut Transform)>,
 ) {
     let viewport = q_viewport.single();
+
     for (viewport_debug, mut transform) in q_viewport_debug.iter_mut() {
         match viewport_debug {
             ViewportDebug::TopLeft => {
-                transform.translation.x = 0.;
-                transform.translation.y = 0.;
+                let pos = viewport.ndc_to_viewport(Vec2::new(-1., -1.));
+                transform.translation.x = pos.x;
+                transform.translation.y = pos.y;
             }
             ViewportDebug::BottomLeft => {
-                transform.translation.x = 0.;
-                transform.translation.y = viewport.target_size.y;
+                let pos = viewport.ndc_to_viewport(Vec2::new(-1., 1.));
+                transform.translation.x = pos.x;
+                transform.translation.y = pos.y;
             }
             ViewportDebug::BottomRight => {
-                transform.translation.x = viewport.target_size.x;
-                transform.translation.y = viewport.target_size.y;
+                let pos = viewport.ndc_to_viewport(Vec2::new(1., 1.));
+                transform.translation.x = pos.x;
+                transform.translation.y = pos.y;
             }
             ViewportDebug::TopRight => {
-                transform.translation.x = viewport.target_size.x;
-                transform.translation.y = 0.;
+                let pos = viewport.ndc_to_viewport(Vec2::new(1., -1.));
+                transform.translation.x = pos.x;
+                transform.translation.y = pos.y;
             }
         }
     }

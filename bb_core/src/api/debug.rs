@@ -66,24 +66,28 @@ impl DebugApi {
             .spawn_empty()
             .insert(Endpoint::default())
             .insert(Transform::default())
+            .insert(GlobalTransform::default())
             .set_parent(vector_graphic)
             .uid();
         let e1 = builder
             .spawn_empty()
             .insert(Endpoint::default())
             .insert(Transform::default().with_translation(Vec3::new(100., 0., 0.)))
+            .insert(GlobalTransform::default())
             .set_parent(vector_graphic)
             .uid();
         let e2 = builder
             .spawn_empty()
             .insert(Endpoint::default())
             .insert(Transform::default().with_translation(Vec3::new(100., 100., 0.)))
+            .insert(GlobalTransform::default())
             .set_parent(vector_graphic)
             .uid();
         let e3 = builder
             .spawn_empty()
             .insert(Endpoint::default())
             .insert(Transform::default().with_translation(Vec3::new(0., 100., 0.)))
+            .insert(GlobalTransform::default())
             .set_parent(vector_graphic)
             .uid();
 

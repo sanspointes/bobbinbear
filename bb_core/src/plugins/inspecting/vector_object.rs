@@ -5,8 +5,8 @@ use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::Endpoint;
 
 use crate::{
-    ecs::synced_position::SyncedPosition,
-    plugins::{effect::Effect, selected::Selected},
+    ecs::position::CalcPosition,
+    plugins::{effect::Effect, selected::Selected, viewport::Viewport},
 };
 
 use super::BecauseInspected;
@@ -49,44 +49,6 @@ pub fn handle_uninspect_vector_object(
 
     respond.push_back(Effect::EntitiesChanged(vec![uninspected]));
     respond.push_back(Effect::EntitiesDespawned(to_despawn));
-
-    // let mut sys_state = SystemState::<(
-    //         ResMut<Assets<Mesh>>,
-    //         ResMut<Assets<ColorMaterial>>,
-    //         Query<(Entity, &Uid, &Transform), With<Endpoint>>,
-    // )>::new(world);
-    //
-    // let (mut meshes, mut materials, q_endpoints) = sys_state.get_mut(world);
-    //
-    // let mesh = meshes.add(Circle::new(5.));
-    // let material = materials.add(Color::WHITE);
-    //
-    // let mut spawned = vec![];
-    // let mut to_spawn = vec![];
-    // for (entity, uid, transform) in q_endpoints.iter() {
-    //     let uid = Uid::default();
-    //     spawned.push(uid);
-    //
-    //     to_spawn.push((
-    //         Name::from("Node"),
-    //         BecauseInspected(uid),
-    //         uid,
-    //
-    //         transform.clone(),
-    //         GlobalTransform::default(),
-    //         Visibility::default(),
-    //         ViewVisibility::default(),
-    //         InheritedVisibility::default(),
-    //
-    //         mesh.clone(),
-    //         material.clone(),
-    //         Selected::Deselected,
-    //     ));
-    // }
-    //
-    // for bundle in to_spawn {
-    //     world.spawn(bundle);
-    // }
 }
 
 pub fn handle_inspect_vector_object_endpoints(
@@ -94,44 +56,6 @@ pub fn handle_inspect_vector_object_endpoints(
     world: &mut World,
     inspected: Uid,
 ) {
-    // let mut sys_state = SystemState::<(
-    //         ResMut<Assets<Mesh>>,
-    //         ResMut<Assets<ColorMaterial>>,
-    //         Query<(Entity, &Uid, &Parent), With<Endpoint>>,
-    // )>::new(world);
-    //
-    // let parent_entity = inspected.entity(world).unwrap();
-    // let (mut meshes, mut materials, q_endpoints) = sys_state.get_mut(world);
-    //
-    // let (entities, uids): (Vec<Entity>, Vec<Uid>) = q_endpoints.iter().filter_map(|(e, uid, parent)| {
-    //     if parent.get() == parent_entity {
-    //         Some((e, *uid))
-    //     } else {
-    //         None
-    //     }
-    // }).unzip();
-    //
-    // let mesh = meshes.add(Circle::new(5.));
-    // let material = materials.add(Color::WHITE);
-    //
-    // for entity in entities {
-    //     world.entity_mut(entity).insert((
-    //         Name::from("Node"),
-    //         BecauseInspected(inspected),
-    //
-    //         GlobalTransform::default(),
-    //         Visibility::default(),
-    //         ViewVisibility::default(),
-    //         InheritedVisibility::default(),
-    //
-    //         mesh.clone(),
-    //         material.clone(),
-    //         Selected::Deselected,
-    //     ));
-    // }
-    //
-    // respond.push_back(Effect::EntitiesSpawned(uids));
-    //
     let mut sys_state = SystemState::<(
         ResMut<Assets<Mesh>>,
         ResMut<Assets<ColorMaterial>>,
@@ -157,7 +81,10 @@ pub fn handle_inspect_vector_object_endpoints(
         to_spawn.push((
             Name::from("Node"),
             BecauseInspected(inspected),
-            SyncedPosition::new(entity),
+            CalcPosition::ViewportOfWorld {
+                target: entity,
+                target_world_position: Vec3::ZERO,
+            },
             uid,
             *transform,
             GlobalTransform::default(),
@@ -173,11 +100,13 @@ pub fn handle_inspect_vector_object_endpoints(
     respond.push_back(Effect::EntitiesChanged(vec![inspected]));
     respond.push_back(Effect::EntitiesSpawned(spawned));
 
+    let viewport = world.query_filtered::<Entity, With<Viewport>>().single(world);
     for bundle in to_spawn {
-        world.spawn(bundle).set_parent(parent_entity);
+        world.spawn(bundle).set_parent(viewport);
     }
 }
 
+#[allow(dead_code)]
 pub fn handle_uninspect_vector_object_endpoints(
     respond: &mut VecDeque<Effect>,
     world: &mut World,
