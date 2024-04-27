@@ -9,6 +9,7 @@ import {
     createBobbinBearContext,
 } from './hooks/useBobbinBear';
 import { useBBApp } from './hooks/useBobbinBear/app';
+import { createElementSize, createResizeObserver } from '@solid-primitives/resize-observer';
 
 function App() {
     const app = useBBApp();
@@ -22,6 +23,14 @@ function App() {
         setTimeout(() => {
             setLoading(1);
         }, 50);
+    });
+
+    const [canvasContainer, setCanvasContainer] = createSignal<HTMLDivElement|null>(null);
+    createResizeObserver(canvasContainer, (rect) => {
+        const c = ctx();
+        const el = canvasContainer();
+        if (!el || !c) return;
+        c.viewport.setResolution(el.clientWidth * window.devicePixelRatio, el.clientHeight * window.devicePixelRatio);
     });
 
     return (
@@ -40,7 +49,7 @@ function App() {
                     </BobbinBearContext.Provider>
                 </Show>
                 <div class="bg-red-500 grow">
-                    <div class="relative w-full h-full">
+                    <div ref={setCanvasContainer} class="relative w-full h-full">
                         <canvas id="bb-canvas" class="absolute top-0 left-0" />
                     </div>
                 </div>
