@@ -28,9 +28,8 @@ function App() {
     const [canvasContainer, setCanvasContainer] = createSignal<HTMLDivElement|null>(null);
     createResizeObserver(canvasContainer, (rect) => {
         const c = ctx();
-        const el = canvasContainer();
-        if (!el || !c) return;
-        c.viewport.setResolution(el.clientWidth * window.devicePixelRatio, el.clientHeight * window.devicePixelRatio);
+        if (!c) return;
+        c.viewport.setResolution(rect.width * window.devicePixelRatio, rect.height * window.devicePixelRatio);
     });
 
     return (
