@@ -1,18 +1,29 @@
 use std::collections::VecDeque;
 
-use bevy::{ecs::system::SystemState, prelude::*};
+use bevy::{ecs::system::SystemState, prelude::*, sprite::Mesh2dHandle};
 use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::Endpoint;
 
-use crate::{ecs::synced_position::SyncedPosition, plugins::{effect::Effect, selected::Selected}};
+use crate::{
+    ecs::synced_position::SyncedPosition,
+    plugins::{effect::Effect, selected::Selected},
+};
 
 use super::BecauseInspected;
 
-pub fn handle_inspect_vector_object(respond: &mut VecDeque<Effect>, world: &mut World, inspected: Uid) {
+pub fn handle_inspect_vector_object(
+    respond: &mut VecDeque<Effect>,
+    world: &mut World,
+    inspected: Uid,
+) {
     handle_inspect_vector_object_endpoints(respond, world, inspected);
 }
 
-pub fn handle_uninspect_vector_object(respond: &mut VecDeque<Effect>, world: &mut World, uninspected: Uid) {
+pub fn handle_uninspect_vector_object(
+    respond: &mut VecDeque<Effect>,
+    world: &mut World,
+    uninspected: Uid,
+) {
     let mut q_inspect_because = world.query::<(&Uid, &BecauseInspected)>();
 
     let to_despawn: Vec<Uid> = q_inspect_because
@@ -78,7 +89,11 @@ pub fn handle_uninspect_vector_object(respond: &mut VecDeque<Effect>, world: &mu
     // }
 }
 
-pub fn handle_inspect_vector_object_endpoints(respond: &mut VecDeque<Effect>, world: &mut World, inspected: Uid) {
+pub fn handle_inspect_vector_object_endpoints(
+    respond: &mut VecDeque<Effect>,
+    world: &mut World,
+    inspected: Uid,
+) {
     // let mut sys_state = SystemState::<(
     //         ResMut<Assets<Mesh>>,
     //         ResMut<Assets<ColorMaterial>>,
@@ -118,15 +133,15 @@ pub fn handle_inspect_vector_object_endpoints(respond: &mut VecDeque<Effect>, wo
     // respond.push_back(Effect::EntitiesSpawned(uids));
     //
     let mut sys_state = SystemState::<(
-            ResMut<Assets<Mesh>>,
-            ResMut<Assets<ColorMaterial>>,
-            Query<(Entity, &Uid, &Parent, &Transform), With<Endpoint>>,
+        ResMut<Assets<Mesh>>,
+        ResMut<Assets<ColorMaterial>>,
+        Query<(Entity, &Uid, &Parent, &Transform), With<Endpoint>>,
     )>::new(world);
 
     let parent_entity = inspected.entity(world).unwrap();
     let (mut meshes, mut materials, q_endpoints) = sys_state.get_mut(world);
 
-    let mesh = meshes.add(Circle::new(5.));
+    let mesh = Mesh2dHandle(meshes.add(Rectangle::new(5., 5.)));
     let material = materials.add(Color::WHITE);
 
     let mut spawned = vec![];
@@ -144,13 +159,11 @@ pub fn handle_inspect_vector_object_endpoints(respond: &mut VecDeque<Effect>, wo
             BecauseInspected(inspected),
             SyncedPosition::new(entity),
             uid,
-
             *transform,
             GlobalTransform::default(),
             Visibility::default(),
             ViewVisibility::default(),
             InheritedVisibility::default(),
-
             mesh.clone(),
             material.clone(),
             Selected::Deselected,
@@ -165,5 +178,9 @@ pub fn handle_inspect_vector_object_endpoints(respond: &mut VecDeque<Effect>, wo
     }
 }
 
-pub fn handle_uninspect_vector_object_endpoints(respond: &mut VecDeque<Effect>, world: &mut World, uid: Uid) {
+pub fn handle_uninspect_vector_object_endpoints(
+    respond: &mut VecDeque<Effect>,
+    world: &mut World,
+    uid: Uid,
+) {
 }
