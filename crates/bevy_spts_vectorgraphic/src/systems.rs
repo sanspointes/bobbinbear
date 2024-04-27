@@ -1,5 +1,7 @@
 //! Lifecycle methods for handling when edges/endpoints are spawned/despawned.
 
+use std::fmt::Debug;
+
 use bevy::{
     ecs::{
         entity::{EntityHashMap, EntityHashSet},
@@ -12,7 +14,7 @@ use bevy::{
     utils::HashMap,
 };
 
-use bevy_spts_uid::{Uid, index::Index};
+use bevy_spts_uid::{Uid, UidRegistry, UidRegistryError};
 use lyon_tessellation::{
     path::Path, BuffersBuilder, FillVertexConstructor, StrokeVertexConstructor, VertexBuffers,
 };
@@ -24,6 +26,22 @@ use crate::{
     utils::ToPoint,
     SptsFillTessellator, SptsStrokeTessellator,
 };
+
+#[derive(Debug)]
+pub enum VectorGraphicError {
+    QueryEntity(QueryEntityError),
+    UidRegistry(UidRegistryError),
+}
+impl From<QueryEntityError> for VectorGraphicError {
+    fn from(value: QueryEntityError) -> Self {
+        Self::QueryEntity(value)
+    }
+}
+impl From<UidRegistryError> for VectorGraphicError {
+    fn from(value: UidRegistryError) -> Self {
+        Self::UidRegistry(value)
+    }
+}
 
 /// Adds any added endpoints to the hashset within the parent VectorGraphic
 /// Marks VectorGraphic as needing a remesh
@@ -140,9 +158,9 @@ fn traverse_endpoints(
     start_endpoint: Uid,
     q_endpoints: &mut QueryLens<&Endpoint>,
     q_edges: &mut QueryLens<&Edge>,
-    index: &mut Index<Uid>,
-) -> Result<Vec<Entity>, QueryEntityError> {
-    let first_e = index.single(&start_endpoint);
+    reg: &mut UidRegistry,
+) -> Result<Vec<Entity>, VectorGraphicError> {
+    let first_e = reg.get_entity(start_endpoint)?;
     let first = *q_endpoints.query().get(first_e)?;
 
     let mut needs_reverse = true;
@@ -152,13 +170,13 @@ fn traverse_endpoints(
         let mut curr = first;
         endpoints.push(first_e);
         loop {
-            let Some(edge) = curr.next_edge(q_edges, index) else {
+            let Some(edge) = curr.next_edge(q_edges, reg) else {
                 break;
             };
             let edge = edge?;
 
             let endpoint_uid = edge.next_endpoint_uid();
-            let endpoint_entity = index.single(&endpoint_uid);
+            let endpoint_entity = reg.get_entity(endpoint_uid)?;
             curr = *q_endpoints.query().get(endpoint_entity)?;
             endpoints.push(endpoint_entity);
 
@@ -172,12 +190,12 @@ fn traverse_endpoints(
         let mut curr = first;
         let mut reverse_endpoints = vec![];
         loop {
-            let Some(edge) = curr.prev_edge(q_edges, index) else {
+            let Some(edge) = curr.prev_edge(q_edges, reg) else {
                 break;
             };
             let edge = edge?;
             let endpoint_uid = edge.prev_endpoint_uid();
-            let endpoint_entity = index.single(&endpoint_uid);
+            let endpoint_entity = reg.get_entity(endpoint_uid)?;
             if endpoint_uid == start_endpoint {
                 break;
             }
@@ -203,7 +221,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
     mut q_vector_graphic: Query<(Entity, &VectorGraphic, &mut VectorGraphicPathStorage)>,
     mut q_endpoints: Query<(Entity, &Uid, &Endpoint, &Parent, &Transform)>,
     mut q_edges: Query<(Entity, &Edge, &EdgeVariant, &Parent)>,
-    mut index: Index<Uid>,
+    mut reg: ResMut<UidRegistry>,
 ) {
     let changed_vector_graphics: Vec<_> = q_vector_graphic
         .iter()
@@ -239,18 +257,18 @@ pub fn sys_collect_vector_graph_path_endpoints(
             uid,
             &mut q_endpoints.transmute_lens::<&Endpoint>(),
             &mut q_edges.transmute_lens::<&Edge>(),
-            &mut index,
+            &mut reg,
         );
 
         let Ok(endpoints) = endpoints else {
             warn!("sys_mark_vector_graph_path_starts: Could not get endpoints of group.  Reason {endpoints:?}");
-            continue;
+            break;
         };
 
-        let result: Vec<_> = endpoints
-            .iter()
-            .map(|e| (e, q_endpoints.get(*e).unwrap().1))
-            .collect();
+        // let result: Vec<_> = endpoints
+        //     .iter()
+        //     .map(|e| (e, q_endpoints.get(*e).unwrap().1))
+        //     .collect();
 
         unvisited.remove(&entity);
         for e in endpoints.iter() {
@@ -271,9 +289,11 @@ pub fn sys_collect_vector_graph_path_endpoints(
 
     // Build the paths
     for vector_grapic_entity in changed_vector_graphics {
-        let paths = vector_graphic_path_endpoints
-            .get(&vector_grapic_entity)
-            .unwrap();
+        let Some(paths) = vector_graphic_path_endpoints
+            .get(&vector_grapic_entity) else {
+            warn!("sys_mark_vector_graph_path_starts: Tried to get endpoints of vector_grapic_entity({vector_grapic_entity:?}) but not in hashmap.");
+            continue;
+        };
 
         let Ok((_, _, mut path_storage)) = q_vector_graphic.get_mut(vector_grapic_entity) else {
             warn!("sys_mark_vector_graph_path_starts: Tried to get VectorGraphicPathStorage for changed path but entity or component on entity does not exist.  Entity: {vector_grapic_entity:?}");
@@ -301,11 +321,11 @@ pub fn sys_collect_vector_graph_path_endpoints(
             for e_endpoint in path_iter {
                 let next_edge_uid = curr_endpoint.next_edge_entity().unwrap();
                 let (_, edge, edge_variant, _) = q_edges
-                    .get(index.single(&next_edge_uid))
+                    .get(reg.entity(next_edge_uid))
                     .unwrap();
                 let next_endpoint_uid = edge.next_endpoint_uid();
                 let (_, _, next_endpoint, _, transform) =
-                    q_endpoints.get(index.single(&next_endpoint_uid)).unwrap();
+                    q_endpoints.get(reg.entity(next_endpoint_uid)).unwrap();
 
                 let to_point = transform.translation.xy().to_point();
 

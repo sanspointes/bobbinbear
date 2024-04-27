@@ -31,7 +31,7 @@ export type Uid = string;
     #[derive(Tsify, Serialize, Deserialize)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     pub struct DetailedObject {
-        pub uid: String,
+        pub uid: Uid,
         pub parent: Option<Uid>,
         pub name: Option<String>,
         pub visible: bool,
@@ -53,9 +53,8 @@ impl SceneApi {
     /// * `world`:
     pub fn describe_object(
         world: &mut World,
-        uid: String,
+        uid: Uid,
     ) -> Result<Option<DetailedObject>, anyhow::Error> {
-        let uid = Uid::try_from(&uid)?;
         let Some(entity) = uid.entity(world) else {
             return Ok(None);
         };
@@ -75,7 +74,7 @@ impl SceneApi {
             .ok()
             .map(
                 |(uid, name, visibility, transform, selected, inspected)| DetailedObject {
-                    uid: uid.into(),
+                    uid: *uid,
                     name: name.map(|name| name.to_string()),
 
                     parent,
@@ -107,10 +106,9 @@ impl SceneApi {
 
     pub fn set_visible(
         world: &mut World,
-        uid: String,
+        uid: Uid,
         visible: bool,
     ) -> Result<UndoRedoResult, anyhow::Error> {
-        let uid: Uid = (&uid).try_into()?;
         let visible = if matches!(visible, true) {
             Visibility::Inherited
         } else {
@@ -127,11 +125,9 @@ impl SceneApi {
 
     pub fn set_name(
         world: &mut World,
-        uid: String,
+        uid: Uid,
         name: String,
     ) -> Result<UndoRedoResult, anyhow::Error> {
-        let uid = Uid::try_from(&uid)?;
-
         let mut builder = world.changeset();
         builder.entity(uid).apply(Name::from(name));
 
@@ -144,11 +140,10 @@ impl SceneApi {
 
     pub fn set_position(
         world: &mut World,
-        uid: String,
+        uid: Uid,
         x: f32,
         y: f32,
     ) -> Result<UndoRedoResult, anyhow::Error> {
-        let uid = Uid::try_from(&uid)?;
         let entity = uid
             .entity(world)
             .ok_or_else(|| anyhow!("No entity for uid {uid}."))?;
@@ -169,9 +164,7 @@ impl SceneApi {
     }
 
     /// Inspects an object, uninspects the current inspected object if it has to.
-    pub fn inspect(world: &mut World, uid: String) -> Result<UndoRedoResult, anyhow::Error> {
-        let uid = Uid::try_from(&uid)?;
-
+    pub fn inspect(world: &mut World, uid: Uid) -> Result<UndoRedoResult, anyhow::Error> {
         let prev_inspected = world
             .query_filtered::<&Uid, With<Inspected>>()
             .get_single(world)
@@ -202,6 +195,14 @@ impl SceneApi {
             builder.entity(uid).remove::<Inspected>();
         }
 
+        let changeset = builder.build();
+
+        UndoRedoApi::execute(world, changeset)
+    }
+
+    pub fn delete(world: &mut World, uid: Uid) -> Result<UndoRedoResult, anyhow::Error> {
+        let mut builder = world.changeset();
+        builder.entity(uid).despawn_recursive();
         let changeset = builder.build();
 
         UndoRedoApi::execute(world, changeset)

@@ -139,6 +139,14 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
             .push(Arc::new(SetParentChange::unparent(self.target)));
         self
     }
+    pub fn despawn(&mut self) -> &mut Self {
+        self.builder.push(Arc::new(DespawnChange::new(self.target)));
+        self
+    }
+    pub fn despawn_recursive(&mut self) -> &mut Self {
+        self.builder.push(Arc::new(DespawnRecursiveChange::new(self.target)));
+        self
+    }
 
     pub fn uid(&self) -> Uid {
         self.target

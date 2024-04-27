@@ -1,36 +1,63 @@
-use bevy_mod_index::{
-    index::IndexInfo, refresh_policy::ConservativeRefreshPolicy, storage::HashmapStorage,
-};
-use bevy_utils::Uuid;
+use bevy_utils::{tracing::{info, warn}, HashMap, Uuid};
+use core::panic;
 use std::fmt::{Debug, Display};
-use uuid::Error;
+use thiserror::Error;
 
 use bevy_ecs::{
     component::Component,
     entity::Entity,
     prelude::ReflectComponent,
+    system::Resource,
     world::{EntityWorldMut, World},
+    reflect::ReflectResource,
 };
 use bevy_reflect::Reflect;
 
-pub use bevy_mod_index::*;
-
 pub mod extension;
+
+#[cfg(feature = "tsify")]
+use tsify::Tsify;
+#[cfg(feature = "tsify")]
+use wasm_bindgen::prelude::*;
 
 /// A unique identifier that can be used to lookup entities, persists between
 ///
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, Copy, Reflect, Component, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[cfg_attr(feature = "tsify", derive(Tsify))]
+#[cfg_attr(feature = "tsify", tsify(into_wasm_abi, from_wasm_abi))]
 #[reflect(Component)]
-pub struct Uid(Uuid);
+pub struct Uid(#[cfg_attr(feature = "serde", serde(with = "uuid_string"))] (u64, u64));
+
+#[cfg(feature = "serde")]
+mod uuid_string {
+    use std::str::FromStr;
+
+    use bevy_utils::Uuid;
+    use serde::{Deserialize, Serialize};
+    use serde::{Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(v: &(u64, u64), s: S) -> Result<S::Ok, S::Error> {
+        let uuid = Uuid::from_u64_pair(v.0, v.1);
+        String::serialize(&uuid.to_string(), s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<(u64, u64), D::Error> {
+        let string = String::deserialize(d)?;
+        match Uuid::from_str(string.as_str()) {
+            Ok(uuid) => Ok(uuid.as_u64_pair()),
+            Err(reason) => Err(serde::de::Error::custom(reason)),
+        }
+    }
+}
 
 impl Uid {
     pub fn new(uuid: Uuid) -> Self {
-        Uid(uuid)
+        Uid(uuid.as_u64_pair())
     }
 
-    pub fn inner(&self) -> &Uuid {
-        &self.0
+    pub fn inner(&self) -> Uuid {
+        Uuid::from_u64_pair(self.0 .0, self.0 .1)
     }
 
     pub fn entity(&self, world: &mut World) -> Option<Entity> {
@@ -40,35 +67,37 @@ impl Uid {
             .find_map(|(e, uid)| if *self == *uid { Some(e) } else { None })
     }
 
+    pub fn register(&self, world: &mut World, entity: Entity) {
+        let mut res = world.resource_mut::<UidRegistry>();
+        let old = res.register(*self, entity);
+        if old.is_some() {
+            warn!("bevy_spts_uid: Registered uid ({self}, {entity:?}) has old value {old:?}.");
+        }
+    }
+
+    pub fn unregister(&self, world: &mut World) {
+        let mut res = world.resource_mut::<UidRegistry>();
+        let old = res.unregister(*self);
+        if old.is_none() {
+            warn!("bevy_spts_uid: Unregistered uid ({self}) but not registered.");
+        }
+    }
+
     pub fn entity_world_mut<'a>(&'a self, world: &'a mut World) -> Option<EntityWorldMut> {
         let entity = self.entity(world)?;
         Some(world.entity_mut(entity))
     }
 }
 
-impl TryFrom<&String> for Uid {
-    type Error = uuid::Error;
-    fn try_from(value: &String) -> Result<Self, Error> {
-        let uuid = Uuid::parse_str(value)?;
-        Ok(Uid(uuid))
-    }
-}
-impl TryFrom<&str> for Uid {
-    type Error = uuid::Error;
-    fn try_from(value: &str) -> Result<Self, Error> {
-        let uuid = Uuid::parse_str(value)?;
-        Ok(Uid(uuid))
-    }
-}
-impl From<&Uid> for String {
-    fn from(value: &Uid) -> Self {
-        value.inner().to_string()
-    }
+#[derive(Error, Debug)]
+pub enum UidError {
+    #[error("Unknown error.")]
+    Unknown,
 }
 
 impl Display for Uid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "#{}", self.0)
+        write!(f, "#{}", self.inner())
     }
 }
 
@@ -78,14 +107,72 @@ impl Default for Uid {
         Uid::new(uuid)
     }
 }
+//
+// impl IndexInfo for Uid {
+//     type Component = Uid;
+//     type Value = Uid;
+//     type Storage = HashmapStorage<Self>;
+//     type RefreshPolicy = ConservativeRefreshPolicy;
+//
+//     fn value(c: &Self::Component) -> Self::Value {
+//         *c
+//     }
+// }
 
-impl IndexInfo for Uid {
-    type Component = Uid;
-    type Value = Uid;
-    type Storage = HashmapStorage<Self>;
-    type RefreshPolicy = ConservativeRefreshPolicy;
+#[derive(Debug, Error)]
+pub enum UidRegistryError {
+    #[error("No uid in registry: {0}. Can't lookup entity.")]
+    NoEntity(Uid),
+    #[error("No entity in registry: {0:?}. Can't lookup uid.")]
+    NoUid(Entity),
+}
 
-    fn value(c: &Self::Component) -> Self::Value {
-        *c
+#[derive(Default, Resource, Reflect)]
+#[reflect(Resource)]
+pub struct UidRegistry{ 
+    uid_to_e: HashMap<Uid, Entity>,
+    e_to_uid: HashMap<Entity, Uid>
+}
+
+impl UidRegistry {
+    pub fn register(&mut self, uid: Uid, entity: Entity) -> Option<(Entity, Uid)> {
+        // info!("UidRegistry::register(uid: {uid}, entity: {entity:?})");
+        let old_entity = self.uid_to_e.insert(uid, entity);
+        let old_uid = self.e_to_uid.insert(entity, uid);
+        match (old_entity, old_uid) {
+            (Some(entity), Some(uid)) => Some((entity, uid)),
+            (None, None) => None,
+            state => panic!("Impossible registry state {state:?}."),
+        }
+    }
+    pub fn unregister(&mut self, uid: Uid) -> Option<Entity> {
+        // info!("UidRegistry::unregister(uid: {uid})");
+        if let Some(entity) = self.uid_to_e.get(&uid) {
+            self.e_to_uid.remove(entity);
+            self.uid_to_e.remove(&uid)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_entity(&self, uid: Uid) -> Result<Entity, UidRegistryError> {
+        match self.uid_to_e.get(&uid) {
+            Some(entity) => Ok(*entity),
+            None => Err(UidRegistryError::NoEntity(uid)),
+        }
+    }
+    pub fn get_uid(&self, entity: Entity) -> Result<Uid, UidRegistryError> {
+        match self.e_to_uid.get(&entity) {
+            Some(uid) => Ok(*uid),
+            None => Err(UidRegistryError::NoUid(entity)),
+        }
+    }
+
+    pub fn entity(&self, uid: Uid) -> Entity {
+        self.get_entity(uid).unwrap()
+    }
+
+    pub fn uid(&self, entity: Entity) -> Uid {
+        self.get_uid(entity).unwrap()
     }
 }

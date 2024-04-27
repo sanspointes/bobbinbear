@@ -4,11 +4,14 @@ mod api;
 mod material;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*, sprite::Material2dPlugin};
+use serde::{Deserialize, Serialize};
+use tsify::Tsify;
 
 use self::material::SelectionBoundsMaterial;
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, Tsify, Serialize, Deserialize)]
 #[reflect(Component)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 /// Component defining whether or not object is selected.
 pub enum Selected {
     #[default]

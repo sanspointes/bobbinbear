@@ -74,9 +74,11 @@ export function useBBDocument() {
     const uninspect = () => {
         return sceneApi.uninspect();
     };
-
     const selectSingle = (uid: string) => {
-        return selectedApi.deselect_all_set_object_selected_js(uid, true);
+        return selectedApi.deselect_all_set_object_selected(uid, 'Selected');
+    };
+    const deleteObject = (uid: string) => {
+        return sceneApi.delete(uid);
     };
 
     return {
@@ -89,6 +91,7 @@ export function useBBDocument() {
         setPosition,
         inspect,
         uninspect,
+        deleteObject,
 
         selectSingle,
     };

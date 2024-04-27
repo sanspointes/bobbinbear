@@ -1,5 +1,4 @@
 use bevy_ecs::{system::EntityCommands, world::EntityWorldMut, entity::Entity};
-use bevy_utils::tracing::Instrument;
 
 use crate::Uid;
 

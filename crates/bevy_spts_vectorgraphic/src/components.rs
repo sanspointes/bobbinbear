@@ -1,11 +1,9 @@
 use bevy::{
-    ecs::{
-        query::QueryEntityError, reflect::ReflectComponent,
-        system::QueryLens,
-    },
-    prelude::*, utils::{StableHashSet, HashSet},
+    ecs::{query::QueryEntityError, reflect::ReflectComponent, system::QueryLens},
+    prelude::*,
+    utils::HashSet,
 };
-use bevy_spts_uid::{Uid, index::Index};
+use bevy_spts_uid::{Uid, UidRegistry};
 use lyon_tessellation::path::Path;
 
 use crate::lyon_components::{FillOptions, StrokeOptions};
@@ -27,11 +25,11 @@ impl Endpoint {
     pub fn next_edge(
         &self,
         q_edges: &mut QueryLens<&Edge>,
-        index: &mut Index<Uid>,
+        reg: &mut UidRegistry,
     ) -> Option<Result<Edge, QueryEntityError>> {
         self.next_edge.map(|uid| {
             let q_edges = q_edges.query();
-            let entity = index.single(&uid);
+            let entity = reg.entity(uid);
             q_edges.get(entity).copied()
         })
     }
@@ -41,11 +39,11 @@ impl Endpoint {
     pub fn prev_edge(
         &self,
         q_edges: &mut QueryLens<&Edge>,
-        index: &mut Index<Uid>,
+        reg: &mut UidRegistry,
     ) -> Option<Result<Edge, QueryEntityError>> {
         self.prev_edge.map(|uid| {
             let q_edges = q_edges.query();
-            let entity = index.single(&uid);
+            let entity = reg.entity(uid);
             q_edges.get(entity).copied()
         })
     }
@@ -91,9 +89,9 @@ impl Edge {
     pub fn prev_endpoint(
         &self,
         q_endpoints: &mut QueryLens<&Endpoint>,
-        index: &mut Index<Uid>,
+        reg: &mut UidRegistry,
     ) -> Result<Endpoint, QueryEntityError> {
-        let entity = index.single(&self.prev_endpoint);
+        let entity = reg.entity(self.prev_endpoint);
         q_endpoints.query().get(entity).copied()
     }
 
@@ -104,9 +102,9 @@ impl Edge {
     pub fn next_endpoint(
         &self,
         q_endpoints: &mut QueryLens<&Endpoint>,
-        index: &mut Index<Uid>,
+        reg: &mut UidRegistry,
     ) -> Result<Endpoint, QueryEntityError> {
-        let entity = index.single(&self.next_endpoint);
+        let entity = reg.entity(self.next_endpoint);
         q_endpoints.query().get(entity).copied()
     }
 }
@@ -146,9 +144,7 @@ pub struct VectorGraphicPathStorage {
 }
 impl Default for VectorGraphicPathStorage {
     fn default() -> Self {
-        Self {
-            path: None,
-        }
+        Self { path: None }
     }
 }
 impl VectorGraphicPathStorage {

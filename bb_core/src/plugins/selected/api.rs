@@ -24,6 +24,8 @@ mod definitions {
 #[derive(Clone, Copy)]
 pub struct SelectedApi;
 
+#[allow(dead_code)]
+#[bevy_wasm_api]
 impl SelectedApi {
     fn query_selected_uids(world: &mut World) -> Vec<Uid> {
         let to_deselect: Vec<_> = world
@@ -91,26 +93,24 @@ impl SelectedApi {
     }
 }
 
-#[allow(dead_code)]
-#[bevy_wasm_api]
-impl SelectedApi {
-    pub fn deselect_all_js(world: &mut World) -> Result<(), anyhow::Error> {
-        SelectedApi::deselect_all(world)
-    }
-
-    pub fn set_object_selected_js(
-        world: &mut World,
-        uid: String,
-        selected: bool,
-    ) -> Result<(), anyhow::Error> {
-        SelectedApi::set_object_selected(world, Uid::try_from(&uid)?, selected.into())
-    }
-
-    pub fn deselect_all_set_object_selected_js(
-        world: &mut World,
-        uid: String,
-        selected: bool,
-    ) -> Result<(), anyhow::Error> {
-        SelectedApi::deselect_all_set_object_selected(world, Uid::try_from(&uid)?, selected.into())
-    }
-}
+// impl SelectedApi {
+//     pub fn deselect_all_js(world: &mut World) -> Result<(), anyhow::Error> {
+//         SelectedApi::deselect_all(world)
+//     }
+//
+//     pub fn set_object_selected_js(
+//         world: &mut World,
+//         uid: String,
+//         selected: bool,
+//     ) -> Result<(), anyhow::Error> {
+//         SelectedApi::set_object_selected(world, Uid::try_from(&uid)?, selected.into())
+//     }
+//
+//     pub fn deselect_all_set_object_selected_js(
+//         world: &mut World,
+//         uid: String,
+//         selected: bool,
+//     ) -> Result<(), anyhow::Error> {
+//         SelectedApi::deselect_all_set_object_selected(world, Uid::try_from(&uid)?, selected.into())
+//     }
+// }

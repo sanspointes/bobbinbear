@@ -7,12 +7,15 @@ edition = "2021"
 
 [dependencies]
 bevy_ecs = "0.13.0"
-bevy_mod_index = "0.4.0"
 bevy_reflect = "0.13.0"
 bevy_utils = "0.13.0"
 serde = { version = "1.0.197", features = ["derive"], optional = true }
-uuid = "1.7.0"
+serde-wasm-bindgen = "0.6.5"
+thiserror = "1.0.58"
+tsify = { version = "0.4.5", features = ["js"], default-features = false, optional = true }
+wasm-bindgen = { version = "0.2.92", optional = true }
 
 [features]
 serde = ["dep:serde"]
+tsify = ["dep:tsify", "dep:wasm-bindgen", "serde"]
 

@@ -3,11 +3,17 @@ pub mod api;
 mod ecs;
 mod plugins;
 
+
+use bevy::input::common_conditions::input_toggle_active;
 use bevy::prelude::*;
 use bevy::transform::TransformSystem;
+use bevy::utils::HashMap;
 use bevy::window::WindowMode;
 
+use bevy_inspector_egui::quick::WorldInspectorPlugin;
+use bevy_inspector_egui::DefaultInspectorConfigPlugin;
 use bevy_spts_changeset::events::ChangesetEvent;
+use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
 use ecs::synced_position::sys_sync_positions;
@@ -26,6 +32,7 @@ pub fn start() {
 #[wasm_bindgen]
 pub fn setup_bb_core(canvas_id: String) {
     let mut app = App::new();
+
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             title: "Bobbin Bear :: Embroidery Editor".to_string(),
@@ -49,7 +56,16 @@ pub fn setup(app: &mut App) {
 
     app.add_systems(PostUpdate, sys_sync_positions.before(TransformSystem::TransformPropagate));
 
+    app.insert_resource(UidRegistry::default());
+    app.register_type::<UidRegistry>();
+    app.register_type::<HashMap<Uid, Entity>>();
+    app.register_type::<Uid>();
+
     app
+        .add_plugins((
+            DefaultInspectorConfigPlugin,
+            WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
+        ))
         // App plugins
         .add_plugins(BevyWasmApiPlugin::default().with_end_schedule(PostUpdate))
         .add_plugins(VectorGraphicPlugin)

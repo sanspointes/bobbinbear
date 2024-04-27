@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
 use anyhow::anyhow;
-use bevy::ecs::system::SystemState;
 use bevy::prelude::*;
 
 use bevy_spts_changeset::prelude::*;
-use bevy_spts_uid::{index::Index, Uid};
+use bevy_spts_uid::{Uid, UidRegistry};
 
 use crate::prelude::*;
 
@@ -22,12 +21,10 @@ impl Change for LinkEdgeChange {
         world: &mut World,
         _cx: &mut ChangesetContext,
     ) -> Result<Arc<(dyn Change + 'static)>, anyhow::Error> {
-        let mut ss = SystemState::<Index<Uid>>::new(world);
-        let mut index = ss.get_mut(world);
+        let reg = world.resource_mut::<UidRegistry>();
 
-        // let edge_e = index.single(&self.edge);
-        let next_endpoint_e = index.single(&self.next_endpoint);
-        let prev_endpoint_e = index.single(&self.prev_endpoint);
+        let next_endpoint_e = reg.get_entity(self.next_endpoint)?;
+        let prev_endpoint_e = reg.get_entity(self.prev_endpoint)?;
 
         if let Some(mut endpoint) = world.get_mut::<Endpoint>(next_endpoint_e) {
             endpoint.prev_edge = Some(self.edge);
@@ -57,16 +54,14 @@ impl Change for UnlinkEdgeChange {
         world: &mut World,
         _cx: &mut ChangesetContext,
     ) -> Result<Arc<(dyn Change + 'static)>, anyhow::Error> {
-        let mut ss = SystemState::<Index<Uid>>::new(world);
-        let mut index = ss.get_mut(world);
+        let reg = world.resource_mut::<UidRegistry>();
 
-        let edge_e = index.single(&self.edge);
+        let edge_e = reg.get_entity(self.edge)?;
         let edge = *world.get::<Edge>(edge_e).unwrap();
 
-        let mut ss = SystemState::<Index<Uid>>::new(world);
-        let mut index = ss.get_mut(world);
-        let next_endpoint_e = index.single(&edge.next_endpoint);
-        let prev_endpoint_e = index.single(&edge.prev_endpoint);
+        let reg = world.resource_mut::<UidRegistry>();
+        let next_endpoint_e = reg.get_entity(edge.next_endpoint)?;
+        let prev_endpoint_e = reg.get_entity(edge.prev_endpoint)?;
 
         if let Some(mut endpoint) = world.get_mut::<Endpoint>(next_endpoint_e) {
             endpoint.prev_edge = None;

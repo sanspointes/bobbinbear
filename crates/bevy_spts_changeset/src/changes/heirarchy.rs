@@ -2,12 +2,15 @@ use std::sync::Arc;
 
 use anyhow::anyhow;
 
-use bevy_ecs::{world::World, event::Events};
-use bevy_hierarchy::{BuildWorldChildren, Parent, Children};
+use bevy_ecs::{event::Events, world::World};
+use bevy_hierarchy::{BuildWorldChildren, Children, DespawnRecursiveExt, Parent};
 use bevy_reflect::Typed;
 use bevy_spts_fragments::prelude::{HierarchyFragment, Uid};
 
-use crate::{resource::ChangesetContext, events::{ChangesetEvent, ChangedType}};
+use crate::{
+    events::{ChangedType, ChangesetEvent},
+    resource::ChangesetContext,
+};
 
 use super::Change;
 
@@ -76,9 +79,17 @@ impl Change for SetParentChange {
         } else {
             ChangedType::Inserted
         };
-        events.send(ChangesetEvent::Changed(self.target, Parent::type_info().type_id(), changed_type));
+        events.send(ChangesetEvent::Changed(
+            self.target,
+            Parent::type_info().type_id(),
+            changed_type,
+        ));
         if let Some(parent) = self.parent {
-            events.send(ChangesetEvent::Changed(parent, Children::type_info().type_id(), ChangedType::Removed));
+            events.send(ChangesetEvent::Changed(
+                parent,
+                Children::type_info().type_id(),
+                ChangedType::Removed,
+            ));
         }
 
         Ok(Arc::new(SetParentChange {
@@ -114,7 +125,6 @@ impl Change for SpawnRecursiveChange {
             )?,
             None => hierarchy_fragment.spawn_in_world(world, cx.type_registry)?,
         };
-        hierarchy_fragment.spawn_in_world(world, cx.type_registry)?;
 
         let mut events = world.resource_mut::<Events<ChangesetEvent>>();
         for uid in hierarchy_fragment.all_uids() {
@@ -153,16 +163,21 @@ impl Change for DespawnRecursiveChange {
             .and_then(|p| world.get::<Uid>(p))
             .copied();
 
-        let hierarchy_fragment =
-            HierarchyFragment::from_world_uid(world, cx.type_registry, cx.filter, self.uid)?;
-
-        world.despawn(entity);
+        let hierarchy_fragment = HierarchyFragment::despawn_from_world_uid(
+            world,
+            cx.type_registry,
+            cx.filter,
+            self.uid,
+        )?;
 
         let mut events = world.resource_mut::<Events<ChangesetEvent>>();
         for uid in hierarchy_fragment.all_uids() {
             events.send(ChangesetEvent::Despawned(*uid));
         }
 
-        Ok(Arc::new(SpawnRecursiveChange::new(hierarchy_fragment, parent)))
+        Ok(Arc::new(SpawnRecursiveChange::new(
+            hierarchy_fragment,
+            parent,
+        )))
     }
 }

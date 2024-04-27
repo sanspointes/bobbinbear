@@ -1,4 +1,5 @@
 import { Show, createSignal, onMount } from 'solid-js';
+
 import { ApiButtons } from './ApiButtons';
 import { DocTree } from './features/doc-tree';
 import { Inspector } from './features/inspector';
@@ -39,7 +40,7 @@ function App() {
                     </BobbinBearContext.Provider>
                 </Show>
                 <div class="bg-red-500 grow">
-                    <div class="w-full h-full relative">
+                    <div class="relative w-full h-full">
                         <canvas id="bb-canvas" class="absolute top-0 left-0" />
                     </div>
                 </div>

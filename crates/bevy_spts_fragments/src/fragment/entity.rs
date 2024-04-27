@@ -1,10 +1,10 @@
 use bevy_ecs::{
-    entity::Entity,
-    world::{EntityWorldMut, World},
+    entity::Entity, system::ResMut, world::{EntityWorldMut, Mut, World}
 };
 use bevy_hierarchy::BuildWorldChildren;
 use bevy_reflect::TypeRegistry;
 use bevy_scene::SceneFilter;
+use bevy_spts_uid::UidRegistry;
 use thiserror::Error;
 
 // #[cfg(feature = "serde")]
@@ -84,6 +84,17 @@ impl EntityFragment {
         Ok(components)
     }
 
+    fn from_world(
+        world: &mut World,
+        type_registry: &TypeRegistry,
+        filter: &SceneFilter,
+        uid: Uid,
+        entity: Entity,
+    ) -> Result<Self, EntityFragmentNewError> {
+        let components = EntityFragment::components_from_entity(world, type_registry, filter, entity)?;
+        Ok(EntityFragment::new(uid, components))
+    }
+
     pub fn from_world_uid(
         world: &mut World,
         type_registry: &TypeRegistry,
@@ -93,8 +104,7 @@ impl EntityFragment {
         let entity = uid
             .entity(world)
             .ok_or(EntityFragmentNewError::NoMatchingUid { uid })?;
-        let components = EntityFragment::components_from_entity(world, type_registry, filter, entity)?;
-        Ok(EntityFragment::new(uid, components))
+        Self::from_world(world, type_registry, filter, uid, entity)
     }
 
     pub fn from_world_entity(
@@ -106,44 +116,69 @@ impl EntityFragment {
         let uid = *world
             .get::<Uid>(entity)
             .ok_or(EntityFragmentNewError::NoMatchingEntity { entity })?;
-        let components = EntityFragment::components_from_entity(world, type_registry, filter, entity)?;
-        Ok(EntityFragment::new(uid, components))
+        Self::from_world(world, type_registry, filter, uid, entity)
     }
 
-    pub fn spawn_in_world<'w>(
+    pub fn despawn_from_world_uid(
+        world: &mut World,
+        type_registry: &TypeRegistry,
+        filter: &SceneFilter,
+        uid: Uid,
+    ) -> Result<Self, EntityFragmentNewError> {
+        let fragment = Self::from_world_uid(world, type_registry, filter, uid)?;
+        world.resource_mut::<UidRegistry>().unregister(fragment.uid);
+        Ok(fragment)
+    }
+
+    pub fn despawn_from_world_entity(
+        world: &mut World,
+        type_registry: &TypeRegistry,
+        filter: &SceneFilter,
+        entity: Entity,
+    ) -> Result<Self, EntityFragmentNewError> {
+        let fragment = Self::from_world_entity(world, type_registry, filter, entity)?;
+        world.resource_mut::<UidRegistry>().unregister(fragment.uid);
+        Ok(fragment)
+    }
+
+    pub fn spawn_in_world<'ewm, 'w: 'ewm>(
         &self,
         world: &'w mut World,
         type_registry: &TypeRegistry,
-    ) -> Result<EntityWorldMut<'w>, EntityFragmentSpawnError> {
+    ) -> Result<Entity, EntityFragmentSpawnError> {
         let mut entity_mut = world.spawn(self.uid);
 
         for comp in &self.components {
             comp.insert_to_entity_world_mut(type_registry, &mut entity_mut)?;
         }
 
-        Ok(entity_mut)
+        let id = entity_mut.id();
+        world.resource_mut::<UidRegistry>().register(self.uid, id);
+        Ok(id)
     }
 
-    pub fn spawn_in_world_with_parent_entity<'w>(
+    pub fn spawn_in_world_with_parent_entity(
         &self,
-        world: &'w mut World,
+        world: &mut World,
         type_registry: &TypeRegistry,
         parent: Entity,
-    ) -> Result<EntityWorldMut<'w>, EntityFragmentSpawnError> {
-        let mut entity_mut = self.spawn_in_world(world, type_registry)?;
+    ) -> Result<Entity, EntityFragmentSpawnError> {
+        let id = self.spawn_in_world(world, type_registry)?;
+        let mut entity_mut = world.entity_mut(id);
         entity_mut.set_parent(parent);
-        Ok(entity_mut)
+        Ok(id)
     }
 
-    pub fn spawn_in_world_with_parent_uid<'w>(
+    pub fn spawn_in_world_with_parent_uid(
         &self,
-        world: &'w mut World,
+        world: &mut World,
         type_registry: &TypeRegistry,
         parent: Uid,
-    ) -> Result<EntityWorldMut<'w>, EntityFragmentSpawnError> {
+    ) -> Result<Entity, EntityFragmentSpawnError> {
         let parent = parent
             .entity(world)
             .ok_or(EntityFragmentSpawnError::NoMatchingUid { uid: parent })?;
         self.spawn_in_world_with_parent_entity(world, type_registry, parent)
     }
 }
+

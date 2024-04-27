@@ -1,10 +1,8 @@
-use std::sync::Arc;
-
 use bevy::{
-    ecs::system::{Command, EntityCommands, QueryLens, SystemState},
+    ecs::system::{Command, EntityCommands, QueryLens},
     prelude::*,
 };
-use bevy_spts_uid::{index::Index, Uid};
+use bevy_spts_uid::{Uid, UidRegistry};
 
 use crate::prelude::{Edge, EdgeVariant, Endpoint};
 
@@ -29,10 +27,9 @@ impl Command for LinkEdgeCommand {
         // } else {
         //     warn!("LinkEdgeCommand: Attempted to get Edge component on enttiy {edge:?}, but none found.");
         // }
-        let mut ss = SystemState::<Index<Uid>>::new(world);
-        let mut index = ss.get_mut(world);
-        let next_endpoint_e = index.single(&next_endpoint);
-        let prev_endpoint_e = index.single(&prev_endpoint);
+        let mut reg = world.resource_mut::<UidRegistry>();
+        let next_endpoint_e = reg.entity(next_endpoint);
+        let prev_endpoint_e = reg.entity(prev_endpoint);
 
         if let Some(mut endpoint) = world.get_mut::<Endpoint>(next_endpoint_e) {
             endpoint.prev_edge = Some(edge);
@@ -58,7 +55,7 @@ pub trait VectorGraphicCommandsExt {
     ) -> EntityCommands;
     fn despawn_edge(
         &mut self,
-        index: &mut Index<Uid>,
+        reg: &mut UidRegistry,
         edge_entity: Uid,
         q_edge: QueryLens<&Edge>,
         q_endpoints: QueryLens<&mut Endpoint>,
@@ -103,19 +100,19 @@ impl VectorGraphicCommandsExt for Commands<'_, '_> {
 
     fn despawn_edge(
         &mut self,
-        index: &mut Index<Uid>,
+        reg: &mut UidRegistry,
         edge_uid: Uid,
         mut q_edge: QueryLens<&Edge>,
         mut q_endpoints: QueryLens<&mut Endpoint>,
     ) {
-        let edge_e = index.single(&edge_uid);
+        let edge_e = reg.entity(edge_uid);
         let edge = *q_edge.query().get(edge_e).unwrap_or_else(|reason| {
             panic!("Could not get edge to despawn {edge_uid:?}. Reason: {reason}")
         });
 
         let mut q_endpoints = q_endpoints.query();
         let mut endpoint = q_endpoints
-            .get_mut(index.single(&edge.next_endpoint))
+            .get_mut(reg.entity(edge.next_endpoint))
             .unwrap_or_else(|reason| {
                 panic!(
                     "Could not get endpoint of edge ({edge_uid:?}) to despawn {:?}. Reason: {reason}",
@@ -125,7 +122,7 @@ impl VectorGraphicCommandsExt for Commands<'_, '_> {
         endpoint.prev_edge = None;
 
         let mut endpoint = q_endpoints
-            .get_mut(index.single(&edge.prev_endpoint))
+            .get_mut(reg.entity(edge.prev_endpoint))
             .unwrap_or_else(|reason| {
                 panic!(
                     "Could not get endpoint of edge ({edge_uid:?}) to despawn {:?}. Reason: {reason}",
@@ -144,7 +141,7 @@ pub trait VectorGraphicWorldExt {
         prev_endpoint: Uid,
         next_endpoint: Uid,
     ) -> EntityWorldMut;
-    fn despawn_edge(&mut self, index: &mut Index<Uid>, edge_entity: Uid);
+    fn despawn_edge(&mut self, reg: &mut UidRegistry, edge_entity: Uid);
 }
 
 impl VectorGraphicWorldExt for World {
@@ -185,13 +182,13 @@ impl VectorGraphicWorldExt for World {
         self.entity_mut(edge)
     }
 
-    fn despawn_edge(&mut self, index: &mut Index<Uid>, edge_uid: Uid) {
+    fn despawn_edge(&mut self, reg: &mut UidRegistry, edge_uid: Uid) {
         let edge = *self
-            .get::<Edge>(index.single(&edge_uid))
+            .get::<Edge>(reg.entity(edge_uid))
             .unwrap_or_else(|| panic!("Could not get edge to despawn {edge_uid:?}"));
 
         let mut endpoint = self
-            .get_mut::<Endpoint>(index.single(&edge.next_endpoint))
+            .get_mut::<Endpoint>(reg.entity(edge.next_endpoint))
             .unwrap_or_else(|| {
                 panic!(
                     "Could not get endpoint of edge ({edge_uid:?}) to despawn {:?}",
@@ -201,7 +198,7 @@ impl VectorGraphicWorldExt for World {
         endpoint.prev_edge = None;
 
         let mut endpoint = self
-            .get_mut::<Endpoint>(index.single(&edge.prev_endpoint))
+            .get_mut::<Endpoint>(reg.entity(edge.prev_endpoint))
             .unwrap_or_else(|| {
                 panic!(
                     "Could not get endpoint of edge ({edge_uid:?}) to despawn {:?}",

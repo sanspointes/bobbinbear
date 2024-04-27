@@ -11,8 +11,8 @@
   "module": "pkg/bb_core.js",
   "types": "pkg/bb_core.d.ts",
   "scripts": {
-    "dev": "watch 'wasm-pack build --target web --dev' ./src/",
-    "build": "wasm-pack build --target web --release"
+    "dev": "watch 'RUSTFLAGS=--cfg=web_sys_unstable_apis wasm-pack build --target web --dev' ./src/",
+    "build": "RUSTFLAGS=--cfg=web_sys_unstable_apis wasm-pack build --target web --release"
   },
   "keywords": [],
   "author": "",

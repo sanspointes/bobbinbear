@@ -20,7 +20,7 @@ serde = {version = "1.0.196", features = ["serde_derive"] }
 
 # App Crates
 bevy-wasm-api = { git = "https://github.com/sanspointes/bevy-wasm-api", version = "0.1.0" }
-bevy_spts_uid = { version = "0.1.0", path = "../crates/bevy_spts_uid", features = ["serde"] }
+bevy_spts_uid = { version = "0.1.0", path = "../crates/bevy_spts_uid", features = ["serde", "tsify"] }
 bevy_spts_changeset = { version = "0.1.0", path = "../crates/bevy_spts_changeset", features = ["serde"] }
 bevy_spts_fragments = { version = "0.1.0", path = "../crates/bevy_spts_fragments", features = ["serde"] }
 bevy_spts_vectorgraphic = { version = "0.1.0", path = "../crates/bevy_spts_vectorgraphic", features = ["reflect", "changeset"] }
@@ -34,6 +34,7 @@ serde-wasm-bindgen = "0.6.3"
 wasm-bindgen-futures = "0.4.41"
 anyhow = "1.0.79"
 tsify = {version = "0.4.5", default-features = false, features = ["js", "wasm-bindgen"]}
+bevy-inspector-egui = "0.24.0"
 
 
 
@@ -42,5 +43,9 @@ default = ["minimal_bevy"]
 minimal_bevy = ["bevy/bevy_render", "bevy/bevy_scene", "bevy/bevy_sprite", "bevy/bevy_winit", "bevy/serialize", "bevy/webgl2", "bevy/bevy_ui"]
 
 [profile.release]
+debug = true
 lto = true
 opt-level = 's'
+
+[build]
+rustflags = ["--cfg=web_sys_unstable_apis"]
