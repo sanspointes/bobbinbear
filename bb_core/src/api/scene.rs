@@ -6,11 +6,11 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::plugins::{
+use crate::{ecs::InternalObject, plugins::{
     inspecting::Inspected,
     selected::Selected,
     undoredo::{UndoRedoApi, UndoRedoResult},
-};
+}};
 
 #[allow(unused_imports)]
 pub use self::definitions::*;
@@ -69,7 +69,7 @@ impl SceneApi {
         });
 
         Ok(world
-            .query::<(&Uid, Option<&Name>, &Visibility, &Transform, &Selected, Option<&Inspected>)>()
+            .query_filtered::<(&Uid, Option<&Name>, &Visibility, &Transform, &Selected, Option<&Inspected>), Without<InternalObject>>()
             .get(world, entity)
             .ok()
             .map(
