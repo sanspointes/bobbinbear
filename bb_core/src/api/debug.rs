@@ -20,8 +20,8 @@ impl DebugApi {
         let mesh = meshes.add(Circle::new(25.));
         let material = materials.add(Color::RED);
 
-        let mut builder = world.changeset();
-        let mut entity = builder.spawn_empty();
+        let mut changeset = world.changeset();
+        let mut entity = changeset.spawn_empty();
         entity
             .insert(Name::from("Debug Circle"))
             .insert(Transform::default())
@@ -32,7 +32,7 @@ impl DebugApi {
             .insert(mesh)
             .insert(material)
         ;
-        let changeset = builder.build();
+        let changeset = changeset.build();
 
         UndoRedoApi::execute(world, changeset)
     }
@@ -45,21 +45,22 @@ impl DebugApi {
 
         let mut builder = world.changeset();
         let vector_graphic = builder
-            .spawn_empty()
-            .insert(Name::from("Box"))
-            .insert(Transform::default())
-            .insert(GlobalTransform::default())
-            .insert(Visibility::default())
-            .insert(ViewVisibility::default())
-            .insert(InheritedVisibility::default())
+            .spawn((
+                Name::from("Box"),
+                Transform::default(),
+                GlobalTransform::default(),
+                Visibility::default(),
+                ViewVisibility::default(),
+                InheritedVisibility::default(),
 
-            .insert(VectorGraphic::default())
-            .insert(VectorGraphicPathStorage::default())
-            .insert(StrokeOptions::default())
-            .insert(FillOptions::default())
+                VectorGraphic::default(),
+                VectorGraphicPathStorage::default(),
+                StrokeOptions::default(),
+                FillOptions::default(),
 
-            .insert(Selected::Deselected)
-            .insert(material)
+                Selected::Deselected,
+                material,
+            ))
             .uid();
 
         let e0 = builder

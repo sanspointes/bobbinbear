@@ -71,7 +71,7 @@ pub fn setup(app: &mut App) {
         WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
     ))
     // App plugins
-    .add_plugins(BevyWasmApiPlugin::default().with_end_schedule(PostUpdate))
+    .add_plugins(BevyWasmApiPlugin)
     .add_plugins(VectorGraphicPlugin)
     .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin, EffectPlugin));
 }

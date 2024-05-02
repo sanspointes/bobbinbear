@@ -4,9 +4,9 @@ mod spawn;
 
 use std::{any::TypeId, fmt::Debug, sync::Arc};
 
-use bevy_ecs::{component::Component, world::World};
-use bevy_reflect::Reflect;
-use bevy_spts_fragments::prelude::{ComponentFragment, EntityFragment, Uid};
+use bevy_ecs::{bundle::{Bundle, DynamicBundle}, component::Component, reflect::{AppTypeRegistry, ReflectBundle}, world::World};
+use bevy_reflect::{FromReflect, FromType, Reflect};
+use bevy_spts_fragments::prelude::{BundleFragment, BundleToFragment, ComponentFragment, EntityFragment, Uid};
 
 use crate::resource::ChangesetContext;
 
@@ -82,9 +82,25 @@ impl<'w> ChangesetBuilder<'w> {
         }
     }
 
+    pub fn spawn<'a, B: Bundle + Reflect + FromReflect>(&'a mut self, bundle: B) -> EntityChangeset<'w, 'a> {
+        let uid = Uid::default();
+
+        let bundle = {
+            let type_registry = self.world.resource::<AppTypeRegistry>().read();
+            bundle.to_fragment(&type_registry)
+        };
+
+        let change = SpawnChange::new(EntityFragment::new(uid, bundle), None);
+        self.push(Arc::new(change));
+        EntityChangeset {
+            target: uid,
+            builder: self,
+        }
+    }
+
     pub fn spawn_empty<'a>(&'a mut self) -> EntityChangeset<'w, 'a> {
         let uid = Uid::default();
-        let entity_fragment = EntityFragment::new(uid, vec![]);
+        let entity_fragment = EntityFragment::new(uid, BundleFragment::new(vec![]));
         self.push(Arc::new(SpawnChange::new(entity_fragment, None)));
         EntityChangeset {
             target: uid,
