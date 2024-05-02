@@ -15,31 +15,26 @@ pub trait BundleToFragment {
 }
 
 fn bundle_to_component_array_recursive(
-    object: ReflectRef<'_>,
+    object: &dyn Reflect,
     type_registry: &TypeRegistry,
     out: &mut Vec<ComponentFragment>,
 ) {
-    match object {
+    let type_id = object.type_id();
+    if type_registry.get_type_data::<ReflectComponent>(type_id).is_some() {
+        let cf = ComponentFragment::new(object.clone_value().into());
+        out.push(cf);
+        return;
+    }
+
+    match object.reflect_ref() {
         ReflectRef::Tuple(tup) => {
             for el in tup.iter_fields() {
-                let type_id = el.type_id();
-                if type_registry.get_type_data::<ReflectComponent>(type_id).is_some() {
-                    let cf = ComponentFragment::new(el.clone_value().into());
-                    out.push(cf);
-                } else {
-                    bundle_to_component_array_recursive(el.reflect_ref(), type_registry, out);
-                }
+                bundle_to_component_array_recursive(el, type_registry, out);
             }
         }
         ReflectRef::Struct(str) => {
             for el in str.iter_fields() {
-                let type_id = el.type_id();
-                if type_registry.get_type_data::<ReflectComponent>(type_id).is_some() {
-                    let cf = ComponentFragment::new(el.clone_value().into());
-                    out.push(cf);
-                } else {
-                    bundle_to_component_array_recursive(el.reflect_ref(), type_registry, out);
-                }
+                bundle_to_component_array_recursive(el, type_registry, out);
             }
         }
         _ => panic!("bevy_spts_fragments: Error converting bundle to BundleFragment.  Only Struct/Tuple objects are supported.")
@@ -50,7 +45,7 @@ impl<B: Bundle + Reflect> BundleToFragment for B {
     fn to_fragment(&self, type_registry: &TypeRegistry) -> BundleFragment {
         let mut components = vec![];
 
-        bundle_to_component_array_recursive(self.reflect_ref(), type_registry, &mut components);
+        bundle_to_component_array_recursive(self.as_reflect(), type_registry, &mut components);
 
         BundleFragment { components }
     }

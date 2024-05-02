@@ -2,7 +2,7 @@ use anyhow::anyhow;
 
 use std::{any::TypeId, fmt::Debug, sync::Arc};
 
-use bevy_ecs::{bundle::DynamicBundle, event::Events, reflect::ReflectComponent, world::World};
+use bevy_ecs::{event::Events, reflect::ReflectComponent, world::World};
 use bevy_spts_fragments::prelude::{ComponentFragment, Uid};
 
 use crate::{events::{ChangesetEvent, ChangedType}, resource::ChangesetContext};

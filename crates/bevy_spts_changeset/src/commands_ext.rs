@@ -1,6 +1,6 @@
 use bevy_ecs::world::World;
 
-use crate::changes::ChangesetBuilder;
+use crate::builder::ChangesetBuilder;
 
 pub trait WorldChangesetExt {
     fn changeset(&mut self) -> ChangesetBuilder;
