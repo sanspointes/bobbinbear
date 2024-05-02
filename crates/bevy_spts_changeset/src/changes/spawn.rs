@@ -67,9 +67,7 @@ impl Change for DespawnChange {
             .and_then(|p| world.get::<Uid>(p))
             .copied();
 
-        let entity_fragment = EntityFragment::from_world_uid(world, cx.type_registry, cx.filter, self.uid)?;
-
-        world.despawn(entity);
+        let entity_fragment = EntityFragment::despawn_from_world_uid(world, cx.type_registry, cx.filter, self.uid)?;
 
         let mut events = world.resource_mut::<Events<ChangesetEvent>>();
         events.send(ChangesetEvent::Despawned(self.uid));

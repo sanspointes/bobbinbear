@@ -1,4 +1,4 @@
-use std::{any::TypeId, sync::Arc};
+use std::{any::TypeId, fmt::Display, sync::Arc};
 
 use bevy_ecs::{bundle::Bundle, component::Component, reflect::AppTypeRegistry, world::World};
 use bevy_reflect::{FromReflect, Reflect};
@@ -17,6 +17,16 @@ use crate::{
 #[derive(Debug)]
 pub struct ChangeSet {
     changes: Vec<Arc<dyn Change>>,
+}
+
+impl Display for ChangeSet {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        writeln!(f, "ChangeSet [\n")?;
+        for change in &self.changes {
+            writeln!(f, "\t{change:?}\n")?;
+        }
+        writeln!(f, "]\n")
+    }
 }
 
 impl ChangeSet {

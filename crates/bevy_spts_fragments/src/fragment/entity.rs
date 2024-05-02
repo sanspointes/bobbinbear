@@ -88,15 +88,29 @@ impl EntityFragment {
         Self::from_world(world, type_registry, filter, uid, entity)
     }
 
+    fn despawn_from_world(
+        world: &mut World,
+        type_registry: &TypeRegistry,
+        filter: &SceneFilter,
+        uid: Uid,
+        entity: Entity,
+    ) -> Result<Self, EntityFragmentNewError> {
+        let bundle = BundleFragment::from_world(world, type_registry, filter, entity)?;
+        world.despawn(entity);
+        world.resource_mut::<UidRegistry>().unregister(uid);
+        Ok(EntityFragment::new(uid, bundle))
+    }
+
     pub fn despawn_from_world_uid(
         world: &mut World,
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         uid: Uid,
     ) -> Result<Self, EntityFragmentNewError> {
-        let fragment = Self::from_world_uid(world, type_registry, filter, uid)?;
-        world.resource_mut::<UidRegistry>().unregister(fragment.uid);
-        Ok(fragment)
+        let entity = uid
+            .entity(world)
+            .ok_or(EntityFragmentNewError::NoMatchingUid { uid })?;
+        Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
 
     pub fn despawn_from_world_entity(
@@ -105,9 +119,10 @@ impl EntityFragment {
         filter: &SceneFilter,
         entity: Entity,
     ) -> Result<Self, EntityFragmentNewError> {
-        let fragment = Self::from_world_entity(world, type_registry, filter, entity)?;
-        world.resource_mut::<UidRegistry>().unregister(fragment.uid);
-        Ok(fragment)
+        let uid = *world
+            .get::<Uid>(entity)
+            .ok_or(EntityFragmentNewError::NoMatchingEntity { entity })?;
+        Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
 
     pub fn spawn_in_world<'ewm, 'w: 'ewm>(
