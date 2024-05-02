@@ -201,7 +201,12 @@ impl SceneApi {
     }
 
     pub fn delete(world: &mut World, uid: Uid) -> Result<UndoRedoResult, anyhow::Error> {
+        let entity = uid.entity(world).unwrap();
+        let is_inspected = world.get::<Inspected>(entity).is_some();
         let mut builder = world.changeset();
+        if is_inspected {
+            builder.entity(uid).remove::<Inspected>();
+        }
         builder.entity(uid).despawn_recursive();
         let changeset = builder.build();
 

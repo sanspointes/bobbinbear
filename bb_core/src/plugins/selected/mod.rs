@@ -4,6 +4,7 @@ mod api;
 mod material;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*, sprite::Material2dPlugin};
+use bevy_spts_uid::Uid;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
@@ -17,25 +18,12 @@ pub enum Selected {
     #[default]
     Deselected,
     Selected,
-}
-impl From<bool> for Selected {
-    fn from(value: bool) -> Self {
-        if value {
-            Selected::Selected
-        } else {
-            Selected::Deselected
-        }
+    // Proxy copies the Selected value of a different entity.  Mainly used for `InternalObjects` 
+    // to make this element act as if it's another element.
+    Proxy {
+        target: Uid,
     }
 }
-impl From<Selected> for bool {
-    fn from(value: Selected) -> Self {
-        match value {
-            Selected::Selected => true,
-            Selected::Deselected => false,
-        }
-    }
-}
-
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]

@@ -31,7 +31,6 @@ pub fn sys_update_viewport_on_window_resize(
     let mut viewport = q_viewport.single_mut();
 
     if let Some(ev) = ev_resize.read().last() {
-        info!("sys_update_viewport_on_window_resize: ev = {ev:?} window = {window:?}");
         viewport.logical_size = Vec2::new(ev.width, ev.height);
         viewport.physical_size = Vec2::new(
             window.resolution.physical_width() as f32,

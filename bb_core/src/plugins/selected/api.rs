@@ -1,4 +1,4 @@
-use bevy::ecs::world::World;
+use bevy::{ecs::world::World, utils::HashSet};
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
@@ -34,6 +34,7 @@ impl SelectedApi {
             .filter_map(|(uid, selected)| match selected {
                 Selected::Selected => Some(*uid),
                 Selected::Deselected => None,
+                Selected::Proxy { .. } => None, 
             })
             .collect();
         to_deselect
@@ -60,13 +61,17 @@ impl SelectedApi {
         uid: Uid,
         selected: Selected,
     ) -> Result<(), anyhow::Error> {
+        let entity = uid.entity(world).unwrap();
+        let target = match world.get::<Selected>(entity).unwrap() {
+            Selected::Proxy { target } => *target,
+            _ => uid,
+        };
+
         let mut changeset = world.changeset();
-        changeset.entity(uid).apply(selected);
+        changeset.entity(target).apply(selected);
 
         let changeset = changeset.build();
         UndoRedoApi::execute(world, changeset)?;
-
-        let selected = SelectedApi::query_selected_uids(world);
 
         Ok(())
     }
@@ -76,13 +81,20 @@ impl SelectedApi {
         uid: Uid,
         selected: Selected,
     ) -> Result<(), anyhow::Error> {
+        let entity = uid.entity(world).unwrap();
+        let target = match world.get::<Selected>(entity).unwrap() {
+            Selected::Proxy { target } => *target,
+            _ => uid,
+        };
+
         let to_deselect = SelectedApi::query_selected_uids(world);
 
         let mut changeset = world.changeset();
         for uid in to_deselect.iter() {
             changeset.entity(*uid).apply(Selected::Deselected);
         }
-        changeset.entity(uid).apply(selected);
+
+        changeset.entity(target).apply(selected);
 
         let changeset = changeset.build();
         UndoRedoApi::execute(world, changeset)?;

@@ -5,7 +5,7 @@ use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::Endpoint;
 
 use crate::{
-    ecs::{position::CalcPosition, InternalObject},
+    ecs::{position::Position, InternalObject},
     plugins::{effect::Effect, selected::Selected, viewport::Viewport},
 };
 
@@ -90,19 +90,19 @@ pub fn handle_inspect_vector_object_endpoints(
     let mut to_spawn = vec![];
 
     let endpoints: Vec<_> = q_endpoints.iter().map(|(e, uid, parent, transform)| (e, *uid, parent.get(), *transform)).collect();
-    for (entity, uid, parent, transform) in endpoints {
+    for (entity, endpoint_uid, parent, transform) in endpoints {
         if parent != parent_entity {
             continue;
         }
-        changed.push(uid);
+        changed.push(endpoint_uid);
 
         let uid = Uid::default();
         spawned.push(uid);
 
         to_spawn.push((
             BecauseInspected(inspected),
-            CalcPosition::ViewportOfWorld {
-                target: entity,
+            Position::ProxyViewport {
+                target: endpoint_uid,
                 target_world_position: Vec3::ZERO,
             },
             InternalObject,

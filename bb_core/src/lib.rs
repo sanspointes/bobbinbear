@@ -15,7 +15,7 @@ use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
-use ecs::position::{sys_pre_update_positions, sys_update_positions, CalcPosition};
+use ecs::position::{sys_pre_update_positions, sys_update_positions, Position};
 use plugins::inspecting::BecauseInspected;
 use wasm_bindgen::prelude::*;
 
@@ -63,7 +63,7 @@ pub fn setup(app: &mut App) {
     app.register_type::<UidRegistry>();
     app.register_type::<HashMap<Uid, Entity>>();
     app.register_type::<Uid>();
-    app.register_type::<CalcPosition>();
+    app.register_type::<Position>();
     app.register_type::<BecauseInspected>();
 
     app.add_plugins((
