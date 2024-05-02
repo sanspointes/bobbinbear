@@ -1,7 +1,7 @@
 //! Contains the API for executing/undoing/redoing changesets.
 
 use bevy::ecs::world::World;
-use bevy_spts_changeset::{changes::ChangeSet, resource::ChangesetResource};
+use bevy_spts_changeset::prelude::{ChangeSet, ChangesetResource};
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
