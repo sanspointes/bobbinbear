@@ -38,6 +38,12 @@ impl From<ComponentFragmentReflectError> for ComponentFragmentError {
     }
 }
 
+pub trait ComponentToFragment: Component + Reflect + Sized {
+    fn to_fragment(&self) -> ComponentFragment {
+        ComponentFragment::from_component(self)
+    }
+}
+
 #[derive(Debug, Clone)]
 /// Wrapper around a Arc<dyn Reflect> that stores a Reflect component.
 ///
