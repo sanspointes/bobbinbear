@@ -32,14 +32,6 @@ export function DocTreeNode(props: DocTreeNodeProps) {
         else return childObjects;
     });
     const showExpandButton = createMemo(() => !!childObjects());
-
-    createEffect(() => {
-        console.log(
-            `object(${props.object.uid}) child objects`,
-            childObjects(),
-            showExpandButton(),
-        );
-    });
     return (
         <Collapsible
             open={expanded()}

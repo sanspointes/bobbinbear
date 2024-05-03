@@ -16,7 +16,9 @@ use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
 use ecs::position::{sys_pre_update_positions, sys_update_positions, Position};
+use ecs::InternalObject;
 use plugins::inspecting::BecauseInspected;
+use plugins::selected::SelectedPlugin;
 use wasm_bindgen::prelude::*;
 
 use plugins::bounds2d::Bounds2DPlugin;
@@ -65,6 +67,7 @@ pub fn setup(app: &mut App) {
     app.register_type::<Uid>();
     app.register_type::<Position>();
     app.register_type::<BecauseInspected>();
+    app.register_type::<InternalObject>();
 
     app.add_plugins((
         DefaultInspectorConfigPlugin,
@@ -73,5 +76,5 @@ pub fn setup(app: &mut App) {
     // App plugins
     .add_plugins(BevyWasmApiPlugin)
     .add_plugins(VectorGraphicPlugin)
-    .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin, EffectPlugin));
+    .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin, EffectPlugin, SelectedPlugin));
 }

@@ -20,6 +20,12 @@ pub enum Position {
     },
 }
 
+impl Default for Position {
+    fn default() -> Self {
+        Self::Local(Vec2::default())
+    }
+}
+
 #[allow(clippy::single_match)]
 pub fn sys_pre_update_positions(
     mut q_positioned: Query<&mut Position, Without<Camera>>,

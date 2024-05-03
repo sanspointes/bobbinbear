@@ -282,11 +282,17 @@ mod test_spawn {
         let changeset = changeset.build();
 
         ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
-            changeset.apply(world, cx).unwrap();
+            let inverse = changeset.apply(world, cx).unwrap();
+
+            let entity = uid.entity(world).unwrap();
+            assert!( world.get::<Comp1>(entity).is_some());
+
+            inverse.apply(world, cx).unwrap();
+
+            let entity = uid.entity(world).unwrap();
+            assert!( world.get::<Comp1>(entity).is_none());
         });
 
-        let entity = uid.entity(&mut world).unwrap();
-        assert!( world.get::<Comp1>(entity).is_some());
     }
 
     #[test]

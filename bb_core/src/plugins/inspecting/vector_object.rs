@@ -5,7 +5,7 @@ use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::Endpoint;
 
 use crate::{
-    ecs::{position::Position, InternalObject},
+    ecs::{position::Position, InternalObject, ObjectBundle},
     plugins::{effect::Effect, selected::Selected, viewport::Viewport},
 };
 
@@ -90,7 +90,7 @@ pub fn handle_inspect_vector_object_endpoints(
     let mut to_spawn = vec![];
 
     let endpoints: Vec<_> = q_endpoints.iter().map(|(e, uid, parent, transform)| (e, *uid, parent.get(), *transform)).collect();
-    for (entity, endpoint_uid, parent, transform) in endpoints {
+    for (entity, endpoint_uid, parent, _) in endpoints {
         if parent != parent_entity {
             continue;
         }
@@ -100,28 +100,15 @@ pub fn handle_inspect_vector_object_endpoints(
         spawned.push(uid);
 
         to_spawn.push((
+            ObjectBundle::proxy_viewport(endpoint_uid),
             BecauseInspected(inspected),
-            Position::ProxyViewport {
-                target: endpoint_uid,
-                target_world_position: Vec3::ZERO,
-            },
             InternalObject,
             uid,
-            transform,
-            GlobalTransform::default(),
-            Visibility::default(),
-            ViewVisibility::default(),
-            InheritedVisibility::default(),
             mesh.clone(),
             material.clone(),
-            Selected::Deselected,
         ));
 
-        world.entity_mut(entity).insert((
-            Name::from("Endpoint"),
-            Visibility::default(),
-            Selected::default(),
-        ));
+        world.entity_mut(entity).remove::<InternalObject>().insert(Name::from("Endpoint"));
     }
 
     respond.push_back(Effect::EntitiesChanged(changed));

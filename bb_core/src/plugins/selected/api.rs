@@ -1,4 +1,4 @@
-use bevy::{ecs::world::World, utils::HashSet};
+use bevy::ecs::world::World;
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
@@ -34,7 +34,7 @@ impl SelectedApi {
             .filter_map(|(uid, selected)| match selected {
                 Selected::Selected => Some(*uid),
                 Selected::Deselected => None,
-                Selected::Proxy { .. } => None, 
+                Selected::Proxy { .. } => None,
             })
             .collect();
         to_deselect
@@ -63,7 +63,7 @@ impl SelectedApi {
     ) -> Result<(), anyhow::Error> {
         let entity = uid.entity(world).unwrap();
         let target = match world.get::<Selected>(entity).unwrap() {
-            Selected::Proxy { target } => *target,
+            Selected::Proxy { target, .. } => *target,
             _ => uid,
         };
 
@@ -83,7 +83,7 @@ impl SelectedApi {
     ) -> Result<(), anyhow::Error> {
         let entity = uid.entity(world).unwrap();
         let target = match world.get::<Selected>(entity).unwrap() {
-            Selected::Proxy { target } => *target,
+            Selected::Proxy { target, .. } => *target,
             _ => uid,
         };
 

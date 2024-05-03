@@ -6,7 +6,7 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::{ecs::InternalObject, plugins::{
+use crate::{ecs::{position::Position, InternalObject}, plugins::{
     inspecting::Inspected,
     selected::Selected,
     undoredo::{UndoRedoApi, UndoRedoResult},
@@ -148,14 +148,23 @@ impl SceneApi {
             .entity(world)
             .ok_or_else(|| anyhow!("No entity for uid {uid}."))?;
 
-        let mut transform = *world
-            .get::<Transform>(entity)
-            .ok_or_else(|| anyhow!("No `Transform` component on entity with uid {uid}."))?;
-        transform.translation.x = x;
-        transform.translation.y = y;
+        let mut position = *world
+            .get::<Position>(entity)
+            .ok_or_else(|| anyhow!("No `Position` component on entity with uid {uid}."))?;
+
+        match position {
+            Position::Local(ref mut pos) => {
+                pos.x = x;
+                pos.y = y;
+            }
+            Position::ProxyViewport { target, target_world_position } => {
+                todo!("Add logic for proxyviewport to effect the target's local positon.")
+            }
+        }
+
 
         let mut builder = world.changeset();
-        builder.entity(uid).apply(transform);
+        builder.entity(uid).apply(position);
         let changeset = builder.build();
 
         let result = UndoRedoApi::execute(world, changeset)?;
