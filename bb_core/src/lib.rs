@@ -8,20 +8,20 @@ mod plugins;
 use bevy::asset::AssetMetaCheck;
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::prelude::*;
+use bevy::transform::systems::propagate_transforms;
 use bevy::transform::TransformSystem;
 use bevy::utils::HashMap;
 use bevy::window::WindowMode;
 
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
-use bevy_obj::ObjPlugin;
 use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
 use ecs::position::{sys_pre_update_positions, sys_update_positions, Position};
 use ecs::InternalObject;
-use materials::{BobbinMaterialsPlugin, UiElMaterial};
+use materials::BobbinMaterialsPlugin;
 use meshes::BobbinMeshesPlugin;
 use plugins::inspecting::BecauseInspected;
 use plugins::selected::SelectedPlugin;
@@ -67,8 +67,9 @@ pub fn setup(app: &mut App) {
     app.add_systems(
         PostUpdate,
         (sys_pre_update_positions.pipe(sys_update_positions))
-            .before(TransformSystem::TransformPropagate),
+            .after(TransformSystem::TransformPropagate),
     );
+    app.add_systems(Last, propagate_transforms);
 
     app.insert_resource(UidRegistry::default());
     app.register_type::<UidRegistry>();
@@ -87,8 +88,6 @@ pub fn setup(app: &mut App) {
         BevyWasmApiPlugin::default().with_end_schedule(Update),
         VectorGraphicPlugin,
     ))
-    // External plugin libs
-    .add_plugins(ObjPlugin)
     // App specific
     .add_plugins((
         BobbinMeshesPlugin,
