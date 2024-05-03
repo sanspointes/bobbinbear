@@ -1,8 +1,11 @@
 //! Displays a single [`Sprite`], created from an image.
 pub mod api;
 mod ecs;
+mod materials;
+mod meshes;
 mod plugins;
 
+use bevy::asset::AssetMetaCheck;
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::prelude::*;
 use bevy::transform::TransformSystem;
@@ -11,12 +14,15 @@ use bevy::window::WindowMode;
 
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 use bevy_inspector_egui::DefaultInspectorConfigPlugin;
+use bevy_obj::ObjPlugin;
 use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
 use ecs::position::{sys_pre_update_positions, sys_update_positions, Position};
 use ecs::InternalObject;
+use materials::{BobbinMaterialsPlugin, UiElMaterial};
+use meshes::BobbinMeshesPlugin;
 use plugins::inspecting::BecauseInspected;
 use plugins::selected::SelectedPlugin;
 use wasm_bindgen::prelude::*;
@@ -34,6 +40,9 @@ pub fn start() {
 #[wasm_bindgen]
 pub fn setup_bb_core(canvas_id: String) {
     let mut app = App::new();
+
+    // Disable asset metadata checking.
+    app.insert_resource(AssetMetaCheck::Never);
 
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
@@ -73,8 +82,21 @@ pub fn setup(app: &mut App) {
         DefaultInspectorConfigPlugin,
         WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
     ))
-    // App plugins
-    .add_plugins(BevyWasmApiPlugin)
-    .add_plugins(VectorGraphicPlugin)
-    .add_plugins((UndoRedoPlugin, Bounds2DPlugin, ViewportPlugin, EffectPlugin, SelectedPlugin));
+    // Sanspointes plugin libs
+    .add_plugins((
+        BevyWasmApiPlugin::default().with_end_schedule(Update),
+        VectorGraphicPlugin,
+    ))
+    // External plugin libs
+    .add_plugins(ObjPlugin)
+    // App specific
+    .add_plugins((
+        BobbinMeshesPlugin,
+        BobbinMaterialsPlugin,
+        UndoRedoPlugin,
+        Bounds2DPlugin,
+        ViewportPlugin,
+        EffectPlugin,
+        SelectedPlugin,
+    ));
 }

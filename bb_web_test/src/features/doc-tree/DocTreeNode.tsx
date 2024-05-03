@@ -20,7 +20,7 @@ type DocTreeNodeProps = {
 };
 export function DocTreeNode(props: DocTreeNodeProps) {
     const { document } = useBobbinBear();
-    const { setVisible, selectSingle } = document;
+    const { setVisible, selectSingle, inspect } = document;
     const [expanded, setExpanded] = createSignal(true);
 
     const childObjects = createMemo(() => {
@@ -36,6 +36,7 @@ export function DocTreeNode(props: DocTreeNodeProps) {
         <Collapsible
             open={expanded()}
             onOpenChange={(open) => setExpanded(open)}
+            onDblClick={() => inspect(props.object.uid)}
         >
             <div
                 class="outline-yellow-600 hover:outline hover:outline-1"

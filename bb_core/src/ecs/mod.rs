@@ -63,4 +63,9 @@ impl ObjectBundle {
         self.position = Position::Local(position.into());
         self
     }
+
+    pub fn with_z_position(mut self, z: f32) -> Self {
+        self.transform.translation.z = z;
+        self
+    }
 }
