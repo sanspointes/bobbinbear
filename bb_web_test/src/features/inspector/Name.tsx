@@ -14,22 +14,24 @@ export function Name(props: NameProps) {
     const { setName, inspect, deleteObject } = document;
     return (
         <Card>
-            <CardTitle class="mb-2">
+            <CardTitle class="flex justify-between items-center mb-2">
                 Name{' '}
-                <Button
-                    size="sm"
-                    class="bg-yellow-600 hover:bg-yellow-700"
-                    onClick={() => inspect(props.uid)}
-                >
-                    <TbFocus />
-                </Button>
-                <Button
-                    size="sm"
-                    class="bg-red-600 hover:bg-red-700"
-                    onClick={() => deleteObject(props.uid)}
-                >
-                    <TbX />
-                </Button>
+                <div class="flex gap-2 items-center">
+                    <Button
+                        size="sm"
+                        class="bg-yellow-600 hover:bg-yellow-700"
+                        onClick={() => inspect(props.uid)}
+                    >
+                        <TbFocus /> Inspect
+                    </Button>
+                    <Button
+                        size="sm"
+                        class="bg-red-600 hover:bg-red-700"
+                        onClick={() => deleteObject(props.uid)}
+                    >
+                        <TbX /> Delete
+                    </Button>
+                </div>
             </CardTitle>
 
             <span class="text-xs font-thin text-gray-400">{props.uid}</span>
