@@ -5,7 +5,7 @@ use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::Endpoint;
 
 use crate::{
-    ecs::{InternalObject, ObjectBundle, ObjectType, ProxiedObjectBundle}, materials::UiElMaterial, meshes::BobbinMeshes, plugins::{effect::Effect, selected::Selected, viewport::BobbinViewport}
+    ecs::{InternalObject, ObjectBundle, ObjectType, ProxiedObjectBundle}, materials::UiElementMaterial, meshes::BobbinMeshes, plugins::{effect::Effect, selected::Selected, viewport::BobbinViewport}
 };
 
 use super::BecauseInspected;
@@ -77,7 +77,7 @@ pub fn handle_inspect_vector_object_endpoints(
 ) {
     let mut sys_state = SystemState::<(
         BobbinMeshes,
-        ResMut<Assets<UiElMaterial>>,
+        ResMut<Assets<UiElementMaterial>>,
         Query<(Entity, &Uid, &Parent, &Transform), With<Endpoint>>,
     )>::new(world);
 
@@ -92,7 +92,7 @@ pub fn handle_inspect_vector_object_endpoints(
 
     let endpoints: Vec<_> = q_endpoints
         .iter()
-        .map(|(e, uid, parent, transform)| (e, *uid, parent.get(), *transform, materials.add(UiElMaterial::default())))
+        .map(|(e, uid, parent, transform)| (e, *uid, parent.get(), *transform, materials.add(UiElementMaterial::default())))
         .collect();
     for (entity, endpoint_uid, parent, _, material) in endpoints {
         if parent != parent_entity {

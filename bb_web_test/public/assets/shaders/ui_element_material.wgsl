@@ -10,7 +10,7 @@ struct Vertex {
     @location(0) position: vec3<f32>,
 #endif
 #ifdef VERTEX_NORMALS
-    // @location(1) normal: vec3<f32>,
+    @location(1) normal: vec3<f32>,
 #endif
 #ifdef VERTEX_UVS
     // @location(2) uv: vec2<f32>,
@@ -58,9 +58,9 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 #endif
 
 #ifdef VERTEX_POSITIONS
-    // Scale up if hovered
-    let scale = 1. + (f32(state.hovered) * 0.3);
-    let pos = vertex.position * scale;
+    // Expands verts outwards (by normal direction) when hovered.
+    let scale = (f32(state.hovered) * 1.);
+    let pos = vertex.position + vertex.normal * scale;
 
     var model = mesh_functions::get_model_matrix(vertex.instance_index);
     let world_position = mesh_functions::mesh2d_position_local_to_world(

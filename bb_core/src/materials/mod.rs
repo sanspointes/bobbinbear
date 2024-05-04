@@ -11,8 +11,8 @@ pub struct BobbinMaterialsPlugin;
 impl Plugin for BobbinMaterialsPlugin {
     fn build(&self, app: &mut App) {
 
-        app.register_type::<UiElMaterial>();
-        app.add_plugins(Material2dPlugin::<UiElMaterial>::default())
+        app.register_type::<UiElementMaterial>();
+        app.add_plugins(Material2dPlugin::<UiElementMaterial>::default())
             .add_systems(PostUpdate, sys_update_ui_element_materials);
     }
 }

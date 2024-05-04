@@ -83,6 +83,7 @@ impl Material2d for UiElementMaterial {
         // Position + theme mix vertex attributes
         let vertex_layout = layout.get_layout(&[
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
+            Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
             ATTRIBUTE_THEME_MIX.at_shader_location(5),
         ])?;
         println!("descriptor layout: {:?}", descriptor.layout);
