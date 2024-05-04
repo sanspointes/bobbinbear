@@ -7,7 +7,7 @@ use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    ecs::{InternalObject, ObjectType, Position, ProxiedPosition, ProxiedPositionStrategy},
+    ecs::{InternalObject, ObjectType, Position, ProxiedPosition},
     plugins::{
         inspecting::Inspected,
         selected::Selected,
@@ -164,21 +164,14 @@ impl SceneApi {
         x: f32,
         y: f32,
     ) -> Result<UndoRedoResult, anyhow::Error> {
-        let entity = uid
-            .entity(world)
-            .ok_or_else(|| anyhow!("No entity for uid {uid}."))?;
-
-        let (_, proxy) = world
-            .query::<(&Position, Option<&ProxiedPosition>)>()
-            .get(world, entity)
-            .map_err(|err| anyhow!("Can't get `Position` of {uid}. {err}"))?;
-
-        if proxy.is_some() {
-            todo!("Handle `set_position` for when target uid is a proxy.");
-        }
+        let entity = uid.entity(world).unwrap();
+        let target = match world.get::<ProxiedPosition>(entity) {
+            Some(proxy) => *proxy.target(),
+            None => uid,
+        };
 
         let mut builder = world.changeset();
-        builder.entity(uid).apply(Position::new((x, y)));
+        builder.entity(target).apply(Position::new((x, y)));
         let changeset = builder.build();
 
         let result = UndoRedoApi::execute(world, changeset)?;
