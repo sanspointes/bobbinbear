@@ -3,9 +3,12 @@ import { useBobbinBear } from '../../hooks/useBobbinBear';
 import { Card, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { TbFocus, TbX } from 'solid-icons/tb';
+import { Show } from 'solid-js';
+import { ObjectType } from 'bb_core';
 
 type NameProps = {
     uid: string;
+    ty: ObjectType,
     name: string | undefined;
 };
 
@@ -17,13 +20,15 @@ export function Name(props: NameProps) {
             <CardTitle class="flex justify-between items-center mb-2">
                 Name{' '}
                 <div class="flex gap-2 items-center">
-                    <Button
-                        size="sm"
-                        class="bg-yellow-600 hover:bg-yellow-700"
-                        onClick={() => inspect(props.uid)}
-                    >
-                        <TbFocus /> Inspect
-                    </Button>
+                    <Show when={props.ty === 'Vector'}>
+                        <Button
+                            size="sm"
+                            class="bg-yellow-600 hover:bg-yellow-700"
+                            onClick={() => inspect(props.uid)}
+                        >
+                            <TbFocus /> Inspect
+                        </Button>
+                    </Show>
                     <Button
                         size="sm"
                         class="bg-red-600 hover:bg-red-700"

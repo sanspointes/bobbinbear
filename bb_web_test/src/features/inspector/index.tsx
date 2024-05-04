@@ -20,7 +20,7 @@ export function Inspector() {
             <Show when={selectedObject()}>
                 {(obj) => (
                     <>
-                        <Name uid={obj().uid} name={obj().name} />
+                        <Name uid={obj().uid} name={obj().name} ty={obj().ty} />
                         <Position uid={obj().uid} position={obj().position} />
                     </>
                 )}
