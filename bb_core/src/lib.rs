@@ -20,7 +20,7 @@ use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
 use ecs::position::{sys_pre_update_positions, sys_update_positions, Position};
-use ecs::InternalObject;
+use ecs::{InternalObject, ObjectType};
 use materials::BobbinMaterialsPlugin;
 use meshes::BobbinMeshesPlugin;
 use plugins::inspecting::BecauseInspected;
@@ -78,6 +78,7 @@ pub fn setup(app: &mut App) {
     app.register_type::<Position>();
     app.register_type::<BecauseInspected>();
     app.register_type::<InternalObject>();
+    app.register_type::<ObjectType>();
 
     app.add_plugins((
         DefaultInspectorConfigPlugin,

@@ -6,11 +6,8 @@ use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    ecs::{InternalObject, ObjectBundle},
-    plugins::{
-        selected::Selected,
-        undoredo::{UndoRedoApi, UndoRedoResult},
-    },
+    ecs::{InternalObject, ObjectBundle, ObjectType},
+    plugins::undoredo::{UndoRedoApi, UndoRedoResult},
 };
 
 pub struct DebugApi;
@@ -51,7 +48,7 @@ impl DebugApi {
         let vector_graphic = builder
             .spawn((
                 Name::from("Box"),
-                ObjectBundle::default(),
+                ObjectBundle::new(ObjectType::Vector),
                 VectorGraphic::default(),
                 VectorGraphicPathStorage::default(),
                 StrokeOptions::default(),
@@ -61,33 +58,53 @@ impl DebugApi {
             .uid();
 
         let e0 = builder
-            .spawn((ObjectBundle::default(), Endpoint::default(), InternalObject))
+            .spawn((
+                ObjectBundle::new(ObjectType::VectorEndpoint),
+                Endpoint::default(),
+                InternalObject,
+            ))
             .set_parent(vector_graphic)
             .uid();
         let e1 = builder
-            .spawn((ObjectBundle::default().with_local_position((100., 0.)), Endpoint::default(), InternalObject))
+            .spawn((
+                ObjectBundle::new(ObjectType::VectorEndpoint).with_local_position((100., 0.)),
+                Endpoint::default(),
+                InternalObject,
+            ))
             .set_parent(vector_graphic)
             .uid();
         let e2 = builder
-            .spawn((ObjectBundle::default().with_local_position((100., 100.)), Endpoint::default(), InternalObject))
+            .spawn((
+                ObjectBundle::new(ObjectType::VectorEndpoint).with_local_position((100., 100.)),
+                Endpoint::default(),
+                InternalObject,
+            ))
             .set_parent(vector_graphic)
             .uid();
         let e3 = builder
-            .spawn((ObjectBundle::default().with_local_position((0., 100.)), Endpoint::default(), InternalObject))
+            .spawn((
+                ObjectBundle::new(ObjectType::VectorEndpoint).with_local_position((0., 100.)),
+                Endpoint::default(),
+                InternalObject,
+            ))
             .set_parent(vector_graphic)
             .uid();
 
         builder
             .spawn_edge(EdgeVariant::Line, e0, e1)
+            // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
         builder
             .spawn_edge(EdgeVariant::Line, e1, e2)
+            // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
         builder
             .spawn_edge(EdgeVariant::Line, e2, e3)
+            // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
         builder
             .spawn_edge(EdgeVariant::Line, e3, e0)
+            // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
 
         let changeset = builder.build();

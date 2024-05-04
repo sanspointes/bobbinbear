@@ -10,13 +10,15 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 use bevy_spts_uid::Uid;
+use serde::{Deserialize, Serialize};
+use tsify::Tsify;
+use wasm_bindgen::prelude::*;
 
 use crate::plugins::selected::Selected;
 
 use self::position::Position;
 
 pub mod core;
-pub mod node;
 pub mod position;
 
 #[derive(Component, Reflect)]
@@ -24,7 +26,7 @@ pub mod position;
 /// Marker component for an object that should not be visible in the frontend / editor.
 pub struct InternalObject;
 
-#[derive(Bundle, Reflect, Default)]
+#[derive(Bundle, Reflect)]
 #[reflect(Bundle)]
 /// Creates a scene object
 ///
@@ -36,6 +38,7 @@ pub struct InternalObject;
 /// * `view_visibility`:
 /// * `inherited_visibility`:
 pub struct ObjectBundle {
+    object_type: ObjectType,
     position: Position,
     selected: Selected,
 
@@ -47,14 +50,43 @@ pub struct ObjectBundle {
     inherited_visibility: InheritedVisibility,
 }
 
+#[allow(useless_deprecated)]
+impl Default for ObjectBundle {
+    #[deprecated = "Default only supplied for reflect.  Use new()."]
+    fn default() -> Self {
+        Self {
+            object_type: ObjectType::default(),
+            position: Position::default(),
+            selected: Selected::default(),
+
+            transform: Transform::default(),
+            global_transform: GlobalTransform::default(),
+
+            visibility: Visibility::default(),
+            view_visibility: ViewVisibility::default(),
+            inherited_visibility: InheritedVisibility::default(),
+        }
+    }
+}
+
 impl ObjectBundle {
+    pub fn new(object_type: ObjectType) -> Self {
+        Self {
+            object_type,
+            ..Default::default()
+        }
+    }
+
     pub fn proxy_viewport(target: Uid) -> Self {
         Self {
             position: Position::ProxyViewport {
                 target,
                 target_world_position: Vec3::ZERO,
             },
-            selected: Selected::Proxy { target, selected: false },
+            selected: Selected::Proxy {
+                target,
+                selected: false,
+            },
             ..Default::default()
         }
     }
@@ -67,5 +99,31 @@ impl ObjectBundle {
     pub fn with_z_position(mut self, z: f32) -> Self {
         self.transform.translation.z = z;
         self
+    }
+}
+
+pub use definitions::ObjectType;
+
+#[allow(non_snake_case, clippy::empty_docs)]
+mod definitions {
+    use bevy::{
+        ecs::{component::Component, reflect::ReflectComponent},
+        reflect::Reflect,
+    };
+    use serde::{Deserialize, Serialize};
+    use tsify::Tsify;
+    use wasm_bindgen::prelude::*;
+
+    #[derive(Debug, Component, Reflect, Default, Clone, Copy)]
+    #[reflect(Component)]
+    #[derive(Tsify, Serialize, Deserialize)]
+    #[tsify(into_wasm_abi, from_wasm_abi)]
+    pub enum ObjectType {
+        #[default]
+        Unknown,
+        Vector,
+        VectorSegment,
+        VectorEndpoint,
+        VectorCtrl,
     }
 }

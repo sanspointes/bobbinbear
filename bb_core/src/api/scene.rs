@@ -6,7 +6,7 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::{ecs::{position::Position, InternalObject}, plugins::{
+use crate::{ecs::{position::Position, InternalObject, ObjectType}, plugins::{
     inspecting::Inspected,
     selected::Selected,
     undoredo::{UndoRedoApi, UndoRedoResult},
@@ -22,6 +22,8 @@ mod definitions {
     use serde::{Deserialize, Serialize};
     use tsify::Tsify;
     use wasm_bindgen::prelude::*;
+
+    use crate::ecs::ObjectType;
     #[wasm_bindgen(typescript_custom_section)]
     const TS_APPEND_CONTENT: &'static str = r#"
 export type Vec2 = [number, number]; 
@@ -31,6 +33,7 @@ export type Uid = string;
     #[derive(Tsify, Serialize, Deserialize)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     pub struct DetailedObject {
+        pub ty: ObjectType,
         pub uid: Uid,
         pub parent: Option<Uid>,
         pub name: Option<String>,
@@ -69,12 +72,13 @@ impl SceneApi {
         });
 
         Ok(world
-            .query_filtered::<(&Uid, Option<&Name>, &Visibility, &Transform, &Selected, Option<&Inspected>), Without<InternalObject>>()
+            .query_filtered::<(&Uid, &ObjectType, Option<&Name>, &Visibility, &Transform, &Selected, Option<&Inspected>), Without<InternalObject>>()
             .get(world, entity)
             .ok()
             .map(
-                |(uid, name, visibility, transform, selected, inspected)| DetailedObject {
+                |(uid, ty, name, visibility, transform, selected, inspected)| DetailedObject {
                     uid: *uid,
+                    ty: *ty,
                     name: name.map(|name| name.to_string()),
 
                     parent,

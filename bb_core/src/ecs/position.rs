@@ -12,7 +12,7 @@ use crate::plugins::viewport::Viewport;
 #[reflect(Component)]
 pub enum Position {
     Local(Vec2),
-    /// ViewportOfWorld automatically positions this element in the camera viewport (in the same position visually) 
+    /// ProxyViewport automatically positions this element in the camera viewport (in the same position visually) 
     /// as the target entity.
     ProxyViewport {
         target: Uid,
