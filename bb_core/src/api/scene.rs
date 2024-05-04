@@ -6,19 +6,22 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::{ecs::{Position, InternalObject, ObjectType}, plugins::{
-    inspecting::Inspected,
-    selected::Selected,
-    undoredo::{UndoRedoApi, UndoRedoResult},
-}};
+use crate::{
+    ecs::{InternalObject, ObjectType, Position, ProxiedPosition, ProxiedPositionStrategy},
+    plugins::{
+        inspecting::Inspected,
+        selected::Selected,
+        undoredo::{UndoRedoApi, UndoRedoResult},
+    },
+};
 
 #[allow(unused_imports)]
 pub use self::definitions::*;
 
 #[allow(non_snake_case)]
 mod definitions {
-    use bevy_spts_uid::Uid;
     use bevy::math::Vec2;
+    use bevy_spts_uid::Uid;
     use serde::{Deserialize, Serialize};
     use tsify::Tsify;
     use wasm_bindgen::prelude::*;
@@ -62,17 +65,30 @@ impl SceneApi {
             return Ok(None);
         };
         let parent = world.query::<&Parent>().get(world, entity).ok();
-        let parent = parent.and_then(|parent| {
-            world.get::<Uid>(**parent).copied()
-        });
-        let children = world.query::<&Children>().get(world, entity).ok().map(|c| c.to_vec());
+        let parent = parent.and_then(|parent| world.get::<Uid>(**parent).copied());
+        let children = world
+            .query::<&Children>()
+            .get(world, entity)
+            .ok()
+            .map(|c| c.to_vec());
         let children = children.map(|children| {
             let mut q_uids = world.query::<&Uid>();
-            children.iter().filter_map(|e| q_uids.get(world, *e).ok().copied()).collect::<Vec<_>>()
+            children
+                .iter()
+                .filter_map(|e| q_uids.get(world, *e).ok().copied())
+                .collect::<Vec<_>>()
         });
 
         Ok(world
-            .query_filtered::<(&Uid, &ObjectType, Option<&Name>, &Visibility, &Transform, &Selected, Option<&Inspected>), Without<InternalObject>>()
+            .query_filtered::<(
+                &Uid,
+                &ObjectType,
+                Option<&Name>,
+                &Visibility,
+                &Transform,
+                &Selected,
+                Option<&Inspected>,
+            ), Without<InternalObject>>()
             .get(world, entity)
             .ok()
             .map(
@@ -152,23 +168,17 @@ impl SceneApi {
             .entity(world)
             .ok_or_else(|| anyhow!("No entity for uid {uid}."))?;
 
-        let mut position = *world
-            .get::<Position>(entity)
-            .ok_or_else(|| anyhow!("No `Position` component on entity with uid {uid}."))?;
+        let (_, proxy) = world
+            .query::<(&Position, Option<&ProxiedPosition>)>()
+            .get(world, entity)
+            .map_err(|err| anyhow!("Can't get `Position` of {uid}. {err}"))?;
 
-        match position {
-            Position::Local(ref mut pos) => {
-                pos.x = x;
-                pos.y = y;
-            }
-            Position::ProxyViewport { target, target_world_position } => {
-                todo!("Add logic for proxyviewport to effect the target's local positon.")
-            }
+        if proxy.is_some() {
+            todo!("Handle `set_position` for when target uid is a proxy.");
         }
 
-
         let mut builder = world.changeset();
-        builder.entity(uid).apply(position);
+        builder.entity(uid).apply(Position::new((x, y)));
         let changeset = builder.build();
 
         let result = UndoRedoApi::execute(world, changeset)?;

@@ -2,16 +2,16 @@
 
 mod api;
 mod material;
-mod systems;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*, sprite::Material2dPlugin};
-use bevy_spts_uid::Uid;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
-use self::{material::SelectionBoundsMaterial, systems::sys_update_selected_proxies};
+use crate::ecs::{sys_update_proxied_component, ProxiedComponent};
 
-#[derive(Component, Reflect, Default, Tsify, Serialize, Deserialize)]
+use self::material::SelectionBoundsMaterial;
+
+#[derive(Component, Reflect, Default, Tsify, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[reflect(Component)]
 #[tsify(into_wasm_abi, from_wasm_abi)]
 /// Component defining whether or not object is selected.
@@ -19,20 +19,15 @@ pub enum Selected {
     #[default]
     Deselected,
     Selected,
-    // Proxy copies the Selected value of a different entity.  Mainly used for `InternalObjects`
-    // to make this element act as if it's another element.
-    Proxy {
-        target: Uid,
-        selected: bool,
-    },
 }
+
+pub type ProxiedSelected = ProxiedComponent<Selected>;
 
 impl Selected {
     pub fn is_selected(&self) -> bool {
         match self {
             Self::Deselected => false,
             Self::Selected => true,
-            Self::Proxy { selected, .. } => *selected,
         }
     }
 }
@@ -76,8 +71,9 @@ impl Plugin for SelectedPlugin {
         //         First,
         //         sys_selection_raycast_update_ray.before(RaycastSystem::BuildRays::<Selectable>),
         //     );
-        app.add_systems(PostUpdate, sys_update_selected_proxies);
+        app.add_systems(PostUpdate, sys_update_proxied_component::<Selected>);
         app.register_type::<Selected>()
+            .register_type::<ProxiedComponent<Selected>>()
             .register_type::<Selectable>();
     }
 }

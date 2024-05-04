@@ -20,7 +20,7 @@ use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
-use ecs::position::{sys_pre_update_positions, sys_update_positions, Position};
+use ecs::position::{sys_update_positions, sys_update_proxied_component_position_state, Position};
 use ecs::{InternalObject, ObjectType};
 use materials::BobbinMaterialsPlugin;
 use meshes::BobbinMeshesPlugin;
@@ -67,7 +67,7 @@ pub fn setup(app: &mut App) {
 
     app.add_systems(
         PostUpdate,
-        (sys_pre_update_positions.pipe(sys_update_positions))
+        (sys_update_proxied_component_position_state.pipe(sys_update_positions))
             .after(TransformSystem::TransformPropagate),
     );
     app.add_systems(Last, propagate_transforms);

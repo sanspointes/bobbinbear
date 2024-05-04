@@ -67,7 +67,7 @@ impl DebugApi {
             .uid();
         let e1 = builder
             .spawn((
-                ObjectBundle::new(ObjectType::VectorEndpoint).with_local_position((100., 0.)),
+                ObjectBundle::new(ObjectType::VectorEndpoint).with_position((100., 0.)),
                 Endpoint::default(),
                 InternalObject,
             ))
@@ -75,7 +75,7 @@ impl DebugApi {
             .uid();
         let e2 = builder
             .spawn((
-                ObjectBundle::new(ObjectType::VectorEndpoint).with_local_position((100., 100.)),
+                ObjectBundle::new(ObjectType::VectorEndpoint).with_position((100., 100.)),
                 Endpoint::default(),
                 InternalObject,
             ))
@@ -83,7 +83,7 @@ impl DebugApi {
             .uid();
         let e3 = builder
             .spawn((
-                ObjectBundle::new(ObjectType::VectorEndpoint).with_local_position((0., 100.)),
+                ObjectBundle::new(ObjectType::VectorEndpoint).with_position((0., 100.)),
                 Endpoint::default(),
                 InternalObject,
             ))

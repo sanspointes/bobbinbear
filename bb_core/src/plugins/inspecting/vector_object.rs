@@ -5,7 +5,7 @@ use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::Endpoint;
 
 use crate::{
-    ecs::{InternalObject, ObjectBundle}, materials::UiElMaterial, meshes::BobbinMeshes, plugins::{effect::Effect, selected::Selected, viewport::BobbinViewport}
+    ecs::{InternalObject, ObjectBundle, ObjectType, ProxiedObjectBundle}, materials::UiElMaterial, meshes::BobbinMeshes, plugins::{effect::Effect, selected::Selected, viewport::BobbinViewport}
 };
 
 use super::BecauseInspected;
@@ -105,7 +105,8 @@ pub fn handle_inspect_vector_object_endpoints(
 
 
         to_spawn.push((
-            ObjectBundle::proxy_viewport(endpoint_uid).with_z_position(1.),
+            ObjectBundle::new(ObjectType::VectorEndpoint).with_z_position(1.),
+            ProxiedObjectBundle::new(endpoint_uid),
             BecauseInspected(inspected),
             InternalObject,
             uid,

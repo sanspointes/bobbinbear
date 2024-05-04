@@ -1,10 +1,10 @@
-use bevy::ecs::world::World;
+use bevy::ecs::{query::Without, world::World};
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::plugins::undoredo::UndoRedoApi;
+use crate::{ecs::ProxiedComponent, plugins::undoredo::UndoRedoApi};
 
 use super::Selected;
 
@@ -29,12 +29,11 @@ pub struct SelectedApi;
 impl SelectedApi {
     fn query_selected_uids(world: &mut World) -> Vec<Uid> {
         let to_deselect: Vec<_> = world
-            .query::<(&Uid, &Selected)>()
+            .query_filtered::<(&Uid, &Selected), Without<ProxiedComponent<Selected>>>()
             .iter(world)
             .filter_map(|(uid, selected)| match selected {
                 Selected::Selected => Some(*uid),
                 Selected::Deselected => None,
-                Selected::Proxy { .. } => None,
             })
             .collect();
         to_deselect
@@ -62,9 +61,9 @@ impl SelectedApi {
         selected: Selected,
     ) -> Result<(), anyhow::Error> {
         let entity = uid.entity(world).unwrap();
-        let target = match world.get::<Selected>(entity).unwrap() {
-            Selected::Proxy { target, .. } => *target,
-            _ => uid,
+        let target = match world.get::<ProxiedComponent<Selected>>(entity) {
+            Some(proxy) => *proxy.target(),
+            None => uid,
         };
 
         let mut changeset = world.changeset();
@@ -82,9 +81,9 @@ impl SelectedApi {
         selected: Selected,
     ) -> Result<(), anyhow::Error> {
         let entity = uid.entity(world).unwrap();
-        let target = match world.get::<Selected>(entity).unwrap() {
-            Selected::Proxy { target, .. } => *target,
-            _ => uid,
+        let target = match world.get::<ProxiedComponent<Selected>>(entity) {
+            Some(proxy) => *proxy.target(),
+            None => uid,
         };
 
         let to_deselect = SelectedApi::query_selected_uids(world);
