@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::anyhow;
 
 use bevy_ecs::{event::Events, world::World};
-use bevy_hierarchy::{BuildWorldChildren, Children, DespawnRecursiveExt, Parent};
+use bevy_hierarchy::{BuildWorldChildren, Children, Parent};
 use bevy_reflect::Typed;
 use bevy_spts_fragments::prelude::{HierarchyFragment, Uid};
 

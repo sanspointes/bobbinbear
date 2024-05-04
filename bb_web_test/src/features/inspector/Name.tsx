@@ -3,9 +3,12 @@ import { useBobbinBear } from '../../hooks/useBobbinBear';
 import { Card, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { TbFocus, TbX } from 'solid-icons/tb';
+import { Show } from 'solid-js';
+import { ObjectType } from 'bb_core';
 
 type NameProps = {
     uid: string;
+    ty: ObjectType,
     name: string | undefined;
 };
 
@@ -14,22 +17,26 @@ export function Name(props: NameProps) {
     const { setName, inspect, deleteObject } = document;
     return (
         <Card>
-            <CardTitle class="mb-2">
+            <CardTitle class="flex justify-between items-center mb-2">
                 Name{' '}
-                <Button
-                    size="sm"
-                    class="bg-yellow-600 hover:bg-yellow-700"
-                    onClick={() => inspect(props.uid)}
-                >
-                    <TbFocus />
-                </Button>
-                <Button
-                    size="sm"
-                    class="bg-red-600 hover:bg-red-700"
-                    onClick={() => deleteObject(props.uid)}
-                >
-                    <TbX />
-                </Button>
+                <div class="flex gap-2 items-center">
+                    <Show when={props.ty === 'Vector'}>
+                        <Button
+                            size="sm"
+                            class="bg-yellow-600 hover:bg-yellow-700"
+                            onClick={() => inspect(props.uid)}
+                        >
+                            <TbFocus /> Inspect
+                        </Button>
+                    </Show>
+                    <Button
+                        size="sm"
+                        class="bg-red-600 hover:bg-red-700"
+                        onClick={() => deleteObject(props.uid)}
+                    >
+                        <TbX /> Delete
+                    </Button>
+                </div>
             </CardTitle>
 
             <span class="text-xs font-thin text-gray-400">{props.uid}</span>

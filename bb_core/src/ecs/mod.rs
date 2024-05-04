@@ -1,4 +1,9 @@
 pub mod core;
-pub mod node;
-pub mod synced_position;
 pub mod position;
+pub mod object;
+pub mod proxy;
+
+pub use core::*;
+pub use position::*;
+pub use object::*;
+pub use proxy::*;

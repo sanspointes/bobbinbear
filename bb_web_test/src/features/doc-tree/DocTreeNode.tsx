@@ -20,7 +20,7 @@ type DocTreeNodeProps = {
 };
 export function DocTreeNode(props: DocTreeNodeProps) {
     const { document } = useBobbinBear();
-    const { setVisible, selectSingle } = document;
+    const { setVisible, selectSingle, inspect, hover, unhover } = document;
     const [expanded, setExpanded] = createSignal(true);
 
     const childObjects = createMemo(() => {
@@ -33,13 +33,15 @@ export function DocTreeNode(props: DocTreeNodeProps) {
     });
     const showExpandButton = createMemo(() => !!childObjects());
 
-    createEffect(() => {
-        console.log(
-            `object(${props.object.uid}) child objects`,
-            childObjects(),
-            showExpandButton(),
-        );
-    });
+    let pointerInside = false;
+    const handlePointerEnter = () => {
+        if (!pointerInside) hover(props.object.uid);
+        pointerInside = true;
+    }
+    const handlePointerLeave = () => {
+        if (pointerInside) unhover(props.object.uid);
+        pointerInside = false;
+    }
     return (
         <Collapsible
             open={expanded()}
@@ -50,10 +52,13 @@ export function DocTreeNode(props: DocTreeNodeProps) {
                 classList={{
                     'bg-orange-100': props.object.selected,
                 }}
+                onPointerEnter={handlePointerEnter}
+                onPointerLeave={handlePointerLeave}
             >
                 <div
                     class="flex relative gap-2 items-center py-1 select-none"
                     style={{ 'margin-left': `${props.indent * 12}px` }}
+                    onDblClick={() => inspect(props.object.uid)}
                     onClick={async (e) => {
                         selectSingle(props.object.uid);
                         e.stopPropagation();

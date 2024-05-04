@@ -36,7 +36,18 @@ export function useBBDocument() {
                         if (result.status === 'rejected') continue;
 
                         const [uid, obj] = result.value;
-                        if (obj) objects.set(uid, obj);
+                        if (!obj) continue;
+
+                        const curr = objects.get(uid)
+                        if (curr) {
+                            for (const k in obj) {
+                                if (k === 'uid') continue;
+                                // @ts-expect-error: Untyped keyof DetailedObject
+                                curr[k] = obj[k];
+                            }
+                        } else {
+                            objects.set(uid, obj);
+                        }
                     }
                 });
             });
@@ -77,6 +88,14 @@ export function useBBDocument() {
     const selectSingle = (uid: string) => {
         return selectedApi.deselect_all_set_object_selected(uid, 'Selected');
     };
+    const hover = (uid: string) => {
+        console.log(`document.hover(uid: ${uid})`);
+        return selectedApi.set_object_hovered(uid, 'Hovered');
+    };
+    const unhover = (uid: string) => {
+        console.log(`document.unhover(uid: ${uid})`);
+        return selectedApi.set_object_hovered(uid, 'Unhovered');
+    };
     const deleteObject = (uid: string) => {
         return sceneApi.delete(uid);
     };
@@ -94,5 +113,8 @@ export function useBBDocument() {
         deleteObject,
 
         selectSingle,
+
+        hover,
+        unhover,
     };
 }

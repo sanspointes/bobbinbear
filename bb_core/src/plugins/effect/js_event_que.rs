@@ -36,17 +36,20 @@ impl EffectQue {
 
     pub fn forward_effects_to_js(&mut self) {
         // Drain the receiver and push all events to the events vector
+        let mut had_effect = false;
         let mut events_array = JsArrayBuilder::new();
         loop {
             match self.receiver.lock().unwrap().try_recv() {
                 Ok(event) => {
+                    had_effect = true;
                     events_array = events_array.with_js_value(&serde_wasm_bindgen::to_value(&event).unwrap());
                 },
                 Err(TryRecvError::Empty) => break,
                 Err(TryRecvError::Disconnected) => break,
             }
         }
-
-        receiveRustEvents(events_array.build_as_js_value());
+        if had_effect {
+            receiveRustEvents(events_array.build_as_js_value());
+        }
     }
 }

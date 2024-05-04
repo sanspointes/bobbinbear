@@ -13,7 +13,7 @@ use bevy::{
     sprite::ColorMaterial,
     transform::components::{GlobalTransform, Transform},
 };
-use bevy_spts_changeset::{changes::ChangeSet, resource::ChangesetResource};
+use bevy_spts_changeset::prelude::{ChangeSet, ChangesetResource};
 
 #[allow(unused_imports)]
 pub use api::{UndoRedoApi, UndoRedoResult};

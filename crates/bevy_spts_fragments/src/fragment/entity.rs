@@ -1,5 +1,7 @@
 use bevy_ecs::{
-    entity::Entity, system::ResMut, world::{EntityWorldMut, Mut, World}
+    entity::Entity,
+    system::ResMut,
+    world::{EntityWorldMut, Mut, World},
 };
 use bevy_hierarchy::BuildWorldChildren;
 use bevy_reflect::TypeRegistry;
@@ -12,7 +14,7 @@ use thiserror::Error;
 
 use crate::prelude::Uid;
 
-use super::component::{ComponentFragment, ComponentFragmentError};
+use super::{component::ComponentFragmentError, BundleFragment};
 
 #[derive(Debug, Clone, Error)]
 pub enum EntityFragmentNewError {
@@ -39,49 +41,16 @@ impl From<ComponentFragmentError> for EntityFragmentSpawnError {
 #[derive(Debug, Clone)]
 pub struct EntityFragment {
     uid: Uid,
-    components: Vec<ComponentFragment>,
+    bundle: BundleFragment,
 }
 
 impl EntityFragment {
-    pub fn new(uid: Uid, components: Vec<ComponentFragment>) -> Self {
-        Self { uid, components }
+    pub fn new(uid: Uid, bundle: BundleFragment) -> Self {
+        Self { uid, bundle }
     }
 
     pub fn uid(&self) -> Uid {
         self.uid
-    }
-
-    pub(crate) fn components_from_entity(
-        world: &mut World,
-        type_registry: &TypeRegistry,
-        filter: &SceneFilter,
-        entity: Entity,
-    ) -> Result<Vec<ComponentFragment>, EntityFragmentNewError> {
-        let entity_ref = world
-            .get_entity(entity)
-            .ok_or(EntityFragmentNewError::NoMatchingEntity { entity })?;
-        let mut components = vec![];
-
-        for comp_id in entity_ref.archetype().components() {
-            let component_fragment = world
-                .components()
-                .get_info(comp_id)
-                .and_then(|c| c.type_id())
-                .and_then(|id| {
-                    if filter.is_allowed_by_id(id) {
-                        Some(id)
-                    } else {
-                        None
-                    }
-                })
-                .and_then(|id| ComponentFragment::from_type_id(type_registry, &entity_ref, id));
-
-            if let Some(cf) = component_fragment {
-                components.push(cf);
-            }
-        }
-
-        Ok(components)
     }
 
     fn from_world(
@@ -91,8 +60,8 @@ impl EntityFragment {
         uid: Uid,
         entity: Entity,
     ) -> Result<Self, EntityFragmentNewError> {
-        let components = EntityFragment::components_from_entity(world, type_registry, filter, entity)?;
-        Ok(EntityFragment::new(uid, components))
+        let bundle = BundleFragment::from_world(world, type_registry, filter, entity)?;
+        Ok(EntityFragment::new(uid, bundle))
     }
 
     pub fn from_world_uid(
@@ -119,15 +88,29 @@ impl EntityFragment {
         Self::from_world(world, type_registry, filter, uid, entity)
     }
 
+    fn despawn_from_world(
+        world: &mut World,
+        type_registry: &TypeRegistry,
+        filter: &SceneFilter,
+        uid: Uid,
+        entity: Entity,
+    ) -> Result<Self, EntityFragmentNewError> {
+        let bundle = BundleFragment::from_world(world, type_registry, filter, entity)?;
+        world.despawn(entity);
+        world.resource_mut::<UidRegistry>().unregister(uid);
+        Ok(EntityFragment::new(uid, bundle))
+    }
+
     pub fn despawn_from_world_uid(
         world: &mut World,
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         uid: Uid,
     ) -> Result<Self, EntityFragmentNewError> {
-        let fragment = Self::from_world_uid(world, type_registry, filter, uid)?;
-        world.resource_mut::<UidRegistry>().unregister(fragment.uid);
-        Ok(fragment)
+        let entity = uid
+            .entity(world)
+            .ok_or(EntityFragmentNewError::NoMatchingUid { uid })?;
+        Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
 
     pub fn despawn_from_world_entity(
@@ -136,9 +119,10 @@ impl EntityFragment {
         filter: &SceneFilter,
         entity: Entity,
     ) -> Result<Self, EntityFragmentNewError> {
-        let fragment = Self::from_world_entity(world, type_registry, filter, entity)?;
-        world.resource_mut::<UidRegistry>().unregister(fragment.uid);
-        Ok(fragment)
+        let uid = *world
+            .get::<Uid>(entity)
+            .ok_or(EntityFragmentNewError::NoMatchingEntity { entity })?;
+        Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
 
     pub fn spawn_in_world<'ewm, 'w: 'ewm>(
@@ -148,9 +132,7 @@ impl EntityFragment {
     ) -> Result<Entity, EntityFragmentSpawnError> {
         let mut entity_mut = world.spawn(self.uid);
 
-        for comp in &self.components {
-            comp.insert_to_entity_world_mut(type_registry, &mut entity_mut)?;
-        }
+        self.bundle.insert(&mut entity_mut, type_registry)?;
 
         let id = entity_mut.id();
         world.resource_mut::<UidRegistry>().register(self.uid, id);
@@ -181,4 +163,3 @@ impl EntityFragment {
         self.spawn_in_world_with_parent_entity(world, type_registry, parent)
     }
 }
-

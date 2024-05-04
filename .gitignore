@@ -13,3 +13,4 @@ public/dist
 packages/solixi/types/
 
 target
+.direnv

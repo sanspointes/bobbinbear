@@ -35,6 +35,7 @@ wasm-bindgen-futures = "0.4.41"
 anyhow = "1.0.79"
 tsify = {version = "0.4.5", default-features = false, features = ["js", "wasm-bindgen"]}
 bevy-inspector-egui = "0.24.0"
+bevy_mod_raycast = "0.17.0"
 
 
 

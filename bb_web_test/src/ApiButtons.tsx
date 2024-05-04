@@ -6,7 +6,7 @@ export function ApiButtons() {
     const debugApi = new DebugApi();
     const undoRedoApi = new UndoRedoApi();
     const viewportApi = new ViewportApi();
-    const handleSpawnNode = async () => {
+    const handleSpawnBox = async () => {
         const x = -100 + Math.random() * 200;
         const y = -100 + Math.random() * 200;
         console.log(`JS: Trying to spawn circle at ${x} ${y}`);
@@ -34,7 +34,7 @@ export function ApiButtons() {
 
     return (
         <div class="flex gap-2">
-            <Button onClick={handleSpawnNode}>Spawn Circle</Button>
+            <Button onClick={handleSpawnBox}>Spawn Box</Button>
             <Button onClick={handleUndo}>Undo</Button>
             <Button onClick={handleRedo}>Redo</Button>
 

@@ -6,10 +6,13 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::plugins::{
-    inspecting::Inspected,
-    selected::Selected,
-    undoredo::{UndoRedoApi, UndoRedoResult},
+use crate::{
+    ecs::{InternalObject, ObjectType, Position, ProxiedPosition},
+    plugins::{
+        inspecting::Inspected,
+        selected::Selected,
+        undoredo::{UndoRedoApi, UndoRedoResult},
+    },
 };
 
 #[allow(unused_imports)]
@@ -17,11 +20,13 @@ pub use self::definitions::*;
 
 #[allow(non_snake_case)]
 mod definitions {
-    use bevy_spts_uid::Uid;
     use bevy::math::Vec2;
+    use bevy_spts_uid::Uid;
     use serde::{Deserialize, Serialize};
     use tsify::Tsify;
     use wasm_bindgen::prelude::*;
+
+    use crate::ecs::object::ObjectType;
     #[wasm_bindgen(typescript_custom_section)]
     const TS_APPEND_CONTENT: &'static str = r#"
 export type Vec2 = [number, number]; 
@@ -31,6 +36,7 @@ export type Uid = string;
     #[derive(Tsify, Serialize, Deserialize)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     pub struct DetailedObject {
+        pub ty: ObjectType,
         pub uid: Uid,
         pub parent: Option<Uid>,
         pub name: Option<String>,
@@ -59,22 +65,36 @@ impl SceneApi {
             return Ok(None);
         };
         let parent = world.query::<&Parent>().get(world, entity).ok();
-        let parent = parent.and_then(|parent| {
-            world.get::<Uid>(**parent).copied()
-        });
-        let children = world.query::<&Children>().get(world, entity).ok().map(|c| c.to_vec());
+        let parent = parent.and_then(|parent| world.get::<Uid>(**parent).copied());
+        let children = world
+            .query::<&Children>()
+            .get(world, entity)
+            .ok()
+            .map(|c| c.to_vec());
         let children = children.map(|children| {
             let mut q_uids = world.query::<&Uid>();
-            children.iter().filter_map(|e| q_uids.get(world, *e).ok().copied()).collect::<Vec<_>>()
+            children
+                .iter()
+                .filter_map(|e| q_uids.get(world, *e).ok().copied())
+                .collect::<Vec<_>>()
         });
 
         Ok(world
-            .query::<(&Uid, Option<&Name>, &Visibility, &Transform, &Selected, Option<&Inspected>)>()
+            .query_filtered::<(
+                &Uid,
+                &ObjectType,
+                Option<&Name>,
+                &Visibility,
+                &Transform,
+                &Selected,
+                Option<&Inspected>,
+            ), Without<InternalObject>>()
             .get(world, entity)
             .ok()
             .map(
-                |(uid, name, visibility, transform, selected, inspected)| DetailedObject {
+                |(uid, ty, name, visibility, transform, selected, inspected)| DetailedObject {
                     uid: *uid,
+                    ty: *ty,
                     name: name.map(|name| name.to_string()),
 
                     parent,
@@ -144,18 +164,14 @@ impl SceneApi {
         x: f32,
         y: f32,
     ) -> Result<UndoRedoResult, anyhow::Error> {
-        let entity = uid
-            .entity(world)
-            .ok_or_else(|| anyhow!("No entity for uid {uid}."))?;
-
-        let mut transform = *world
-            .get::<Transform>(entity)
-            .ok_or_else(|| anyhow!("No `Transform` component on entity with uid {uid}."))?;
-        transform.translation.x = x;
-        transform.translation.y = y;
+        let entity = uid.entity(world).unwrap();
+        let target = match world.get::<ProxiedPosition>(entity) {
+            Some(proxy) => *proxy.target(),
+            None => uid,
+        };
 
         let mut builder = world.changeset();
-        builder.entity(uid).apply(transform);
+        builder.entity(target).apply(Position::new((x, y)));
         let changeset = builder.build();
 
         let result = UndoRedoApi::execute(world, changeset)?;
@@ -201,7 +217,12 @@ impl SceneApi {
     }
 
     pub fn delete(world: &mut World, uid: Uid) -> Result<UndoRedoResult, anyhow::Error> {
+        let entity = uid.entity(world).unwrap();
+        let is_inspected = world.get::<Inspected>(entity).is_some();
         let mut builder = world.changeset();
+        if is_inspected {
+            builder.entity(uid).remove::<Inspected>();
+        }
         builder.entity(uid).despawn_recursive();
         let changeset = builder.build();
 
