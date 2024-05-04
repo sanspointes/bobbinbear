@@ -37,7 +37,7 @@ fn bundle_to_component_array_recursive(
                 bundle_to_component_array_recursive(el, type_registry, out);
             }
         }
-        _ => panic!("bevy_spts_fragments: Error converting bundle to BundleFragment.  Only Struct/Tuple objects are supported.")
+        _ => panic!("bevy_spts_fragments: Error converting bundle to BundleFragment .\nOnly tuple/struct bundles are supported.\nAll components must be registered in the type registry.\n\nobject: {object:?}")
     }
 }
 
