@@ -29,14 +29,14 @@ pub struct UiElState {
 
 #[derive(Asset, AsBindGroup, Reflect, Debug, Clone)]
 #[reflect(Default, Debug)]
-pub struct UiElMaterial {
+pub struct UiElementMaterial {
     #[uniform(0)]
     pub state: UiElState,
     #[uniform(1)]
     pub theme_color: Color,
 }
 
-impl Default for UiElMaterial {
+impl Default for UiElementMaterial {
     fn default() -> Self {
         Self {
             state: UiElState::default(),
@@ -45,7 +45,7 @@ impl Default for UiElMaterial {
     }
 }
 
-impl UiElMaterial {
+impl UiElementMaterial {
     pub fn get_hovered(&self) -> bool {
         self.state.hovered == 1
     }
@@ -68,7 +68,7 @@ impl UiElMaterial {
     }
 }
 
-impl Material2d for UiElMaterial {
+impl Material2d for UiElementMaterial {
     fn vertex_shader() -> ShaderRef {
         "shaders/ui_element_material.wgsl".into()
     }
@@ -99,8 +99,8 @@ impl Material2d for UiElMaterial {
 
 // TODO: Implement a resource that caches these materials so they can be re-used for instancing.
 pub fn sys_update_ui_element_materials(
-    mut material_store: ResMut<Assets<UiElMaterial>>,
-    mut q: Query<(&Selected, &Hovered, &Handle<UiElMaterial>)>,
+    mut material_store: ResMut<Assets<UiElementMaterial>>,
+    mut q: Query<(&Selected, &Hovered, &Handle<UiElementMaterial>)>,
 ) {
     for (selected, hovered, handle) in q.iter_mut() {
         if let Some(ui_el_material) = material_store.get_mut(handle) {
