@@ -6,7 +6,7 @@ use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
-use crate::{ecs::{position::Position, InternalObject, ObjectType}, plugins::{
+use crate::{ecs::{Position, InternalObject, ObjectType}, plugins::{
     inspecting::Inspected,
     selected::Selected,
     undoredo::{UndoRedoApi, UndoRedoResult},
@@ -23,7 +23,7 @@ mod definitions {
     use tsify::Tsify;
     use wasm_bindgen::prelude::*;
 
-    use crate::ecs::ObjectType;
+    use crate::ecs::object::ObjectType;
     #[wasm_bindgen(typescript_custom_section)]
     const TS_APPEND_CONTENT: &'static str = r#"
 export type Vec2 = [number, number]; 

@@ -6,7 +6,7 @@ use bevy::{
     window::{PrimaryWindow, WindowResized},
 };
 
-use crate::plugins::viewport::Viewport;
+use crate::plugins::viewport::BobbinViewport;
 
 pub fn sys_setup_viewport(mut commands: Commands) {
     println!("Setup viewport");
@@ -18,14 +18,14 @@ pub fn sys_setup_viewport(mut commands: Commands) {
             },
             ..Default::default()
         })
-        .insert(Viewport::default())
+        .insert(BobbinViewport::default())
         .insert(Name::from("Viewport"));
 }
 
 pub fn sys_update_viewport_on_window_resize(
     mut ev_resize: EventReader<WindowResized>,
     q_window: Query<&Window, With<PrimaryWindow>>,
-    mut q_viewport: Query<&mut Viewport>,
+    mut q_viewport: Query<&mut BobbinViewport>,
 ) {
     let window = q_window.single();
     let mut viewport = q_viewport.single_mut();
@@ -40,7 +40,7 @@ pub fn sys_update_viewport_on_window_resize(
 }
 
 pub fn sys_update_camera_from_viewport(
-    mut q_viewport: Query<(&Viewport, &mut Transform), Without<Camera>>,
+    mut q_viewport: Query<(&BobbinViewport, &mut Transform), Without<Camera>>,
     mut q_primary_camera: Query<(&mut OrthographicProjection, &mut Transform), With<Camera>>,
 ) {
     let (viewport, mut transform) = q_viewport.single_mut();

@@ -16,7 +16,7 @@ export function Inspector() {
     })
     return (
         <div class="flex flex-col gap-4 p-4">
-            <h1>{title()}</h1>
+            <h1 class=''>{title()}</h1>
             <Show when={selectedObject()}>
                 {(obj) => (
                     <>

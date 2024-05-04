@@ -14,7 +14,7 @@ pub struct ViewportPlugin;
 
 impl Plugin for ViewportPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<Viewport>()
+        app.register_type::<BobbinViewport>()
             .add_systems(
                 Startup,
                 (sys_setup_viewport, sys_setup_viewport_debug).chain(),
@@ -27,14 +27,14 @@ impl Plugin for ViewportPlugin {
 
 #[derive(Component, Reflect, Default, Debug, Copy, Clone, PartialEq)]
 #[reflect(Component)]
-pub struct Viewport {
+pub struct BobbinViewport {
     pub logical_size: Vec2,
     pub physical_size: Vec2,
     pub target_position: Vec2,
 }
 
 #[allow(dead_code)]
-impl Viewport {
+impl BobbinViewport {
     pub fn set_zoom(&mut self, zoom: f32) {
         todo!();
     }

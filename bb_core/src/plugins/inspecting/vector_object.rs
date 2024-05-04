@@ -5,7 +5,7 @@ use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::Endpoint;
 
 use crate::{
-    ecs::{InternalObject, ObjectBundle}, materials::UiElMaterial, meshes::BobbinMeshes, plugins::{effect::Effect, selected::Selected, viewport::Viewport}
+    ecs::{InternalObject, ObjectBundle}, materials::UiElMaterial, meshes::BobbinMeshes, plugins::{effect::Effect, selected::Selected, viewport::BobbinViewport}
 };
 
 use super::BecauseInspected;
@@ -123,7 +123,7 @@ pub fn handle_inspect_vector_object_endpoints(
     respond.push_back(Effect::EntitiesSpawned(spawned));
 
     let viewport = world
-        .query_filtered::<Entity, With<Viewport>>()
+        .query_filtered::<Entity, With<BobbinViewport>>()
         .single(world);
     for bundle in to_spawn {
         world.spawn(bundle).set_parent(viewport);

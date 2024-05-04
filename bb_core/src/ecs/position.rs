@@ -6,7 +6,7 @@
 use bevy::{ecs::reflect::ReflectComponent, prelude::*};
 use bevy_spts_uid::{Uid, UidRegistry};
 
-use crate::plugins::viewport::Viewport;
+use crate::plugins::viewport::BobbinViewport;
 
 #[derive(Component, Clone, Copy, Reflect)]
 #[reflect(Component)]
@@ -49,18 +49,18 @@ pub fn sys_pre_update_positions(
 }
 
 pub fn sys_update_positions(
-    q_camera: Query<(&Camera, &Viewport, &GlobalTransform), With<Camera>>,
-    mut q_positioned: Query<(&Position, &mut Transform, &GlobalTransform), Without<Camera>>,
+    q_camera: Query<(&Camera, &BobbinViewport, &GlobalTransform), With<Camera>>,
+    mut q_positioned: Query<(&Position, &mut Transform), Without<Camera>>,
 ) {
     let (camera, viewport, camera_global_transform) = q_camera.single();
 
-    for (position, mut transform, global_transform) in q_positioned.iter_mut() {
+    for (position, mut transform) in q_positioned.iter_mut() {
         match position {
             Position::Local(pos) => {
                 transform.translation.x = pos.x;
                 transform.translation.y = pos.y;
             }
-            Position::ProxyViewport { target, target_world_position } => {
+            Position::ProxyViewport { target: _, target_world_position } => {
                 if let Some(pos) = camera.world_to_ndc(camera_global_transform, *target_world_position) {
                     let pos = viewport.ndc_to_viewport(pos.xy());
                     transform.translation.x = pos.x;

@@ -6,7 +6,7 @@ use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
 use crate::{
-    ecs::{InternalObject, ObjectBundle, ObjectType},
+    ecs::object::{InternalObject, ObjectBundle, ObjectType},
     plugins::undoredo::{UndoRedoApi, UndoRedoResult},
 };
 

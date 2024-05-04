@@ -1,6 +1,6 @@
 use bevy::{prelude::*, sprite::MaterialMesh2dBundle};
 
-use super::Viewport;
+use super::BobbinViewport;
 
 #[derive(Component)]
 pub enum ViewportDebug {
@@ -14,7 +14,7 @@ pub fn sys_setup_viewport_debug(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<ColorMaterial>>,
-    q_viewport: Query<Entity, With<Viewport>>,
+    q_viewport: Query<Entity, With<BobbinViewport>>,
 ) {
     let mesh = meshes.add(Rectangle::new(20., 20.));
     let parent = q_viewport.single();
@@ -54,7 +54,7 @@ pub fn sys_setup_viewport_debug(
 }
 
 pub fn sys_update_viewport_debug_positions(
-    q_viewport: Query<&Viewport>,
+    q_viewport: Query<&BobbinViewport>,
     mut q_viewport_debug: Query<(&ViewportDebug, &mut Transform)>,
 ) {
     let viewport = q_viewport.single();

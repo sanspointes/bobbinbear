@@ -4,6 +4,7 @@ mod ecs;
 mod materials;
 mod meshes;
 mod plugins;
+mod tools;
 
 use bevy::asset::AssetMetaCheck;
 use bevy::input::common_conditions::input_toggle_active;
