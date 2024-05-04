@@ -13,16 +13,16 @@ use bevy::{
 
 
 pub const ATTRIBUTE_THEME_MIX: MeshVertexAttribute = MeshVertexAttribute::new("Vertex_ThemeMix", 3330, VertexFormat::Float32);
-use crate::plugins::selected::Selected;
+use crate::plugins::selected::{Hovered, Selected};
 
 #[repr(C)]
 #[derive(ShaderType, Debug, Clone, Default, Reflect)]
 #[reflect(Default, Debug)]
 pub struct UiElState {
     pub selected: u32,
+    pub hovered: u32,
 
     // Needs to be 16 byte aligned on wasm
-    _wasm_padding_8b: u32,
     _wasm_padding_12b: u32,
     _wasm_padding_16b: u32,
 }
@@ -46,6 +46,16 @@ impl Default for UiElMaterial {
 }
 
 impl UiElMaterial {
+    pub fn get_hovered(&self) -> bool {
+        self.state.hovered == 1
+    }
+    pub fn set_hovered(&mut self, hovered: bool) {
+        if hovered {
+            self.state.hovered = 1;
+        } else {
+            self.state.hovered = 0;
+        }
+    }
     pub fn get_selected(&self) -> bool {
         self.state.selected == 1
     }
@@ -87,14 +97,18 @@ impl Material2d for UiElMaterial {
     }
 }
 
+// TODO: Implement a resource that caches these materials so they can be re-used for instancing.
 pub fn sys_update_ui_element_materials(
     mut material_store: ResMut<Assets<UiElMaterial>>,
-    mut q: Query<(&Selected, &Handle<UiElMaterial>)>,
+    mut q: Query<(&Selected, &Hovered, &Handle<UiElMaterial>)>,
 ) {
-    for (selected, handle) in q.iter_mut() {
+    for (selected, hovered, handle) in q.iter_mut() {
         if let Some(ui_el_material) = material_store.get_mut(handle) {
             let is_selected = selected.is_selected();
             ui_el_material.set_selected(is_selected);
+
+            let is_hovered = hovered.is_hovered();
+            ui_el_material.set_hovered(is_hovered);
         }
     }
 }

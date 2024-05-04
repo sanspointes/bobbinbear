@@ -42,7 +42,7 @@ struct VertexOutput {
 
 struct State {
     selected: u32,
-    _wasm_padding_8b: u32,
+    hovered: u32,
     _wasm_padding_12b: u32,
     _wasm_padding_16b: u32,
 }
@@ -58,10 +58,14 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 #endif
 
 #ifdef VERTEX_POSITIONS
+    // Scale up if hovered
+    let scale = 1. + (f32(state.hovered) * 0.3);
+    let pos = vertex.position * scale;
+
     var model = mesh_functions::get_model_matrix(vertex.instance_index);
     let world_position = mesh_functions::mesh2d_position_local_to_world(
         model,
-        vec4<f32>(vertex.position, 1.0)
+        vec4<f32>(pos, 1.0)
     );
     out.position = mesh_functions::mesh2d_position_world_to_clip(world_position);
 #endif
@@ -104,6 +108,9 @@ fn fragment(
     var c = theme_color.rgb * theme_mix;
     if (theme_mix == 0.) {
         c = vec3<f32>(1., 1., 1.);
+    }
+    if (state.hovered == 1) {
+        c += vec3(0.25, 0.25, 0.25);
     }
     return vec4<f32>(c, 1.);
 #endif

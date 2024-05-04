@@ -12,7 +12,7 @@ use bevy::{
 use bevy_inspector_egui::bevy_egui::setup_new_windows_system;
 use bevy_spts_uid::Uid;
 
-use crate::plugins::selected::{ProxiedSelected, Selected};
+use crate::plugins::selected::{Hovered, ProxiedHovered, ProxiedSelected, Selected};
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
@@ -34,6 +34,7 @@ pub struct ObjectBundle {
     object_type: ObjectType,
     position: Position,
     selected: Selected,
+    hovered: Hovered,
 
     transform: Transform,
     global_transform: GlobalTransform,
@@ -51,6 +52,7 @@ impl Default for ObjectBundle {
             object_type: ObjectType::default(),
             position: Position::default(),
             selected: Selected::default(),
+            hovered: Hovered::default(),
 
             transform: Transform::default(),
             global_transform: GlobalTransform::default(),
@@ -84,15 +86,17 @@ impl ObjectBundle {
 #[derive(Bundle, Reflect)]
 #[reflect(Bundle)]
 pub struct ProxiedObjectBundle {
-    selected_proxy: ProxiedSelected,
     position_proxy: ProxiedPosition,
+    selected_proxy: ProxiedSelected,
+    hovered_proxy: ProxiedHovered,
 }
 
 impl ProxiedObjectBundle {
     pub fn new(target: Uid) -> Self {
         Self {
-            selected_proxy: ProxiedSelected::new(target, ()),
             position_proxy: ProxiedPosition::new(target, ProxiedPositionStrategy::Viewport { target_world_position: Vec3::ZERO }),
+            selected_proxy: ProxiedSelected::new(target, ()),
+            hovered_proxy: ProxiedHovered::new(target, ()),
         }
     }
 }

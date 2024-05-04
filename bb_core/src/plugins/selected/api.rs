@@ -6,7 +6,7 @@ use wasm_bindgen::prelude::*;
 
 use crate::{ecs::ProxiedComponent, plugins::undoredo::UndoRedoApi};
 
-use super::Selected;
+use super::{Hovered, ProxiedHovered, ProxiedSelected, Selected};
 
 #[allow(non_snake_case)]
 mod definitions {
@@ -28,12 +28,24 @@ pub struct SelectedApi;
 #[bevy_wasm_api]
 impl SelectedApi {
     fn query_selected_uids(world: &mut World) -> Vec<Uid> {
-        let to_deselect: Vec<_> = world
-            .query_filtered::<(&Uid, &Selected), Without<ProxiedComponent<Selected>>>()
+        let selected: Vec<_> = world
+            .query_filtered::<(&Uid, &Selected), Without<ProxiedSelected>>()
             .iter(world)
             .filter_map(|(uid, selected)| match selected {
                 Selected::Selected => Some(*uid),
                 Selected::Deselected => None,
+            })
+            .collect();
+        selected
+    }
+
+    fn query_hovered_uids(world: &mut World) -> Vec<Uid> {
+        let to_deselect: Vec<_> = world
+            .query_filtered::<(&Uid, &Hovered), Without<ProxiedHovered>>()
+            .iter(world)
+            .filter_map(|(uid, hovered)| match hovered {
+                Hovered::Hovered => Some(*uid),
+                Hovered::Unhovered => None,
             })
             .collect();
         to_deselect
@@ -98,30 +110,65 @@ impl SelectedApi {
         let changeset = changeset.build();
         UndoRedoApi::execute(world, changeset)?;
 
-        let selected = SelectedApi::query_selected_uids(world);
+        Ok(())
+    }
+
+    pub fn unhover_all(world: &mut World) -> Result<(), anyhow::Error> {
+        let hovered = Self::query_hovered_uids(world);
+
+        let mut changeset = world.changeset();
+        for uid in hovered.iter() {
+            changeset.entity(*uid).apply(Selected::Deselected);
+        }
+
+        let changeset = changeset.build();
+        UndoRedoApi::execute(world, changeset)?;
+
+        Ok(())
+    }
+
+    pub fn set_object_hovered(
+        world: &mut World,
+        uid: Uid,
+        hovered: Hovered,
+    ) -> Result<(), anyhow::Error> {
+        let entity = uid.entity(world).unwrap();
+        let target = match world.get::<ProxiedComponent<Hovered>>(entity) {
+            Some(proxy) => *proxy.target(),
+            None => uid,
+        };
+
+        let mut changeset = world.changeset();
+        changeset.entity(target).apply(hovered);
+
+        let changeset = changeset.build();
+        UndoRedoApi::execute(world, changeset)?;
+
+        Ok(())
+    }
+
+    pub fn unhover_all_set_object_hovered(
+        world: &mut World,
+        uid: Uid,
+        hovered: Hovered,
+    ) -> Result<(), anyhow::Error> {
+        let entity = uid.entity(world).unwrap();
+        let target = match world.get::<ProxiedComponent<Hovered>>(entity) {
+            Some(proxy) => *proxy.target(),
+            None => uid,
+        };
+
+        let curr_hovered = Self::query_hovered_uids(world);
+
+        let mut changeset = world.changeset();
+        for uid in curr_hovered.iter() {
+            changeset.entity(*uid).apply(Selected::Deselected);
+        }
+        changeset.entity(target).apply(hovered);
+
+        let changeset = changeset.build();
+        UndoRedoApi::execute(world, changeset)?;
 
         Ok(())
     }
 }
-
-// impl SelectedApi {
-//     pub fn deselect_all_js(world: &mut World) -> Result<(), anyhow::Error> {
-//         SelectedApi::deselect_all(world)
-//     }
-//
-//     pub fn set_object_selected_js(
-//         world: &mut World,
-//         uid: String,
-//         selected: bool,
-//     ) -> Result<(), anyhow::Error> {
-//         SelectedApi::set_object_selected(world, Uid::try_from(&uid)?, selected.into())
-//     }
-//
-//     pub fn deselect_all_set_object_selected_js(
-//         world: &mut World,
-//         uid: String,
-//         selected: bool,
-//     ) -> Result<(), anyhow::Error> {
-//         SelectedApi::deselect_all_set_object_selected(world, Uid::try_from(&uid)?, selected.into())
-//     }
-// }
