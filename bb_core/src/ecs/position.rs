@@ -12,7 +12,7 @@ use crate::plugins::viewport::BobbinViewport;
 
 use super::ProxiedComponent;
 
-#[derive(Component, Clone, Copy, Reflect, Default, PartialEq, Deref)]
+#[derive(Component, Clone, Copy, Reflect, Default, PartialEq, Deref, Debug)]
 #[reflect(Component)]
 pub struct Position(pub Vec2);
 
