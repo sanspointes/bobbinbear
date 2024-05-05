@@ -1,7 +1,5 @@
 use bevy::{
-    app::{App, Plugin},
-    ecs::{system::Resource, world::World},
-    log::{info, warn},
+    app::{App, Plugin}, ecs::{system::Resource, world::World}, input::ButtonState, log::{info, warn}
 };
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_uid::Uid;
@@ -77,16 +75,24 @@ pub fn handle_select_tool_input(
                     SelectTool::Default
                 }
             }
-            (SelectTool::Default, InputMessage::PointerDown { .. })
-            | (SelectTool::Hovering(_), InputMessage::PointerDown { .. }) => {
+            (SelectTool::Default, InputMessage::PointerDown { modifiers, .. })
+            | (SelectTool::Hovering(_), InputMessage::PointerDown { modifiers, .. }) => {
                 let top = world.selectable_hits().top();
                 if let Some(SelectableHit { uid, .. }) = top {
                     let target = *uid;
-                    SelectedApi::deselect_all_set_object_selected(
-                        world,
-                        target,
-                        Selected::Selected,
-                    )?;
+                    if matches!(modifiers.shift, ButtonState::Pressed) {
+                        SelectedApi::set_object_selected(
+                            world,
+                            target,
+                            Selected::Selected,
+                        )?;
+                    } else {
+                        SelectedApi::deselect_all_set_object_selected(
+                            world,
+                            target,
+                            Selected::Selected,
+                        )?;
+                    }
                     SelectTool::PointerDownOnObject(target)
                 } else {
                     SelectTool::PointerDownOnNothing
