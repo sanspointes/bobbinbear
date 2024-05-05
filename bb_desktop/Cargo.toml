@@ -17,3 +17,7 @@ resolver = "2"
 bb_core = { path = "../bb_core" }
 bevy = "0.13.0"
 bevy-inspector-egui = "0.23.2"
+bevy_mod_debugdump = { version = "0.10.0", optional = true }
+
+[features]
+graph = ["dep:bevy_mod_debugdump"]

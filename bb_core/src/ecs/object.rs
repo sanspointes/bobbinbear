@@ -10,9 +10,10 @@ use bevy::{
     transform::components::{GlobalTransform, Transform},
 };
 use bevy_inspector_egui::bevy_egui::setup_new_windows_system;
+use bevy_mod_raycast::deferred::RaycastMesh;
 use bevy_spts_uid::Uid;
 
-use crate::plugins::selected::{Hovered, ProxiedHovered, ProxiedSelected, Selected};
+use crate::plugins::selected::{Hovered, ProxiedHovered, ProxiedSelected, Selectable, Selected};
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
@@ -34,6 +35,8 @@ pub struct ObjectBundle {
     object_type: ObjectType,
     position: Position,
     selected: Selected,
+    selectable: Selectable,
+    rc_selectable: RaycastMesh<Selectable>,
     hovered: Hovered,
 
     transform: Transform,
@@ -52,6 +55,8 @@ impl Default for ObjectBundle {
             object_type: ObjectType::default(),
             position: Position::default(),
             selected: Selected::default(),
+            selectable: Selectable::default(),
+            rc_selectable: RaycastMesh::<Selectable>::default(),
             hovered: Hovered::default(),
 
             transform: Transform::default(),

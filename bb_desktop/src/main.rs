@@ -7,7 +7,10 @@ use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
     let mut app = App::new();
+    #[cfg(not(feature = "graph"))]
     app.add_plugins(DefaultPlugins);
+    #[cfg(feature = "graph")]
+    app.add_plugins(DefaultPlugins.build().disable::<LogPlugin>()); // disable LogPlugin so that you can pipe the output directly into `dot -Tsvg`
 
     bb_core::setup(&mut app);
 
@@ -20,7 +23,12 @@ fn main() {
 
     app.add_systems(Startup, setup);
 
-    app.run()
+    #[cfg(not(feature = "graph"))]
+    app.run();
+    #[cfg(feature = "graph")]
+    {
+        bevy_mod_debugdump::print_schedule_graph(&mut app, Update);
+    }
 }
 
 pub fn setup(world: &mut World) {

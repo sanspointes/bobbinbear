@@ -2,14 +2,17 @@
 
 mod api;
 mod material;
+pub mod raycast;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*, sprite::Material2dPlugin};
+use bevy_mod_raycast::deferred::{DeferredRaycastingPlugin, RaycastSource, RaycastSystem};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
+pub use api::SelectedApi;
 use crate::ecs::{sys_update_proxied_component, ProxiedComponent};
 
-use self::material::SelectionBoundsMaterial;
+use self::{material::SelectionBoundsMaterial, raycast::{sys_selection_raycast_update_helper, sys_selection_raycast_update_ray, sys_setup_selection_raycast, SelectableHits}};
 
 #[derive(Component, Reflect, Default, Tsify, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[reflect(Component)]
@@ -32,8 +35,9 @@ impl Selected {
     }
 }
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, Tsify, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[reflect(Component)]
+#[tsify(into_wasm_abi, from_wasm_abi)]
 /// Component defining whether or not component is selectable.
 pub enum Selectable {
     #[default]
@@ -57,6 +61,8 @@ impl From<Selectable> for bool {
         }
     }
 }
+
+pub type ProxiedSelectable = ProxiedComponent<Selectable>;
 
 #[derive(Component, Reflect, Default, Tsify, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[reflect(Component)]
@@ -94,12 +100,28 @@ impl Plugin for SelectedPlugin {
         //     );
         app
             .register_type::<Selected>()
-            .register_type::<ProxiedComponent<Selected>>()
+            .register_type::<ProxiedSelected>()
             .add_systems(PostUpdate, sys_update_proxied_component::<Selected>)
+
             .register_type::<Hovered>()
-            .register_type::<ProxiedComponent<Hovered>>()
+            .register_type::<ProxiedHovered>()
             .add_systems(PostUpdate, sys_update_proxied_component::<Hovered>)
+
             .register_type::<Selectable>()
+            .register_type::<ProxiedSelectable>()
+            .add_systems(PostUpdate, sys_update_proxied_component::<Selectable>)
+            // Setup raycasting the Selectable component
+            .insert_resource(SelectableHits::default())
+            .add_plugins(DeferredRaycastingPlugin::<Selectable>::default())
+            .add_systems(PostStartup, sys_setup_selection_raycast)
+            .add_systems(
+                First,
+                sys_selection_raycast_update_ray.before(RaycastSystem::BuildRays::<Selectable>),
+            )
+            .add_systems(
+                First,
+                sys_selection_raycast_update_helper.after(RaycastSystem::UpdateIntersections::<Selectable>),
+            )
         ;
     }
 }

@@ -14,7 +14,7 @@ use bevy_mod_raycast::prelude::{
     DeferredRaycastingPlugin, RaycastMesh, RaycastMethod, RaycastSource, RaycastSystem,
 };
 
-use crate::plugins::viewport::BobbinViewport;
+use crate::plugins::viewport::{sys_setup_viewport, BobbinViewport};
 
 pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 
@@ -28,15 +28,15 @@ const BG_HIT_Z_INDEX: f32 = -100.;
 /// into more useful events like Click, DragStart, move, etc.
 ///
 /// These events can be listened to Via the EventReceiver<InputMessage> type.
-pub struct InputPlugin;
-impl Plugin for InputPlugin {
+pub struct BobbinInputPlugin;
+impl Plugin for BobbinInputPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RawInputResource::default())
             .add_event::<RawInputMessage>()
             .add_event::<InputMessage>()
             .add_plugins(DeferredRaycastingPlugin::<RaycastRawInput>::default())
             // Hit plane creation and movement
-            .add_systems(Startup, sys_setup_input_plugin)
+            .add_systems(Startup, sys_setup_input_plugin.after(sys_setup_viewport))
             // Input events
             .add_systems(
                 First,
@@ -128,28 +128,28 @@ pub fn sys_raw_input_processor(
                 {
                     res.is_dragging = true;
                     to_send.push(InputMessage::DragStart {
-                        screen: res.cur_pos,
-                        screen_pressed: res.down_pos,
-                        screen_offset: res.cur_pos.sub(res.down_pos),
-                        world: world_point,
-                        world_pressed: res.down_pos_world,
-                        world_offset: world_point.sub(res.down_pos_world),
+                        screen_pos: res.cur_pos,
+                        screen_start_pos: res.down_pos,
+                        screen_delta_pos: res.cur_pos.sub(res.down_pos),
+                        world_pos: world_point,
+                        world_start_pos: res.down_pos_world,
+                        world_delta_pos: world_point.sub(res.down_pos_world),
                         modifiers: res.modifiers,
                     })
                 } else if res.is_dragging {
                     to_send.push(InputMessage::DragMove {
-                        screen: res.cur_pos,
-                        screen_pressed: res.down_pos,
-                        screen_offset: res.cur_pos.sub(res.down_pos),
-                        world: world_point,
-                        world_pressed: res.down_pos_world,
-                        world_offset: world_point.sub(res.down_pos_world),
+                        screen_pos: res.cur_pos,
+                        screen_start_pos: res.down_pos,
+                        screen_delta_pos: res.cur_pos.sub(res.down_pos),
+                        world_pos: world_point,
+                        world_start_pos: res.down_pos_world,
+                        world_delta_pos: world_point.sub(res.down_pos_world),
                         modifiers: res.modifiers,
                     });
                 } else {
                     to_send.push(InputMessage::PointerMove {
-                        screen: res.cur_pos,
-                        world: world_point,
+                        screen_pos: res.cur_pos,
+                        world_pos: world_point,
                         modifiers: res.modifiers,
                     });
                 }
@@ -161,8 +161,8 @@ pub fn sys_raw_input_processor(
                         res.down_pos = res.cur_pos;
                         res.down_pos_world = world_point;
                         to_send.push(InputMessage::PointerDown {
-                            screen: res.cur_pos,
-                            world: world_point,
+                            screen_pos: res.cur_pos,
+                            world_pos: world_point,
                             modifiers: res.modifiers,
                         });
                     }
@@ -172,12 +172,12 @@ pub fn sys_raw_input_processor(
                     if res.is_dragging {
                         res.is_dragging = false;
                         to_send.push(InputMessage::DragEnd {
-                            screen: res.cur_pos,
-                            screen_pressed: res.down_pos,
-                            screen_offset: res.cur_pos.sub(res.down_pos),
-                            world: world_point,
-                            world_pressed: res.down_pos_world,
-                            world_offset: world_point.sub(res.down_pos_world),
+                            screen_pos: res.cur_pos,
+                            screen_start_pos: res.down_pos,
+                            screen_delta_pos: res.cur_pos.sub(res.down_pos),
+                            world_pos: world_point,
+                            world_start_pos: res.down_pos_world,
+                            world_delta_pos: world_point.sub(res.down_pos_world),
                             modifiers: res.modifiers,
                         });
                     } else {
@@ -191,16 +191,16 @@ pub fn sys_raw_input_processor(
                                 res.last_click_time, res.double_click_timeout
                             );
                             to_send.push(InputMessage::DoubleClick {
-                                screen: res.cur_pos,
-                                world: world_point,
+                                screen_pos: res.cur_pos,
+                                world_pos: world_point,
                                 modifiers: res.modifiers,
                             });
                         } else {
                             res.last_click_time = time.elapsed_seconds();
 
                             to_send.push(InputMessage::PointerClick {
-                                screen: res.cur_pos,
-                                world: world_point,
+                                screen_pos: res.cur_pos,
+                                world_pos: world_point,
                                 modifiers: res.modifiers,
                             });
                         }
@@ -340,7 +340,7 @@ fn sys_setup_input_plugin(
     camera_commands.insert(RaycastSource::<RaycastRawInput>::default());
 }
 fn sys_move_bg_hit_plane(
-    cam: Query<&Transform, (With<Camera2d>, Without<InputHitPlaneTag>)>,
+    cam: Query<&Transform, (With<BobbinViewport>, Without<InputHitPlaneTag>)>,
     mut bg_hit_plane: Query<&mut Transform, (With<InputHitPlaneTag>, Without<Camera2d>)>,
 ) {
     if let (Ok(cam_transform), Ok(mut bg_hit_transform)) =

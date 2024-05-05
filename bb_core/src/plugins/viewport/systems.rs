@@ -1,8 +1,5 @@
 use bevy::{
-    math::prelude::Rectangle,
     prelude::*,
-    render::camera::CameraProjection,
-    sprite::MaterialMesh2dBundle,
     window::{PrimaryWindow, WindowResized},
 };
 

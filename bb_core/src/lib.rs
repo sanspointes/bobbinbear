@@ -26,6 +26,7 @@ use materials::BobbinMaterialsPlugin;
 use meshes::BobbinMeshesPlugin;
 use plugins::inspecting::BecauseInspected;
 use plugins::selected::SelectedPlugin;
+use tools::BobbinToolsPlugin;
 use wasm_bindgen::prelude::*;
 
 use plugins::bounds2d::Bounds2DPlugin;
@@ -94,6 +95,7 @@ pub fn setup(app: &mut App) {
     .add_plugins((
         BobbinMeshesPlugin,
         BobbinMaterialsPlugin,
+        BobbinToolsPlugin,
         UndoRedoPlugin,
         Bounds2DPlugin,
         ViewportPlugin,

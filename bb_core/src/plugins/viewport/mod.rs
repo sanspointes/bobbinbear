@@ -6,7 +6,7 @@ mod systems;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*};
 
-use crate::plugins::viewport::systems::*;
+pub use crate::plugins::viewport::systems::*;
 
 use self::debug::{sys_setup_viewport_debug, sys_update_viewport_debug_positions};
 
