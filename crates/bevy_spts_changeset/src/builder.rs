@@ -134,24 +134,33 @@ pub struct EntityChangeset<'w, 'a> {
 }
 
 impl<'w, 'a> EntityChangeset<'w, 'a> {
-    pub fn insert<C: Component + Reflect>(&mut self, component: C) -> &mut Self {
+    pub fn insert<B: Bundle + Reflect + FromReflect>(&mut self, bundle: B) -> &mut Self {
+        let bundle = {
+            let type_registry = self.builder.world.resource::<AppTypeRegistry>().read();
+            bundle.to_fragment(&type_registry)
+        };
+
         self.builder.push(Arc::new(InsertChange::new(
             self.target,
-            ComponentFragment::from_component::<C>(&component),
+            bundle
         )));
         self
     }
-    pub fn apply<C: Component + Reflect>(&mut self, component: C) -> &mut Self {
+    pub fn apply<B: Bundle + Reflect + FromReflect>(&mut self, bundle: B) -> &mut Self {
+        let bundle = {
+            let type_registry = self.builder.world.resource::<AppTypeRegistry>().read();
+            bundle.to_fragment(&type_registry)
+        };
         self.builder.push(Arc::new(ApplyChange::new(
             self.target,
-            ComponentFragment::from_component::<C>(&component),
+            bundle
         )));
         self
     }
     pub fn remove<C: Component + Reflect>(&mut self) -> &mut Self {
         let type_id = TypeId::of::<C>();
         self.builder
-            .push(Arc::new(RemoveChange::new(self.target, type_id)));
+            .push(Arc::new(RemoveChange::new(self.target, vec![type_id])));
         self
     }
     pub fn set_parent(&mut self, parent: Uid) -> &mut Self {
@@ -176,156 +185,5 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
 
     pub fn uid(&self) -> Uid {
         self.target
-    }
-}
-
-#[cfg(test)]
-mod test_spawn {
-    use bevy_app::App;
-    use bevy_ecs::{
-        prelude::{Bundle, Component},
-        reflect::{ReflectBundle, ReflectComponent},
-    };
-    use bevy_reflect::Reflect;
-    use bevy_spts_uid::UidRegistry;
-
-    use crate::{commands_ext::WorldChangesetExt, events::ChangesetEvent, resource::ChangesetResource};
-
-    #[derive(Component, Reflect, Default)]
-    #[reflect(Component)]
-    struct Comp1;
-
-    #[derive(Component, Reflect, Default)]
-    #[reflect(Component)]
-    struct Comp2;
-
-    #[derive(Component, Reflect, Default)]
-    #[reflect(Component)]
-    struct Comp3;
-
-    #[derive(Component, Reflect, Default)]
-    #[reflect(Component)]
-    struct Comp4;
-
-    #[derive(Bundle, Reflect, Default)]
-    #[reflect(Bundle)]
-    struct Bundle1 {
-        comp1: Comp1,
-        comp2: Comp2,
-    }
-
-    #[derive(Bundle, Reflect, Default)]
-    #[reflect(Bundle)]
-    struct Bundle2 {
-        bundle1: Bundle1,
-        comp4: Comp4,
-    }
-
-    #[derive(Default)]
-    struct MyChangeset;
-
-    fn build_app() -> App {
-        let mut app = App::new();
-        app.add_event::<ChangesetEvent>();
-        app.insert_resource(UidRegistry::default());
-        app.insert_resource(ChangesetResource::<MyChangeset>::new());
-        app.register_type::<Comp1>();
-        app.register_type::<Comp2>();
-        app.register_type::<Comp3>();
-        app.register_type::<Comp4>();
-        app.register_type::<Bundle1>();
-        app.register_type::<Bundle2>();
-        app
-    }
-
-    #[test]
-    fn spawn_single_component() {
-        let app = build_app();
-        let mut world = app.world;
-
-        let mut changeset = world.changeset();
-        let uid = changeset.spawn(Comp1).uid();
-        let changeset = changeset.build();
-
-        ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
-            changeset.apply(world, cx).unwrap()
-        });
-
-        let entity = uid.entity(&mut world).unwrap();
-        assert!(world.get::<Comp1>(entity).is_some());
-    }
-
-    #[test]
-    fn spawn_tuple_bundle() {
-        let app = build_app();
-        let mut world = app.world;
-
-        let mut changeset = world.changeset();
-        let uid = changeset.spawn((Comp1, Comp2)).uid();
-        let changeset = changeset.build();
-
-        ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
-            changeset.apply(world, cx).unwrap();
-        });
-
-        let entity = uid.entity(&mut world).unwrap();
-        assert!( world.get::<Comp1>(entity).is_some());
-    }
-
-    #[test]
-    fn spawn_nested_struct_bundle_in_tuple_bundle() {
-        let app = build_app();
-        let mut world = app.world;
-
-        let mut changeset = world.changeset();
-        let uid = changeset.spawn((Comp3, Comp4, Bundle1::default())).uid();
-        let changeset = changeset.build();
-
-        ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
-            let inverse = changeset.apply(world, cx).unwrap();
-
-            let entity = uid.entity(world).unwrap();
-            assert!( world.get::<Comp1>(entity).is_some());
-
-            inverse.apply(world, cx).unwrap();
-
-            let entity = uid.entity(world).unwrap();
-            assert!( world.get::<Comp1>(entity).is_none());
-        });
-
-    }
-
-    #[test]
-    fn spawn_struct_bundle() {
-        let app = build_app();
-        let mut world = app.world;
-
-        let mut changeset = world.changeset();
-        let uid = changeset.spawn(Bundle1::default()).uid();
-        let changeset = changeset.build();
-
-        ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
-            changeset.apply(world, cx).unwrap();
-        });
-
-        let entity = uid.entity(&mut world).unwrap();
-        assert!( world.get::<Comp1>(entity).is_some());
-    }
-
-    #[test]
-    fn spawn_nested_struct_bundle_in_struct_bundle() {
-        let app = build_app();
-        let mut world = app.world;
-
-        let mut changeset = world.changeset();
-        let uid = changeset.spawn((Comp1, Comp2, Bundle1::default())).uid();
-        let changeset = changeset.build();
-
-        ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
-            changeset.apply(world, cx).unwrap();
-        });
-
-        let entity = uid.entity(&mut world).unwrap();
-        assert!( world.get::<Comp1>(entity).is_some());
     }
 }

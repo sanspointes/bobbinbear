@@ -3,21 +3,24 @@ use anyhow::anyhow;
 use std::{any::TypeId, fmt::Debug, sync::Arc};
 
 use bevy_ecs::{event::Events, reflect::ReflectComponent, world::World};
-use bevy_spts_fragments::prelude::{ComponentFragment, Uid};
+use bevy_spts_fragments::prelude::{BundleFragment, ComponentFragment, Uid};
 
-use crate::{events::{ChangesetEvent, ChangedType}, resource::ChangesetContext};
+use crate::{
+    events::{ChangedType, ChangesetEvent},
+    resource::ChangesetContext,
+};
 
 use super::Change;
 
 #[derive(Debug)]
 pub struct InsertChange {
     target: Uid,
-    component: ComponentFragment,
+    bundle: BundleFragment,
 }
 
 impl InsertChange {
-    pub fn new(target: Uid, component: ComponentFragment) -> Self {
-        Self { target, component }
+    pub fn new(target: Uid, bundle: BundleFragment) -> Self {
+        Self { target, bundle }
     }
 }
 
@@ -28,34 +31,55 @@ impl Change for InsertChange {
         cx: &mut ChangesetContext,
     ) -> Result<Arc<dyn Change>, anyhow::Error> {
         let mut entity_mut = self.target.entity_world_mut(world).ok_or(anyhow!(
-            "Can't insert component {}. Can't get target. No Entity with uid {}",
-            self.component.try_type_info()?.type_path(),
+            "Can't insert bundle {:?}. Can't get target. No Entity with uid {}",
+            self.bundle.components(),
             self.target,
         ))?;
 
-        self.component.insert(&mut entity_mut, cx.type_registry)?;
-        let type_id = self.component.try_type_id(cx.type_registry).unwrap();
+        self.bundle.insert(&mut entity_mut, cx.type_registry)?;
 
         let mut events = world.resource_mut::<Events<ChangesetEvent>>();
-        events.send(ChangesetEvent::Changed(
-            self.target,
-            type_id,
-            ChangedType::Inserted
-        ));
 
-        Ok(Arc::new(RemoveChange::new(self.target, type_id)))
+        let type_ids: Vec<_> = self
+            .bundle
+            .components()
+            .iter()
+            .map(|c| c.try_type_id().unwrap())
+            .collect();
+
+        for ty_id in &type_ids {
+            events.send(ChangesetEvent::Changed(
+                self.target,
+                *ty_id,
+                ChangedType::Inserted,
+            ));
+        }
+
+        Ok(Arc::new(RemoveChange::new(self.target, type_ids)))
     }
 }
 
 #[derive(Debug)]
 pub struct ApplyChange {
     target: Uid,
-    component: ComponentFragment,
+    bundle: BundleFragment,
 }
 
 impl ApplyChange {
-    pub fn new(target: Uid, component: ComponentFragment) -> Self {
-        Self { target, component }
+    pub fn new(target: Uid, bundle: BundleFragment) -> Self {
+        Self { target, bundle }
+    }
+
+    pub fn target(&self) -> &Uid {
+        &self.target
+    }
+
+    pub fn bundle(&self) -> &BundleFragment {
+        &self.bundle
+    }
+
+    pub fn components(&self) -> &[ComponentFragment] {
+        self.bundle.components()
     }
 }
 
@@ -66,34 +90,41 @@ impl Change for ApplyChange {
         cx: &mut ChangesetContext,
     ) -> Result<Arc<dyn Change>, anyhow::Error> {
         let mut entity_mut = self.target.entity_world_mut(world).ok_or(anyhow!(
-            "Can't apply component {}. Can't get target. No Entity with uid {}",
-            self.component.try_type_info()?.type_path(),
+            "ApplyChange: Can't get target. No Entity with uid {}",
             self.target,
         ))?;
 
-        let mut component = self.component.clone();
-        component.swap(&mut entity_mut, cx.type_registry).unwrap();
+        let mut components = Vec::with_capacity(self.components().len());
+        let mut type_ids = Vec::with_capacity(self.components().len());
+        for comp in self.components() {
+            let mut comp = comp.clone();
+            comp.swap(&mut entity_mut, cx.type_registry)?;
+            type_ids.push(comp.try_type_id()?);
+            components.push(comp);
+        }
 
-        let mut events = world.resource_mut::<Events<ChangesetEvent>>();
-        events.send(ChangesetEvent::Changed(
-            self.target,
-            component.try_type_id(cx.type_registry).unwrap(),
-            ChangedType::Applied,
-        ));
+        for type_id in &type_ids {
+            let mut events = world.resource_mut::<Events<ChangesetEvent>>();
+            events.send(ChangesetEvent::Changed(
+                self.target,
+                *type_id,
+                ChangedType::Applied,
+            ));
+        }
 
-        Ok(Arc::new(ApplyChange::new(self.target, component)))
+        Ok(Arc::new(ApplyChange::new(self.target, BundleFragment::new(components))))
     }
 }
 
 #[derive(Debug)]
 pub struct RemoveChange {
     target: Uid,
-    type_id: TypeId,
+    type_ids: Vec<TypeId>,
 }
 
 impl RemoveChange {
-    pub fn new(target: Uid, type_id: TypeId) -> Self {
-        Self { target, type_id }
+    pub fn new(target: Uid, type_ids: Vec<TypeId>) -> Self {
+        Self { target, type_ids }
     }
 }
 
@@ -104,28 +135,31 @@ impl Change for RemoveChange {
         cx: &mut ChangesetContext,
     ) -> Result<Arc<dyn Change>, anyhow::Error> {
         let mut entity_mut = self.target.entity_world_mut(world).ok_or(anyhow!(
-            "Can't remove component {}. Can't get target. No Entity with uid {}",
-            match cx.type_registry.get(self.type_id) {
-                Some(registration) => registration.type_info().type_path().to_string(),
-                None => "Unknown component (unregistered)".to_string(),
-            },
+            "RemoveChange: Can't get target. No Entity with uid {}",
             self.target,
         ))?;
 
-        let registration = cx.type_registry.get(self.type_id).unwrap();
-        let reflect_component = registration.data::<ReflectComponent>().unwrap();
-        let component = reflect_component.reflect_mut(&mut entity_mut).unwrap();
+        let (components, type_ids): (Vec<_>, Vec<_>) = self.type_ids.iter().map(|type_id| {
+            let registration = cx.type_registry.get(*type_id).unwrap();
+            let reflect_component = registration.data::<ReflectComponent>().unwrap();
+            let component = reflect_component.reflect_mut(&mut entity_mut).unwrap();
 
-        let cf = ComponentFragment::new(component.clone_value().into());
-        cf.remove(&mut entity_mut, cx.type_registry).unwrap();
+            let cf = ComponentFragment::new(component.clone_value().into());
+            let type_id = cf.try_type_id().unwrap();
+            cf.remove(&mut entity_mut, cx.type_registry).unwrap();
+
+            (cf, type_id)
+        }).unzip();
 
         let mut events = world.resource_mut::<Events<ChangesetEvent>>();
-        events.send(ChangesetEvent::Changed(
-            self.target,
-            cf.try_type_id(cx.type_registry).unwrap(),
-            ChangedType::Removed,
-        ));
+        for ty_id in type_ids.iter() {
+            events.send(ChangesetEvent::Changed(
+                self.target,
+                *ty_id,
+                ChangedType::Removed,
+            ));
+        }
 
-        Ok(Arc::new(InsertChange::new(self.target, cf)))
+        Ok(Arc::new(InsertChange::new(self.target, BundleFragment::new(components))))
     }
 }

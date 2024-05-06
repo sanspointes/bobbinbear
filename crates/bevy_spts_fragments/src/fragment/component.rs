@@ -202,26 +202,12 @@ impl ComponentFragment {
     /// Gets the TypeId of the Component
     ///
     /// * `type_registry`: Type Registry to get the type id from
-    pub fn try_type_id(
-        &self,
-        type_registry: &TypeRegistry,
-    ) -> Result<TypeId, ComponentFragmentReflectError> {
-        use ComponentFragmentReflectError::*;
-
+    pub fn try_type_id(&self) -> Result<TypeId, ComponentFragmentReflectError> {
         let type_info = self.try_type_info()?;
-
-        let registration =
-            type_registry
-                .get(type_info.type_id())
-                .ok_or_else(|| UnregisteredButReflectedType {
-                    type_path: type_info.type_path().to_string(),
-                })?;
-        Ok(registration.type_id())
+        Ok(type_info.type_id())
     }
 
-    pub fn try_type_info(
-        &self,
-    ) -> Result<&TypeInfo, ComponentFragmentReflectError> {
+    pub fn try_type_info(&self) -> Result<&TypeInfo, ComponentFragmentReflectError> {
         use ComponentFragmentReflectError::*;
 
         let type_info =
@@ -231,6 +217,5 @@ impl ComponentFragment {
                     type_path: self.component.reflect_type_path().to_string(),
                 })?;
         Ok(type_info)
-
     }
 }
