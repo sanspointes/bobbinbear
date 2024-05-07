@@ -1,4 +1,5 @@
 mod api;
+mod changeset_ext;
 
 use bevy::{
     app::Plugin,
@@ -13,13 +14,15 @@ use bevy::{
     sprite::ColorMaterial,
     transform::components::{GlobalTransform, Transform},
 };
-use bevy_spts_changeset::prelude::{ChangeSet, ChangesetResource};
+use bevy_spts_changeset::prelude::{Changeset, ChangesetResource};
 
 #[allow(unused_imports)]
 pub use api::{UndoRedoApi, UndoRedoResult};
 use bevy_spts_vectorgraphic::prelude::*;
 
 use crate::plugins::{selected::Selected, inspecting::Inspected};
+
+use super::selected::Selectable;
 
 pub struct UndoRedoPlugin;
 
@@ -28,6 +31,7 @@ struct UndoRedoTag;
 
 impl Plugin for UndoRedoPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
+        SceneFilter::allow_all()
         let filter = SceneFilter::default()
             .allow::<Transform>()
             .allow::<GlobalTransform>()
@@ -47,6 +51,7 @@ impl Plugin for UndoRedoPlugin {
             .allow::<FillOptions>()
             // State tags
             .allow::<Selected>()
+            .allow::<Selectable>()
             .allow::<Inspected>();
 
         app.register_type::<Transform>();
@@ -77,6 +82,6 @@ impl Plugin for UndoRedoPlugin {
 
 #[derive(Resource, Default)]
 pub struct UndoRedoResource {
-    undo_stack: Vec<ChangeSet>,
-    redo_stack: Vec<ChangeSet>,
+    undo_stack: Vec<Changeset>,
+    redo_stack: Vec<Changeset>,
 }

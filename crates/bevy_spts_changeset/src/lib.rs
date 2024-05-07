@@ -2,7 +2,8 @@ pub mod commands_ext;
 pub mod changes;
 pub mod resource;
 pub mod events;
-mod builder;
+pub mod builder;
+pub mod error;
 
 pub mod prelude {
     pub use bevy_spts_fragments::prelude::Uid;

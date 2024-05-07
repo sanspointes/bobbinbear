@@ -1,7 +1,7 @@
 //! Contains the API for executing/undoing/redoing changesets.
 
 use bevy::ecs::world::World;
-use bevy_spts_changeset::prelude::{ChangeSet, ChangesetResource};
+use bevy_spts_changeset::prelude::{Changeset, ChangesetResource};
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
@@ -28,7 +28,7 @@ pub struct UndoRedoApi;
 impl UndoRedoApi {
     pub fn execute(
         world: &mut World,
-        changeset: ChangeSet,
+        changeset: Changeset,
     ) -> Result<UndoRedoResult, anyhow::Error> {
         ChangesetResource::<UndoRedoTag>::context_scope(world, |world, cx| {
             let inverse = changeset.apply(world, cx)?;

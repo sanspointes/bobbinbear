@@ -61,10 +61,11 @@ impl Uid {
     }
 
     pub fn entity(&self, world: &mut World) -> Option<Entity> {
-        world
-            .query::<(Entity, &Uid)>()
-            .iter(world)
-            .find_map(|(e, uid)| if *self == *uid { Some(e) } else { None })
+        world.resource::<UidRegistry>().get_entity(*self).ok()
+    }
+
+    pub fn get_entity(&self, world: &mut World) -> Result<Entity, UidRegistryError> {
+        world.resource::<UidRegistry>().get_entity(*self)
     }
 
     pub fn register(&self, world: &mut World, entity: Entity) {

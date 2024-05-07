@@ -1,13 +1,13 @@
 use bevy_ecs::world::World;
 
-use crate::builder::ChangesetBuilder;
+use crate::builder::ChangesetCommands;
 
 pub trait WorldChangesetExt {
-    fn changeset(&mut self) -> ChangesetBuilder;
+    fn changeset(&mut self) -> ChangesetCommands;
 }
 
 impl WorldChangesetExt for World {
-    fn changeset(&mut self) -> ChangesetBuilder {
-        ChangesetBuilder::new(self)
+    fn changeset(&mut self) -> ChangesetCommands {
+        ChangesetCommands::new(self)
     }
 }

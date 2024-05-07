@@ -93,7 +93,7 @@ pub trait VectorGraphicChangesetExt<'w> {
     fn despawn_edge(&mut self, edge_uid: Uid);
 }
 
-impl<'w> VectorGraphicChangesetExt<'w> for ChangesetBuilder<'w> {
+impl<'w> VectorGraphicChangesetExt<'w> for ChangesetCommands<'w> {
     fn spawn_edge<'a>(
         &'a mut self,
         edge_variant: EdgeVariant,
@@ -108,7 +108,7 @@ impl<'w> VectorGraphicChangesetExt<'w> for ChangesetBuilder<'w> {
         .insert(edge_variant);
         let uid = edge.uid();
 
-        self.push(Arc::new(LinkEdgeChange {
+        self.add(Arc::new(LinkEdgeChange {
             edge: uid,
             next_endpoint,
             prev_endpoint,
@@ -118,7 +118,7 @@ impl<'w> VectorGraphicChangesetExt<'w> for ChangesetBuilder<'w> {
     }
 
     fn despawn_edge(&mut self, edge_uid: Uid) {
-        self.push(Arc::new(UnlinkEdgeChange {
+        self.add(Arc::new(UnlinkEdgeChange {
             edge: edge_uid,
         }));
         self.despawn(edge_uid);

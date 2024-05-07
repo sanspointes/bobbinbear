@@ -10,10 +10,11 @@
 <!-- PROJECT LOGO -->
 <br />
 <div align="center">
-  <h3 align="center">Bevy (SPTS) Changeset</h3>
+  <h4>Sanspointes</h4>
+  <h3 align="center">Bevy Changeset</h3>
 
   <p align="center">
-    Undo / Redo for Bevy Engine with custom type registry and a commands like api.
+    Component reflection based undo/redo system for bevy that mirrors the Commands API.
     <!-- <br /> -->
     <!-- <a href="https://github.com/othneildrew/Best-README-Template"><strong>Explore the docs »</strong></a> -->
     <!-- <br /> -->
@@ -24,5 +25,89 @@
   </p>
 </div>
 
-> :warning: This is only uploaded for information sharing sake, and is not in a polished enough state to be relied
-> on as an external dependency.  Please don't use this in your project until it gets tidied up and released.
+## Bevy Spts Changeset
+
+This is a plugin for the Bevy engine that makes it easy to implement an undo / redo 
+system or simply defer and propagate commands.
+
+> :warning: This crate is under active development and shouldn't be used as a dependency just yet.
+> Take a look at the roadmap section below to see what needs to be done before sharing.
+
+```rust
+
+pub struct MyChangesetTag;
+fn build(app: &mut App) {
+    let changeset_resource = ChangesetResource::<MyChangesetTag>::new();
+    app.insert_resource(changeset_resource);
+}
+
+fn update(world: &mut World) {
+    // world.changeset() returns something similar to the bevy Commands api.
+    let mut builder = world.changeset();
+    let uid = builder
+        .spawn((SpatialBundle::default(), MyComponent(0)))
+        .insert(ExtraComponent(1))
+        .uid(); // Unique ID component persists between undo/redos
+    builder.entity(uid).remove::<MyComponent>();
+    // builder.build() returns a `Changeset` object.
+    let changeset = builder.build();
+
+    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+        // Applying the changeset to the world returns the inverse changeset
+        let undo = changeset.apply(world, cx).unwrap();
+        // Lookup entity by uid via a HashmapResource.
+        let spawned_entity = uid.entity(world).unwrap();
+        assert_eq!(world.get<MyComponent>(spawned_entity).unwrap(), MyComponent(0));
+        // Undo 
+        undo.apply(world, cx).unwrap();
+
+        // Can no longer lookup entity.
+        assert!(uid.entity(world).is_none())
+    });
+}
+```
+
+## Install
+
+Run `cargo add bevy_spts_changeset` or add this line to your `Cargo.toml`
+```
+bevy_spts_changeset = "0.1"
+```
+
+## Features
+
+- `insert`/`remove` components.
+- `spawn`/`despawn` entities.
+- `despawn_recursive` with working undo to respawn hierarchy graph.
+
+## Faq
+
+### "Why do I need to use the `Uid` component?"
+
+I am not smart enough/don't have time right now to do entity id mapping and having a 
+persistent `Uid` component suits my needs but I welcome any contribution (or even just
+guidance) on removing this dependency.
+
+### "Do I need `&mut World` to use this plugin"
+
+Right now yes.  There's the possibility of making it a SystemParam, like Bevy's `Commands`,
+and then emitting the inverse changeset in an event but I'm keeping it simple for now.  I can
+add this behaviour once the roadmap is solidified.
+
+### "Can I filter which components are copied when I `despawn()` or `despawn_recursive()`"
+
+Yes, that's why we have to use `context_scope` on the `ChangesetResource`.
+
+Setup your filter like so:
+```rust
+fn build(app: &mut App) {
+    let filter = SceneFilter::default()
+            .allow::<Transform>();
+
+    let changeset_resource = ChangesetResource::<MyChangesetTag>::new().with_filter(filter);
+}
+```
+
+And now when you call `despawn()` or `despawn_recursive()` on the 
+
+
