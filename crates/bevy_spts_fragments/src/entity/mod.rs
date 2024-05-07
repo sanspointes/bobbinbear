@@ -1,7 +1,6 @@
 use bevy_ecs::{
     entity::Entity,
-    system::ResMut,
-    world::{EntityWorldMut, Mut, World},
+    world::World,
 };
 use bevy_hierarchy::BuildWorldChildren;
 use bevy_reflect::TypeRegistry;
@@ -12,9 +11,7 @@ use thiserror::Error;
 // #[cfg(feature = "serde")]
 // use serde::{Serialize, Deserialize};
 
-use crate::prelude::Uid;
-
-use super::{component::ComponentFragmentError, BundleFragment};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Error)]
 pub enum EntityFragmentNewError {

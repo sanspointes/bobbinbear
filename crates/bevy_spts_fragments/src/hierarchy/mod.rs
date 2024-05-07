@@ -8,12 +8,7 @@ use bevy_spts_uid::UidRegistry;
 use smallvec::SmallVec;
 use thiserror::Error;
 
-use crate::prelude::Uid;
-
-use super::{
-    entity::{EntityFragmentNewError, EntityFragmentSpawnError},
-    EntityFragment,
-};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Error)]
 pub enum HierarchyFragmentNewError {
@@ -73,7 +68,12 @@ impl Display for HierarchyFragment {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "HierarchyFragment({}) {{", self.root_uid)?;
         for (uid, fragment) in self.entities.iter() {
-            writeln!(f, "\t{}({}): children:", uid, fragment.entity_fragment.uid() == *uid)?;
+            writeln!(
+                f,
+                "\t{}({}): children:",
+                uid,
+                fragment.entity_fragment.uid() == *uid
+            )?;
             if let Some(children) = &fragment.children {
                 for c in children {
                     writeln!(f, "\t\t{} ", c)?;
@@ -112,7 +112,8 @@ impl HierarchyFragment {
         entity: Entity,
         entities: &mut BTreeMap<Uid, HierarchyFragmentEntity>,
     ) -> Result<(), EntityFragmentNewError> {
-        let entity_fragment = EntityFragment::from_world_entity(world, type_registry, filter, entity)?;
+        let entity_fragment =
+            EntityFragment::from_world_entity(world, type_registry, filter, entity)?;
 
         let child_entities: Option<SmallVec<[Entity; 8]>> = world
             .get::<Children>(entity)
@@ -135,7 +136,13 @@ impl HierarchyFragment {
 
         if let Some(child_entities) = child_entities {
             for child in child_entities.iter() {
-                Self::populate_entites_map_recursive(world, type_registry, filter, *child, entities)?;
+                Self::populate_entites_map_recursive(
+                    world,
+                    type_registry,
+                    filter,
+                    *child,
+                    entities,
+                )?;
             }
         }
 
@@ -230,7 +237,6 @@ impl HierarchyFragment {
         Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
 
-
     fn internal_spawn_recursive(
         &self,
         world: &mut World,
@@ -240,12 +246,12 @@ impl HierarchyFragment {
     ) -> Result<Entity, HierarchyFragmentSpawnError> {
         let he = self.entities.get(&uid).unwrap();
         let entity = match parent {
-            Some(parent) => he
-                .entity_fragment
-                .spawn_in_world_with_parent_entity(world, type_registry, parent)?,
-            None => he
-                .entity_fragment
-                .spawn_in_world(world, type_registry)?,
+            Some(parent) => he.entity_fragment.spawn_in_world_with_parent_entity(
+                world,
+                type_registry,
+                parent,
+            )?,
+            None => he.entity_fragment.spawn_in_world(world, type_registry)?,
         };
 
         let parent_entity = Some(entity);
@@ -295,7 +301,9 @@ impl HierarchyFragment {
         type_registry: &TypeRegistry,
         parent: Uid,
     ) -> Result<Entity, HierarchyFragmentSpawnError> {
-        let parent = parent.entity(world).ok_or(HierarchyFragmentSpawnError::NoParentWithUid { uid: parent })?;
+        let parent = parent
+            .entity(world)
+            .ok_or(HierarchyFragmentSpawnError::NoParentWithUid { uid: parent })?;
         self.spawn_in_world_with_parent_entity(world, type_registry, parent)
     }
 }

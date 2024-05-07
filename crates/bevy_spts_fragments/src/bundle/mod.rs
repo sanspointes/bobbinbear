@@ -8,7 +8,7 @@ use bevy_reflect::{Reflect, ReflectRef, TypeRegistry};
 use bevy_scene::SceneFilter;
 use bevy_spts_uid::Uid;
 
-use super::{ComponentFragment, ComponentFragmentError, EntityFragmentNewError};
+use crate::prelude::*;
 
 pub trait BundleToFragment {
     fn to_fragment(&self, type_registry: &TypeRegistry) -> BundleFragment;
@@ -89,7 +89,7 @@ impl BundleFragment {
         type_registry: &TypeRegistry,
     ) -> Result<(), ComponentFragmentError> {
         for component in &self.components {
-            component.apply(entity, type_registry)?;
+            component.apply(entity)?;
         }
         Ok(())
     }
