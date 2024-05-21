@@ -1,39 +1,12 @@
-use bevy_ecs::{
-    entity::Entity,
-    world::World,
-};
-use bevy_hierarchy::BuildWorldChildren;
+use bevy_ecs::{entity::Entity, world::{EntityWorldMut, World}};
 use bevy_reflect::TypeRegistry;
 use bevy_scene::SceneFilter;
 use bevy_spts_uid::UidRegistry;
-use thiserror::Error;
 
-// #[cfg(feature = "serde")]
-// use serde::{Serialize, Deserialize};
+mod errors;
+pub use errors::*;
 
-use crate::prelude::*;
-
-#[derive(Debug, Clone, Error)]
-pub enum EntityFragmentNewError {
-    #[error("Could not create EntityFragment from Uid because no entity in world with Uid {uid}.")]
-    NoMatchingUid { uid: Uid },
-    #[error("Could not create EntityFragment from Entity because no entity in scene at Entity id {entity:?}.")]
-    NoMatchingEntity { entity: Entity },
-}
-
-#[derive(Debug, Clone, Error)]
-pub enum EntityFragmentSpawnError {
-    #[error("Could not spawn EntityFragment because no entity in scene with Uid {uid}.")]
-    NoMatchingUid { uid: Uid },
-    #[error("Could not spawn EntityFragment because there was an error when inserting its components: {0}.")]
-    Component(ComponentFragmentError),
-}
-
-impl From<ComponentFragmentError> for EntityFragmentSpawnError {
-    fn from(value: ComponentFragmentError) -> Self {
-        Self::Component(value)
-    }
-}
+use crate::{component::ComponentReflectError, prelude::*};
 
 #[derive(Debug, Clone)]
 pub struct EntityFragment {
@@ -56,8 +29,8 @@ impl EntityFragment {
         filter: &SceneFilter,
         uid: Uid,
         entity: Entity,
-    ) -> Result<Self, EntityFragmentNewError> {
-        let bundle = BundleFragment::from_world(world, type_registry, filter, entity)?;
+    ) -> Result<Self, EntityFromWorldError> {
+        let bundle = BundleFragment::from_entity(world, type_registry, filter, entity)?;
         Ok(EntityFragment::new(uid, bundle))
     }
 
@@ -66,10 +39,8 @@ impl EntityFragment {
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         uid: Uid,
-    ) -> Result<Self, EntityFragmentNewError> {
-        let entity = uid
-            .entity(world)
-            .ok_or(EntityFragmentNewError::NoMatchingUid { uid })?;
+    ) -> Result<Self, EntityFromWorldError> {
+        let entity = world.resource::<UidRegistry>().get_entity(uid)?;
         Self::from_world(world, type_registry, filter, uid, entity)
     }
 
@@ -78,10 +49,8 @@ impl EntityFragment {
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         entity: Entity,
-    ) -> Result<Self, EntityFragmentNewError> {
-        let uid = *world
-            .get::<Uid>(entity)
-            .ok_or(EntityFragmentNewError::NoMatchingEntity { entity })?;
+    ) -> Result<Self, EntityFromWorldError> {
+        let uid = world.resource::<UidRegistry>().get_uid(entity)?;
         Self::from_world(world, type_registry, filter, uid, entity)
     }
 
@@ -91,8 +60,8 @@ impl EntityFragment {
         filter: &SceneFilter,
         uid: Uid,
         entity: Entity,
-    ) -> Result<Self, EntityFragmentNewError> {
-        let bundle = BundleFragment::from_world(world, type_registry, filter, entity)?;
+    ) -> Result<Self, EntityFromWorldError> {
+        let bundle = BundleFragment::from_entity(world, type_registry, filter, entity)?;
         world.despawn(entity);
         world.resource_mut::<UidRegistry>().unregister(uid);
         Ok(EntityFragment::new(uid, bundle))
@@ -103,10 +72,8 @@ impl EntityFragment {
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         uid: Uid,
-    ) -> Result<Self, EntityFragmentNewError> {
-        let entity = uid
-            .entity(world)
-            .ok_or(EntityFragmentNewError::NoMatchingUid { uid })?;
+    ) -> Result<Self, EntityFromWorldError> {
+        let entity = world.resource::<UidRegistry>().get_entity(uid)?;
         Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
 
@@ -115,10 +82,8 @@ impl EntityFragment {
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         entity: Entity,
-    ) -> Result<Self, EntityFragmentNewError> {
-        let uid = *world
-            .get::<Uid>(entity)
-            .ok_or(EntityFragmentNewError::NoMatchingEntity { entity })?;
+    ) -> Result<Self, EntityFromWorldError> {
+        let uid = world.resource::<UidRegistry>().get_uid(entity)?;
         Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
 
@@ -126,37 +91,12 @@ impl EntityFragment {
         &self,
         world: &'w mut World,
         type_registry: &TypeRegistry,
-    ) -> Result<Entity, EntityFragmentSpawnError> {
+    ) -> Result<EntityWorldMut<'ewm>, ComponentReflectError> {
         let mut entity_mut = world.spawn(self.uid);
-
         self.bundle.insert(&mut entity_mut, type_registry)?;
 
         let id = entity_mut.id();
         world.resource_mut::<UidRegistry>().register(self.uid, id);
-        Ok(id)
-    }
-
-    pub fn spawn_in_world_with_parent_entity(
-        &self,
-        world: &mut World,
-        type_registry: &TypeRegistry,
-        parent: Entity,
-    ) -> Result<Entity, EntityFragmentSpawnError> {
-        let id = self.spawn_in_world(world, type_registry)?;
-        let mut entity_mut = world.entity_mut(id);
-        entity_mut.set_parent(parent);
-        Ok(id)
-    }
-
-    pub fn spawn_in_world_with_parent_uid(
-        &self,
-        world: &mut World,
-        type_registry: &TypeRegistry,
-        parent: Uid,
-    ) -> Result<Entity, EntityFragmentSpawnError> {
-        let parent = parent
-            .entity(world)
-            .ok_or(EntityFragmentSpawnError::NoMatchingUid { uid: parent })?;
-        self.spawn_in_world_with_parent_entity(world, type_registry, parent)
+        Ok(world.entity_mut(id))
     }
 }

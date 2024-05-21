@@ -7,36 +7,9 @@ use bevy_ecs::{
     world::{EntityRef, EntityWorldMut, World},
 };
 use bevy_reflect::{Reflect, TypeInfo, TypeRegistry};
-use bevy_scene::SceneFilter;
-use thiserror::Error;
 
-use crate::prelude::Uid;
-
-#[derive(Debug, Clone, Error)]
-pub enum ComponentFragmentError {
-    #[error("Could not find an entity in the scene with uid {uid}.")]
-    NoMatchingUid { uid: Uid },
-    #[error("Error while reflecting component: {0}")]
-    ReflectError(ComponentFragmentReflectError),
-}
-
-#[derive(Debug, Clone, Error)]
-pub enum ComponentFragmentReflectError {
-    #[error("Component {type_path} does not have represented type info.")]
-    NoRepresentedType { type_path: String },
-    #[error("Component {type_path} is unregistered in the type registry (but is reflected.")]
-    UnregisteredButReflectedType { type_path: String },
-    #[error("Component {type_path} is unregistered in the type registry.")]
-    UnregisteredComponent { type_path: String },
-    #[error("Could not reflect {type_path} as `ComponentReflect` into a `dyn Reflect`.")]
-    CouldNotReflect { type_path: String },
-}
-
-impl From<ComponentFragmentReflectError> for ComponentFragmentError {
-    fn from(value: ComponentFragmentReflectError) -> Self {
-        Self::ReflectError(value)
-    }
-}
+mod errors;
+pub use errors::*;
 
 pub trait ComponentToFragment: Component + Reflect + Sized {
     fn to_fragment(&self) -> ComponentFragment {
@@ -57,30 +30,27 @@ impl ComponentFragment {
         Self { component }
     }
 
-    pub fn from_type_id_filtered(
-        type_registry: &TypeRegistry,
-        entity_ref: &EntityRef,
-        type_id: TypeId,
-        filter: &SceneFilter,
-    ) -> Option<Self> {
-        if filter.is_allowed_by_id(type_id) {
-            Self::from_type_id(type_registry, entity_ref, type_id)
-        } else {
-            None
-        }
-    }
-
     pub fn from_type_id(
         type_registry: &TypeRegistry,
         entity_ref: &EntityRef,
         type_id: TypeId,
-    ) -> Option<Self> {
-        let v = type_registry
+    ) -> Result<Self, ComponentFromTypeIdError> {
+        let registration = type_registry
             .get(type_id)
-            .and_then(|reg| reg.data::<ReflectComponent>())
-            .and_then(|reflect| reflect.reflect(*entity_ref));
+            .ok_or_else(|| ComponentFromTypeIdError::NotRegistered { type_id })?;
 
-        v.map(|reflect| Self::new(reflect.clone_value().into()))
+        let reflect_component = registration
+            .data::<ReflectComponent>()
+            .ok_or_else(|| ComponentFromTypeIdError::NotReflectComponent { type_id })?;
+
+        let component_value = reflect_component.reflect(*entity_ref).ok_or_else(|| {
+            ComponentFromTypeIdError::NotContainedByEntity {
+                entity: entity_ref.id(),
+                type_id,
+            }
+        })?;
+
+        Ok(Self { component: component_value.clone_value().into() })
     }
 
     /// Creates a new ComponentFragment from a reflectable component
@@ -111,11 +81,12 @@ impl ComponentFragment {
             .map(|component| Self::from_component(component))
     }
 
+    /// Gets the ReflectComponent of the component that this fragment represents.
     pub fn get_reflect_component<'a>(
         &'a self,
         type_registry: &'a TypeRegistry,
-    ) -> Result<&'a ReflectComponent, ComponentFragmentReflectError> {
-        use ComponentFragmentReflectError::*;
+    ) -> Result<&'a ReflectComponent, ComponentReflectError> {
+        use ComponentReflectError::*;
 
         let type_info =
             self.component
@@ -136,20 +107,24 @@ impl ComponentFragment {
             })
     }
 
+    /// Inserts this Component into a EntityWorldMut
     pub fn insert(
         &self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentReflectError> {
         let comp = self.get_reflect_component(type_registry)?;
         comp.insert(entity, &*self.component, type_registry);
         Ok(())
     }
+    /// Updates the Component on an EntityWorldMut
+    /// WARN: Will panic if the entity doesn't already have this component.
+    /// TODO: Figure out how to use `EntityComponent::contains` to check and throw error instead.
     pub fn apply(
         &self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentApplyError> {
         let comp = self.get_reflect_component(type_registry)?;
         comp.apply(entity, &*self.component);
         Ok(())
@@ -158,7 +133,7 @@ impl ComponentFragment {
         &self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentReflectError> {
         let comp = self.get_reflect_component(type_registry)?;
         comp.apply_or_insert(entity, &*self.component, type_registry);
         Ok(())
@@ -167,19 +142,23 @@ impl ComponentFragment {
         &self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentReflectError> {
         let comp = self.get_reflect_component(type_registry)?;
         comp.remove(entity);
         Ok(())
     }
+    /// Tries to swap the reflected component on the  
+    ///
+    /// * `entity`:
+    /// * `type_registry`:
     pub fn swap(
         &mut self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentApplyError> {
         let comp = self.get_reflect_component(type_registry)?;
         let reflected = comp.reflect_mut(entity).ok_or_else(|| {
-            ComponentFragmentReflectError::CouldNotReflect {
+            ComponentApplyError::ComponentMissingOnEntity {
                 type_path: self.component.reflect_type_path().to_string(),
             }
         })?;
@@ -189,26 +168,16 @@ impl ComponentFragment {
         Ok(())
     }
 
-    pub fn insert_to_entity_world_mut(
-        &self,
-        type_registry: &TypeRegistry,
-        entity_mut: &mut EntityWorldMut,
-    ) -> Result<(), ComponentFragmentError> {
-        let reflect_component = self.get_reflect_component(type_registry)?;
-        reflect_component.insert(entity_mut, &*self.component, type_registry);
-        Ok(())
-    }
-
     /// Gets the TypeId of the Component
     ///
     /// * `type_registry`: Type Registry to get the type id from
-    pub fn try_type_id(&self) -> Result<TypeId, ComponentFragmentReflectError> {
+    pub fn try_type_id(&self) -> Result<TypeId, ComponentReflectError> {
         let type_info = self.try_type_info()?;
         Ok(type_info.type_id())
     }
 
-    pub fn try_type_info(&self) -> Result<&TypeInfo, ComponentFragmentReflectError> {
-        use ComponentFragmentReflectError::*;
+    pub fn try_type_info(&self) -> Result<&TypeInfo, ComponentReflectError> {
+        use ComponentReflectError::*;
 
         let type_info =
             self.component

@@ -2,13 +2,19 @@ use bevy_ecs::{
     bundle::Bundle,
     entity::Entity,
     reflect::ReflectComponent,
-    world::{EntityWorldMut, World},
+    world::{EntityRef, EntityWorldMut, World},
 };
 use bevy_reflect::{Reflect, ReflectRef, TypeRegistry};
 use bevy_scene::SceneFilter;
-use bevy_spts_uid::Uid;
+use bevy_spts_uid::{Uid, UidRegistry, UidRegistryError};
 
-use crate::prelude::*;
+use crate::{
+    component::{ComponentApplyError, ComponentFromTypeIdError, ComponentReflectError},
+    prelude::*,
+};
+
+mod errors;
+pub use errors::*;
 
 pub trait BundleToFragment {
     fn to_fragment(&self, type_registry: &TypeRegistry) -> BundleFragment;
@@ -20,7 +26,10 @@ fn bundle_to_component_array_recursive(
     out: &mut Vec<ComponentFragment>,
 ) {
     let type_id = object.type_id();
-    if type_registry.get_type_data::<ReflectComponent>(type_id).is_some() {
+    if type_registry
+        .get_type_data::<ReflectComponent>(type_id)
+        .is_some()
+    {
         let cf = ComponentFragment::new(object.clone_value().into());
         out.push(cf);
         return;
@@ -76,7 +85,7 @@ impl BundleFragment {
         &self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentReflectError> {
         for component in &self.components {
             component.insert(entity, type_registry)?;
         }
@@ -87,9 +96,9 @@ impl BundleFragment {
         &self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentApplyError> {
         for component in &self.components {
-            component.apply(entity)?;
+            component.apply(entity, type_registry)?;
         }
         Ok(())
     }
@@ -98,7 +107,7 @@ impl BundleFragment {
         &self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentReflectError> {
         for component in &self.components {
             component.apply_or_insert(entity, type_registry)?;
         }
@@ -109,7 +118,7 @@ impl BundleFragment {
         &self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentReflectError> {
         for component in &self.components {
             component.apply_or_insert(entity, type_registry)?;
         }
@@ -119,55 +128,40 @@ impl BundleFragment {
         &mut self,
         entity: &mut EntityWorldMut,
         type_registry: &TypeRegistry,
-    ) -> Result<(), ComponentFragmentError> {
+    ) -> Result<(), ComponentApplyError> {
         for component in &mut self.components {
             component.swap(entity, type_registry)?;
         }
         Ok(())
     }
 
-    pub fn from_world(
+    pub fn from_entity(
         world: &mut World,
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         entity: Entity,
-    ) -> Result<Self, EntityFragmentNewError> {
+    ) -> Result<Self, BundleFromEntityError> {
         let entity_ref = world
             .get_entity(entity)
-            .ok_or(EntityFragmentNewError::NoMatchingEntity { entity })?;
+            .ok_or(BundleFromEntityError::EntityNotExist { entity })?;
         let mut components = vec![];
 
         for comp_id in entity_ref.archetype().components() {
-            let component_fragment = world
+            let type_id = world
                 .components()
                 .get_info(comp_id)
-                .and_then(|c| c.type_id())
-                .and_then(|id| {
-                    if filter.is_allowed_by_id(id) {
-                        Some(id)
-                    } else {
-                        None
-                    }
-                })
-                .and_then(|id| ComponentFragment::from_type_id(type_registry, &entity_ref, id));
+                .and_then(|c| c.type_id());
+            let Some(type_id) = type_id else {
+                continue;
+            };
 
-            if let Some(cf) = component_fragment {
-                components.push(cf);
+            if filter.is_allowed_by_id(type_id) {
+                let component_fragment =
+                    ComponentFragment::from_type_id(type_registry, &entity_ref, type_id)?;
+                components.push(component_fragment);
             }
         }
 
         Ok(Self::new(components))
-    }
-
-    pub fn from_world_uid(
-        world: &mut World,
-        type_registry: &TypeRegistry,
-        filter: &SceneFilter,
-        uid: Uid,
-    ) -> Result<Self, EntityFragmentNewError> {
-        let entity = uid
-            .entity(world)
-            .ok_or(EntityFragmentNewError::NoMatchingUid { uid })?;
-        Self::from_world(world, type_registry, filter, entity)
     }
 }

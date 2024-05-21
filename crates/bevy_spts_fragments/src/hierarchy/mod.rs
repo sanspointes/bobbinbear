@@ -1,52 +1,18 @@
 use std::{collections::BTreeMap, fmt::Display};
 
 use bevy_ecs::{entity::Entity, world::World};
-use bevy_hierarchy::{Children, DespawnRecursiveExt};
+use bevy_hierarchy::{BuildWorldChildren, Children, DespawnRecursiveExt};
 use bevy_reflect::TypeRegistry;
 use bevy_scene::SceneFilter;
 use bevy_spts_uid::UidRegistry;
 use smallvec::SmallVec;
-use thiserror::Error;
 
 use crate::prelude::*;
 
-#[derive(Debug, Clone, Error)]
-pub enum HierarchyFragmentNewError {
-    #[error("Could not create HierarchyFragment because there was an issue when processing an entity: {0}.")]
-    Entity(EntityFragmentNewError),
-    #[error(
-        "Could not create HierarchyFragment because the given entity ({0:?}) does not have a Uid."
-    )]
-    NoUidOnEntity(Entity),
-    #[error(
-        "Could not create HierarchyFragment because the given entity ({0:?}) does not have a Uid."
-    )]
-    NoEntityWithUid(Entity),
-}
+use self::errors::HierarchySpawnWithParentUidError;
 
-impl From<EntityFragmentNewError> for HierarchyFragmentNewError {
-    fn from(value: EntityFragmentNewError) -> Self {
-        Self::Entity(value)
-    }
-}
+mod errors;
 
-#[derive(Debug, Clone, Error)]
-pub enum HierarchyFragmentSpawnError {
-    #[error("Could not spawn HierarchyFragment because there is no Entity in world at Entity id {entity:?}.")]
-    NoMatchingEntity { entity: Entity },
-    #[error("Could not spawn HierarchyFragment because there is no Entity in world with Uid {uid:?} to set as parent to.")]
-    NoParentWithUid { uid: Uid },
-    #[error(
-        "Could not spawn HierarchyFragment because there was an issue when spawning an entity."
-    )]
-    Entity(EntityFragmentSpawnError),
-}
-
-impl From<EntityFragmentSpawnError> for HierarchyFragmentSpawnError {
-    fn from(value: EntityFragmentSpawnError) -> Self {
-        Self::Entity(value)
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct HierarchyFragmentEntity {
@@ -111,7 +77,7 @@ impl HierarchyFragment {
         filter: &SceneFilter,
         entity: Entity,
         entities: &mut BTreeMap<Uid, HierarchyFragmentEntity>,
-    ) -> Result<(), EntityFragmentNewError> {
+    ) -> Result<(), EntityFromWorldError> {
         let entity_fragment =
             EntityFragment::from_world_entity(world, type_registry, filter, entity)?;
 
@@ -155,10 +121,9 @@ impl HierarchyFragment {
         filter: &SceneFilter,
         uid: Uid,
         entity: Entity,
-    ) -> Result<HierarchyFragment, HierarchyFragmentNewError> {
+    ) -> Result<HierarchyFragment, EntityFromWorldError> {
         let mut entities = BTreeMap::new();
         Self::populate_entites_map_recursive(world, type_registry, filter, entity, &mut entities)?;
-
         let frag = Self::new(uid, entities);
         Ok(frag)
     }
@@ -174,8 +139,8 @@ impl HierarchyFragment {
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         uid: Uid,
-    ) -> Result<HierarchyFragment, HierarchyFragmentNewError> {
-        let entity = uid.entity(world).unwrap();
+    ) -> Result<HierarchyFragment, EntityFromWorldError> {
+        let entity = world.resource::<UidRegistry>().get_entity(uid)?;
         Self::from_world(world, type_registry, filter, uid, entity)
     }
     /// Creates a new HierarchyFragment from the hieararchy of a world entity.
@@ -189,10 +154,8 @@ impl HierarchyFragment {
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         entity: Entity,
-    ) -> Result<HierarchyFragment, HierarchyFragmentNewError> {
-        let uid = *world
-            .get::<Uid>(entity)
-            .ok_or(HierarchyFragmentNewError::NoUidOnEntity(entity))?;
+    ) -> Result<HierarchyFragment, EntityFromWorldError> {
+        let uid = world.resource::<UidRegistry>().get_uid(entity)?;
         Self::from_world(world, type_registry, filter, uid, entity)
     }
 
@@ -202,7 +165,7 @@ impl HierarchyFragment {
         filter: &SceneFilter,
         uid: Uid,
         entity: Entity,
-    ) -> Result<HierarchyFragment, HierarchyFragmentNewError> {
+    ) -> Result<HierarchyFragment, EntityFromWorldError> {
         let fragment = Self::from_world(world, type_registry, filter, uid, entity)?;
 
         let mut uid_registry = world.resource_mut::<UidRegistry>();
@@ -220,7 +183,7 @@ impl HierarchyFragment {
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         uid: Uid,
-    ) -> Result<HierarchyFragment, HierarchyFragmentNewError> {
+    ) -> Result<HierarchyFragment, EntityFromWorldError> {
         let entity = uid.entity(world).unwrap();
         Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
@@ -230,10 +193,8 @@ impl HierarchyFragment {
         type_registry: &TypeRegistry,
         filter: &SceneFilter,
         entity: Entity,
-    ) -> Result<HierarchyFragment, HierarchyFragmentNewError> {
-        let uid = *world
-            .get::<Uid>(entity)
-            .ok_or(HierarchyFragmentNewError::NoUidOnEntity(entity))?;
+    ) -> Result<HierarchyFragment, EntityFromWorldError> {
+        let uid = world.resource::<UidRegistry>().get_uid(entity)?;
         Self::despawn_from_world(world, type_registry, filter, uid, entity)
     }
 
@@ -243,25 +204,22 @@ impl HierarchyFragment {
         type_registry: &TypeRegistry,
         uid: Uid,
         parent: Option<Entity>,
-    ) -> Result<Entity, HierarchyFragmentSpawnError> {
+    ) -> Result<Entity, ComponentReflectError> {
         let he = self.entities.get(&uid).unwrap();
-        let entity = match parent {
-            Some(parent) => he.entity_fragment.spawn_in_world_with_parent_entity(
-                world,
-                type_registry,
-                parent,
-            )?,
-            None => he.entity_fragment.spawn_in_world(world, type_registry)?,
-        };
+        let mut entity_mut = he.entity_fragment.spawn_in_world(world, type_registry)?;
 
-        let parent_entity = Some(entity);
+        if let Some(parent) = parent {
+            entity_mut.set_parent(parent);
+        }
+
+        let id = entity_mut.id();
         if let Some(children) = &he.children {
             for uid in children.clone() {
-                self.internal_spawn_recursive(world, type_registry, uid, parent_entity)?;
+                self.internal_spawn_recursive(world, type_registry, uid, Some(id))?;
             }
         }
 
-        Ok(entity)
+        Ok(id)
     }
 
     /// Spawns the entity in the world, recursively spawning children
@@ -272,7 +230,7 @@ impl HierarchyFragment {
         &self,
         world: &mut World,
         type_registry: &TypeRegistry,
-    ) -> Result<Entity, HierarchyFragmentSpawnError> {
+    ) -> Result<Entity, ComponentReflectError> {
         self.internal_spawn_recursive(world, type_registry, self.root_uid, None)
     }
 
@@ -286,7 +244,7 @@ impl HierarchyFragment {
         world: &mut World,
         type_registry: &TypeRegistry,
         parent: Entity,
-    ) -> Result<Entity, HierarchyFragmentSpawnError> {
+    ) -> Result<Entity, ComponentReflectError> {
         self.internal_spawn_recursive(world, type_registry, self.root_uid, Some(parent))
     }
 
@@ -300,10 +258,9 @@ impl HierarchyFragment {
         world: &mut World,
         type_registry: &TypeRegistry,
         parent: Uid,
-    ) -> Result<Entity, HierarchyFragmentSpawnError> {
-        let parent = parent
-            .entity(world)
-            .ok_or(HierarchyFragmentSpawnError::NoParentWithUid { uid: parent })?;
-        self.spawn_in_world_with_parent_entity(world, type_registry, parent)
+    ) -> Result<Entity, HierarchySpawnWithParentUidError> {
+        let parent = world.resource::<UidRegistry>().get_entity(parent)?;
+        let e = self.spawn_in_world_with_parent_entity(world, type_registry, parent)?;
+        Ok(e)
     }
 }

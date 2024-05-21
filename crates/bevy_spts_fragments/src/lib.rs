@@ -6,9 +6,9 @@ pub mod entity;
 pub mod hierarchy;
 
 pub mod prelude {
-    pub use crate::component::{ComponentFragment, ComponentFragmentError, ComponentToFragment};
-    pub use crate::bundle::{BundleFragment, BundleToFragment};
-    pub use crate::entity::{EntityFragment, EntityFragmentNewError, EntityFragmentSpawnError};
-    pub use crate::hierarchy::{HierarchyFragment, HierarchyFragmentSpawnError, HierarchyFragmentNewError};
+    pub use crate::component::*;
+    pub use crate::bundle::*;
+    pub use crate::entity::*;
+    pub use crate::hierarchy::*;
     pub use bevy_spts_uid::Uid;
 }

@@ -120,7 +120,7 @@ impl Default for Uid {
 //     }
 // }
 
-#[derive(Debug, Error)]
+#[derive(Debug, Error, Clone, Copy)]
 pub enum UidRegistryError {
     #[error("No uid in registry: {0}. Can't lookup entity.")]
     NoEntity(Uid),
