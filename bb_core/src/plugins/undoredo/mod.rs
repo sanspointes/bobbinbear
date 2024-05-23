@@ -31,7 +31,7 @@ struct UndoRedoTag;
 
 impl Plugin for UndoRedoPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
-        SceneFilter::allow_all()
+        SceneFilter::allow_all();
         let filter = SceneFilter::default()
             .allow::<Transform>()
             .allow::<GlobalTransform>()

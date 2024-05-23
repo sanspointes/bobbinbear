@@ -12,7 +12,7 @@ use crate::{
 
 use super::Change;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct InsertChange {
     target: Uid,
     bundle: BundleFragment,
@@ -21,6 +21,18 @@ pub struct InsertChange {
 impl InsertChange {
     pub fn new(target: Uid, bundle: BundleFragment) -> Self {
         Self { target, bundle }
+    }
+
+    pub fn target(&self) -> &Uid {
+        &self.target
+    }
+
+    pub fn bundle(&self) -> &BundleFragment {
+        &self.bundle
+    }
+
+    pub fn components(&self) -> &[ComponentFragment] {
+        self.bundle.components()
     }
 }
 
@@ -59,7 +71,7 @@ impl Change for InsertChange {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ApplyChange {
     target: Uid,
     bundle: BundleFragment,
@@ -80,6 +92,10 @@ impl ApplyChange {
 
     pub fn components(&self) -> &[ComponentFragment] {
         self.bundle.components()
+    }
+
+    pub fn components_mut(&mut self) -> &mut [ComponentFragment] {
+        self.bundle.components_mut()
     }
 }
 
@@ -116,7 +132,7 @@ impl Change for ApplyChange {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct RemoveChange {
     target: Uid,
     type_ids: Vec<TypeId>,

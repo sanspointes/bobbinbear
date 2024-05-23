@@ -77,8 +77,8 @@ impl BundleFragment {
         self.components.as_slice()
     }
 
-    pub fn components_mut(&mut self) -> &[ComponentFragment] {
-        self.components.as_slice()
+    pub fn components_mut(&mut self) -> &mut [ComponentFragment] {
+        self.components.as_mut_slice()
     }
 
     pub fn insert(

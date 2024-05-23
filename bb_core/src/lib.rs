@@ -88,7 +88,7 @@ pub fn setup(app: &mut App) {
     ))
     // Sanspointes plugin libs
     .add_plugins((
-        BevyWasmApiPlugin::default().with_end_schedule(Update),
+        BevyWasmApiPlugin,
         VectorGraphicPlugin,
     ))
     // App specific

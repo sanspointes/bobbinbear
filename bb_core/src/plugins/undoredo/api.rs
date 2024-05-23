@@ -6,6 +6,7 @@ use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
 use super::{UndoRedoResource, UndoRedoTag};
+use crate::plugins::undoredo::changeset_ext::CollapseChangeset;
 
 #[allow(non_snake_case)]
 mod definitions {
@@ -31,10 +32,25 @@ impl UndoRedoApi {
         changeset: Changeset,
     ) -> Result<UndoRedoResult, anyhow::Error> {
         ChangesetResource::<UndoRedoTag>::context_scope(world, |world, cx| {
+            let mut res = world.resource_mut::<UndoRedoResource>();
+
+            // Early check if changeset has same signature as previous and can be merged.
+            if let Some(mut prev_changeset) = res.undo_stack.pop() {
+                if let Ok(merged_changeset) = prev_changeset.merge_and_apply_mergable(&changeset, world, cx) {
+                    let mut res = world.resource_mut::<UndoRedoResource>();
+
+                    res.undo_stack.push(merged_changeset);
+                    res.redo_stack.clear();
+
+                    return Ok(UndoRedoResult::PerformedChange);
+                }
+            }
+
             let inverse = changeset.apply(world, cx)?;
             let mut res = world.resource_mut::<UndoRedoResource>();
             res.undo_stack.push(inverse);
             res.redo_stack.clear();
+
             Ok(UndoRedoResult::PerformedChange)
         })
     }
