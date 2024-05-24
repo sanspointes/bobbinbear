@@ -463,8 +463,8 @@ dependencies = [
 
 [[package]]
 name = "bevy-wasm-api"
-version = "0.1.0"
-source = "git+https://github.com/sanspointes/bevy-wasm-api#cc77b84d2e894afa5328d231cd11a3d192694d3e"
+version = "0.2.0"
+source = "git+https://github.com/sanspointes/bevy-wasm-api/#a4ab487b2f3b24a85bf2590a2ba34f6bcd74dd19"
 dependencies = [
  "bevy-wasm-api-macro",
  "bevy_app",
@@ -479,16 +479,16 @@ dependencies = [
 
 [[package]]
 name = "bevy-wasm-api-macro"
-version = "0.1.0"
-source = "git+https://github.com/sanspointes/bevy-wasm-api#cc77b84d2e894afa5328d231cd11a3d192694d3e"
+version = "0.2.0"
+source = "git+https://github.com/sanspointes/bevy-wasm-api/#a4ab487b2f3b24a85bf2590a2ba34f6bcd74dd19"
 dependencies = [
  "bevy-wasm-api-macro-core",
 ]
 
 [[package]]
 name = "bevy-wasm-api-macro-core"
-version = "0.1.0"
-source = "git+https://github.com/sanspointes/bevy-wasm-api#cc77b84d2e894afa5328d231cd11a3d192694d3e"
+version = "0.2.0"
+source = "git+https://github.com/sanspointes/bevy-wasm-api/#a4ab487b2f3b24a85bf2590a2ba34f6bcd74dd19"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

@@ -19,7 +19,7 @@ bevy = { version = "0.13", default-features = false }
 serde = {version = "1.0.196", features = ["serde_derive"] }
 
 # App Crates
-bevy-wasm-api = { git = "https://github.com/sanspointes/bevy-wasm-api", version = "0.1.0" }
+bevy-wasm-api = { git = "https://github.com/sanspointes/bevy-wasm-api/", version = "0.2.0" }
 bevy_spts_uid = { version = "0.1.0", path = "../crates/bevy_spts_uid", features = ["serde", "tsify"] }
 bevy_spts_changeset = { version = "0.1.0", path = "../crates/bevy_spts_changeset", features = ["serde"] }
 bevy_spts_fragments = { version = "0.1.0", path = "../crates/bevy_spts_fragments", features = ["serde"] }
