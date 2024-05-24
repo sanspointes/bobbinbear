@@ -5,7 +5,7 @@ use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::Endpoint;
 
 use crate::{
-    ecs::{InternalObject, ObjectBundle, ObjectType, ProxiedObjectBundle}, materials::UiElementMaterial, meshes::BobbinMeshes, plugins::{effect::Effect, selected::Selected, viewport::BobbinViewport}
+    ecs::{InternalObject, ObjectBundle, ObjectType, ProxiedObjectBundle}, materials::{UiElementMaterial, UiElementMaterialCache}, meshes::BobbinMeshes, plugins::{effect::Effect, selected::Selected, viewport::BobbinViewport}
 };
 
 use super::BecauseInspected;
@@ -77,13 +77,14 @@ pub fn handle_inspect_vector_object_endpoints(
 ) {
     let mut sys_state = SystemState::<(
         BobbinMeshes,
-        ResMut<Assets<UiElementMaterial>>,
+        Res<UiElementMaterialCache>,
         Query<(Entity, &Uid, &Parent, &Transform), With<Endpoint>>,
     )>::new(world);
 
     let parent_entity = inspected.entity(world).unwrap();
-    let (meshes, mut materials, q_endpoints) = sys_state.get_mut(world);
+    let (meshes, material_cache, q_endpoints) = sys_state.get_mut(world);
 
+    let material = material_cache.default.clone();
     let mesh = meshes.endpoint_mesh();
 
     let mut changed = vec![inspected];
@@ -92,9 +93,9 @@ pub fn handle_inspect_vector_object_endpoints(
 
     let endpoints: Vec<_> = q_endpoints
         .iter()
-        .map(|(e, uid, parent, transform)| (e, *uid, parent.get(), *transform, materials.add(UiElementMaterial::default())))
+        .map(|(e, uid, parent, transform)| (e, *uid, parent.get(), *transform))
         .collect();
-    for (entity, endpoint_uid, parent, _, material) in endpoints {
+    for (entity, endpoint_uid, parent, _) in endpoints {
         if parent != parent_entity {
             continue;
         }
@@ -111,7 +112,7 @@ pub fn handle_inspect_vector_object_endpoints(
             InternalObject,
             uid,
             mesh.clone(),
-            material,
+            material.clone(),
         ));
 
         world
