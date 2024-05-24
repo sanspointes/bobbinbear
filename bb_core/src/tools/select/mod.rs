@@ -1,5 +1,8 @@
 use bevy::{
-    app::{App, Plugin}, ecs::{system::Resource, world::World}, input::ButtonState, log::{warn}
+    app::{App, Plugin},
+    ecs::{system::Resource, world::World},
+    input::ButtonState,
+    log::warn,
 };
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_uid::Uid;
@@ -11,7 +14,8 @@ use crate::{
         selected::{
             raycast::{SelectableHit, SelectableHitsWorldExt},
             Hovered, Selected, SelectedApi,
-        }, undoredo::UndoRedoApi,
+        },
+        undoredo::UndoRedoApi,
     },
 };
 
@@ -81,11 +85,7 @@ pub fn handle_select_tool_input(
                 if let Some(SelectableHit { uid, .. }) = top {
                     let target = *uid;
                     if matches!(modifiers.shift, ButtonState::Pressed) {
-                        SelectedApi::set_object_selected(
-                            world,
-                            target,
-                            Selected::Selected,
-                        )?;
+                        SelectedApi::set_object_selected(world, target, Selected::Selected)?;
                     } else {
                         SelectedApi::deselect_all_set_object_selected(
                             world,
@@ -185,7 +185,7 @@ pub fn handle_select_tool_input(
             (state, ev) => {
                 warn!("SelectTool: Unhandled state/ev\n\tstate: {state:?}\n\tev: {ev:?}");
                 state.clone()
-            },
+            }
         }
     }
 

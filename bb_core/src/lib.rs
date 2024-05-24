@@ -5,6 +5,7 @@ mod materials;
 mod meshes;
 mod plugins;
 mod tools;
+mod views;
 
 use bevy::asset::AssetMetaCheck;
 use bevy::input::common_conditions::input_toggle_active;
@@ -27,6 +28,7 @@ use meshes::BobbinMeshesPlugin;
 use plugins::inspecting::BecauseInspected;
 use plugins::selected::SelectedPlugin;
 use tools::BobbinToolsPlugin;
+use views::BobbinViewsPlugin;
 use wasm_bindgen::prelude::*;
 
 use plugins::bounds2d::Bounds2DPlugin;
@@ -96,6 +98,7 @@ pub fn setup(app: &mut App) {
         BobbinMeshesPlugin,
         BobbinMaterialsPlugin,
         BobbinToolsPlugin,
+        BobbinViewsPlugin,
         UndoRedoPlugin,
         Bounds2DPlugin,
         ViewportPlugin,

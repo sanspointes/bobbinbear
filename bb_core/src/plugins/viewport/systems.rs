@@ -5,9 +5,14 @@ use bevy::{
 
 use crate::plugins::viewport::BobbinViewport;
 
-pub fn sys_setup_viewport(mut commands: Commands) {
+use super::BobbinViewportResource;
+
+pub fn sys_setup_viewport(
+    mut viewport_resource: ResMut<BobbinViewportResource>,
+    mut commands: Commands,
+) {
     println!("Setup viewport");
-    commands
+    let entity = commands
         .spawn(Camera2dBundle {
             transform: Transform {
                 scale: Vec3::new(1., -1., 1.),
@@ -16,7 +21,10 @@ pub fn sys_setup_viewport(mut commands: Commands) {
             ..Default::default()
         })
         .insert(BobbinViewport::default())
-        .insert(Name::from("Viewport"));
+        .insert(Name::from("Viewport"))
+        .id();
+
+    viewport_resource.viewport_entity = Some(entity);
 }
 
 pub fn sys_update_viewport_on_window_resize(
