@@ -61,6 +61,9 @@ impl BuildView<VectorEndpointVM> for VectorEndpointVM {
                 .resource_mut::<Events<Effect>>()
                 .send(Effect::EntitiesSpawned(vec![uid]));
         });
+        view.commands().commands().add(move |world: &mut World| {
+            world.resource_mut::<UidRegistry>().register(uid, view_entity);
+        });
     }
 
     fn on_before_destroy(
@@ -74,6 +77,9 @@ impl BuildView<VectorEndpointVM> for VectorEndpointVM {
             world
                 .resource_mut::<Events<Effect>>()
                 .send(Effect::EntitiesDespawned(vec![view_uid]));
+        });
+        commands.add(move |world: &mut World| {
+            world.resource_mut::<UidRegistry>().unregister(view_uid);
         });
     }
 }
