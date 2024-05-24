@@ -20,8 +20,13 @@ pub struct EffectPlugin;
 
 impl Plugin for EffectPlugin {
     fn build(&self, app: &mut bevy::prelude::App) {
+        app.add_event::<Effect>();
         app.insert_resource(EffectQue::new());
-        app.add_systems(Last, sys_collect_changeset_events.pipe(sys_emit_effects));
+        app.add_systems(
+            PostUpdate,
+            sys_collect_changeset_events.before(sys_emit_effects),
+        );
+        app.add_systems(Last, sys_emit_effects);
     }
 }
 
@@ -29,8 +34,9 @@ impl Plugin for EffectPlugin {
 /// Collects all the changeset events into effect events.  Sends them via EventWriter
 pub fn sys_collect_changeset_events(
     mut ev_spawned: EventReader<ChangesetEvent>,
-    mut q_all: ParamSet<(Query<(&Uid, &Selected, &Visibility)>,)>,
-) -> Vec<Effect> {
+    mut ev_effect_writer: EventWriter<Effect>,
+    q_all: Query<(&Uid, &Selected, &Visibility)>,
+) {
     let mut spawned_uids = vec![];
     let mut despawned_uids = vec![];
     let mut changed_uids = vec![];
@@ -60,20 +66,18 @@ pub fn sys_collect_changeset_events(
         }
     }
 
-    let mut effects = vec![];
     if !despawned_uids.is_empty() {
-        effects.push(Effect::EntitiesDespawned(despawned_uids));
+        ev_effect_writer.send(Effect::EntitiesDespawned(despawned_uids));
     }
     if !spawned_uids.is_empty() {
-        effects.push(Effect::EntitiesSpawned(spawned_uids));
+        ev_effect_writer.send(Effect::EntitiesSpawned(spawned_uids));
     }
     if !changed_uids.is_empty() {
-        effects.push(Effect::EntitiesChanged(changed_uids));
+        ev_effect_writer.send(Effect::EntitiesChanged(changed_uids));
     }
     if selection_changed {
-        effects.push(Effect::SelectionChanged(
+        ev_effect_writer.send(Effect::SelectionChanged(
             q_all
-                .p0()
                 .iter()
                 .filter_map(|(uid, selected, _)| {
                     if matches!(*selected, Selected::Selected) {
@@ -87,24 +91,20 @@ pub fn sys_collect_changeset_events(
     }
 
     if inspected.is_some() || uninspected.is_some() {
-        effects.push(Effect::InspectionChanged {
+        ev_effect_writer.send(Effect::InspectionChanged {
             inspected,
             uninspected,
         });
     }
-
-    effects
 }
 
-pub fn sys_emit_effects(
-    In(effects): In<Vec<Effect>>,
-    world: &mut World,
-) {
-    let mut effects: VecDeque<Effect> = effects.into();
+pub fn sys_emit_effects(world: &mut World) {
+    let mut effects: VecDeque<Effect> = world.resource_mut::<Events<Effect>>().drain().collect();
     while let Some(ev) = effects.pop_front() {
         let res = world.get_resource_mut::<EffectQue>().unwrap();
         res.push_effect(ev.clone());
-            
+
+        #[allow(clippy::single_match)]
         match ev {
             Effect::InspectionChanged {
                 inspected,
