@@ -1,5 +1,5 @@
 use bevy::{
-    app::{App, Plugin}, ecs::{system::Resource, world::World}, input::ButtonState, log::{info, warn}
+    app::{App, Plugin}, ecs::{system::Resource, world::World}, input::ButtonState, log::{warn}
 };
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_uid::Uid;

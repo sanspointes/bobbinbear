@@ -1,11 +1,10 @@
-use std::mem::size_of;
 
 use bevy::{
     prelude::*,
     render::{
         mesh::{MeshVertexAttribute, MeshVertexBufferLayout},
         render_resource::{
-            AsBindGroup, RenderPipelineDescriptor, ShaderRef, ShaderType, SpecializedMeshPipelineError, VertexAttribute, VertexFormat
+            AsBindGroup, RenderPipelineDescriptor, ShaderRef, ShaderType, SpecializedMeshPipelineError, VertexFormat
         },
     },
     sprite::{Material2d, Material2dKey},

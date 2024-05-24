@@ -35,18 +35,3 @@ pub fn sys_update_viewport_on_window_resize(
         );
     }
 }
-
-pub fn sys_update_camera_from_viewport(
-    mut q_viewport: Query<(&BobbinViewport, &mut Transform), Without<Camera>>,
-    mut q_primary_camera: Query<(&mut OrthographicProjection, &mut Transform), With<Camera>>,
-) {
-    let (viewport, mut transform) = q_viewport.single_mut();
-    let (ref mut projection, mut cam_transform) = q_primary_camera.single_mut();
-
-    // Update zoom level
-    // projection.update(viewport.target_size.x, viewport.target_size.y);
-    // Update position
-    // transform.translation = (viewport.target_position - viewport.target_size / 2.).extend(100.);
-    // cam_transform.translation = (viewport.target_size / 2.).extend(100.);
-    // cam_transform.translation.y *= -1.;
-}

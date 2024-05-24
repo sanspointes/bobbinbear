@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 
 use bevy::prelude::*;
 use bevy_spts_changeset::prelude::WorldChangesetExt;
@@ -129,7 +128,7 @@ impl SceneApi {
         uid: Uid,
         visible: bool,
     ) -> Result<UndoRedoResult, anyhow::Error> {
-        let visible = if matches!(visible, true) {
+        let visible = if visible {
             Visibility::Inherited
         } else {
             Visibility::Hidden

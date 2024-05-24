@@ -6,7 +6,7 @@
 use std::ops::Deref;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*};
-use bevy_spts_uid::{Uid, UidRegistry};
+use bevy_spts_uid::{UidRegistry};
 
 use crate::plugins::viewport::BobbinViewport;
 

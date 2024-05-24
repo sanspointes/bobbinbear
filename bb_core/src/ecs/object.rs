@@ -9,7 +9,6 @@ use bevy::{
     render::view::{InheritedVisibility, ViewVisibility, Visibility},
     transform::components::{GlobalTransform, Transform},
 };
-use bevy_inspector_egui::bevy_egui::setup_new_windows_system;
 use bevy_mod_raycast::deferred::RaycastMesh;
 use bevy_spts_uid::Uid;
 

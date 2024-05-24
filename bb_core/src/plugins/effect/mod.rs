@@ -102,7 +102,7 @@ pub fn sys_emit_effects(
 ) {
     let mut effects: VecDeque<Effect> = effects.into();
     while let Some(ev) = effects.pop_front() {
-        let mut res = world.get_resource_mut::<EffectQue>().unwrap();
+        let res = world.get_resource_mut::<EffectQue>().unwrap();
         res.push_effect(ev.clone());
             
         match ev {

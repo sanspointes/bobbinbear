@@ -3,18 +3,16 @@ mod vector_object;
 
 use std::collections::VecDeque;
 
-use bevy::{ecs::system::SystemState, prelude::*};
+use bevy::{prelude::*};
 
 use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::{
-    components::{Endpoint, VectorGraphic},
-    lyon_path::Event,
+    components::{VectorGraphic},
 };
 pub use components::*;
 
 use crate::plugins::{
-    effect::{sys_emit_effects, Effect},
-    selected::Selected,
+    effect::{Effect},
 };
 
 use self::vector_object::{handle_inspect_vector_object, handle_uninspect_vector_object};
