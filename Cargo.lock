@@ -963,8 +963,7 @@ dependencies = [
 [[package]]
 name = "bevy_mod_raycast"
 version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9ca646aeaab4a170e1f3e8284b925e2f990eb18616e95d7826c873c8e26ee945"
+source = "git+https://github.com/connorgmeehan/bevy_mod_raycast/?branch=feat/triangle-indices#87d36b99e21cb2133b7c160708437a510dce6323"
 dependencies = [
  "bevy_app",
  "bevy_asset",

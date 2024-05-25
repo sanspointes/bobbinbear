@@ -19,6 +19,15 @@ pub struct Endpoint {
     pub(crate) prev_edge: Option<Uid>,
 }
 impl Endpoint {
+    pub fn with_next_edge(mut self, next_edge: Uid) -> Self {
+        self.next_edge = Some(next_edge);
+        self
+    }
+    pub fn with_prev_edge(mut self, prev_edge: Uid) -> Self {
+        self.prev_edge = Some(prev_edge);
+        self
+    }
+
     pub fn next_edge_entity(&self) -> Option<Uid> {
         self.next_edge
     }

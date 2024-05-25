@@ -1,24 +1,28 @@
-use std::ops::Deref;
 use std::marker::PhantomData;
+use std::ops::Deref;
 
-use bevy::{ecs::{prelude::*, reflect::ReflectComponent}, reflect::Reflect};
+use bevy::{
+    ecs::{prelude::*, reflect::ReflectComponent},
+    log::error,
+    reflect::Reflect,
+};
 use bevy_spts_uid::{Uid, UidRegistry};
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
-pub struct ProxiedComponent<T: Component, TState = ()>{ 
+pub struct ProxiedComponent<T: Component, TState = ()> {
     target: Uid,
     state: TState,
     #[reflect(ignore)]
-    pd: PhantomData<T>
- }
+    pd: PhantomData<T>,
+}
 
 impl<T: Component, TState> ProxiedComponent<T, TState> {
     pub fn new(target: Uid, state: TState) -> Self {
         Self {
             target,
             state,
-            pd: PhantomData
+            pd: PhantomData,
         }
     }
 
@@ -43,10 +47,25 @@ pub fn sys_update_proxied_component<T: Component + PartialEq + Copy>(
     uid_registry: Res<UidRegistry>,
 ) {
     for (mut proxy_value, proxy) in q_proxied.iter_mut() {
-        let target_entity = uid_registry.entity(*proxy.target());
-        let target_value = q_proxy_source.get(target_entity).unwrap();
-        if *target_value != *proxy_value.deref() {
-            *proxy_value = *target_value;
+        let Ok(target_entity) = uid_registry.get_entity(*proxy.target()) else {
+            error!(
+                "Couldn't update value on proxy from target ({}) because it references a uid that's not in the UidRegistry.",
+                proxy.target(),
+            );
+            continue;
+        };
+
+        match q_proxy_source.get(target_entity) {
+            Ok(target_value) => {
+                if *target_value != *proxy_value.deref() {
+                    *proxy_value = *target_value;
+                }
+            }
+            Err(reason) => error!(
+                "sys_update_proxied_component<T>() couldn't get target({}) of proxy because: {}",
+                proxy.target(),
+                reason
+            ),
         }
     }
 }

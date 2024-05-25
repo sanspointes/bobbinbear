@@ -203,6 +203,7 @@ fn update_vector_edge_mesh(
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(ATTRIBUTE_THEME_MIX, theme_mix_attr);
     mesh.insert_attribute(ATTRIBUTE_EDGE_T, edge_t_attr);
+    // mesh.duplicate_vertices();
 
     // Compute AABB
     let aabb = mesh.compute_aabb();

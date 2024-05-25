@@ -14,31 +14,59 @@ pub struct DebugApi;
 
 #[bevy_wasm_api]
 impl DebugApi {
-    pub fn spawn_circle(world: &mut World) -> Result<UndoRedoResult, anyhow::Error> {
-        let mut sys_state =
-            SystemState::<(ResMut<Assets<Mesh>>, ResMut<Assets<ColorMaterial>>)>::new(world);
-
-        let (mut meshes, mut materials) = sys_state.get_mut(world);
-
-        let mesh = meshes.add(Circle::new(25.));
+    pub fn spawn_line(world: &mut World) -> Result<UndoRedoResult, anyhow::Error> {
+        let mut sys_state = SystemState::<ResMut<Assets<ColorMaterial>>>::new(world);
+        let mut materials = sys_state.get_mut(world);
         let material = materials.add(Color::RED);
 
         let mut builder = world.changeset();
-        let mut entity = builder.spawn_empty();
-        entity
-            .insert(Name::from("Debug Circle"))
-            .insert(Transform::default())
-            .insert(GlobalTransform::default())
-            .insert(Visibility::default())
-            .insert(ViewVisibility::default())
-            .insert(InheritedVisibility::default())
-            .insert(mesh)
-            .insert(material);
+        let vector_graphic = builder
+            .spawn((
+                Name::from("Box"),
+                ObjectBundle::new(ObjectType::Vector),
+                VectorGraphic::default(),
+                VectorGraphicPathStorage::default(),
+                StrokeOptions::default(),
+                FillOptions::default(),
+                material,
+            ))
+            .uid();
+
+        let e0 = builder
+            .spawn((
+                Name::from("Endpoint"),
+                ObjectBundle::new(ObjectType::VectorEndpoint),
+                Endpoint::default(),
+                InternalObject,
+            ))
+            .set_parent(vector_graphic)
+            .uid();
+        let e1 = builder
+            .spawn((
+                Name::from("Endpoint"),
+                ObjectBundle::new(ObjectType::VectorEndpoint).with_position((100., 0.)),
+                Endpoint::default(),
+                InternalObject,
+            ))
+            .set_parent(vector_graphic)
+            .uid();
+
+        builder
+            .spawn_edge(EdgeVariant::Line, e0, e1)
+            .insert((
+                Name::from("Edge"),
+                ObjectBundle::new(ObjectType::VectorEdge),
+                InternalObject
+            ))
+            // .insert(ObjectBundle::new(ObjectType::VectorSegment))
+            .set_parent(vector_graphic);
+
         let changeset = builder.build();
 
-        UndoRedoApi::execute(world, changeset)
-    }
+        let result = UndoRedoApi::execute(world, changeset)?;
 
+        Ok(result)
+    }
     pub fn spawn_box(world: &mut World) -> Result<UndoRedoResult, anyhow::Error> {
         let mut sys_state = SystemState::<ResMut<Assets<ColorMaterial>>>::new(world);
         let mut materials = sys_state.get_mut(world);
