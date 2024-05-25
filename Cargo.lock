@@ -335,6 +335,7 @@ dependencies = [
  "bevy_spts_vectorgraphic",
  "console_error_panic_hook",
  "js-sys",
+ "moonshine-core",
  "serde",
  "serde-wasm-bindgen 0.6.5",
  "tsify",
@@ -3194,6 +3195,84 @@ checksum = "9d811f3e15f28568be3407c8e7fdb6514c1cda3cb30683f15b6a1a1dc4ea14a7"
 dependencies = [
  "adler",
  "simd-adler32",
+]
+
+[[package]]
+name = "moonshine-core"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "69271f0e1d32a1379fd8a890df36a307e208ad4627eb400c110f6036150a4210"
+dependencies = [
+ "bevy_app",
+ "moonshine-kind",
+ "moonshine-object",
+ "moonshine-save",
+ "moonshine-spawn",
+ "moonshine-util",
+]
+
+[[package]]
+name = "moonshine-kind"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1d43844ff90beb78f937a31fa61047cc2189b7ca19abaff4c0b700df551964c2"
+dependencies = [
+ "bevy_ecs",
+ "bevy_reflect",
+ "bevy_utils",
+]
+
+[[package]]
+name = "moonshine-object"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "687b34a281a6d0a258e54a4d6f72ff5f9341fcf099318aa21f6467e8b9edc54d"
+dependencies = [
+ "bevy_core",
+ "bevy_ecs",
+ "bevy_hierarchy",
+ "moonshine-kind",
+ "moonshine-util",
+]
+
+[[package]]
+name = "moonshine-save"
+version = "0.3.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a609b5554733055b3e3c4dd1f9d5b18f97f9a67570353b6290f42a10ce0623e8"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_hierarchy",
+ "bevy_reflect",
+ "bevy_scene",
+ "bevy_utils",
+ "moonshine-util",
+ "ron",
+ "serde",
+]
+
+[[package]]
+name = "moonshine-spawn"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2095e162ac81bf13d4eed8f4d03bb2cc5fed147bbe59557d6e05e86ab00d2a19"
+dependencies = [
+ "bevy_app",
+ "bevy_ecs",
+ "bevy_hierarchy",
+ "bevy_reflect",
+ "bevy_utils",
+]
+
+[[package]]
+name = "moonshine-util"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d8fb13ee50b90b7e6292f83c8a7e25beed2fde3ccf5b95d6c5e5ae9396d898a8"
+dependencies = [
+ "bevy_ecs",
+ "bevy_hierarchy",
 ]
 
 [[package]]

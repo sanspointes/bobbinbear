@@ -6,7 +6,8 @@
 use std::ops::Deref;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*};
-use bevy_spts_uid::{Uid, UidRegistry};
+use bevy_spts_uid::{UidRegistry};
+use bevy_spts_vectorgraphic::lyon_path::math::Point;
 
 use crate::plugins::viewport::BobbinViewport;
 
@@ -19,6 +20,12 @@ pub struct Position(pub Vec2);
 impl Position {
     pub fn new(pos: impl Into<Vec2>) -> Self {
         Self(pos.into())
+    }
+}
+
+impl From<Position> for Point {
+    fn from(value: Position) -> Self {
+        Self::new(value.x, value.y)
     }
 }
 
@@ -36,7 +43,7 @@ pub type ProxiedPosition = ProxiedComponent<Position, ProxiedPositionStrategy>;
 
 
 #[allow(clippy::single_match)]
-pub fn sys_update_proxied_component_position_state(
+pub fn sys_update_proxied_component_position(
     q_global_transform: Query<&GlobalTransform, Without<Camera>>,
     mut q_proxied: Query<(&mut Position, &mut ProxiedPosition)>,
     q_proxy_source: Query<&Position, Without<ProxiedPosition>>,
@@ -72,7 +79,7 @@ pub fn sys_update_proxied_component_position_state(
     }
 }
 
-pub fn sys_update_positions(
+pub fn sys_update_transform_from_position(
     q_camera: Query<(&Camera, &BobbinViewport, &GlobalTransform), With<Camera>>,
     mut q_positioned: Query<(&Position, Option<&ProxiedPosition>, &mut Transform), Without<Camera>>,
     // mut q_positioned: Query<(&Position, &ProxiedPosition, &mut Transform), (Without<Camera>, Or<(Changed<Position>, Changed<ProxiedPosition>)>)>,

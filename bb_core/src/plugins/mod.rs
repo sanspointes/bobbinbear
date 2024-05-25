@@ -4,3 +4,4 @@ pub mod effect;
 pub mod inspecting;
 pub mod selected;
 pub mod undoredo;
+pub mod model_view;

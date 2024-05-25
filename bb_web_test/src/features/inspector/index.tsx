@@ -5,7 +5,7 @@ import { Position } from './Position';
 
 export function Inspector() {
     const { document } = useBobbinBear();
-    const { selectedObject } = document;
+    const { selectedObject, selectedObjectUid } = document;
     const title = createMemo(() => {
         const obj = selectedObject();
         if (obj) {
@@ -25,6 +25,7 @@ export function Inspector() {
                     </>
                 )}
             </Show>
+            <pre>{selectedObjectUid()}</pre>
             <pre>{JSON.stringify(selectedObject(), null, 2)}</pre>
         </div>
     );

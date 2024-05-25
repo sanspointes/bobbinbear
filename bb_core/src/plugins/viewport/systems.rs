@@ -5,9 +5,14 @@ use bevy::{
 
 use crate::plugins::viewport::BobbinViewport;
 
-pub fn sys_setup_viewport(mut commands: Commands) {
+use super::BobbinViewportResource;
+
+pub fn sys_setup_viewport(
+    mut viewport_resource: ResMut<BobbinViewportResource>,
+    mut commands: Commands,
+) {
     println!("Setup viewport");
-    commands
+    let entity = commands
         .spawn(Camera2dBundle {
             transform: Transform {
                 scale: Vec3::new(1., -1., 1.),
@@ -16,7 +21,10 @@ pub fn sys_setup_viewport(mut commands: Commands) {
             ..Default::default()
         })
         .insert(BobbinViewport::default())
-        .insert(Name::from("Viewport"));
+        .insert(Name::from("Viewport"))
+        .id();
+
+    viewport_resource.viewport_entity = Some(entity);
 }
 
 pub fn sys_update_viewport_on_window_resize(
@@ -34,19 +42,4 @@ pub fn sys_update_viewport_on_window_resize(
             window.resolution.physical_height() as f32,
         );
     }
-}
-
-pub fn sys_update_camera_from_viewport(
-    mut q_viewport: Query<(&BobbinViewport, &mut Transform), Without<Camera>>,
-    mut q_primary_camera: Query<(&mut OrthographicProjection, &mut Transform), With<Camera>>,
-) {
-    let (viewport, mut transform) = q_viewport.single_mut();
-    let (ref mut projection, mut cam_transform) = q_primary_camera.single_mut();
-
-    // Update zoom level
-    // projection.update(viewport.target_size.x, viewport.target_size.y);
-    // Update position
-    // transform.translation = (viewport.target_position - viewport.target_size / 2.).extend(100.);
-    // cam_transform.translation = (viewport.target_size / 2.).extend(100.);
-    // cam_transform.translation.y *= -1.;
 }

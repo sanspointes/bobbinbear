@@ -24,7 +24,7 @@ pub(super) fn selection_bounds_mesh() -> Mesh {
         ],
     );
 
-    mesh.into()
+    mesh
 }
 
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]

@@ -5,7 +5,7 @@ mod material;
 pub mod raycast;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*, sprite::Material2dPlugin};
-use bevy_mod_raycast::deferred::{DeferredRaycastingPlugin, RaycastSource, RaycastSystem};
+use bevy_mod_raycast::deferred::{DeferredRaycastingPlugin, RaycastSystem};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 

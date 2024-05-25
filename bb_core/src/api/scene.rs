@@ -1,4 +1,3 @@
-use anyhow::anyhow;
 
 use bevy::prelude::*;
 use bevy_spts_changeset::prelude::WorldChangesetExt;
@@ -10,7 +9,7 @@ use crate::{
     ecs::{InternalObject, ObjectType, Position, ProxiedPosition},
     plugins::{
         inspecting::Inspected,
-        selected::Selected,
+        selected::{Hovered, Selected},
         undoredo::{UndoRedoApi, UndoRedoResult},
     },
 };
@@ -42,6 +41,7 @@ export type Uid = string;
         pub name: Option<String>,
         pub visible: bool,
         pub selected: bool,
+        pub hovered: bool,
         pub inspected: bool,
         pub position: Vec2,
         pub children: Option<Vec<Uid>>,
@@ -87,12 +87,13 @@ impl SceneApi {
                 &Visibility,
                 &Transform,
                 &Selected,
+                &Hovered,
                 Option<&Inspected>,
             ), Without<InternalObject>>()
             .get(world, entity)
             .ok()
             .map(
-                |(uid, ty, name, visibility, transform, selected, inspected)| DetailedObject {
+                |(uid, ty, name, visibility, transform, selected, hovered, inspected)| DetailedObject {
                     uid: *uid,
                     ty: *ty,
                     name: name.map(|name| name.to_string()),
@@ -101,6 +102,7 @@ impl SceneApi {
                     children,
 
                     visible: matches!(visibility, Visibility::Inherited),
+                    hovered: matches!(hovered, Hovered::Hovered),
                     selected: matches!(selected, Selected::Selected),
                     inspected: inspected.is_some(),
 
@@ -129,7 +131,7 @@ impl SceneApi {
         uid: Uid,
         visible: bool,
     ) -> Result<UndoRedoResult, anyhow::Error> {
-        let visible = if matches!(visible, true) {
+        let visible = if visible {
             Visibility::Inherited
         } else {
             Visibility::Hidden

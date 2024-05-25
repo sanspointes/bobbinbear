@@ -14,7 +14,9 @@ pub struct ViewportPlugin;
 
 impl Plugin for ViewportPlugin {
     fn build(&self, app: &mut App) {
-        app.register_type::<BobbinViewport>()
+        app
+            .register_type::<BobbinViewport>()
+            .insert_resource(BobbinViewportResource::default())
             .add_systems(
                 Startup,
                 (sys_setup_viewport, sys_setup_viewport_debug).chain(),
@@ -22,6 +24,17 @@ impl Plugin for ViewportPlugin {
             .add_systems(PreUpdate, sys_update_viewport_on_window_resize)
             // .add_systems(PostUpdate, sys_update_camera_from_viewport)
             .add_systems(PostUpdate, sys_update_viewport_debug_positions);
+    }
+}
+
+#[derive(Debug, Resource, Default)]
+pub struct BobbinViewportResource {
+    viewport_entity: Option<Entity>,
+}
+
+impl BobbinViewportResource {
+    pub fn viewport_entity(&self) -> Entity {
+        self.viewport_entity.unwrap()
     }
 }
 
