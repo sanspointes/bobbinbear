@@ -21,9 +21,10 @@ export default function LoadingOverlay(props: LoadingOverlayProps) {
             class="animate-spin drop-shadow-2xl shadow-orange-500"
         />
         <Progress class="w-full max-w-96" value={props.progress * 100} maxValue={100} >
-            <Show when={props.status}>
-                <ProgressLabel><h2 class="text-2xl">{props.status}</h2></ProgressLabel>
-            </Show>
+            <ProgressLabel>
+                <h1 class="text-3xl mb-1">BobbinBear Embroidery</h1>
+                <p class="text-xl mb-1">{props.status}</p>
+            </ProgressLabel>
         </Progress>
     </div>
 }

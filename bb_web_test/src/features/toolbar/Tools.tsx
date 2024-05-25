@@ -1,12 +1,15 @@
+import clsx from 'clsx';
 import { TbPencil, TbPointer } from 'solid-icons/tb';
 import { Button } from '~/components/ui/button';
 import { useBobbinBear } from '~/hooks/useBobbinBear';
 
-export default function Tools() {
+type ToolsProps = {
+    class?: string;
+}
+export default function Tools(props: ToolsProps) {
     const { tools } = useBobbinBear();
     return (
-        <div class="flex gap-2 justify-center items-center">
-            <div class="h-full border-orange-300 border-solid w-[1px] border-[0.5px]" />
+        <div class={clsx("flex gap-2 justify-center items-center", props.class)}>
             <Button
                 variant={tools.currentTool() === 'Select' ? 'toolbar-active' : 'toolbar'}
                 class="w-12 h-12"

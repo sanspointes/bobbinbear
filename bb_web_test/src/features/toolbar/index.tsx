@@ -15,15 +15,16 @@ export function Toolbar() {
         <MainMenu>
             <img
                 src={LogoLightImage}
-                class="block relative top-1 scale-125 w-14 h-auto group-hover:hidden drop-shadow-md shadow-orange-900"
+                class="block relative top-1 scale-150 w-14 h-auto group-hover:hidden drop-shadow-md shadow-orange-900"
             />
             <img
                 src={LogoWinkLightImage}
-                class="hidden relative top-1 scale-125 w-14 h-auto group-hover:block drop-shadow-md shadow-orange-900"
+                class="hidden relative top-1 scale-150 w-14 h-auto group-hover:block drop-shadow-md shadow-orange-900"
             />
         </MainMenu>
-        <Tools />
+        <Tools class="ml-4" />
         <div class="w-full" />
+        <Button variant='toolbar' onClick={() => debugApi.spawn_line()}>Spawn Line</Button>
         <Button variant='toolbar' onClick={() => debugApi.spawn_box()}>Spawn Box</Button>
         <Button variant='toolbar' onClick={() => undoRedoApi.undo()}>Undo</Button>
         <Button variant='toolbar' onClick={() => undoRedoApi.redo()}>Redo</Button>

@@ -28,10 +28,10 @@ function App() {
                 setLoading(0.1 + (ev.transferred / ev.total) * 0.7);
             },
             onComplete() {
-                setLoadingStatus('Starting...')
+                setLoading(0.8);
+                setLoadingStatus('Booting Up...')
             }
         });
-        setLoading(0.8);
         setCtx(createBobbinBearContext());
         setTimeout(() => {
             setLoading(1);
@@ -73,7 +73,7 @@ function App() {
                         >
                             <canvas
                                 id="bb-canvas"
-                                class="absolute top-0 left-0"
+                                class="absolute top-0 left-0 ring-transparent"
                             />
                         </div>
                     </div>
