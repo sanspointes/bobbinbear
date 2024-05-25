@@ -21,8 +21,13 @@ use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
-use ecs::position::{sys_update_positions, sys_update_proxied_component_position_state, Position};
-use ecs::{InternalObject, ObjectType};
+use ecs::position::{
+    sys_update_proxied_component_position, sys_update_transform_from_position, Position,
+};
+use ecs::{
+    sys_cleanup_edge_positions_to_bounding_box, sys_update_endpoint_positions_on_edge_move,
+    InternalObject, ObjectType,
+};
 use materials::BobbinMaterialsPlugin;
 use meshes::BobbinMeshesPlugin;
 use plugins::inspecting::BecauseInspected;
@@ -65,15 +70,28 @@ pub fn setup_bb_core(canvas_id: String) {
     app.run()
 }
 
+#[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
+pub enum PostUpdateSets {
+    Positioning,
+    PostPositioningPropagate,
+}
+
+
 pub fn setup(app: &mut App) {
     app.add_event::<ChangesetEvent>();
 
+    app.configure_sets(PostUpdate, PostUpdateSets::Positioning.after(TransformSystem::TransformPropagate));
+    app.configure_sets(PostUpdate, PostUpdateSets::PostPositioningPropagate.after(PostUpdateSets::Positioning));
     app.add_systems(
         PostUpdate,
-        (sys_update_proxied_component_position_state.pipe(sys_update_positions))
-            .after(TransformSystem::TransformPropagate),
+        (
+            sys_update_proxied_component_position,
+            sys_update_endpoint_positions_on_edge_move,
+            sys_cleanup_edge_positions_to_bounding_box,
+            sys_update_transform_from_position,
+        ).chain().in_set(PostUpdateSets::Positioning)
     );
-    app.add_systems(Last, propagate_transforms);
+    app.add_systems(PostUpdate, propagate_transforms.in_set(PostUpdateSets::PostPositioningPropagate));
 
     app.insert_resource(UidRegistry::default());
     app.register_type::<UidRegistry>();
@@ -89,10 +107,7 @@ pub fn setup(app: &mut App) {
         WorldInspectorPlugin::default().run_if(input_toggle_active(true, KeyCode::Escape)),
     ))
     // Sanspointes plugin libs
-    .add_plugins((
-        BevyWasmApiPlugin::default(),
-        VectorGraphicPlugin,
-    ))
+    .add_plugins((BevyWasmApiPlugin::default(), VectorGraphicPlugin))
     // App specific
     .add_plugins((
         BobbinMeshesPlugin,

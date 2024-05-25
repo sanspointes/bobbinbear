@@ -7,7 +7,7 @@ use bevy::{
     app::prelude::*,
     ecs::{prelude::*, schedule::ScheduleLabel},
     hierarchy::prelude::*,
-    log::warn,
+    log::debug,
     utils::{HashMap, HashSet},
 };
 
@@ -39,7 +39,7 @@ impl RegisterView for App {
         spawn_schedule: impl ScheduleLabel,
         despawn_schedule: impl ScheduleLabel,
     ) -> &mut Self {
-        warn!("Registering view in schedule {spawn_schedule:?} {despawn_schedule:?}");
+        debug!("Registering view in schedule {spawn_schedule:?} {despawn_schedule:?}");
         self.add_systems(spawn_schedule, spawn::<T, V>);
         let mut viewables = self.world.get_resource_or_insert_with(Viewables::default);
         if !viewables.is_viewable_kind::<T>() {
@@ -237,7 +237,7 @@ fn spawn<T: Kind, S: BuildView<T>>(
             world.resource_mut::<Viewables>().add(entity, view);
         });
         commands.entity(entity).insert(Model::new(view));
-        warn!("{view:?} spawned for {entity:?}");
+        debug!("{view:?} spawned for {entity:?}");
     }
 }
 
@@ -261,7 +261,7 @@ fn despawn<T: Kind, S: BuildView<T>>(
                     .resource_mut::<Viewables>()
                     .remove(model.entity(), view);
             });
-            warn!("{view:?} despawned for {model:?}");
+            debug!("{view:?} despawned for {model:?}");
         }
     }
 }

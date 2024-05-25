@@ -12,7 +12,7 @@ use bevy_spts_uid::Uid;
 pub use effects::*;
 pub use js_event_que::EffectQue;
 
-use crate::plugins::{inspecting::Inspected, selected::Selected};
+use crate::{ecs::ProxiedComponent, plugins::{inspecting::Inspected, selected::Selected}};
 
 use super::inspecting::handle_inspection_changed;
 
@@ -35,7 +35,7 @@ impl Plugin for EffectPlugin {
 pub fn sys_collect_changeset_events(
     mut ev_spawned: EventReader<ChangesetEvent>,
     mut ev_effect_writer: EventWriter<Effect>,
-    q_all: Query<(&Uid, &Selected, &Visibility)>,
+    q_all: Query<(&Uid, &Selected, Option<&ProxiedComponent<Selected>>, &Visibility)>,
 ) {
     let mut spawned_uids = vec![];
     let mut despawned_uids = vec![];
@@ -79,8 +79,8 @@ pub fn sys_collect_changeset_events(
         ev_effect_writer.send(Effect::SelectionChanged(
             q_all
                 .iter()
-                .filter_map(|(uid, selected, _)| {
-                    if matches!(*selected, Selected::Selected) {
+                .filter_map(|(uid, selected, maybe_proxy, _)| {
+                    if matches!(*selected, Selected::Selected) && maybe_proxy.is_none() {
                         Some(*uid)
                     } else {
                         None

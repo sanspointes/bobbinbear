@@ -2,7 +2,6 @@ use bevy::{
     core::Name,
     ecs::{component::Component, event::Events, reflect::ReflectComponent, system::Commands, world::World},
     hierarchy::BuildWorldChildren,
-    log::warn,
     reflect::Reflect,
 };
 use bevy_spts_uid::{Uid, UidRegistry};
@@ -31,10 +30,6 @@ impl BuildView<VectorEndpointVM> for VectorEndpointVM {
         object: Object<VectorEndpointVM>,
         view: &mut ViewBuilder<VectorEndpointVM>,
     ) {
-        warn!(
-            "Building view for VectorEndpointModel {:?}",
-            object.entity()
-        );
         let material = world.resource::<UiElementMaterialCache>().default.clone();
         let mesh = world
             .resource::<BobbinMeshesResource>()

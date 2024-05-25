@@ -1,8 +1,14 @@
-use bevy::app::{Plugin, PostUpdate};
+use bevy::{
+    app::{Plugin, PostUpdate},
+    ecs::schedule::IntoSystemConfigs,
+};
 
-use crate::{plugins::model_view::RegisterView, views::vector_edge::VectorEdgeVM};
+use crate::{plugins::model_view::RegisterView, views::vector_edge::VectorEdgeVM, PostUpdateSets};
 
-use self::{vector_edge::sys_update_edge_when_endpoint_move, vector_endpoint::VectorEndpointVM};
+use self::{
+    vector_edge::sys_update_vector_edge_vm_mesh_when_endpoint_move,
+    vector_endpoint::VectorEndpointVM,
+};
 
 pub mod vector_edge;
 pub mod vector_endpoint;
@@ -16,6 +22,10 @@ impl Plugin for BobbinViewsPlugin {
 
         app.register_type::<VectorEdgeVM>()
             .register_viewable::<VectorEdgeVM>(PostUpdate, PostUpdate)
-            .add_systems(PostUpdate, sys_update_edge_when_endpoint_move);
+            .add_systems(
+                PostUpdate,
+                sys_update_vector_edge_vm_mesh_when_endpoint_move
+                    .after(PostUpdateSets::PostPositioningPropagate),
+            );
     }
 }

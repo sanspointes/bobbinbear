@@ -40,7 +40,7 @@ pub mod lyon_path {
     pub use lyon_path::*;
 }
 
-use bevy::prelude::*;
+use bevy::{prelude::*, transform::TransformSystem};
 
 use systems::{
     sys_add_spawned_edges_to_vector_graphic, sys_add_spawned_endpoints_to_vector_graphic,
@@ -77,8 +77,7 @@ impl Plugin for VectorGraphicPlugin {
                 VectorGraphicSet::DetectChanges,
                 VectorGraphicSet::UpdatePath,
                 VectorGraphicSet::Remesh,
-            )
-                .chain(),
+            ).chain().before(TransformSystem::TransformPropagate),
         );
 
         app.add_systems(

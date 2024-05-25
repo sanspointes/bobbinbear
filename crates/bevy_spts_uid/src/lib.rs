@@ -60,11 +60,11 @@ impl Uid {
         Uuid::from_u64_pair(self.0 .0, self.0 .1)
     }
 
-    pub fn entity(&self, world: &mut World) -> Option<Entity> {
+    pub fn entity(&self, world: &World) -> Option<Entity> {
         world.resource::<UidRegistry>().get_entity(*self).ok()
     }
 
-    pub fn get_entity(&self, world: &mut World) -> Result<Entity, UidRegistryError> {
+    pub fn get_entity(&self, world: &World) -> Result<Entity, UidRegistryError> {
         world.resource::<UidRegistry>().get_entity(*self)
     }
 

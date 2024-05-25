@@ -1,5 +1,6 @@
 import { DetailedObject, Effect, SceneApi, SelectedApi } from 'bb_core';
 import { batch, createMemo, createSignal } from 'solid-js';
+import { createMutable } from 'solid-js/store';
 import { ReactiveMap } from '@solid-primitives/map';
 
 export type BBDocument = ReturnType<typeof useBBDocument>;
@@ -46,7 +47,7 @@ export function useBBDocument() {
                                 curr[k] = obj[k];
                             }
                         } else {
-                            objects.set(uid, obj);
+                            objects.set(uid, createMutable(obj));
                         }
                     }
                 });
