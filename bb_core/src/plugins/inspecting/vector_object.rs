@@ -2,10 +2,10 @@ use std::collections::VecDeque;
 
 use bevy::{ecs::system::SystemState, prelude::*};
 use bevy_spts_uid::Uid;
-use bevy_spts_vectorgraphic::components::Endpoint;
+use bevy_spts_vectorgraphic::components::{Edge, Endpoint};
 
 use crate::{
-    ecs::InternalObject, plugins::effect::Effect, views::vector_endpoint::VectorEndpointVM,
+    ecs::InternalObject, plugins::effect::Effect, views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
 };
 
 pub fn handle_inspect_vector_object(
@@ -13,22 +13,13 @@ pub fn handle_inspect_vector_object(
     world: &mut World,
     inspected: Uid,
 ) {
-    handle_inspect_vector_object_endpoints(respond, world, inspected);
-}
-
-pub fn handle_inspect_vector_object_endpoints(
-    respond: &mut VecDeque<Effect>,
-    world: &mut World,
-    inspected: Uid,
-) {
-    let mut sys_state = SystemState::<Query<(Entity, &Parent, &Uid), With<Endpoint>>>::new(world);
-
     let parent_entity = inspected.entity(world).unwrap();
-    let q_endpoints = sys_state.get_mut(world);
     let mut changed = vec![inspected];
 
+    // Create inspection views for vector endpoints
+    let mut q_endpoints = world.query_filtered::<(Entity, &Parent, &Uid), With<Endpoint>>();
     let endpoint_entities: Vec<(Entity, Uid)> = q_endpoints
-        .iter()
+        .iter(world)
         .filter_map(|(e, parent, uid)| {
             if parent.get() == parent_entity {
                 Some((e, *uid))
@@ -46,31 +37,42 @@ pub fn handle_inspect_vector_object_endpoints(
         changed.push(uid);
     }
 
+    // Create inspection views for vector edges
+    let mut q_edges = world.query_filtered::<(Entity, &Parent, &Uid), With<Edge>>();
+    let edge_entities: Vec<(Entity, Uid)> = q_edges
+        .iter(world)
+        .filter_map(|(e, parent, uid)| {
+            if parent.get() == parent_entity {
+                Some((e, *uid))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    for (entity, uid) in edge_entities {
+        world
+            .entity_mut(entity)
+            .insert(VectorEdgeVM)
+            .remove::<InternalObject>();
+        changed.push(uid);
+    }
+
     respond.push_back(Effect::EntitiesChanged(changed));
 }
 
 pub fn handle_uninspect_vector_object(
     respond: &mut VecDeque<Effect>,
     world: &mut World,
-    uid: Uid,
-) {
-    handle_uninspect_vector_object_endpoints(respond, world, uid);
-}
-
-#[allow(dead_code)]
-pub fn handle_uninspect_vector_object_endpoints(
-    respond: &mut VecDeque<Effect>,
-    world: &mut World,
     uninspected: Uid,
 ) {
-    let mut sys_state = SystemState::<Query<(Entity, &Parent, &Uid), With<Endpoint>>>::new(world);
-
     let parent_entity = uninspected.entity(world).unwrap();
-    let q_endpoints = sys_state.get_mut(world);
     let mut changed = vec![uninspected];
 
+    // Create inspection views for vector endpoints
+    let mut q_endpoints = world.query_filtered::<(Entity, &Parent, &Uid), With<Endpoint>>();
     let endpoint_entities: Vec<(Entity, Uid)> = q_endpoints
-        .iter()
+        .iter(world)
         .filter_map(|(e, parent, uid)| {
             if parent.get() == parent_entity {
                 Some((e, *uid))
@@ -84,6 +86,27 @@ pub fn handle_uninspect_vector_object_endpoints(
         world
             .entity_mut(entity)
             .remove::<VectorEndpointVM>()
+            .insert(InternalObject);
+        changed.push(uid);
+    }
+
+    // Create inspection views for vector edges
+    let mut q_edges = world.query_filtered::<(Entity, &Parent, &Uid), With<Edge>>();
+    let edge_entities: Vec<(Entity, Uid)> = q_edges
+        .iter(world)
+        .filter_map(|(e, parent, uid)| {
+            if parent.get() == parent_entity {
+                Some((e, *uid))
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    for (entity, uid) in edge_entities {
+        world
+            .entity_mut(entity)
+            .remove::<VectorEdgeVM>()
             .insert(InternalObject);
         changed.push(uid);
     }

@@ -9,7 +9,7 @@ use bevy_spts_uid::{Uid, UidRegistry};
 use moonshine_core::{kind::Instance, object::Object};
 
 use crate::{
-    ecs::{ObjectBundle, ObjectType, ProxiedObjectBundle},
+    ecs::{InternalObject, ObjectBundle, ObjectType, ProxiedObjectBundle},
     materials::UiElementMaterialCache,
     meshes::BobbinMeshesResource,
     plugins::{
@@ -46,6 +46,7 @@ impl BuildView<VectorEndpointVM> for VectorEndpointVM {
             Name::from("VectorEndpoint (View)"),
             ObjectBundle::new(ObjectType::VectorEndpoint).with_z_position(10.),
             ProxiedObjectBundle::new(endpoint_uid),
+            InternalObject,
             material,
             mesh,
             uid,

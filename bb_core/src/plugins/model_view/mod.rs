@@ -8,7 +8,7 @@ use bevy::{
     ecs::{prelude::*, schedule::ScheduleLabel},
     hierarchy::prelude::*,
     log::warn,
-    utils::{tracing::debug, HashMap, HashSet},
+    utils::{HashMap, HashSet},
 };
 
 use moonshine_core::prelude::*;

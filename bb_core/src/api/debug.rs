@@ -59,6 +59,7 @@ impl DebugApi {
 
         let e0 = builder
             .spawn((
+                Name::from("Endpoint"),
                 ObjectBundle::new(ObjectType::VectorEndpoint),
                 Endpoint::default(),
                 InternalObject,
@@ -67,6 +68,7 @@ impl DebugApi {
             .uid();
         let e1 = builder
             .spawn((
+                Name::from("Endpoint"),
                 ObjectBundle::new(ObjectType::VectorEndpoint).with_position((100., 0.)),
                 Endpoint::default(),
                 InternalObject,
@@ -75,6 +77,7 @@ impl DebugApi {
             .uid();
         let e2 = builder
             .spawn((
+                Name::from("Endpoint"),
                 ObjectBundle::new(ObjectType::VectorEndpoint).with_position((100., 100.)),
                 Endpoint::default(),
                 InternalObject,
@@ -83,6 +86,7 @@ impl DebugApi {
             .uid();
         let e3 = builder
             .spawn((
+                Name::from("Endpoint"),
                 ObjectBundle::new(ObjectType::VectorEndpoint).with_position((0., 100.)),
                 Endpoint::default(),
                 InternalObject,
@@ -92,18 +96,38 @@ impl DebugApi {
 
         builder
             .spawn_edge(EdgeVariant::Line, e0, e1)
+            .insert((
+                Name::from("Edge"),
+                ObjectBundle::new(ObjectType::VectorEdge),
+                InternalObject
+            ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
         builder
             .spawn_edge(EdgeVariant::Line, e1, e2)
+            .insert((
+                Name::from("Edge"),
+                ObjectBundle::new(ObjectType::VectorEdge),
+                InternalObject
+            ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
         builder
             .spawn_edge(EdgeVariant::Line, e2, e3)
+            .insert((
+                Name::from("Edge"),
+                ObjectBundle::new(ObjectType::VectorEdge),
+                InternalObject
+            ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
         builder
             .spawn_edge(EdgeVariant::Line, e3, e0)
+            .insert((
+                Name::from("Edge"),
+                ObjectBundle::new(ObjectType::VectorEdge),
+                InternalObject
+            ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
 

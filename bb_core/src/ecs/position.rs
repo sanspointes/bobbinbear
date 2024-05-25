@@ -7,6 +7,7 @@ use std::ops::Deref;
 
 use bevy::{ecs::reflect::ReflectComponent, prelude::*};
 use bevy_spts_uid::{UidRegistry};
+use bevy_spts_vectorgraphic::lyon_path::math::Point;
 
 use crate::plugins::viewport::BobbinViewport;
 
@@ -19,6 +20,12 @@ pub struct Position(pub Vec2);
 impl Position {
     pub fn new(pos: impl Into<Vec2>) -> Self {
         Self(pos.into())
+    }
+}
+
+impl From<Position> for Point {
+    fn from(value: Position) -> Self {
+        Self::new(value.x, value.y)
     }
 }
 

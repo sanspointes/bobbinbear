@@ -89,7 +89,7 @@ impl Edge {
     pub fn prev_endpoint(
         &self,
         q_endpoints: &mut QueryLens<&Endpoint>,
-        reg: &mut UidRegistry,
+        reg: &UidRegistry,
     ) -> Result<Endpoint, QueryEntityError> {
         let entity = reg.entity(self.prev_endpoint);
         q_endpoints.query().get(entity).copied()
@@ -102,7 +102,7 @@ impl Edge {
     pub fn next_endpoint(
         &self,
         q_endpoints: &mut QueryLens<&Endpoint>,
-        reg: &mut UidRegistry,
+        reg: &UidRegistry,
     ) -> Result<Endpoint, QueryEntityError> {
         let entity = reg.entity(self.next_endpoint);
         q_endpoints.query().get(entity).copied()

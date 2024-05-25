@@ -128,7 +128,7 @@ mod definitions {
         #[default]
         Unknown,
         Vector,
-        VectorSegment,
+        VectorEdge,
         VectorEndpoint,
         VectorCtrl,
     }
