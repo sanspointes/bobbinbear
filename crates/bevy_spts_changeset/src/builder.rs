@@ -68,7 +68,7 @@ impl Changeset {
 /// 
 /// When you've finished building your changeset call `build()` to recieve the [Changeset].
 pub struct ChangesetCommands<'w> {
-    world: &'w mut World,
+    world: &'w World,
     changes: Vec<Arc<dyn Change>>,
 }
 
@@ -76,7 +76,7 @@ impl<'w> ChangesetCommands<'w> {
     /// Creates a new ChangesetCommands from the world.
     ///
     /// * `world`: 
-    pub fn new(world: &'w mut World) -> Self {
+    pub fn new(world: &'w World) -> Self {
         Self {
             world,
             changes: Vec::default(),
