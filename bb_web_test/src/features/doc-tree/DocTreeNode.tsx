@@ -48,8 +48,9 @@ export function DocTreeNode(props: DocTreeNodeProps) {
             onOpenChange={(open) => setExpanded(open)}
         >
             <div
-                class="outline-yellow-600 hover:outline hover:outline-1"
+                class="outline-yellow-600"
                 classList={{
+                    'hover:outline hover:outline-1': props.object.hovered,
                     'bg-orange-100': props.object.selected,
                 }}
                 onPointerEnter={handlePointerEnter}

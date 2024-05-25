@@ -1,24 +1,44 @@
 use bevy::{
-    asset::Assets, core::Name, ecs::{
-        component::Component, event::Events, reflect::ReflectComponent, system::Commands,
+    asset::Assets,
+    core::Name,
+    ecs::{
+        component::Component,
+        entity::Entity,
+        event::Events,
+        query::{Changed, With},
+        reflect::ReflectComponent,
+        system::{Commands, Query, Res},
         world::World,
-    }, hierarchy::BuildWorldChildren, log::warn, reflect::{List, Reflect}, render::{mesh::{Indices, Mesh}, render_asset::RenderAssetUsages}, sprite::{Mesh2d, Mesh2dHandle}
+    },
+    hierarchy::BuildWorldChildren,
+    log::warn,
+    reflect::Reflect,
+    render::{
+        mesh::{Indices, Mesh},
+        render_asset::RenderAssetUsages,
+    },
+    sprite::Mesh2dHandle,
 };
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::{
-    components::EdgeVariant,
+    components::{EdgeVariant, Endpoint},
     lyon_path::{math::Point, Path},
-    lyon_tessellation::{BuffersBuilder, StrokeOptions, StrokeVertex, StrokeVertexConstructor, VertexBuffers},
+    lyon_tessellation::{
+        BuffersBuilder, StrokeOptions, StrokeTessellator, StrokeVertex, StrokeVertexConstructor,
+        VertexBuffers,
+    },
     prelude::Edge,
-    SptsStrokeTessellator,
 };
 use moonshine_core::{kind::Instance, object::Object};
 
 use crate::{
-    ecs::{InternalObject, ObjectBundle, ObjectType, Position, ProxiedObjectBundle}, materials::{UiElementMaterialCache, ATTRIBUTE_THEME_MIX}, plugins::{
+    ecs::{InternalObject, ObjectBundle, ObjectType, Position, ProxiedObjectBundle},
+    materials::{UiElementMaterialCache, ATTRIBUTE_THEME_MIX},
+    plugins::{
         effect::Effect,
-        model_view::{BuildView, View, ViewBuilder}, viewport::BobbinViewportResource,
-    }
+        model_view::{BuildView, Model, View, ViewBuilder},
+        viewport::BobbinViewportResource,
+    },
 };
 
 #[repr(C)]
@@ -71,79 +91,17 @@ impl BuildView<VectorEdgeVM> for VectorEdgeVM {
                 .send(Effect::EntitiesSpawned(vec![uid]));
         });
         view.commands().commands().add(move |world: &mut World| {
-            world.resource_mut::<UidRegistry>().register(uid, view_entity);
+            world
+                .resource_mut::<UidRegistry>()
+                .register(uid, view_entity);
         });
 
-        // Collect data for building the mesh
-        let edge = world.get::<Edge>(object.entity()).unwrap();
-        let edge_variant = world.get::<EdgeVariant>(object.entity()).unwrap();
-        let uid_registry = world.resource::<UidRegistry>();
-        let e_prev_endpoint = uid_registry.entity(edge.prev_endpoint_uid());
-        let e_next_endpoint = uid_registry.entity(edge.next_endpoint_uid());
-        let prev_endpoint_pos = *world.get::<Position>(e_prev_endpoint).unwrap();
-        let next_endpoint_pos = *world.get::<Position>(e_next_endpoint).unwrap();
-
-        // Build the path for the edge
-        let mut pb = Path::builder();
-        pb.begin(prev_endpoint_pos.into());
-        match edge_variant {
-            EdgeVariant::Line => {
-                pb.line_to(next_endpoint_pos.into());
-            }
-            EdgeVariant::Quadratic { ctrl1 } => {
-                pb.quadratic_bezier_to(Point::new(ctrl1.x, ctrl1.y), next_endpoint_pos.into());
-            }
-            EdgeVariant::Cubic { ctrl1, ctrl2 } => {
-                pb.cubic_bezier_to(
-                    Point::new(ctrl1.x, ctrl1.y),
-                    Point::new(ctrl2.x, ctrl2.y),
-                    next_endpoint_pos.into(),
-                );
-            }
-        }
-        pb.end(false);
-        let path = pb.build();
-
-        // Build the mesh and push asset to world
-        view.commands().commands().add(move |world: &mut World| {
-            let mut stroke_tesselator = world.resource_mut::<SptsStrokeTessellator>();
-            let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
-
-            if let Err(reason) = stroke_tesselator.tessellate_path(
-                &path,
-                &StrokeOptions::default().with_line_width(3.),
-                &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
-            ) {
-                warn!("BuildView<VectorEdgeVM>::build() -> Failed to tesselate edge: {reason:?}");
-            }
-            let mut theme_mix_attr = vec![0.; geometry.vertices.len()];
-
-            let mut mesh = Mesh::new(bevy::render::mesh::PrimitiveTopology::TriangleList, RenderAssetUsages::RENDER_WORLD);
-
-            let VertexBuffers { vertices, indices } = geometry;
-            mesh.insert_indices(Indices::U32(indices));
-
-            let (positions, normals): (Vec<[f32; 3]>, Vec<[f32; 3]>) = vertices
-                .into_iter()
-                .map(|vert| {
-                    let RemeshVertex { position, normal } = vert;
-                    (
-                        [position[0], -position[1], position[2]],
-                        [normal[0], -normal[1], normal[2]],
-                    )
-                })
-                .unzip();
-
-            mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-            mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-            mesh.insert_attribute(ATTRIBUTE_THEME_MIX, theme_mix_attr);
-
-            warn!("Edge mesh {mesh:?}");
-
-            let mut meshes = world.resource_mut::<Assets<Mesh>>();
-            let handle = Mesh2dHandle::from(meshes.add(mesh));
-            world.entity_mut(view_entity).insert(handle);
-        });
+        update_vector_edge_mesh(
+            world,
+            object.entity(),
+            view_entity,
+            &mut view.commands().commands(),
+        );
     }
 
     fn on_before_destroy(
@@ -161,5 +119,129 @@ impl BuildView<VectorEdgeVM> for VectorEdgeVM {
         commands.add(move |world: &mut World| {
             world.resource_mut::<UidRegistry>().unregister(view_uid);
         });
+    }
+}
+
+fn update_vector_edge_mesh(
+    world: &World,
+    model_entity: Entity,
+    view_entity: Entity,
+    commands: &mut Commands,
+) {
+    // Collect data for building the mesh
+    let edge = world.get::<Edge>(model_entity).unwrap();
+    let edge_variant = world.get::<EdgeVariant>(model_entity).unwrap();
+    let uid_registry = world.resource::<UidRegistry>();
+    let e_prev_endpoint = uid_registry.entity(edge.prev_endpoint_uid());
+    let e_next_endpoint = uid_registry.entity(edge.next_endpoint_uid());
+    let prev_endpoint_pos = *world.get::<Position>(e_prev_endpoint).unwrap();
+    let next_endpoint_pos = *world.get::<Position>(e_next_endpoint).unwrap();
+
+    // Build the path for the edge
+    let mut pb = Path::builder();
+    pb.begin(prev_endpoint_pos.into());
+    match edge_variant {
+        EdgeVariant::Line => {
+            pb.line_to(next_endpoint_pos.into());
+        }
+        EdgeVariant::Quadratic { ctrl1 } => {
+            pb.quadratic_bezier_to(Point::new(ctrl1.x, ctrl1.y), next_endpoint_pos.into());
+        }
+        EdgeVariant::Cubic { ctrl1, ctrl2 } => {
+            pb.cubic_bezier_to(
+                Point::new(ctrl1.x, ctrl1.y),
+                Point::new(ctrl2.x, ctrl2.y),
+                next_endpoint_pos.into(),
+            );
+        }
+    }
+    pb.end(false);
+    let path = pb.build();
+
+    // Tesselate the geometry
+    let mut stroke_tesselator = StrokeTessellator::default();
+    let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
+
+    if let Err(reason) = stroke_tesselator.tessellate_path(
+        &path,
+        &StrokeOptions::default().with_line_width(3.),
+        &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
+    ) {
+        warn!("BuildView<VectorEdgeVM>::build() -> Failed to tesselate edge: {reason:?}");
+    }
+    let theme_mix_attr = vec![0.; geometry.vertices.len()];
+
+    let mut mesh = Mesh::new(
+        bevy::render::mesh::PrimitiveTopology::TriangleList,
+        RenderAssetUsages::RENDER_WORLD,
+    );
+
+    let VertexBuffers { vertices, indices } = geometry;
+    mesh.insert_indices(Indices::U32(indices));
+
+    let (positions, normals): (Vec<[f32; 3]>, Vec<[f32; 3]>) = vertices
+        .into_iter()
+        .map(|vert| {
+            let RemeshVertex { position, normal } = vert;
+            (
+                [position[0], -position[1], position[2]],
+                [normal[0], -normal[1], normal[2]],
+            )
+        })
+        .unzip();
+
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(ATTRIBUTE_THEME_MIX, theme_mix_attr);
+
+    // Compute AABB
+    let aabb = mesh.compute_aabb();
+    if aabb.is_none() {
+        warn!("Generated edge mesh could not generate an Aabb box. {mesh:?}");
+    }
+
+    // Build the mesh and push asset to world
+    commands.add(move |world: &mut World| {
+        let mut meshes = world.resource_mut::<Assets<Mesh>>();
+        let handle = Mesh2dHandle::from(meshes.add(mesh));
+
+        let mut entity_mut = world.entity_mut(view_entity);
+        entity_mut.insert(handle);
+        if let Some(aabb) = aabb {
+            warn!("Inserting Aabb {aabb:?} for mesh.");
+            entity_mut.insert(aabb);
+        }
+    });
+}
+
+/// Updates the connected views/vector_edge.rs (VectorEdgeVM) mesh whenever an
+/// endpoints position is updated.
+///
+/// * `world`: 
+/// * `r_uid_registry`: 
+/// * `q_moved_endpoints`: 
+/// * `q_edge`: 
+/// * `commands`: 
+pub fn sys_update_edge_when_endpoint_move(
+    world: &World,
+    r_uid_registry: Res<UidRegistry>,
+    q_moved_endpoints: Query<&Endpoint, Changed<Position>>,
+    q_edge: Query<(Entity, &Model<VectorEdgeVM>), With<Edge>>,
+    mut commands: Commands
+) {
+
+    for moved_endpoint in q_moved_endpoints.iter() {
+        let next_edge = moved_endpoint.next_edge_entity()
+            .map(|uid| r_uid_registry.entity(uid))
+            .and_then(|e| q_edge.get(e).ok());
+        if let Some((entity, model)) = next_edge {
+            update_vector_edge_mesh(world, entity, model.view().entity(), &mut commands);
+        }
+        let prev_edge = moved_endpoint.prev_edge_entity()
+            .map(|uid| r_uid_registry.entity(uid))
+            .and_then(|e| q_edge.get(e).ok());
+        if let Some((entity, model)) = prev_edge {
+            update_vector_edge_mesh(world, entity, model.view().entity(), &mut commands);
+        }
     }
 }
