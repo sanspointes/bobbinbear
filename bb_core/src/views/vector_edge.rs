@@ -14,15 +14,16 @@ use bevy::{
     log::warn,
     reflect::Reflect,
     render::{
-        mesh::{Indices, Mesh},
+        mesh::{Indices, Mesh, MeshVertexAttribute},
         render_asset::RenderAssetUsages,
+        render_resource::VertexFormat,
     },
     sprite::Mesh2dHandle,
 };
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::{
     components::{EdgeVariant, Endpoint},
-    lyon_path::Path,
+    lyon_path::builder::{Build, PathBuilder},
     lyon_tessellation::{
         BuffersBuilder, StrokeOptions, StrokeTessellator, StrokeVertex, StrokeVertexConstructor,
         VertexBuffers,
@@ -41,20 +42,26 @@ use crate::{
     },
 };
 
+/// Attribute contains T value of edge (0-1) how far a vert is from start -> end.
+pub const ATTRIBUTE_EDGE_T: MeshVertexAttribute = MeshVertexAttribute::new("Vertex_EdgeT", 3331, VertexFormat::Float32);
+
 #[repr(C)]
 #[derive(Copy, Clone)]
 struct RemeshVertex {
     position: [f32; 3],
     normal: [f32; 3],
+    edge_t: f32,
 }
 struct RemeshVertexConstructor;
 impl StrokeVertexConstructor<RemeshVertex> for RemeshVertexConstructor {
-    fn new_vertex(&mut self, vertex: StrokeVertex) -> RemeshVertex {
+    fn new_vertex(&mut self, mut vertex: StrokeVertex) -> RemeshVertex {
         let pos = vertex.position();
         let norm = vertex.normal();
+        let attrs = vertex.interpolated_attributes();
         RemeshVertex {
             position: [pos.x, pos.y, 0.],
             normal: [norm.x, norm.y, 0.],
+            edge_t: attrs[0],
         }
     }
 }
@@ -139,16 +146,23 @@ fn update_vector_edge_mesh(
     let next_endpoint_pos = *world.get::<Position>(e_next_endpoint).unwrap();
 
     // Build the path for the edge
-    let mut pb = Path::builder();
-    pb.begin(Position(prev_endpoint_pos.0 - edge_pos.0).into());
+    let mut stroke_tesselator = StrokeTessellator::default();
+    let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
+
+    let stroke_options = StrokeOptions::default().with_line_width(3.);
+    let mut buffers_builder = BuffersBuilder::new(&mut geometry, RemeshVertexConstructor);
+    let mut pb =
+        stroke_tesselator.builder_with_attributes(1, &stroke_options, &mut buffers_builder);
+    pb.begin(Position(prev_endpoint_pos.0 - edge_pos.0).into(), &[0.]);
     match edge_variant {
         EdgeVariant::Line => {
-            pb.line_to(Position(next_endpoint_pos.0 - edge_pos.0).into());
+            pb.line_to(Position(next_endpoint_pos.0 - edge_pos.0).into(), &[1.0]);
         }
         EdgeVariant::Quadratic { ctrl1 } => {
             pb.quadratic_bezier_to(
                 Position(*ctrl1 - edge_pos.0).into(),
                 Position(next_endpoint_pos.0 - edge_pos.0).into(),
+                &[1.0],
             );
         }
         EdgeVariant::Cubic { ctrl1, ctrl2 } => {
@@ -156,23 +170,15 @@ fn update_vector_edge_mesh(
                 Position(*ctrl1 - edge_pos.0).into(),
                 Position(*ctrl2 - edge_pos.0).into(),
                 Position(next_endpoint_pos.0 - edge_pos.0).into(),
+                &[1.0],
             );
         }
     }
     pb.end(false);
-    let path = pb.build();
-
-    // Tesselate the geometry
-    let mut stroke_tesselator = StrokeTessellator::default();
-    let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
-
-    if let Err(reason) = stroke_tesselator.tessellate_path(
-        &path,
-        &StrokeOptions::default().with_line_width(6.),
-        &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
-    ) {
+    if let Err(reason) = pb.build() {
         warn!("BuildView<VectorEdgeVM>::build() -> Failed to tesselate edge: {reason:?}");
     }
+
     let theme_mix_attr = vec![0.; geometry.vertices.len()];
 
     let mut mesh = Mesh::new(
@@ -183,20 +189,20 @@ fn update_vector_edge_mesh(
     let VertexBuffers { vertices, indices } = geometry;
     mesh.insert_indices(Indices::U32(indices));
 
-    let (positions, normals): (Vec<[f32; 3]>, Vec<[f32; 3]>) = vertices
-        .into_iter()
-        .map(|vert| {
-            let RemeshVertex { position, normal } = vert;
-            (
-                [position[0], -position[1], position[2]],
-                [normal[0], -normal[1], normal[2]],
-            )
-        })
-        .unzip();
+    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
+    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
+    let mut edge_t_attr: Vec<f32> = Vec::with_capacity(vertices.len());
+
+    for RemeshVertex { position, normal, edge_t } in vertices {
+        positions.push([position[0], -position[1], position[2]]);
+        normals.push([normal[0], -normal[1], normal[2]]);
+        edge_t_attr.push(edge_t);
+    }
 
     mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
     mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
     mesh.insert_attribute(ATTRIBUTE_THEME_MIX, theme_mix_attr);
+    mesh.insert_attribute(ATTRIBUTE_EDGE_T, edge_t_attr);
 
     // Compute AABB
     let aabb = mesh.compute_aabb();

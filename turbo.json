@@ -5,7 +5,10 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**"]
     },
-    "deploy": {},
+    "deploy": {
+      "dependsOn": ["^build"],
+      "cache": false
+    },
     "lint": {},
     "test": {
       "cache": false,

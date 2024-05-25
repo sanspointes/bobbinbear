@@ -48,6 +48,8 @@ pub fn sys_selection_raycast_update_helper(
         }
     }).collect();
 
+    warn!("Hits {hits:?}");
+
     res.hits = select_hits;
 }
 
