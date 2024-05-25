@@ -11,7 +11,7 @@
     "deploy": "wrangler pages deploy dist/"
   },
   "dependencies": {
-    "@kobalte/core": "^0.12.1",
+    "@kobalte/core": "^0.13.1",
     "@solid-primitives/map": "^0.4.11",
     "@solid-primitives/resize-observer": "^2.0.25",
     "bb_core": "workspace:^",

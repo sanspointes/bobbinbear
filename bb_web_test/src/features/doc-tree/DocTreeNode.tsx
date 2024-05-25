@@ -10,7 +10,7 @@ import {
 import { useBobbinBear } from '../../hooks/useBobbinBear';
 import { isDefined } from '~/utils/typeguards';
 
-import { Button } from '../../components/button';
+import { Button } from '~/components/ui/button';
 import { Collapsible, CollapsibleContent } from '~/components/ui/collapsible';
 import { cn } from '~/lib/utils';
 
@@ -51,7 +51,7 @@ export function DocTreeNode(props: DocTreeNodeProps) {
                 class="outline-yellow-600"
                 classList={{
                     'hover:outline hover:outline-1': props.object.hovered,
-                    'bg-orange-100': props.object.selected,
+                    'bg-accent-background': props.object.selected,
                 }}
                 onPointerEnter={handlePointerEnter}
                 onPointerLeave={handlePointerLeave}

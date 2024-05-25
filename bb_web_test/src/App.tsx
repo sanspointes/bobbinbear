@@ -11,6 +11,7 @@ import {
 import { useBBApp } from './hooks/useBobbinBear/app';
 import { createResizeObserver } from '@solid-primitives/resize-observer';
 import LoadingOverlay from './components/loading-overlay';
+import { Toolbar } from './features/toolbar';
 
 function App() {
     const app = useBBApp();
@@ -52,13 +53,11 @@ function App() {
         <>
             <LoadingOverlay progress={loading()} status={loadingStatus()} />
             <div class="flex flex-col w-full h-full min-h-screen">
-                <div class="w-full h-20 bg-white">
-                    <div class="card">
-                        <Show when={loading() === 1}>
-                            {(_) => <ApiButtons />}
-                        </Show>
-                    </div>
-                </div>
+                <Show when={loading() === 1}>
+                    <BobbinBearContext.Provider value={ctx()}>
+                        <Toolbar />
+                    </BobbinBearContext.Provider>
+                </Show>
                 <div class="flex items-stretch grow">
                     <Show when={loading() === 1}>
                         <BobbinBearContext.Provider value={ctx()}>

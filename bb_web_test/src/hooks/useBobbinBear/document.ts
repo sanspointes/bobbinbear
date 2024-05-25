@@ -1,11 +1,12 @@
 import { DetailedObject, Effect, SceneApi, SelectedApi } from 'bb_core';
-import { batch, createMemo, createSignal } from 'solid-js';
+import { batch, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 import { createMutable } from 'solid-js/store';
 import { ReactiveMap } from '@solid-primitives/map';
+import { EffectEmitter, useEffectEmitter } from '~/utils/effect-emitter';
 
 export type BBDocument = ReturnType<typeof useBBDocument>;
 
-export function useBBDocument() {
+export function useBBDocument(effectEmitter: EffectEmitter) {
     const sceneApi = new SceneApi();
     const selectedApi = new SelectedApi();
 
@@ -19,57 +20,46 @@ export function useBBDocument() {
         else return undefined;
     });
 
-    const handleEffect = (effect: Effect) => {
-        console.log(effect);
-        if (
-            effect.tag === 'EntitiesSpawned' ||
-            effect.tag === 'EntitiesChanged'
-        ) {
-            const results = effect.value.map((uid) =>
-                sceneApi
-                    .describe_object(uid)
-                    .then((obj) => [uid, obj] as const),
-            );
 
-            Promise.allSettled(results).then((results) => {
-                batch(() => {
-                    for (const result of results) {
-                        if (result.status === 'rejected') continue;
+    const onEntityChanged = (uids: string[]) => {
+        const results = uids.map((uid) =>
+            sceneApi
+                .describe_object(uid)
+                .then((obj) => [uid, obj] as const),
+        );
 
-                        const [uid, obj] = result.value;
-                        if (!obj) continue;
+        Promise.allSettled(results).then((results) => {
+            batch(() => {
+                for (const result of results) {
+                    if (result.status === 'rejected') continue;
 
-                        const curr = objects.get(uid)
-                        if (curr) {
-                            for (const k in obj) {
-                                if (k === 'uid') continue;
-                                // @ts-expect-error: Untyped keyof DetailedObject
-                                curr[k] = obj[k];
-                            }
-                        } else {
-                            objects.set(uid, createMutable(obj));
+                    const [uid, next] = result.value;
+
+                    const curr = objects.get(uid)
+                    if (next && curr) {
+                        for (const k in next) {
+                            if (k === 'uid') continue;
+                            // @ts-expect-error: Untyped keyof DetailedObject
+                            curr[k] = next[k];
                         }
+                    } else if (next) {
+                        objects.set(uid, createMutable(next));
+                    } else if (curr) {
+                        objects.delete(uid);
                     }
-                });
+                }
             });
-        } else if (effect.tag === 'EntitiesDespawned') {
-            for (const uid of effect.value) {
-                objects.delete(uid);
-            }
-        } else if (effect.tag === 'SelectionChanged') {
-            const [first] = effect.value;
-            setSelectedObjectUid(first);
-        }
-    };
-    // @ts-expect-error: untyped...
-    window.receiveRustEvents = (effects: Effect[]) => {
-        batch(() => {
-            console.debug(`Received ${effects.length} effects to handle.`);
-            for (const eff of effects) {
-                handleEffect(eff);
-            }
         });
     };
+
+    useEffectEmitter(effectEmitter, 'EntitiesSpawned', onEntityChanged);
+    useEffectEmitter(effectEmitter, 'EntitiesDespawned', onEntityChanged);
+    useEffectEmitter(effectEmitter, 'EntitiesChanged', onEntityChanged);
+
+    useEffectEmitter(effectEmitter, 'SelectionChanged', (selectedUids) => {
+        const [first] = selectedUids;
+        if (first) setSelectedObjectUid(first);
+    });
 
     const setVisible = (uid: string, visible: boolean) => {
         return sceneApi.set_visible(uid, visible);

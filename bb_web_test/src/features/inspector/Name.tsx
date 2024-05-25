@@ -22,16 +22,16 @@ export function Name(props: NameProps) {
                 <div class="flex gap-2 items-center">
                     <Show when={props.ty === 'Vector'}>
                         <Button
+                            variant='outline'
                             size="sm"
-                            class="bg-yellow-600 hover:bg-yellow-700"
                             onClick={() => inspect(props.uid)}
                         >
                             <TbFocus /> Inspect
                         </Button>
                     </Show>
                     <Button
+                        variant='destructive'
                         size="sm"
-                        class="bg-red-600 hover:bg-red-700"
                         onClick={() => deleteObject(props.uid)}
                     >
                         <TbX /> Delete

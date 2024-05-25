@@ -124,6 +124,8 @@ mod effects {
     use serde::{Deserialize, Serialize};
     use tsify::Tsify;
 
+    use crate::tools::BobbinTool;
+
     #[derive(Event, Tsify, Serialize, Deserialize, Debug, Clone)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     #[serde(tag = "tag", content = "value")]
@@ -139,5 +141,6 @@ mod effects {
             inspected: Option<Uid>,
             uninspected: Option<Uid>,
         },
+        ToolChanged(BobbinTool),
     }
 }

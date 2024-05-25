@@ -41,8 +41,8 @@ importers:
   bb_web_test:
     dependencies:
       '@kobalte/core':
-        specifier: ^0.12.1
-        version: 0.12.1(solid-js@1.8.14)
+        specifier: ^0.13.1
+        version: 0.13.1(solid-js@1.8.14)
       '@solid-primitives/map':
         specifier: ^0.4.11
         version: 0.4.11(solid-js@1.8.14)
@@ -428,6 +428,15 @@ packages:
     requiresBuild: true
     dev: true
     optional: true
+
+  /@corvu/utils@0.2.0(solid-js@1.8.14):
+    resolution: {integrity: sha512-cY0w+SotjOtBX+9oE90vis1Mu2spwGhtcAn4jmrl7JPqQrm68DH/0Rh3R52dN2MbgPVZL06N3mvys18myF5/0Q==}
+    peerDependencies:
+      solid-js: ^1.8
+    dependencies:
+      '@floating-ui/dom': 1.6.5
+      solid-js: 1.8.14
+    dev: false
 
   /@cspotcode/source-map-support@0.8.1:
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -891,6 +900,13 @@ packages:
       '@floating-ui/utils': 0.2.1
     dev: false
 
+  /@floating-ui/dom@1.6.5:
+    resolution: {integrity: sha512-Nsdud2X65Dz+1RHjAIP0t8z5e2ff/IRbei6BqFrl1urT8sDVzM1HMQ+R0XcU5ceRfyO3I6ayeqIfh+6Wb8LGTw==}
+    dependencies:
+      '@floating-ui/core': 1.6.0
+      '@floating-ui/utils': 0.2.1
+    dev: false
+
   /@floating-ui/utils@0.2.1:
     resolution: {integrity: sha512-9TANp6GPoMtYzQdt54kfAyMmz1+osLlXdg2ENroU7zzrtflTLrrC/lgrIfaSe+Wu0b89GKccT7vxXA0MoAIO+Q==}
     dev: false
@@ -970,16 +986,17 @@ packages:
       '@jridgewell/sourcemap-codec': 1.4.15
     dev: true
 
-  /@kobalte/core@0.12.1(solid-js@1.8.14):
-    resolution: {integrity: sha512-/GvgH/jknZ/jr3qnc8PwnPnwNfp8pQHj9Ja0TjFUcTsnGKS/XoDXSWqCjiKOL3M6uBfZmmdn1A/3i3Na4w9Ujg==}
+  /@kobalte/core@0.13.1(solid-js@1.8.14):
+    resolution: {integrity: sha512-ROFTM2EZhOS+PxCTD+a2LKvzi8ZA7uiDvAt9/rAHzlaAykJPWXCpRuB/PYKiA7iPssGU3Fno3GT5bgRoZAc3KQ==}
     peerDependencies:
-      solid-js: ^1.7.11
+      solid-js: ^1.8.15
     dependencies:
       '@floating-ui/dom': 1.6.2
       '@internationalized/date': 3.5.1
       '@internationalized/number': 3.5.0
       '@kobalte/utils': 0.9.0(solid-js@1.8.14)
       solid-js: 1.8.14
+      solid-prevent-scroll: 0.1.7(solid-js@1.8.14)
     dev: false
 
   /@kobalte/tailwindcss@0.9.0(tailwindcss@3.4.1):
@@ -995,13 +1012,13 @@ packages:
     peerDependencies:
       solid-js: ^1.7.11
     dependencies:
-      '@solid-primitives/event-listener': 2.3.1(solid-js@1.8.14)
+      '@solid-primitives/event-listener': 2.3.3(solid-js@1.8.14)
       '@solid-primitives/keyed': 1.2.1(solid-js@1.8.14)
       '@solid-primitives/map': 0.4.11(solid-js@1.8.14)
       '@solid-primitives/media': 2.2.6(solid-js@1.8.14)
       '@solid-primitives/props': 3.1.9(solid-js@1.8.14)
       '@solid-primitives/refs': 1.0.6(solid-js@1.8.14)
-      '@solid-primitives/utils': 6.2.2(solid-js@1.8.14)
+      '@solid-primitives/utils': 6.2.3(solid-js@1.8.14)
       solid-js: 1.8.14
     dev: false
 
@@ -1269,7 +1286,7 @@ packages:
     peerDependencies:
       solid-js: ^1.6.12
     dependencies:
-      '@solid-primitives/utils': 6.2.2(solid-js@1.8.14)
+      '@solid-primitives/utils': 6.2.3(solid-js@1.8.14)
       solid-js: 1.8.14
     dev: false
 
@@ -4146,6 +4163,15 @@ packages:
       csstype: 3.1.2
       seroval: 1.0.4
       seroval-plugins: 1.0.4(seroval@1.0.4)
+
+  /solid-prevent-scroll@0.1.7(solid-js@1.8.14):
+    resolution: {integrity: sha512-DLafct98/nCX9l54MQ+mPbUgmmskSvVr/qxtFEt89SpSvYQkjyX4uviy91TFmzslhSyiVNNBlChpVzRO8eAwzA==}
+    peerDependencies:
+      solid-js: ^1.8
+    dependencies:
+      '@corvu/utils': 0.2.0(solid-js@1.8.14)
+      solid-js: 1.8.14
+    dev: false
 
   /solid-refresh@0.6.3(solid-js@1.8.14):
     resolution: {integrity: sha512-F3aPsX6hVw9ttm5LYlth8Q15x6MlI/J3Dn+o3EQyRTtTxidepSTwAYdozt01/YA+7ObcciagGEyXIopGZzQtbA==}

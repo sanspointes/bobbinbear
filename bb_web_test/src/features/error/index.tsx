@@ -3,7 +3,7 @@ import { FaRegularFaceSadCry } from 'solid-icons/fa';
 import { TbX } from 'solid-icons/tb';
 import { IoWarningOutline } from 'solid-icons/io';
 import { Collapsible as KCollapsible } from '@kobalte/core';
-import { Button } from '../../components/button';
+import { Button } from '~/components/ui/button';
 
 type ErrorReasonProps = {
     error: Error;

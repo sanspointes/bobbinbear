@@ -1,7 +1,9 @@
-use bevy::ecs::world::World;
+use bevy::ecs::{event::Events, world::World};
 use bevy_wasm_api::bevy_wasm_api;
 
 use wasm_bindgen::prelude::*;
+
+use crate::plugins::effect::Effect;
 
 use super::{resource::ToolResource, types::BobbinTool};
 
@@ -15,6 +17,7 @@ impl ToolApi {
         match tool {
             BobbinTool::Noop => {},
             BobbinTool::Select => {},
+            BobbinTool::Pen => {},
         }
     }
 
@@ -22,6 +25,7 @@ impl ToolApi {
         match tool {
             BobbinTool::Noop => {},
             BobbinTool::Select => {},
+            BobbinTool::Pen => {},
         }
     }
 
@@ -36,5 +40,7 @@ impl ToolApi {
 
         world.resource_mut::<ToolResource>().set_base_tool(tool);
         Self::activate_tool(world, tool);
+
+        world.resource_mut::<Events<Effect>>().send(Effect::ToolChanged(tool));
     }
 }

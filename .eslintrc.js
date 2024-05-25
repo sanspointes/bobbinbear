@@ -5,6 +5,11 @@ module.exports = {
     settings: {
         'import/resolver': {
             typescript: true,
+            alias: {
+                map: [ 
+                    [ '@', './src']
+                ]
+            }
         },
     },
     parser: '@typescript-eslint/parser',

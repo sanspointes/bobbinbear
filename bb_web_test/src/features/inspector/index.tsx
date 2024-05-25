@@ -25,8 +25,8 @@ export function Inspector() {
                     </>
                 )}
             </Show>
-            <pre>{selectedObjectUid()}</pre>
-            <pre>{JSON.stringify(selectedObject(), null, 2)}</pre>
+            <pre class='overflow-scroll'>{selectedObjectUid()}</pre>
+            <pre class='overflow-scroll'>{JSON.stringify(selectedObject(), null, 2)}</pre>
         </div>
     );
 }
