@@ -21,6 +21,7 @@ use bevy::{
     sprite::Mesh2dHandle,
     utils::hashbrown::HashSet,
 };
+use bevy_mod_raycast::markers::SimplifiedMesh;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::{
     components::{EdgeVariant, Endpoint},
@@ -148,83 +149,152 @@ fn update_vector_edge_mesh(
     let next_endpoint_pos = *world.get::<Position>(e_next_endpoint).unwrap();
 
     // Build the path for the edge
-    let mut stroke_tesselator = StrokeTessellator::default();
-    let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
+    let (mesh, aabb) = {
+        let mut stroke_tesselator = StrokeTessellator::default();
+        let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
 
-    let stroke_options = StrokeOptions::default().with_line_width(3.);
-    let mut buffers_builder = BuffersBuilder::new(&mut geometry, RemeshVertexConstructor);
-    let mut pb =
-        stroke_tesselator.builder_with_attributes(1, &stroke_options, &mut buffers_builder);
-    pb.begin(Position(prev_endpoint_pos.0 - edge_pos.0).into(), &[0.]);
-    match edge_variant {
-        EdgeVariant::Line => {
-            pb.line_to(Position(next_endpoint_pos.0 - edge_pos.0).into(), &[1.0]);
+        let stroke_options = StrokeOptions::default().with_line_width(2.);
+        let mut buffers_builder = BuffersBuilder::new(&mut geometry, RemeshVertexConstructor);
+        let mut pb =
+            stroke_tesselator.builder_with_attributes(1, &stroke_options, &mut buffers_builder);
+        pb.begin(Position(prev_endpoint_pos.0 - edge_pos.0).into(), &[0.]);
+        match edge_variant {
+            EdgeVariant::Line => {
+                pb.line_to(Position(next_endpoint_pos.0 - edge_pos.0).into(), &[1.0]);
+            }
+            EdgeVariant::Quadratic { ctrl1 } => {
+                pb.quadratic_bezier_to(
+                    Position(*ctrl1 - edge_pos.0).into(),
+                    Position(next_endpoint_pos.0 - edge_pos.0).into(),
+                    &[1.0],
+                );
+            }
+            EdgeVariant::Cubic { ctrl1, ctrl2 } => {
+                pb.cubic_bezier_to(
+                    Position(*ctrl1 - edge_pos.0).into(),
+                    Position(*ctrl2 - edge_pos.0).into(),
+                    Position(next_endpoint_pos.0 - edge_pos.0).into(),
+                    &[1.0],
+                );
+            }
         }
-        EdgeVariant::Quadratic { ctrl1 } => {
-            pb.quadratic_bezier_to(
-                Position(*ctrl1 - edge_pos.0).into(),
-                Position(next_endpoint_pos.0 - edge_pos.0).into(),
-                &[1.0],
-            );
+        pb.end(false);
+        if let Err(reason) = pb.build() {
+            warn!("BuildView<VectorEdgeVM>::build() -> Failed to tesselate edge: {reason:?}");
         }
-        EdgeVariant::Cubic { ctrl1, ctrl2 } => {
-            pb.cubic_bezier_to(
-                Position(*ctrl1 - edge_pos.0).into(),
-                Position(*ctrl2 - edge_pos.0).into(),
-                Position(next_endpoint_pos.0 - edge_pos.0).into(),
-                &[1.0],
-            );
+
+        let theme_mix_attr = vec![0.; geometry.vertices.len()];
+
+        let mut mesh = Mesh::new(
+            bevy::render::mesh::PrimitiveTopology::TriangleList,
+            RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+        );
+
+        let VertexBuffers { vertices, indices } = geometry;
+        mesh.insert_indices(Indices::U32(indices));
+
+        let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
+        let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
+        let mut edge_t_attr: Vec<f32> = Vec::with_capacity(vertices.len());
+
+        for RemeshVertex {
+            position,
+            normal,
+            edge_t,
+        } in vertices
+        {
+            positions.push([position[0], -position[1], position[2]]);
+            normals.push([normal[0], -normal[1], normal[2]]);
+            edge_t_attr.push(edge_t);
         }
-    }
-    pb.end(false);
-    if let Err(reason) = pb.build() {
-        warn!("BuildView<VectorEdgeVM>::build() -> Failed to tesselate edge: {reason:?}");
-    }
 
-    let theme_mix_attr = vec![0.; geometry.vertices.len()];
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        mesh.insert_attribute(ATTRIBUTE_THEME_MIX, theme_mix_attr);
+        mesh.insert_attribute(ATTRIBUTE_EDGE_T, edge_t_attr);
+        // mesh.duplicate_vertices();
 
-    let mut mesh = Mesh::new(
-        bevy::render::mesh::PrimitiveTopology::TriangleList,
-        RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
-    );
+        // Compute AABB
+        let aabb = mesh.compute_aabb();
+        if aabb.is_none() {
+            warn!("Generated edge mesh could not generate an Aabb box. {mesh:?}");
+        }
+        (mesh, aabb)
+    };
 
-    let VertexBuffers { vertices, indices } = geometry;
-    mesh.insert_indices(Indices::U32(indices));
+    // Build the path for the edge
+    let simplified_mesh = {
+        let mut stroke_tesselator = StrokeTessellator::default();
+        let mut geometry: VertexBuffers<RemeshVertex, u32> = VertexBuffers::new();
 
-    let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
-    let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
-    let mut edge_t_attr: Vec<f32> = Vec::with_capacity(vertices.len());
+        let stroke_options = StrokeOptions::default().with_line_width(10.);
+        let mut buffers_builder = BuffersBuilder::new(&mut geometry, RemeshVertexConstructor);
+        let mut pb =
+            stroke_tesselator.builder_with_attributes(1, &stroke_options, &mut buffers_builder);
+        pb.begin(Position(prev_endpoint_pos.0 - edge_pos.0).into(), &[0.]);
+        match edge_variant {
+            EdgeVariant::Line => {
+                pb.line_to(Position(next_endpoint_pos.0 - edge_pos.0).into(), &[1.0]);
+            }
+            EdgeVariant::Quadratic { ctrl1 } => {
+                pb.quadratic_bezier_to(
+                    Position(*ctrl1 - edge_pos.0).into(),
+                    Position(next_endpoint_pos.0 - edge_pos.0).into(),
+                    &[1.0],
+                );
+            }
+            EdgeVariant::Cubic { ctrl1, ctrl2 } => {
+                pb.cubic_bezier_to(
+                    Position(*ctrl1 - edge_pos.0).into(),
+                    Position(*ctrl2 - edge_pos.0).into(),
+                    Position(next_endpoint_pos.0 - edge_pos.0).into(),
+                    &[1.0],
+                );
+            }
+        }
+        pb.end(false);
+        if let Err(reason) = pb.build() {
+            warn!("BuildView<VectorEdgeVM>::build() -> Failed to tesselate edge: {reason:?}");
+        }
 
-    for RemeshVertex {
-        position,
-        normal,
-        edge_t,
-    } in vertices
-    {
-        positions.push([position[0], -position[1], position[2]]);
-        normals.push([normal[0], -normal[1], normal[2]]);
-        edge_t_attr.push(edge_t);
-    }
+        let mut mesh = Mesh::new(
+            bevy::render::mesh::PrimitiveTopology::TriangleList,
+            RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
+        );
 
-    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
-    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.insert_attribute(ATTRIBUTE_THEME_MIX, theme_mix_attr);
-    mesh.insert_attribute(ATTRIBUTE_EDGE_T, edge_t_attr);
-    // mesh.duplicate_vertices();
+        let VertexBuffers { vertices, indices } = geometry;
+        mesh.insert_indices(Indices::U32(indices));
 
-    // Compute AABB
-    let aabb = mesh.compute_aabb();
-    if aabb.is_none() {
-        warn!("Generated edge mesh could not generate an Aabb box. {mesh:?}");
-    }
+        let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
+        let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
+        let mut edge_t_attr: Vec<f32> = Vec::with_capacity(vertices.len());
+
+        for RemeshVertex {
+            position,
+            normal,
+            edge_t,
+        } in vertices
+        {
+            positions.push([position[0], -position[1], position[2]]);
+            normals.push([normal[0], -normal[1], normal[2]]);
+            edge_t_attr.push(edge_t);
+        }
+
+        mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
+        mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+        mesh.insert_attribute(ATTRIBUTE_EDGE_T, edge_t_attr);
+        mesh
+    };
 
     // Build the mesh and push asset to world
     commands.add(move |world: &mut World| {
         let mut meshes = world.resource_mut::<Assets<Mesh>>();
+        let simplified_mesh = SimplifiedMesh { mesh: meshes.add(simplified_mesh) };
         let handle = Mesh2dHandle(meshes.add(mesh));
 
         let mut entity_mut = world.entity_mut(view_entity);
         entity_mut.insert(handle);
+        entity_mut.insert(simplified_mesh);
         if let Some(aabb) = aabb {
             entity_mut.insert(aabb);
         }
