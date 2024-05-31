@@ -12,6 +12,9 @@ use bevy::{
 
 
 pub const ATTRIBUTE_THEME_MIX: MeshVertexAttribute = MeshVertexAttribute::new("Vertex_ThemeMix", 3330, VertexFormat::Float32);
+pub const ATTRIBUTE_THEME_BASE: MeshVertexAttribute = MeshVertexAttribute::new("Vertex_ThemeBase", 3331, VertexFormat::Float32);
+pub const ATTRIBUTE_THEME_BASE_OPACITY: MeshVertexAttribute = MeshVertexAttribute::new("Vertex_ThemeBaseOpacity", 3332, VertexFormat::Float32);
+
 use crate::plugins::selected::{Hovered, Selected};
 
 pub struct UiElementMaterialPlugin;
@@ -113,6 +116,8 @@ impl Material2d for UiElementMaterial {
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
             Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
             ATTRIBUTE_THEME_MIX.at_shader_location(5),
+            ATTRIBUTE_THEME_BASE.at_shader_location(6),
+            ATTRIBUTE_THEME_BASE_OPACITY.at_shader_location(7),
         ])?;
         println!("descriptor layout: {:?}", descriptor.layout);
         // Adds theme_mix varying for frag shader

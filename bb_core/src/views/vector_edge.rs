@@ -36,7 +36,7 @@ use moonshine_core::{kind::Instance, object::Object};
 
 use crate::{
     ecs::{InternalObject, ObjectBundle, ObjectType, Position, ProxiedObjectBundle},
-    materials::{UiElementMaterialCache, ATTRIBUTE_THEME_MIX},
+    materials::{UiElementMaterialCache, ATTRIBUTE_THEME_BASE, ATTRIBUTE_THEME_BASE_OPACITY, ATTRIBUTE_THEME_MIX},
     plugins::{
         effect::Effect,
         model_view::{BuildView, Model, View, ViewBuilder},
@@ -46,7 +46,7 @@ use crate::{
 
 /// Attribute contains T value of edge (0-1) how far a vert is from start -> end.
 pub const ATTRIBUTE_EDGE_T: MeshVertexAttribute =
-    MeshVertexAttribute::new("Vertex_EdgeT", 3331, VertexFormat::Float32);
+    MeshVertexAttribute::new("Vertex_EdgeT", 3340, VertexFormat::Float32);
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -183,8 +183,6 @@ fn update_vector_edge_mesh(
             warn!("BuildView<VectorEdgeVM>::build() -> Failed to tesselate edge: {reason:?}");
         }
 
-        let theme_mix_attr = vec![0.; geometry.vertices.len()];
-
         let mut mesh = Mesh::new(
             bevy::render::mesh::PrimitiveTopology::TriangleList,
             RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
@@ -192,6 +190,9 @@ fn update_vector_edge_mesh(
 
         let VertexBuffers { vertices, indices } = geometry;
         mesh.insert_indices(Indices::U32(indices));
+        mesh.insert_attribute(ATTRIBUTE_THEME_MIX, vec![0.; vertices.len()]);
+        mesh.insert_attribute(ATTRIBUTE_THEME_BASE, vec![0.75; vertices.len()]);
+        mesh.insert_attribute(ATTRIBUTE_THEME_BASE_OPACITY, vec![1.; vertices.len()]);
 
         let mut positions: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
         let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
@@ -210,9 +211,7 @@ fn update_vector_edge_mesh(
 
         mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, positions);
         mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-        mesh.insert_attribute(ATTRIBUTE_THEME_MIX, theme_mix_attr);
         mesh.insert_attribute(ATTRIBUTE_EDGE_T, edge_t_attr);
-        // mesh.duplicate_vertices();
 
         // Compute AABB
         let aabb = mesh.compute_aabb();

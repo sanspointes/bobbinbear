@@ -22,6 +22,8 @@ struct Vertex {
     // @location(4) color: vec4<f32>,
 #endif
     @location(5) theme_mix: f32,
+    @location(6) theme_base: f32,
+    @location(7) theme_base_opacity: f32,
 };
 
 struct VertexOutput {
@@ -38,6 +40,8 @@ struct VertexOutput {
     // @location(4) color: vec4<f32>,
     #endif
     @location(5) theme_mix: f32,
+    @location(6) theme_base: f32,
+    @location(7) theme_base_opacity: f32,
 }
 
 struct State {
@@ -81,6 +85,8 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     // );
 #endif
     out.theme_mix = vertex.theme_mix;
+    out.theme_base = vertex.theme_base;
+    out.theme_base_opacity = vertex.theme_base_opacity;
 #ifdef VERTEX_COLORS
     // out.color = vertex.color;
 #endif
@@ -104,14 +110,20 @@ fn fragment(
         theme_mix = 1. - theme_mix;
     }
 
-    let white = vec4<f32>(theme_mix, 1., 1., 1.);
-    var c = theme_color.rgb * theme_mix;
-    if (theme_mix == 0.) {
-        c = vec3<f32>(1., 1., 1.);
-    }
+    let base = vec3<f32>(in.theme_base);
+    var c = mix(base, theme_color.rgb, theme_mix);
     if (state.hovered == 1) {
         c += vec3(0.25, 0.25, 0.25);
     }
-    return vec4<f32>(c, 1.);
+
+    var alpha = in.theme_base_opacity;
+    if (state.hovered == 1) {
+        alpha = 1.;
+    }
+    if (state.selected == 1) {
+        alpha = 1.;
+    }
+
+    return vec4<f32>(c, alpha);
 #endif
 }
