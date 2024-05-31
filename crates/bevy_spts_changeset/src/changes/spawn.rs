@@ -1,6 +1,7 @@
 use std::{fmt::Debug, sync::Arc};
 
 use anyhow::anyhow;
+use as_any::AsAny;
 use bevy_ecs::{event::Events, world::World};
 use bevy_hierarchy::{BuildWorldChildren, Parent};
 use bevy_spts_fragments::prelude::{EntityFragment, Uid};
@@ -43,6 +44,21 @@ impl Change for SpawnChange {
 
         Ok(Arc::new(DespawnChange::new(entity_fragment.uid())))
     }
+
+    fn is_repeatable(
+        &self,
+        other: Arc<dyn Change>,
+    ) -> Result<(), crate::prelude::NotRepeatableReason> {
+        let type_name = other.type_name();
+        let other_any = other.as_any_arc();
+        (*other_any)
+            .downcast_ref::<DespawnChange>()
+            .ok_or_else(|| {
+                super::NotRepeatableReason::DifferentType(self.type_name(), type_name)
+            })?;
+
+        Err(super::NotRepeatableReason::ChangesWorldLayout)
+    }
 }
 
 #[derive(Debug)]
@@ -78,5 +94,20 @@ impl Change for DespawnChange {
         events.send(ChangesetEvent::Despawned(self.uid));
 
         Ok(Arc::new(SpawnChange::new(entity_fragment, parent)))
+    }
+
+    fn is_repeatable(
+        &self,
+        other: Arc<dyn Change>,
+    ) -> Result<(), crate::prelude::NotRepeatableReason> {
+        let type_name = other.type_name();
+        let other_any = other.as_any_arc();
+        (*other_any)
+            .downcast_ref::<DespawnChange>()
+            .ok_or_else(|| {
+                super::NotRepeatableReason::DifferentType(self.type_name(), type_name)
+            })?;
+
+        Err(super::NotRepeatableReason::ChangesWorldLayout)
     }
 }

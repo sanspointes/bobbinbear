@@ -1,9 +1,9 @@
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use anyhow::anyhow;
 use bevy::prelude::*;
 
-use bevy_spts_changeset::prelude::*;
+use bevy_spts_changeset::{as_any::AsAny, prelude::*};
 use bevy_spts_uid::{Uid, UidRegistry};
 
 use crate::prelude::*;
@@ -40,6 +40,19 @@ impl Change for LinkEdgeChange {
         Ok(Arc::new(UnlinkEdgeChange {
             edge: self.edge,
         }))
+    }
+
+    fn is_repeatable(
+        &self,
+        other: Arc<dyn Change>,
+    ) -> Result<(), NotRepeatableReason> {
+        if self.type_id() != other.type_id() {
+            return Err(NotRepeatableReason::DifferentType(
+                self.type_name(),
+                other.type_name(),
+            ));
+        }
+        Err(NotRepeatableReason::ChangesWorldLayout)
     }
 }
 
@@ -79,6 +92,19 @@ impl Change for UnlinkEdgeChange {
             next_endpoint: edge.next_endpoint,
             prev_endpoint: edge.prev_endpoint,
         }))
+    }
+
+    fn is_repeatable(
+        &self,
+        other: Arc<dyn Change>,
+    ) -> Result<(), NotRepeatableReason> {
+        if self.type_id() != other.type_id() {
+            return Err(NotRepeatableReason::DifferentType(
+                self.type_name(),
+                other.type_name(),
+            ));
+        }
+        Err(NotRepeatableReason::ChangesWorldLayout)
     }
 }
 

@@ -1,7 +1,6 @@
 use bevy::ecs::{query::Without, world::World};
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_fragments::prelude::Uid;
-use bevy_spts_uid::{UidRegistry, UidRegistryError};
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 

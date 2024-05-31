@@ -1,6 +1,6 @@
 //! Contains the API for executing/undoing/redoing changesets.
 
-use bevy::ecs::world::World;
+use bevy::{ecs::{change_detection::DetectChanges, world::World}, log::warn, time::Time};
 use bevy_spts_changeset::prelude::{Changeset, ChangesetResource};
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
@@ -31,10 +31,44 @@ impl UndoRedoApi {
         changeset: Changeset,
     ) -> Result<UndoRedoResult, anyhow::Error> {
         ChangesetResource::<UndoRedoTag>::context_scope(world, |world, cx| {
-            let inverse = changeset.apply(world, cx)?;
+            let time = world.resource::<Time>();
+            let current_seconds = time.elapsed_seconds_f64();
+
             let mut res = world.resource_mut::<UndoRedoResource>();
+            let since_last_execute_seconds = current_seconds - res.last_execute_seconds;
+
+            let prev_changeset = if since_last_execute_seconds < 0.5 {
+                warn!("Attempting to repeat changeset {current_seconds} {since_last_execute_seconds}");
+                res.undo_stack.pop()
+            } else {
+                None
+            };
+
+            let inverse = if let Some(prev_changeset) = prev_changeset {
+                match changeset.try_apply_repeatable(world, cx, &prev_changeset) {
+                    Ok(inverse) => {
+                        warn!("Successfully applied repeatable changeset.");
+                        inverse
+                    }
+                    Err(reason) => {
+                        warn!("Failed applying repeatable, falling back as new entry. Reason: {reason:?}. \n {changeset} \n\n {prev_changeset}");
+                        let mut res = world.resource_mut::<UndoRedoResource>();
+                        res.undo_stack.push(prev_changeset);
+
+                        changeset.apply(world, cx)?
+                    }
+                }
+            } else {
+                warn!("No prev changeset to rpeat");
+                changeset.apply(world, cx)?
+            };
+
+            let mut res = world.resource_mut::<UndoRedoResource>();
+            res.last_execute_seconds = current_seconds;
+
             res.undo_stack.push(inverse);
             res.redo_stack.clear();
+
             Ok(UndoRedoResult::PerformedChange)
         })
     }

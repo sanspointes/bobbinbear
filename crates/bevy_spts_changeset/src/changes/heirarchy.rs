@@ -1,7 +1,8 @@
-use std::sync::Arc;
+use std::{any::Any, sync::Arc};
 
 use anyhow::anyhow;
 
+use as_any::AsAny;
 use bevy_ecs::{event::Events, world::World};
 use bevy_hierarchy::{BuildWorldChildren, Children, Parent};
 use bevy_reflect::Typed;
@@ -97,6 +98,13 @@ impl Change for SetParentChange {
             parent: prev_parent,
         }))
     }
+
+    fn is_repeatable(&self, other: Arc<dyn Change>) -> Result<(), crate::prelude::NotRepeatableReason> {
+        if self.type_id() != other.type_id() {
+            return Err(super::NotRepeatableReason::DifferentType(self.type_name(), other.type_name()));
+        }
+        Err(super::NotRepeatableReason::ChangesWorldLayout)
+    }
 }
 
 #[derive(Debug)]
@@ -134,6 +142,19 @@ impl Change for SpawnRecursiveChange {
         Ok(Arc::new(DespawnRecursiveChange::new(
             hierarchy_fragment.root_uid(),
         )))
+    }
+
+    fn is_repeatable(
+        &self,
+        other: Arc<dyn Change>,
+    ) -> Result<(), crate::prelude::NotRepeatableReason> {
+        let type_name = other.type_name();
+        let other_any = other.as_any_arc();
+        (*other_any)
+            .downcast_ref::<SpawnRecursiveChange>()
+            .ok_or_else(|| super::NotRepeatableReason::DifferentType(self.type_name(), type_name))?;
+
+        Err(super::NotRepeatableReason::ChangesWorldLayout)
     }
 }
 
@@ -179,5 +200,18 @@ impl Change for DespawnRecursiveChange {
             hierarchy_fragment,
             parent,
         )))
+    }
+
+    fn is_repeatable(
+        &self,
+        other: Arc<dyn Change>,
+    ) -> Result<(), crate::prelude::NotRepeatableReason> {
+        let type_name = other.type_name();
+        let other_any = other.as_any_arc();
+        (*other_any)
+            .downcast_ref::<DespawnRecursiveChange>()
+            .ok_or_else(|| super::NotRepeatableReason::DifferentType(self.type_name(), type_name))?;
+
+        Err(super::NotRepeatableReason::ChangesWorldLayout)
     }
 }

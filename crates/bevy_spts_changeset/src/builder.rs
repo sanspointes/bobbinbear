@@ -1,9 +1,10 @@
 use std::{any::TypeId, fmt::Display, sync::Arc};
 
+use anyhow::anyhow;
 use bevy_ecs::{bundle::Bundle, component::Component, reflect::AppTypeRegistry, world::World};
 use bevy_reflect::{FromReflect, Reflect};
 use bevy_spts_fragments::prelude::{
-    BundleFragment, BundleToFragment, ComponentFragment, EntityFragment, Uid,
+    BundleFragment, BundleToFragment, EntityFragment, Uid,
 };
 
 use crate::{
@@ -11,6 +12,7 @@ use crate::{
         ApplyChange, Change, DespawnChange, DespawnRecursiveChange, InsertChange, RemoveChange,
         SetParentChange, SpawnChange,
     },
+    prelude::NotRepeatableReason,
     resource::ChangesetContext,
 };
 
@@ -32,15 +34,13 @@ impl Display for Changeset {
 
 impl Changeset {
     pub fn apply(
-        self,
+        &self,
         world: &mut World,
         cx: &mut ChangesetContext,
     ) -> Result<Changeset, anyhow::Error> {
-        println!("Applying {} changes...", self.changes.len());
-
         let mut inverse_changes = vec![];
 
-        for change in self.changes {
+        for change in self.changes.iter() {
             let result = change.apply(world, cx);
 
             match result {
@@ -62,10 +62,48 @@ impl Changeset {
             changes: inverse_changes,
         })
     }
+
+    /// Similar to apply but compares the changeset with a prior one.  If it has the same signature
+    /// as prior changeset it will apply only the 'repeatable' commands.
+    pub fn try_apply_repeatable(
+        &self,
+        world: &mut World,
+        cx: &mut ChangesetContext,
+        other: &Changeset,
+    ) -> Result<Changeset, anyhow::Error> {
+        if self.changes.len() != other.changes.len() {
+            return Err(anyhow!("Changesets have different lengths."));
+        }
+
+        let next_changes: Result<Vec<_>, _> = self.changes.iter().zip(other.changes.iter().rev()).map(|(a, b)| {
+            match a.is_repeatable(b.clone()) {
+                Ok(()) => {
+                    Ok((b.clone(), Some(a)))
+                }
+                Err(NotRepeatableReason::ChangesWorldLayout) => {
+                    Ok((b.clone(), None))
+                }
+                Err(reason) => Err(reason),
+            }
+        }).collect();
+        let next_changes = next_changes?;
+
+        let mut inverse_changes = Vec::with_capacity(next_changes.len());
+        for (change, to_apply) in next_changes {
+            if let Some(to_apply) = to_apply {
+                to_apply.apply(world, cx)?;
+            }
+            inverse_changes.push(change);
+        }
+
+        inverse_changes.reverse();
+
+        Ok(Changeset { changes: inverse_changes })
+    }
 }
 
 /// A builder for [`Changeset`] that mirrors the Bevy native [`Commands`] api.
-/// 
+///
 /// When you've finished building your changeset call `build()` to recieve the [Changeset].
 pub struct ChangesetCommands<'w> {
     world: &'w World,
@@ -75,7 +113,7 @@ pub struct ChangesetCommands<'w> {
 impl<'w> ChangesetCommands<'w> {
     /// Creates a new ChangesetCommands from the world.
     ///
-    /// * `world`: 
+    /// * `world`:
     pub fn new(world: &'w World) -> Self {
         Self {
             world,
@@ -91,7 +129,7 @@ impl<'w> ChangesetCommands<'w> {
         self.changes.push(change);
     }
 
-    /// Returns the [EntityChangeset] of a an existing entity allowing you to edit an 
+    /// Returns the [EntityChangeset] of a an existing entity allowing you to edit an
     /// existing entity.
     ///
     /// # Example
@@ -108,7 +146,7 @@ impl<'w> ChangesetCommands<'w> {
     ///     let changeset = changeset_commands.build();
     /// }
     /// ```
-    /// * `uid`: 
+    /// * `uid`:
     pub fn entity<'a>(&'a mut self, uid: Uid) -> EntityChangeset<'w, 'a> {
         EntityChangeset {
             target: uid,
@@ -123,11 +161,11 @@ impl<'w> ChangesetCommands<'w> {
     /// ```
     /// #[derive(Component, Reflect, Default)]
     /// #[reflect(Component)]
-    /// struct MyComponent(usize); 
+    /// struct MyComponent(usize);
     ///
     /// #[derive(Component, Reflect, Default)]
     /// #[reflect(Component)]
-    /// struct MyComponent2(usize); 
+    /// struct MyComponent2(usize);
     ///
     /// #[derive(Bundle, Reflect, Default)]
     /// #[reflect(Bundle)]
@@ -171,7 +209,7 @@ impl<'w> ChangesetCommands<'w> {
         }
     }
 
-    /// Spawns a new component with only a [Uid] component.  Uids are currently required for 
+    /// Spawns a new component with only a [Uid] component.  Uids are currently required for
     /// persistance between undo/redos.
     pub fn spawn_empty<'a>(&'a mut self) -> EntityChangeset<'w, 'a> {
         let uid = Uid::default();
@@ -205,8 +243,7 @@ impl<'w> ChangesetCommands<'w> {
     }
 }
 
-/// 
-///
+/// Changeset builder for mutating an entity.
 pub struct EntityChangeset<'w, 'a> {
     pub(crate) target: Uid,
     pub(crate) builder: &'a mut ChangesetCommands<'w>,
@@ -239,10 +276,8 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
             bundle.to_fragment(&type_registry)
         };
 
-        self.builder.add(Arc::new(InsertChange::new(
-            self.target,
-            bundle
-        )));
+        self.builder
+            .add(Arc::new(InsertChange::new(self.target, bundle)));
         self
     }
 
@@ -273,15 +308,13 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
             let type_registry = self.builder.world.resource::<AppTypeRegistry>().read();
             bundle.to_fragment(&type_registry)
         };
-        self.builder.add(Arc::new(ApplyChange::new(
-            self.target,
-            bundle
-        )));
+        self.builder
+            .add(Arc::new(ApplyChange::new(self.target, bundle)));
         self
     }
     /// Removes a single component from the entity.  Uses [RemoveChange] under the hood and stores
     /// the component within a [ComponentFragment].
-    /// 
+    ///
     /// # Example
     /// ```
     /// #[derive(Component, Default, Reflect)]
@@ -296,9 +329,9 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
             .add(Arc::new(RemoveChange::new(self.target, vec![type_id])));
         self
     }
-    /// Changes the parent of an entity.  Uses [SetParentChange] under the hood which uses 
+    /// Changes the parent of an entity.  Uses [SetParentChange] under the hood which uses
     /// `set_parent`/`remove_parent` of [EntityWorldMut].
-    /// 
+    ///
     /// # Example
     /// ```
     /// let parent_uid = changeset_commands.spawn_empty().uid();
@@ -312,7 +345,7 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
     /// Removes the parent from an entity (moving it to top of scene hierarchy).  Uses
     /// [SetParentChange] under the hood which uses `set_parent`/`remove_parent`
     /// of [EntityWorldMut].
-    /// 
+    ///
     /// # Example
     /// ```
     /// let parent_uid = changeset_commands.spawn_empty().uid();
@@ -350,7 +383,7 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
     /// 1. Component is `#[derive(Reflect)]` and `#[reflect(Component)]`
     /// 2. Component is registed in the [AppTypeRegistry]
     /// 3. Component is allowed according to the [SceneFilter] of the [ChangesetResource].
-    /// 
+    ///
     pub fn despawn(&mut self) -> &mut Self {
         self.builder.add(Arc::new(DespawnChange::new(self.target)));
         self
@@ -379,7 +412,7 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
     /// 1. Component is `#[derive(Reflect)]` and `#[reflect(Component)]`
     /// 2. Component is registed in the [AppTypeRegistry]
     /// 3. Component is allowed according to the [SceneFilter] of the [ChangesetResource].
-    /// 
+    ///
     pub fn despawn_recursive(&mut self) -> &mut Self {
         self.builder
             .add(Arc::new(DespawnRecursiveChange::new(self.target)));

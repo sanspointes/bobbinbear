@@ -81,6 +81,7 @@ impl Plugin for UndoRedoPlugin {
 
 #[derive(Resource, Default)]
 pub struct UndoRedoResource {
+    last_execute_seconds: f64,
     undo_stack: Vec<Changeset>,
     redo_stack: Vec<Changeset>,
 }

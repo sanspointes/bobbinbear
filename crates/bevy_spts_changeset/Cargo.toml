@@ -18,6 +18,8 @@ uuid = { version = "1.7.0", features = ["v4", "serde"] }
 bevy_spts_fragments = { version = "0.1.0", path = "../bevy_spts_fragments" }
 bevy_spts_uid = { version = "0.1.0", path = "../bevy_spts_uid" }
 thiserror = "1.0.59"
+as-any = "0.3.1"
+bevy_utils = "0.13.2"
 
 [features]
 serde = ["dep:serde"]

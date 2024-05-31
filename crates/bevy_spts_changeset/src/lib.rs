@@ -5,6 +5,8 @@ pub mod events;
 pub mod builder;
 pub mod error;
 
+pub use as_any;
+
 pub mod prelude {
     pub use bevy_spts_fragments::prelude::Uid;
     pub use crate::commands_ext::WorldChangesetExt;
