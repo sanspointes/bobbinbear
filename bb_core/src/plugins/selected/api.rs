@@ -1,6 +1,7 @@
 use bevy::ecs::{query::Without, world::World};
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_fragments::prelude::Uid;
+use bevy_spts_uid::{UidRegistry, UidRegistryError};
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
 
@@ -114,15 +115,12 @@ impl SelectedApi {
     }
 
     pub fn unhover_all(world: &mut World) -> Result<(), anyhow::Error> {
-        let hovered = Self::query_hovered_uids(world);
-
-        let mut changeset = world.changeset();
-        for uid in hovered.iter() {
-            changeset.entity(*uid).apply(Selected::Deselected);
+        let curr_hovered = Self::query_hovered_uids(world);
+        for uid in curr_hovered {
+            if let Some(mut entity_mut) = uid.entity(world).and_then(|e| world.get_entity_mut(e)) {
+                entity_mut.insert(Hovered::Unhovered);
+            }
         }
-
-        let changeset = changeset.build();
-        UndoRedoApi::execute(world, changeset)?;
 
         Ok(())
     }
@@ -138,12 +136,9 @@ impl SelectedApi {
             None => uid,
         };
 
-        let mut changeset = world.changeset();
-        changeset.entity(target).apply(hovered);
-
-        let changeset = changeset.build();
-        UndoRedoApi::execute(world, changeset)?;
-
+        if let Some(mut entity_mut) = target.entity(world).and_then(|e| world.get_entity_mut(e)) {
+            entity_mut.insert(hovered);
+        }
         Ok(())
     }
 
@@ -152,23 +147,8 @@ impl SelectedApi {
         uid: Uid,
         hovered: Hovered,
     ) -> Result<(), anyhow::Error> {
-        let entity = uid.entity(world).unwrap();
-        let target = match world.get::<ProxiedComponent<Hovered>>(entity) {
-            Some(proxy) => *proxy.target(),
-            None => uid,
-        };
-
-        let curr_hovered = Self::query_hovered_uids(world);
-
-        let mut changeset = world.changeset();
-        for uid in curr_hovered.iter() {
-            changeset.entity(*uid).apply(Selected::Deselected);
-        }
-        changeset.entity(target).apply(hovered);
-
-        let changeset = changeset.build();
-        UndoRedoApi::execute(world, changeset)?;
-
+        Self::unhover_all(world)?;
+        Self::set_object_hovered(world, uid, hovered)?;
         Ok(())
     }
 }
