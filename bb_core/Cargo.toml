@@ -37,6 +37,7 @@ tsify = {version = "0.4.5", default-features = false, features = ["js", "wasm-bi
 bevy-inspector-egui = "0.24.0"
 bevy_mod_raycast = { git = "https://github.com/connorgmeehan/bevy_mod_raycast/", branch = "feat/triangle-indices", version = "0.17.0" }
 moonshine-core = "0.1.1"
+pretty-type-name = "1.0.1"
 
 [features] 
 default = ["minimal_bevy"]

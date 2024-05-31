@@ -6,6 +6,7 @@ import Tools from "./Tools";
 
 import { DebugApi, UndoRedoApi } from "bb_core";
 import { Button } from "~/components/ui/button";
+import { ScheduleGraph } from "~/components/schedule-graph";
 
 export function Toolbar() {
     const debugApi = new DebugApi();
@@ -28,5 +29,9 @@ export function Toolbar() {
         <Button variant='toolbar' onClick={() => debugApi.spawn_box()}>Spawn Box</Button>
         <Button variant='toolbar' onClick={() => undoRedoApi.undo()}>Undo</Button>
         <Button variant='toolbar' onClick={() => undoRedoApi.redo()}>Redo</Button>
+
+        <ScheduleGraph debugApi={debugApi}>
+            <Button variant='toolbar'>Debug Schedule</Button>
+        </ScheduleGraph>
     </div>
 }

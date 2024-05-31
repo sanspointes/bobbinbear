@@ -1,4 +1,4 @@
-use bevy::{ecs::system::SystemState, math::prelude::Circle, prelude::*};
+use bevy::{ecs::system::SystemState, prelude::*};
 
 use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_vectorgraphic::prelude::*;
@@ -8,6 +8,7 @@ use wasm_bindgen::prelude::*;
 use crate::{
     ecs::object::{InternalObject, ObjectBundle, ObjectType},
     plugins::undoredo::{UndoRedoApi, UndoRedoResult},
+    utils::schedule_graph,
 };
 
 pub struct DebugApi;
@@ -56,7 +57,7 @@ impl DebugApi {
             .insert((
                 Name::from("Edge"),
                 ObjectBundle::new(ObjectType::VectorEdge),
-                InternalObject
+                InternalObject,
             ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
@@ -127,7 +128,7 @@ impl DebugApi {
             .insert((
                 Name::from("Edge"),
                 ObjectBundle::new(ObjectType::VectorEdge),
-                InternalObject
+                InternalObject,
             ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
@@ -136,7 +137,7 @@ impl DebugApi {
             .insert((
                 Name::from("Edge"),
                 ObjectBundle::new(ObjectType::VectorEdge),
-                InternalObject
+                InternalObject,
             ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
@@ -145,7 +146,7 @@ impl DebugApi {
             .insert((
                 Name::from("Edge"),
                 ObjectBundle::new(ObjectType::VectorEdge),
-                InternalObject
+                InternalObject,
             ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
@@ -154,7 +155,7 @@ impl DebugApi {
             .insert((
                 Name::from("Edge"),
                 ObjectBundle::new(ObjectType::VectorEdge),
-                InternalObject
+                InternalObject,
             ))
             // .insert(ObjectBundle::new(ObjectType::VectorSegment))
             .set_parent(vector_graphic);
@@ -164,5 +165,26 @@ impl DebugApi {
         let result = UndoRedoApi::execute(world, changeset)?;
 
         Ok(result)
+    }
+
+    pub fn graph_schedule(
+        world: &mut World,
+        schedule_label: schedule_graph::definitions::ScheduleLabel,
+        settings: schedule_graph::definitions::ScheduleGraphSettings,
+    ) -> Result<String, anyhow::Error> {
+        world.resource_scope::<Schedules, _>(|world, mut schedules| {
+            use crate::utils::schedule_graph::*;
+            let schedule = match schedule_label {
+                definitions::ScheduleLabel::First => schedules.get_mut(First),
+                definitions::ScheduleLabel::PreUpdate => schedules.get_mut(PreUpdate),
+                definitions::ScheduleLabel::Update => schedules.get_mut(Update),
+                definitions::ScheduleLabel::PostUpdate => schedules.get_mut(PostUpdate),
+                definitions::ScheduleLabel::Last => schedules.get_mut(Last),
+            };
+
+            let schedule = schedule.ok_or(anyhow::anyhow!("Schedule doesn't exist"))?;
+            let grapher = ScheduleGrapher::new(schedule, world, &settings);
+            Ok(format!("{}", grapher))
+        })
     }
 }
