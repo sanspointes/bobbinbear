@@ -23,16 +23,20 @@ pub fn sys_update_endpoint_positions_on_edge_move(
 ) {
     for (edge, pos, transform) in q_edges.iter() {
         let diff = pos.0 - transform.translation.xy();
-        warn!("Moving edge by diff {diff}");
-        if let Ok((_, mut position)) = q_endpoints.get_mut(r_uid_registry.entity(edge.next_endpoint_uid())) {
-            position.0 += diff;
+        let next_uid = edge.next_endpoint_uid();
+        if let Ok((_, mut position)) = q_endpoints.get_mut(r_uid_registry.entity(next_uid)) {
+            let new_pos = position.0 + diff;
+            position.0 = new_pos;
         }
-        if let Ok((_, mut position)) = q_endpoints.get_mut(r_uid_registry.entity(edge.prev_endpoint_uid())) {
-            position.0 += diff;
+        let prev_uid = edge.prev_endpoint_uid();
+        if let Ok((_, mut position)) = q_endpoints.get_mut(r_uid_registry.entity(prev_uid)) {
+            let new_pos = position.0 + diff;
+            position.0 = new_pos;
         }
     }
 }
 
+/// Moves the Position of all EdgeVariant to the bounding box of that edge.
 pub fn sys_cleanup_edge_positions_to_bounding_box(
     r_uid_registry: Res<UidRegistry>,
     q_endpoints: Query<(&Endpoint, &Position), Without<Edge>>,
@@ -65,7 +69,8 @@ pub fn sys_cleanup_edge_positions_to_bounding_box(
             }
         }
 
-        // Must bypass change detection to avoid infinite loop
-        position.bypass_change_detection().0 = min;
+        if position.0 != min {
+            position.0 = min;
+        }
     }
 }

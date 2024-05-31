@@ -19,6 +19,7 @@ use bevy::{
         render_resource::VertexFormat,
     },
     sprite::Mesh2dHandle,
+    utils::hashbrown::HashSet,
 };
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::{
@@ -43,7 +44,8 @@ use crate::{
 };
 
 /// Attribute contains T value of edge (0-1) how far a vert is from start -> end.
-pub const ATTRIBUTE_EDGE_T: MeshVertexAttribute = MeshVertexAttribute::new("Vertex_EdgeT", 3331, VertexFormat::Float32);
+pub const ATTRIBUTE_EDGE_T: MeshVertexAttribute =
+    MeshVertexAttribute::new("Vertex_EdgeT", 3331, VertexFormat::Float32);
 
 #[repr(C)]
 #[derive(Copy, Clone)]
@@ -193,7 +195,12 @@ fn update_vector_edge_mesh(
     let mut normals: Vec<[f32; 3]> = Vec::with_capacity(vertices.len());
     let mut edge_t_attr: Vec<f32> = Vec::with_capacity(vertices.len());
 
-    for RemeshVertex { position, normal, edge_t } in vertices {
+    for RemeshVertex {
+        position,
+        normal,
+        edge_t,
+    } in vertices
+    {
         positions.push([position[0], -position[1], position[2]]);
         normals.push([normal[0], -normal[1], normal[2]]);
         edge_t_attr.push(edge_t);
@@ -239,19 +246,25 @@ pub fn sys_update_vector_edge_vm_mesh_when_endpoint_move(
     q_edge: Query<(Entity, &Model<VectorEdgeVM>), With<Edge>>,
     mut commands: Commands,
 ) {
+    let mut updated_edges: HashSet<Entity> = HashSet::new();
+
     for moved_endpoint in q_moved_endpoints.iter() {
         let next_edge = moved_endpoint
             .next_edge_entity()
             .map(|uid| r_uid_registry.entity(uid))
             .and_then(|e| q_edge.get(e).ok());
-        if let Some((entity, model)) = next_edge {
+        let next_stale_edge = next_edge.filter(|(e, _)| !updated_edges.contains(e));
+        if let Some((entity, model)) = next_stale_edge {
+            updated_edges.insert(entity);
             update_vector_edge_mesh(world, entity, model.view().entity(), &mut commands);
         }
         let prev_edge = moved_endpoint
             .prev_edge_entity()
             .map(|uid| r_uid_registry.entity(uid))
             .and_then(|e| q_edge.get(e).ok());
-        if let Some((entity, model)) = prev_edge {
+        let prev_stale_edge = prev_edge.filter(|(e, _)| !updated_edges.contains(e));
+        if let Some((entity, model)) = prev_stale_edge {
+            updated_edges.insert(entity);
             update_vector_edge_mesh(world, entity, model.view().entity(), &mut commands);
         }
     }

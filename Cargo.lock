@@ -328,7 +328,6 @@ dependencies = [
  "bevy",
  "bevy-inspector-egui 0.24.0",
  "bevy-wasm-api",
- "bevy_mod_debugdump",
  "bevy_mod_raycast",
  "bevy_spts_changeset",
  "bevy_spts_fragments",

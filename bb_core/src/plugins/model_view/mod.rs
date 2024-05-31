@@ -17,11 +17,29 @@ use moonshine_core::prelude::*;
 #[allow(dead_code)]
 pub trait RegisterView {
     /// Registers a view for a given [`Kind`].
+    fn register_view_with_set<T: Kind, V: BuildView<T>>(
+        &mut self,
+        spawn_schedule: impl ScheduleLabel,
+        spawn_set: impl SystemSet,
+        despawn_schedule: impl ScheduleLabel,
+        despawn_set: impl SystemSet,
+    ) -> &mut Self;
+    /// Registers a view for a given [`Kind`].
     fn register_view<T: Kind, V: BuildView<T>>(
         &mut self,
         spawn_schedule: impl ScheduleLabel,
         despawn_schedule: impl ScheduleLabel,
     ) -> &mut Self;
+
+    fn register_viewable_with_set<T: BuildView>(
+        &mut self,
+        spawn_schedule: impl ScheduleLabel,
+        spawn_set: impl SystemSet,
+        despawn_schedule: impl ScheduleLabel,
+        despawn_set: impl SystemSet,
+    ) -> &mut Self {
+        self.register_view_with_set::<T, T>(spawn_schedule, spawn_set, despawn_schedule, despawn_set)
+    }
 
     /// Registers a given [`Kind`] as viewable.
     fn register_viewable<T: BuildView>(
@@ -47,6 +65,24 @@ impl RegisterView for App {
             self.add_systems(despawn_schedule, despawn::<T, V>);
         }
         self
+    }
+
+    fn register_view_with_set<T: Kind, V: BuildView<T>>(
+            &mut self,
+            spawn_schedule: impl ScheduleLabel,
+            spawn_set: impl SystemSet,
+            despawn_schedule: impl ScheduleLabel,
+            despawn_set: impl SystemSet,
+        ) -> &mut Self {
+        debug!("Registering view in schedule {spawn_schedule:?} {despawn_schedule:?}");
+        self.add_systems(spawn_schedule, spawn::<T, V>.in_set(spawn_set));
+        let mut viewables = self.world.get_resource_or_insert_with(Viewables::default);
+        if !viewables.is_viewable_kind::<T>() {
+            viewables.add_kind::<T>();
+            self.add_systems(despawn_schedule, despawn::<T, V>.in_set(despawn_set));
+        }
+        self
+        
     }
 }
 

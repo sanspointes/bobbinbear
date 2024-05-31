@@ -5,14 +5,12 @@ mod materials;
 mod meshes;
 mod plugins;
 mod tools;
-mod views;
 mod utils;
+mod views;
 
 use bevy::asset::AssetMetaCheck;
 use bevy::input::common_conditions::input_toggle_active;
 use bevy::prelude::*;
-use bevy::transform::systems::propagate_transforms;
-use bevy::transform::TransformSystem;
 use bevy::utils::HashMap;
 use bevy::window::WindowMode;
 
@@ -22,18 +20,17 @@ use bevy_spts_changeset::events::ChangesetEvent;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::VectorGraphicPlugin;
 use bevy_wasm_api::BevyWasmApiPlugin;
-use ecs::position::{
-    sys_update_proxied_component_position, sys_update_transform_from_position, Position,
-};
+use ecs::position::Position;
 use ecs::{
-    sys_cleanup_edge_positions_to_bounding_box, sys_update_endpoint_positions_on_edge_move,
+    sys_cleanup_edge_positions_to_bounding_box, sys_sort_sync_position_proxy_and_transform,
+    sys_sync_position_proxy_and_transform, sys_update_endpoint_positions_on_edge_move,
     InternalObject, ObjectType,
 };
 use materials::BobbinMaterialsPlugin;
 use meshes::BobbinMeshesPlugin;
 use plugins::inspecting::BecauseInspected;
 use plugins::selected::SelectedPlugin;
-use tools::BobbinToolsPlugin;
+use tools::{BobbinToolsPlugin, ToolSet};
 use views::BobbinViewsPlugin;
 use wasm_bindgen::prelude::*;
 
@@ -72,27 +69,33 @@ pub fn setup_bb_core(canvas_id: String) {
 }
 
 #[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]
-pub enum PostUpdateSets {
-    Positioning,
-    PostPositioningPropagate,
+pub enum PosSet {
+    // Positions the source objects and then updates transforms and global transforms
+    PositionObjects,
+    // Positions the proxy objects and then updates transforms and global transforms
+    Propagate,
 }
-
 
 pub fn setup(app: &mut App) {
     app.add_event::<ChangesetEvent>();
 
-    app.configure_sets(PostUpdate, PostUpdateSets::Positioning.after(TransformSystem::TransformPropagate));
-    app.configure_sets(PostUpdate, PostUpdateSets::PostPositioningPropagate.after(PostUpdateSets::Positioning));
+    app.configure_sets(Update, PosSet::PositionObjects.after(ToolSet));
+    app.configure_sets(Update, PosSet::Propagate.after(PosSet::PositionObjects));
     app.add_systems(
-        PostUpdate,
+        Update,
         (
-            sys_update_proxied_component_position,
             sys_update_endpoint_positions_on_edge_move,
             sys_cleanup_edge_positions_to_bounding_box,
-            sys_update_transform_from_position,
-        ).chain().in_set(PostUpdateSets::Positioning)
+        )
+            .chain()
+            .in_set(PosSet::PositionObjects),
     );
-    app.add_systems(PostUpdate, propagate_transforms.in_set(PostUpdateSets::PostPositioningPropagate));
+    app.add_systems(
+        Update,
+        (sys_sort_sync_position_proxy_and_transform.pipe(sys_sync_position_proxy_and_transform))
+            .chain()
+            .in_set(PosSet::Propagate),
+    );
 
     app.insert_resource(UidRegistry::default());
     app.register_type::<UidRegistry>();

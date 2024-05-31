@@ -5,7 +5,7 @@ use bevy_spts_changeset::builder::ChangesetCommands;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::{components::{Edge, EdgeVariant, Endpoint}, prelude::VectorGraphicChangesetExt};
 
-use crate::{ecs::{InternalObject, ObjectBundle, ObjectType, Position}, utils::curve::{cubic_point_at, quadratic_point_at}, views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM}};
+use crate::{ecs::{ObjectBundle, ObjectType, Position}, utils::curve::{cubic_point_at, quadratic_point_at}, views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM}};
 
 #[derive(Error, Debug)]
 pub enum SplitEdgeError {

@@ -4,7 +4,7 @@ use bevy::{
         component::Component,
         reflect::{ReflectBundle, ReflectComponent},
     },
-    math::{Vec2, Vec3},
+    math::Vec2,
     reflect::Reflect,
     render::view::{InheritedVisibility, ViewVisibility, Visibility},
     transform::components::{GlobalTransform, Transform},
@@ -98,7 +98,7 @@ pub struct ProxiedObjectBundle {
 impl ProxiedObjectBundle {
     pub fn new(target: Uid) -> Self {
         Self {
-            position_proxy: ProxiedPosition::new(target, ProxiedPositionStrategy::Viewport { target_world_position: Vec3::ZERO }),
+            position_proxy: ProxiedPosition::new(target, ProxiedPositionStrategy::Viewport),
             selected_proxy: ProxiedSelected::new(target, ()),
             hovered_proxy: ProxiedHovered::new(target, ()),
         }

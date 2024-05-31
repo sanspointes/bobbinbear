@@ -8,7 +8,7 @@ use bevy::{
 };
 use bevy_spts_uid::{Uid, UidRegistry};
 
-#[derive(Component, Reflect, Default)]
+#[derive(Component, Reflect, Default, Debug)]
 #[reflect(Component)]
 pub struct ProxiedComponent<T: Component, TState = ()> {
     target: Uid,

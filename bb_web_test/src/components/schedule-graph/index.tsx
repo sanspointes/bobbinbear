@@ -13,7 +13,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '../ui/select';
-import { JSX, createEffect, createSignal, onMount } from 'solid-js';
+import { JSX, createEffect, createSignal } from 'solid-js';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import { MermaidGraph } from '../ui/mermaid-graph';
@@ -38,11 +38,7 @@ export function ScheduleGraph(props: ScheduleGraphProps) {
     const [prettify, setPrettify] = createSignal(true);
     const [ambiguity, setAmbiguity] = createSignal(false);
     const [ambiguityOnWorld, setAmbiguityOnWorld] = createSignal(false);
-    const [schedule, setSchedule] = createSignal(options[0]);
-
-    onMount(() => {
-
-    })
+    const [schedule, setSchedule] = createSignal<ScheduleLabel>('Update'); 
 
     const [graphSource, setGraphSource] = createSignal('');
     createEffect(() => {

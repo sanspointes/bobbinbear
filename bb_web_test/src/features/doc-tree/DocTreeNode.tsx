@@ -50,8 +50,8 @@ export function DocTreeNode(props: DocTreeNodeProps) {
             <div
                 class="outline-yellow-600"
                 classList={{
-                    'hover:outline hover:outline-1': props.object.hovered,
-                    'bg-accent-background': props.object.selected,
+                    'outline outline-1': props.object.hovered,
+                    'bg-orange-200': props.object.selected,
                 }}
                 onPointerEnter={handlePointerEnter}
                 onPointerLeave={handlePointerLeave}
