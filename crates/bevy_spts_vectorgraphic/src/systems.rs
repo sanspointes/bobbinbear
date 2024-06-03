@@ -7,11 +7,7 @@ use bevy::{
         entity::{EntityHashMap, EntityHashSet},
         query::QueryEntityError,
         system::QueryLens,
-    },
-    prelude::*,
-    render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology},
-    sprite::Mesh2dHandle,
-    utils::HashMap,
+    }, prelude::*, render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}, sprite::Mesh2dHandle, utils::HashMap
 };
 
 use bevy_spts_uid::{Uid, UidRegistry, UidRegistryError};
@@ -22,7 +18,7 @@ use lyon_tessellation::{
 use crate::{
     components::{Edge, Endpoint, VectorGraphic, VectorGraphicPathStorage},
     lyon_components::{FillOptions, StrokeOptions},
-    prelude::EdgeVariant,
+    prelude::{EdgeVariant, ATTRIBUTE_SHAPE_MIX},
     utils::ToPoint,
     SptsFillTessellator, SptsStrokeTessellator,
 };
@@ -154,6 +150,8 @@ pub fn sys_check_vector_graphic_children_changed(
 /// iter back e2, e1, reverse it so it's e1, e2
 /// Add forward to back so it's e1 ... e6
 
+// TODO: Fix edgecase where 2 endpoint line, e0 -> edge_a -> e1.
+// If starting at e1 it won't see e0.
 fn traverse_endpoints(
     start_endpoint: Uid,
     q_endpoints: &mut QueryLens<&Endpoint>,
@@ -177,6 +175,7 @@ fn traverse_endpoints(
 
             let endpoint_uid = edge.next_endpoint_uid();
             let endpoint_entity = reg.get_entity(endpoint_uid)?;
+            warn!("Traverse forward - next endpoint: {endpoint_entity:?}");
             curr = *q_endpoints.query().get(endpoint_entity)?;
             endpoints.push(endpoint_entity);
 
@@ -261,7 +260,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
         );
 
         let Ok(endpoints) = endpoints else {
-            warn!("sys_mark_vector_graph_path_starts: Could not get endpoints of group.  Reason {endpoints:?}");
+            warn!("sys_collect_vector_graph_path_endpoints: Could not get endpoints of group.  Reason {endpoints:?}");
             break;
         };
 
@@ -276,7 +275,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
         }
 
         if endpoints.len() <= 1 {
-            // panic!("sys_mark_vector_graph_path_starts: Endpoints path too short({endpoints:?}).");
+            warn!("sys_collect_vector_graph_path_endpoints: Endpoints too short({endpoints:?}).");
             continue;
         }
 
@@ -285,25 +284,24 @@ pub fn sys_collect_vector_graph_path_endpoints(
         paths.push(endpoints);
     }
 
-    dbg!(&vector_graphic_path_endpoints);
-
     // Build the paths
     for vector_grapic_entity in changed_vector_graphics {
         let Some(paths) = vector_graphic_path_endpoints
             .get(&vector_grapic_entity) else {
-            warn!("sys_mark_vector_graph_path_starts: Tried to get endpoints of vector_grapic_entity({vector_grapic_entity:?}) but not in hashmap.");
+            // warn!("sys_mark_vector_graph_path_starts: Tried to get endpoints of vector_grapic_entity({vector_grapic_entity:?}) but not in hashmap.");
             continue;
         };
 
         let Ok((_, _, mut path_storage)) = q_vector_graphic.get_mut(vector_grapic_entity) else {
-            warn!("sys_mark_vector_graph_path_starts: Tried to get VectorGraphicPathStorage for changed path but entity or component on entity does not exist.  Entity: {vector_grapic_entity:?}");
+            warn!("sys_collect_vector_graph_path_endpoints: Tried to get VectorGraphicPathStorage for changed path but entity or component on entity does not exist.  Entity: {vector_grapic_entity:?}");
             continue;
         };
 
         let mut pb = Path::builder();
 
         for path in paths {
-            if path.len() < 2 {
+            if path.len() <= 1 {
+                warn!("sys_collect_vector_graph_path_endpoints: Endpoints path too short({path:?}).");
                 continue;
             }
 
@@ -409,6 +407,19 @@ pub fn sys_remesh_vector_graphic(
         };
         let mut geometry = VertexBuffers::new();
 
+        if let Some(fill_options) = maybe_fill_options {
+            if let Err(reason) = fill_tessellator.tessellate_path(
+                path,
+                &(*fill_options).into(),
+                &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
+            ) {
+                warn!("sys_remesh_vector_graphic: Failed to tessellate fill {reason:?}.");
+                continue;
+            }
+        }
+        // Stores vertex attribtue of ATTRIBUTE_SHAPE_MIX
+        let mut shape_mix_attr = vec![0.; geometry.vertices.len()];
+
         if let Some(stroke_options) = maybe_stroke_options {
             if let Err(reason) = stroke_tesellator.tessellate_path(
                 path,
@@ -420,16 +431,7 @@ pub fn sys_remesh_vector_graphic(
             }
         }
 
-        if let Some(fill_options) = maybe_fill_options {
-            if let Err(reason) = fill_tessellator.tessellate_path(
-                path,
-                &(*fill_options).into(),
-                &mut BuffersBuilder::new(&mut geometry, RemeshVertexConstructor),
-            ) {
-                warn!("sys_remesh_vector_graphic: Failed to tessellate fill {reason:?}.");
-                continue;
-            }
-        }
+        shape_mix_attr.extend(vec![1.; geometry.vertices.len() - shape_mix_attr.len()]);
 
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
@@ -437,6 +439,9 @@ pub fn sys_remesh_vector_graphic(
         );
 
         let VertexBuffers { vertices, indices } = geometry;
+
+        mesh.insert_attribute(ATTRIBUTE_SHAPE_MIX, shape_mix_attr);
+
         mesh.insert_indices(Indices::U32(indices));
         let (positions, normals): (Vec<[f32; 3]>, Vec<[f32; 3]>) = vertices
             .into_iter()
@@ -452,6 +457,5 @@ pub fn sys_remesh_vector_graphic(
 
         let handle = Mesh2dHandle::from(meshes.add(mesh));
         commands.entity(entity).insert(handle);
-        println!("Remeshed {entity:?}");
     }
 }

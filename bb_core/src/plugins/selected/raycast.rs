@@ -1,4 +1,4 @@
-use bevy::{ecs::prelude::*, log::warn, window::CursorMoved};
+use bevy::{ecs::prelude::*, window::CursorMoved};
 use bevy_mod_raycast::{deferred::{RaycastMethod, RaycastSource}, primitives::IntersectionData};
 use bevy_spts_uid::Uid;
 
@@ -31,18 +31,21 @@ pub fn sys_selection_raycast_update_ray(
 pub fn sys_selection_raycast_update_helper(
     q_raycast_source: Query<&RaycastSource<Selectable>>,
     mut res: ResMut<SelectableHits>,
-    q_objects: Query<(&Uid, &ObjectType)>,
+    q_objects: Query<(&Uid, &ObjectType, &Selectable)>,
 ) {
     let hits = q_raycast_source.single().intersections();
 
     let select_hits: Vec<_> = hits.iter().filter_map(|(e, data)| {
-        if let Ok((uid, ty)) = q_objects.get(*e) {
-            Some(SelectableHit {
-                entity: *e,
-                uid: *uid,
-                ty: *ty,
-                data: data.clone(),
-            })
+        if let Ok((uid, ty, selectable)) = q_objects.get(*e) {
+            match selectable {
+                Selectable::Default => Some(SelectableHit {
+                    entity: *e,
+                    uid: *uid,
+                    ty: *ty,
+                    data: data.clone(),
+                }),
+                Selectable::Locked => None,
+            }
         } else {
             None
         }

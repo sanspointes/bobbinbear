@@ -1,6 +1,6 @@
 
 use bevy::prelude::*;
-use bevy_spts_changeset::prelude::WorldChangesetExt;
+use bevy_spts_changeset::{builder::Changeset, prelude::WorldChangesetExt};
 use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
@@ -17,7 +17,7 @@ use crate::{
 #[allow(unused_imports)]
 pub use self::definitions::*;
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, clippy::empty_docs)]
 mod definitions {
     use bevy::math::Vec2;
     use bevy_spts_uid::Uid;
@@ -183,38 +183,13 @@ impl SceneApi {
 
     /// Inspects an object, uninspects the current inspected object if it has to.
     pub fn inspect(world: &mut World, uid: Uid) -> Result<UndoRedoResult, anyhow::Error> {
-        let prev_inspected = world
-            .query_filtered::<&Uid, With<Inspected>>()
-            .get_single(world)
-            .copied();
-
-        let mut builder = world.changeset();
-
-        if let Ok(uid) = prev_inspected {
-            builder.entity(uid).remove::<Inspected>();
-        }
-
-        builder.entity(uid).insert(Inspected);
-        let changeset = builder.build();
-
+        let changeset = Self::build_inspect_changeset(world, uid);
         UndoRedoApi::execute(world, changeset)
     }
 
     /// Uninspects the currently inspected object (if there is one).
     pub fn uninspect(world: &mut World) -> Result<UndoRedoResult, anyhow::Error> {
-        let prev_inspected = world
-            .query_filtered::<&Uid, With<Inspected>>()
-            .get_single(world)
-            .copied();
-
-        let mut builder = world.changeset();
-
-        if let Ok(uid) = prev_inspected {
-            builder.entity(uid).remove::<Inspected>();
-        }
-
-        let changeset = builder.build();
-
+        let changeset = Self::build_uninspect_changeset(world);
         UndoRedoApi::execute(world, changeset)
     }
 
@@ -229,5 +204,30 @@ impl SceneApi {
         let changeset = builder.build();
 
         UndoRedoApi::execute(world, changeset)
+    }
+}
+
+impl SceneApi {
+    pub fn build_uninspect_changeset(world: &mut World) -> Changeset {
+        let prev_inspected = world
+            .query_filtered::<&Uid, With<Inspected>>()
+            .get_single(world)
+            .copied();
+
+        let mut builder = world.changeset();
+
+        if let Ok(uid) = prev_inspected {
+            builder.entity(uid).remove::<Inspected>();
+        }
+
+        builder.build()
+    }
+
+    pub fn build_inspect_changeset(world: &mut World, uid: Uid) -> Changeset {
+        let mut changeset = Self::build_uninspect_changeset(world);
+        let mut builder = world.changeset();
+        builder.entity(uid).insert(Inspected);
+        changeset.extend(builder.build());
+        changeset
     }
 }

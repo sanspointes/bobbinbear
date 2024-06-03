@@ -12,7 +12,7 @@ use bevy::{
 use bevy_mod_raycast::deferred::RaycastMesh;
 use bevy_spts_uid::Uid;
 
-use crate::plugins::selected::{Hovered, ProxiedHovered, ProxiedSelected, Selectable, Selected};
+use crate::plugins::selected::{Hovered, ProxiedHovered, ProxiedSelectable, ProxiedSelected, ProxiedVisibility, Selectable, Selected};
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
@@ -91,7 +91,9 @@ impl ObjectBundle {
 #[reflect(Bundle)]
 pub struct ProxiedObjectBundle {
     position_proxy: ProxiedPosition,
+    visibility_proxy: ProxiedVisibility,
     selected_proxy: ProxiedSelected,
+    selectable_proxy: ProxiedSelectable,
     hovered_proxy: ProxiedHovered,
 }
 
@@ -99,7 +101,9 @@ impl ProxiedObjectBundle {
     pub fn new(target: Uid) -> Self {
         Self {
             position_proxy: ProxiedPosition::new(target, ProxiedPositionStrategy::Viewport),
+            visibility_proxy: ProxiedVisibility::new(target, ()),
             selected_proxy: ProxiedSelected::new(target, ()),
+            selectable_proxy: ProxiedSelectable::new(target, ()),
             hovered_proxy: ProxiedHovered::new(target, ()),
         }
     }

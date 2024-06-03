@@ -1,4 +1,5 @@
-use bevy::{app::{App, Plugin, PreStartup}, asset::Assets, ecs::system::{Res, ResMut, Resource, SystemParam}, prelude::Deref, render::mesh::Mesh, sprite::Mesh2dHandle};
+use bevy::{app::{App, Plugin, PreStartup}, asset::{Assets, Handle}, ecs::system::{Res, ResMut, Resource, SystemParam}, math::primitives::Circle, prelude::Deref, render::mesh::Mesh, sprite::Mesh2dHandle};
+use bevy_mod_raycast::markers::SimplifiedMesh;
 
 use self::handles::build_mesh_endpoint_handle;
 
@@ -20,10 +21,16 @@ impl Plugin for BobbinMeshesPlugin {
 
 #[derive(Resource, Default)]
 pub struct BobbinMeshesResource {
+    endpoint_simplified_mesh: Option<Handle<Mesh>>,
     endpoint_mesh: Option<Mesh2dHandle>,
 }
 
 impl BobbinMeshesResource {
+    pub fn endpoint_simplified_mesh(&self) -> SimplifiedMesh {
+        SimplifiedMesh {
+            mesh: self.endpoint_simplified_mesh.clone().unwrap(),
+        }
+    }
     pub fn endpoint_mesh(&self) -> Mesh2dHandle {
         self.endpoint_mesh.as_ref().unwrap().clone()
     }
@@ -36,6 +43,9 @@ fn sys_setup(
     let endpoint_mesh = build_mesh_endpoint_handle();
     let handle = Mesh2dHandle(meshes.add(endpoint_mesh));
     res.endpoint_mesh = Some(handle);
+
+    let endpoint_simplified_mesh = meshes.add(Circle::new(8.));
+    res.endpoint_simplified_mesh = Some(endpoint_simplified_mesh);
 }
 
 #[derive(SystemParam, Deref)]

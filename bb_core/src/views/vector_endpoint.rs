@@ -1,9 +1,13 @@
 use bevy::{
     core::Name,
-    ecs::{component::Component, event::Events, reflect::ReflectComponent, system::Commands, world::World},
+    ecs::{
+        component::Component, event::Events, reflect::ReflectComponent, system::Commands,
+        world::World,
+    },
     hierarchy::BuildWorldChildren,
     reflect::Reflect,
 };
+use bevy_mod_raycast::markers::SimplifiedMesh;
 use bevy_spts_uid::{Uid, UidRegistry};
 use moonshine_core::{kind::Instance, object::Object};
 
@@ -31,10 +35,11 @@ impl BuildView<VectorEndpointVM> for VectorEndpointVM {
         view: &mut ViewBuilder<VectorEndpointVM>,
     ) {
         let material = world.resource::<UiElementMaterialCache>().default.clone();
-        let mesh = world
-            .resource::<BobbinMeshesResource>()
-            .endpoint_mesh()
-            .clone();
+
+        let bb_meshes = world.resource::<BobbinMeshesResource>();
+        let mesh = bb_meshes.endpoint_mesh();
+        let simplified_mesh = bb_meshes.endpoint_simplified_mesh();
+
         let endpoint_uid = world.resource::<UidRegistry>().uid(object.entity());
         let uid = Uid::default();
         view.insert((
@@ -42,6 +47,7 @@ impl BuildView<VectorEndpointVM> for VectorEndpointVM {
             ObjectBundle::new(ObjectType::VectorEndpoint).with_z_position(10.),
             ProxiedObjectBundle::new(endpoint_uid),
             InternalObject,
+            simplified_mesh,
             material,
             mesh,
             uid,
@@ -58,7 +64,9 @@ impl BuildView<VectorEndpointVM> for VectorEndpointVM {
                 .send(Effect::EntitiesSpawned(vec![uid]));
         });
         view.commands().commands().add(move |world: &mut World| {
-            world.resource_mut::<UidRegistry>().register(uid, view_entity);
+            world
+                .resource_mut::<UidRegistry>()
+                .register(uid, view_entity);
         });
     }
 

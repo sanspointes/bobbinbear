@@ -103,8 +103,11 @@ fn sync_position_proxy_and_transform(
                 ProxiedPositionStrategy::Local => {
                     // Update transform
                     let mut transform = q_transform.get_mut(e)?;
-                    transform.translation.x = source_pos.x;
-                    transform.translation.y = source_pos.y;
+
+                    if transform.translation.xy() != **source_pos {
+                        transform.translation.x = source_pos.x;
+                        transform.translation.y = source_pos.y;
+                    }
                     // warn!("- Local Strategy: Copying to Transform.");
                 }
                 ProxiedPositionStrategy::Viewport => {
@@ -117,17 +120,22 @@ fn sync_position_proxy_and_transform(
                         let viewport_pos = viewport.ndc_to_viewport(pos.xy());
                         // warn!("- Viewport Strategy: Transformed to {viewport_pos:?}.");
                         let mut transform = q_transform.get_mut(e)?;
-                        transform.translation.x = viewport_pos.x;
-                        transform.translation.y = viewport_pos.y;
+                        if transform.translation.xy() != viewport_pos {
+                            transform.translation.x = viewport_pos.x;
+                            transform.translation.y = viewport_pos.y;
+                        }
                     }
                 }
             }
         } else {
             let mut transform = q_transform.get_mut(e)?;
             let pos = q_position.get(e)?;
-            // warn!("- Syncing Position {pos:?} into transform {:?}", transform.translation);
-            transform.translation.x = pos.x;
-            transform.translation.y = pos.y;
+
+            if transform.translation.xy() != pos.0 {
+                // warn!("- Syncing Position {pos:?} into transform {:?}", transform.translation);
+                transform.translation.x = pos.x;
+                transform.translation.y = pos.y;
+            }
         }
 
         // Propagate change to position back to Transform

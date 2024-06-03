@@ -114,14 +114,14 @@ pub fn setup(app: &mut App) {
     .add_plugins((BevyWasmApiPlugin::default(), VectorGraphicPlugin))
     // App specific
     .add_plugins((
-        BobbinMeshesPlugin,
-        BobbinMaterialsPlugin,
-        BobbinToolsPlugin,
-        BobbinViewsPlugin,
         UndoRedoPlugin,
         Bounds2DPlugin,
         ViewportPlugin,
         EffectPlugin,
         SelectedPlugin,
+        BobbinMeshesPlugin,
+        BobbinMaterialsPlugin,
+        BobbinToolsPlugin,
+        BobbinViewsPlugin,
     ));
 }

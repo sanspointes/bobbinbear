@@ -4,7 +4,7 @@ mod api;
 mod material;
 pub mod raycast;
 
-use bevy::{ecs::reflect::ReflectComponent, prelude::*, sprite::Material2dPlugin};
+use bevy::{ecs::reflect::ReflectComponent, prelude::*, render::view::VisibilitySystems, sprite::Material2dPlugin};
 use bevy_mod_raycast::deferred::{DeferredRaycastingPlugin, RaycastSystem};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
@@ -13,6 +13,10 @@ pub use api::SelectedApi;
 use crate::ecs::{sys_update_proxied_component, ProxiedComponent};
 
 use self::{material::SelectionBoundsMaterial, raycast::{sys_selection_raycast_update_helper, sys_selection_raycast_update_ray, sys_setup_selection_raycast, SelectableHits}};
+
+
+
+pub type ProxiedVisibility = ProxiedComponent<Visibility>;
 
 #[derive(Component, Reflect, Default, Tsify, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[reflect(Component)]
@@ -76,15 +80,6 @@ pub enum Hovered {
 
 pub type ProxiedHovered = ProxiedComponent<Hovered>;
 
-impl Hovered {
-    pub fn is_hovered(&self) -> bool {
-        match self {
-            Self::Unhovered => false,
-            Self::Hovered => true,
-        }
-    }
-}
-
 pub struct SelectedPlugin;
 impl Plugin for SelectedPlugin {
     fn build(&self, app: &mut App) {
@@ -110,6 +105,10 @@ impl Plugin for SelectedPlugin {
             .register_type::<Selectable>()
             .register_type::<ProxiedSelectable>()
             .add_systems(PostUpdate, sys_update_proxied_component::<Selectable>)
+
+            .register_type::<ProxiedVisibility>()
+            .add_systems(PostUpdate, sys_update_proxied_component::<Visibility>.before(VisibilitySystems::VisibilityPropagate))
+
             // Setup raycasting the Selectable component
             .insert_resource(SelectableHits::default())
             .add_plugins(DeferredRaycastingPlugin::<Selectable>::default())

@@ -100,6 +100,11 @@ impl Changeset {
 
         Ok(Changeset { changes: inverse_changes })
     }
+
+    pub fn extend(&mut self, other: Changeset) -> &mut Self {
+        self.changes.extend(other.changes);
+        self
+    }
 }
 
 /// A builder for [`Changeset`] that mirrors the Bevy native [`Commands`] api.

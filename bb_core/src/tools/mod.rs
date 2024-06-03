@@ -17,6 +17,7 @@ use self::{
 };
 
 pub use types::BobbinTool;
+pub use pen::{ PenToolBuildingVectorObjectTag, PenToolBuildingFromEndpointTag };
 
 mod api;
 mod input;
