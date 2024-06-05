@@ -13,17 +13,14 @@ use bevy::{
     math::{Vec2Swizzles, Vec3Swizzles},
     reflect::Reflect,
     render::{color::Color, mesh::Mesh},
-    sprite::{ColorMaterial, Mesh2dHandle},
+    sprite::Mesh2dHandle,
     transform::components::GlobalTransform,
 };
-use bevy_spts_changeset::commands_ext::WorldChangesetExt;
+use bevy_spts_changeset::{builder::Changeset, commands_ext::WorldChangesetExt};
 use bevy_spts_uid::Uid;
-use bevy_spts_vectorgraphic::{
-    components::{EdgeVariant, Endpoint, VectorGraphic, VectorGraphicPathStorage},
-    lyon_components::{FillOptions, StrokeOptions},
-    material::{FillColor, StrokeColor, VectorGraphicMaterial},
-    prelude::VectorGraphicChangesetExt,
-};
+use bevy_spts_vectorgraphic::
+    components::{EdgeVariant, Endpoint}
+;
 
 use crate::{
     api::scene::SceneApi,
@@ -34,10 +31,7 @@ use crate::{
     plugins::{
         effect::Effect,
         model_view::View,
-        selected::{
-            raycast::{SelectableHit, SelectableHitsWorldExt},
-            ProxiedSelectable,
-        },
+        selected::raycast::{SelectableHit, SelectableHitsWorldExt},
         undoredo::UndoRedoApi,
     },
     utils::mesh::get_intersection_triangle_attribute_data,
@@ -47,9 +41,18 @@ use crate::{
     },
 };
 
+mod resource;
 mod utils;
 
-use self::utils::{split_edge_at_t_value, PenToolResource};
+use self::utils::{build_default_vector_graphic, get_top_selectable_edge, get_top_selectable_endpoint, split_edge_at_t_value};
+use self::{
+    resource::PenToolResource,
+    utils::{
+        build_next_endpoint_and_edge, get_current_building_prev_endpoint,
+        get_current_building_vector_object, get_new_vector_graphic_material,
+        BuildEndpointAndEdgeOptions, BuildEndpointAndEdgeTarget,
+    },
+};
 
 use super::input::InputMessage;
 
@@ -80,6 +83,7 @@ pub enum PenTool {
 
     BuildingEdge,
     BuildingEdgeHoveringEndpoint(Uid),
+    // BuildingCtrl1,
 }
 
 fn handle_pen_tool_event(
@@ -94,67 +98,46 @@ fn handle_pen_tool_event(
                 res.preview.show_only_endpoint_0(world);
                 res.preview.set_endpoint_0_world_pos(world, *world_pos);
             });
-            let top = world.selectable_hits().top();
+
+            let top = get_top_selectable_edge(world);
             match top {
-                Some(SelectableHit { uid, ty, .. }) => {
-                    if matches!(*ty, crate::ecs::ObjectType::VectorEdge) {
-                        PenTool::HoveringEdge(*uid)
-                    } else {
-                        PenTool::Default
-                    }
-                }
-                _ => PenTool::Default,
+                Some((uid, _)) => PenTool::HoveringEdge(uid),
+                None => PenTool::Default
             }
         }
 
         (PenTool::Default, InputMessage::PointerClick { world_pos, .. }) => {
-            let mut materials = world.resource_mut::<Assets<VectorGraphicMaterial>>();
-            let material = materials.add(VectorGraphicMaterial::default());
-
             let vector_graphic = world
                 .query_filtered::<&Uid, With<PenToolBuildingVectorObjectTag>>()
                 .get_single(world)
                 .copied();
 
-            let mut builder = world.changeset();
-            let vector_graphic = {
-                if let Ok(vector_graphic) = vector_graphic {
-                    vector_graphic
-                } else {
-                    let vector_graphic = builder
-                        .spawn((
-                            Name::from("Shape"),
-                            ObjectBundle::new(ObjectType::Vector),
-                            VectorGraphic::default(),
-                            VectorGraphicPathStorage::default(),
-                            StrokeOptions::default().with_line_width(5.),
-                            StrokeColor(Color::BLACK),
-                            FillOptions::default(),
-                            FillColor(Color::GRAY.with_a(0.5)),
-                            material,
-                            PenToolBuildingVectorObjectTag,
-                        ))
-                        .uid();
-                    vector_graphic
-                }
-            };
+            let changeset = Changeset::scoped_commands(world, |world, commands| {
+                let vector_graphic = {
+                    if let Ok(vector_graphic) = vector_graphic {
+                        vector_graphic
+                    } else {
+                        let material = get_new_vector_graphic_material(world);
+                        build_default_vector_graphic(commands, material)
+                    }
+                };
 
-            builder
-                .spawn((
-                    Name::from("Endpoint"),
-                    ObjectBundle::new(ObjectType::VectorEndpoint).with_position(world_pos.xy()),
-                    Endpoint::default(),
-                    VectorEndpointVM,
-                    InternalObject,
-                    PenToolBuildingFromEndpointTag,
-                ))
-                .set_parent(vector_graphic)
-                .uid();
+                commands
+                    .spawn((
+                        Name::from("Endpoint"),
+                        ObjectBundle::new(ObjectType::VectorEndpoint).with_position(world_pos.xy()),
+                        Endpoint::default(),
+                        VectorEndpointVM,
+                        InternalObject,
+                        PenToolBuildingFromEndpointTag,
+                    ))
+                    .set_parent(vector_graphic)
+                    .uid();
 
-            let mut changeset = builder.build();
-            changeset.extend(SceneApi::build_inspect_changeset(world, vector_graphic));
-
+                SceneApi::build_inspect_changeset(world, vector_graphic, commands);
+            }); 
             UndoRedoApi::execute(world, changeset).unwrap();
+
             // Show the preview edge
             PenToolResource::resource_scope(world, |world, res| {
                 res.preview.show_all(world);
@@ -165,6 +148,76 @@ fn handle_pen_tool_event(
 
             PenTool::BuildingEdge
         }
+
+        // (
+        //     PenTool::Default,
+        //     InputMessage::DragStart {
+        //         world_pos,
+        //         world_start_pos,
+        //         ..
+        //     },
+        // ) => {
+        //     PenToolResource::resource_scope(world, |world, res| {
+        //         res.preview
+        //             .set_endpoint_0_world_pos(world, *world_start_pos);
+        //         res.preview.update_to_quadratic(world, *world_pos);
+        //         res.preview.set_endpoint_1_world_pos(world, *world_pos);
+        //     });
+        //
+        //     let changeset = Changeset::scoped_commands(world, |world, commands| {
+        //         let vector_graphic = world
+        //             .query_filtered::<&Uid, With<PenToolBuildingVectorObjectTag>>()
+        //             .get_single(world)
+        //             .copied();
+        //
+        //         let vector_graphic = {
+        //             if let Ok(vector_graphic) = vector_graphic {
+        //                 vector_graphic
+        //             } else {
+        //                 let material = get_new_vector_graphic_material(world);
+        //                 build_default_vector_graphic(commands, material)
+        //             }
+        //         };
+        //
+        //         commands
+        //             .spawn((
+        //                 Name::from("Endpoint"),
+        //                 ObjectBundle::new(ObjectType::VectorEndpoint).with_position(world_pos.xy()),
+        //                 Endpoint::default(),
+        //                 VectorEndpointVM,
+        //                 InternalObject,
+        //                 PenToolBuildingFromEndpointTag,
+        //             ))
+        //             .set_parent(vector_graphic)
+        //             .uid();
+        //
+        //         SceneApi::build_inspect_changeset(world, vector_graphic, commands);
+        //     }); 
+        //
+        //     UndoRedoApi::execute(world, changeset).unwrap();
+        //
+        //     PenTool::BuildingCtrl1
+        // }
+        //
+        // (PenTool::BuildingCtrl1, InputMessage::DragMove { world_pos, .. }) => {
+        //     PenToolResource::resource_scope(world, |world, res| {
+        //         res.preview.update_to_quadratic(world, *world_pos);
+        //         res.preview.show_all(world);
+        //         res.preview.set_endpoint_1_world_pos(world, *world_pos);
+        //     });
+        //
+        //     PenTool::BuildingCtrl1
+        // }
+        //
+        // (PenTool::BuildingCtrl1, InputMessage::DragEnd { world_pos, .. }) => {
+        //     PenToolResource::resource_scope(world, |world, res| {
+        //         res.preview.update_to_quadratic(world, *world_pos);
+        //         res.preview.show_all(world);
+        //         res.preview.set_endpoint_1_world_pos(world, *world_pos);
+        //     });
+        //
+        //     PenTool::BuildingEdge
+        // }
 
         (PenTool::BuildingEdge, InputMessage::PointerMove { world_pos, .. }) => {
             PenToolResource::resource_scope(world, |world, res| {
@@ -178,19 +231,8 @@ fn handle_pen_tool_event(
                     .set_endpoint_0_world_pos(world, from_endpoint_pos.0);
             });
 
-            let top = world.selectable_hits().top();
-            let hovering_endpoint = match top {
-                Some(SelectableHit { uid, ty, .. }) => {
-                    if matches!(ty, ObjectType::VectorEndpoint) {
-                        Some(*uid)
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            };
-
-            if let Some(hovering_endpoint) = hovering_endpoint {
+            let top = get_top_selectable_endpoint(world);
+            if let Some((hovering_endpoint, _)) = top {
                 let world_pos = world
                     .get::<GlobalTransform>(hovering_endpoint.entity(world).unwrap())
                     .unwrap()
@@ -211,44 +253,24 @@ fn handle_pen_tool_event(
         }
 
         (PenTool::BuildingEdge {}, InputMessage::PointerClick { world_pos, .. }) => {
-            let mut q_building_endpoint =
-                world.query_filtered::<&Uid, With<PenToolBuildingFromEndpointTag>>();
-
-            let from_endpoint = *q_building_endpoint.single(world);
+            let parent_vector_graphic = get_current_building_vector_object(world).unwrap();
+            let from_endpoint = get_current_building_prev_endpoint(world).unwrap();
             let from_endpoint_pos = *world
                 .get::<Position>(from_endpoint.entity(world).unwrap())
                 .unwrap();
 
-            let mut q_building_vector_object =
-                world.query_filtered::<&Uid, With<PenToolBuildingVectorObjectTag>>();
-            let vector_object = *q_building_vector_object.single(world);
-
             let mut builder = world.changeset();
-            builder
-                .entity(from_endpoint)
-                .remove::<PenToolBuildingFromEndpointTag>();
-            let e1 = builder
-                .spawn((
-                    Name::from("Endpoint"),
-                    ObjectBundle::new(ObjectType::VectorEndpoint).with_position(world_pos.xy()),
-                    Endpoint::default(),
-                    VectorEndpointVM,
-                    InternalObject,
-                    PenToolBuildingFromEndpointTag,
-                ))
-                .set_parent(vector_object)
-                .uid();
-
-            builder
-                .spawn_edge(EdgeVariant::Line, from_endpoint, e1)
-                .insert((
-                    Name::from("Edge"),
-                    ObjectBundle::new(ObjectType::VectorEdge),
-                    InternalObject,
-                ))
-                // .insert(ObjectBundle::new(ObjectType::VectorSegment))
-                .set_parent(vector_object);
-
+            build_next_endpoint_and_edge(
+                &mut builder,
+                &BuildEndpointAndEdgeOptions {
+                    parent_uid: parent_vector_graphic,
+                    from_endpoint,
+                    edge_variant: EdgeVariant::Line,
+                },
+                &BuildEndpointAndEdgeTarget::NewEndpoint {
+                    world_pos: *world_pos,
+                },
+            );
             let changeset = builder.build();
             UndoRedoApi::execute(world, changeset).expect("Error building next edge changeset.");
 
@@ -261,19 +283,8 @@ fn handle_pen_tool_event(
         }
 
         (PenTool::BuildingEdgeHoveringEndpoint(_), InputMessage::PointerMove { world_pos, .. }) => {
-            let top = world.selectable_hits().top();
-            let hovering_endpoint = match top {
-                Some(SelectableHit { uid, ty, .. }) => {
-                    if matches!(ty, ObjectType::VectorEndpoint) {
-                        Some(*uid)
-                    } else {
-                        None
-                    }
-                }
-                None => None,
-            };
-
-            if let Some(hovering_endpoint) = hovering_endpoint {
+            let top = get_top_selectable_endpoint(world);
+            if let Some((hovering_endpoint, _)) = top {
                 let world_pos = world
                     .get::<GlobalTransform>(hovering_endpoint.entity(world).unwrap())
                     .unwrap()
@@ -297,100 +308,61 @@ fn handle_pen_tool_event(
             PenTool::BuildingEdgeHoveringEndpoint(hovered_endpoint),
             InputMessage::PointerClick { world_pos, .. },
         ) => {
-            let top = world
-                .selectable_hits()
-                .top()
-                .filter(|v| matches!(v.ty, ObjectType::VectorEndpoint))
-                .map(|v| {
-                    world
-                        .get::<ProxiedSelectable>(v.uid.entity(world).unwrap())
-                        .unwrap()
-                        .target()
-                })
-                .and_then(|uid| {
-                    world
-                        .get::<Endpoint>(uid.entity(world).unwrap())
-                        .copied()
-                        .map(|ep| (*uid, ep))
-                });
-
-            warn!("endpoint: {top:?}");
-
-            let Some((target_endpoint, endpoint)) = top else {
+            let Some((target_endpoint, endpoint)) = get_top_selectable_endpoint(world) else {
                 return PenTool::BuildingEdgeHoveringEndpoint(*hovered_endpoint);
             };
 
-            let mut q_building_endpoint =
-                world.query_filtered::<&Uid, With<PenToolBuildingFromEndpointTag>>();
-            let from_endpoint = *q_building_endpoint.single(world);
-            let mut q_building_vector_object =
-                world.query_filtered::<&Uid, With<PenToolBuildingVectorObjectTag>>();
-            let vector_object = *q_building_vector_object.single(world);
+            let from_endpoint = get_current_building_prev_endpoint(world).unwrap();
+            let parent_vector_graphic = get_current_building_vector_object(world).unwrap();
 
             let mut builder = world.changeset();
-            builder
-                .entity(from_endpoint)
-                .remove::<PenToolBuildingFromEndpointTag>();
-
-            match (endpoint.prev_edge_entity(), endpoint.next_edge_entity()) {
+            let next_state = match (endpoint.prev_edge_entity(), endpoint.next_edge_entity()) {
                 (Some(_), Some(_)) => {
-                    let e1 = builder
-                        .spawn((
-                            Name::from("Endpoint"),
-                            ObjectBundle::new(ObjectType::VectorEndpoint)
-                                .with_position(world_pos.xy()),
-                            ProxiedPosition::new(target_endpoint, ProxiedPositionStrategy::Local),
-                            Endpoint::default(),
-                            VectorEndpointVM,
-                            InternalObject,
-                            PenToolBuildingFromEndpointTag,
-                        ))
-                        .set_parent(vector_object)
-                        .uid();
-
-                    builder
-                        .spawn_edge(EdgeVariant::Line, from_endpoint, e1)
-                        .insert((
-                            Name::from("Edge"),
-                            ObjectBundle::new(ObjectType::VectorEdge),
-                            InternalObject,
-                        ))
-                        // .insert(ObjectBundle::new(ObjectType::VectorSegment))
-                        .set_parent(vector_object);
-
-                    let changeset = builder.build();
-                    UndoRedoApi::execute(world, changeset).unwrap();
+                    let (_, endpoint_uid) = build_next_endpoint_and_edge(
+                        &mut builder,
+                        &BuildEndpointAndEdgeOptions {
+                            parent_uid: parent_vector_graphic,
+                            from_endpoint,
+                            edge_variant: EdgeVariant::Line,
+                        },
+                        &BuildEndpointAndEdgeTarget::NewEndpoint {
+                            world_pos: *world_pos,
+                        },
+                    );
+                    builder.entity(endpoint_uid).insert(ProxiedPosition::new(
+                        target_endpoint,
+                        ProxiedPositionStrategy::Local,
+                    ));
                     PenTool::BuildingEdgeHoveringEndpoint(*hovered_endpoint)
                 }
                 (_, Some(_)) | (None, None) => {
-                    builder
-                        .spawn_edge(EdgeVariant::Line, from_endpoint, target_endpoint)
-                        .insert((
-                            Name::from("Edge"),
-                            ObjectBundle::new(ObjectType::VectorEdge),
-                            InternalObject,
-                        ))
-                        .set_parent(vector_object);
-
-                    let changeset = builder.build();
-                    UndoRedoApi::execute(world, changeset).unwrap();
+                    build_next_endpoint_and_edge(
+                        &mut builder,
+                        &BuildEndpointAndEdgeOptions {
+                            parent_uid: parent_vector_graphic,
+                            from_endpoint,
+                            edge_variant: EdgeVariant::Line,
+                        },
+                        &BuildEndpointAndEdgeTarget::ExistingLinkPrevious(target_endpoint),
+                    );
                     PenTool::Default
                 }
                 (Some(_), _) => {
-                    builder
-                        .spawn_edge(EdgeVariant::Line, target_endpoint, from_endpoint)
-                        .insert((
-                            Name::from("Edge"),
-                            ObjectBundle::new(ObjectType::VectorEdge),
-                            InternalObject,
-                        ))
-                        .set_parent(vector_object);
-
-                    let changeset = builder.build();
-                    UndoRedoApi::execute(world, changeset).unwrap();
-                    PenTool::BuildingEdgeHoveringEndpoint(*hovered_endpoint)
+                    build_next_endpoint_and_edge(
+                        &mut builder,
+                        &BuildEndpointAndEdgeOptions {
+                            parent_uid: parent_vector_graphic,
+                            from_endpoint,
+                            edge_variant: EdgeVariant::Line,
+                        },
+                        &BuildEndpointAndEdgeTarget::ExistingLinkNext(target_endpoint),
+                    );
+                    PenTool::Default
                 }
-            }
+            };
+            let changeset = builder.build();
+            UndoRedoApi::execute(world, changeset).unwrap();
+            next_state
         }
 
         (PenTool::HoveringEdge(uid), InputMessage::PointerMove { .. }) => {

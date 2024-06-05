@@ -1,33 +1,31 @@
+//! # Pen Utilities
+
 use bevy::{
+    asset::{Assets, Handle},
     core::Name,
-    ecs::{
-        entity::Entity,
-        system::Resource,
-        world::{FromWorld, Mut, World},
-    },
+    ecs::{entity::Entity, query::With, world::World},
     hierarchy::Parent,
     math::Vec2,
-    render::{color::Color, view::Visibility},
+    render::color::Color,
     utils::thiserror::Error,
 };
-use bevy_mod_raycast::deferred::RaycastMesh;
-use bevy_spts_changeset::{
-    builder::ChangesetCommands, commands_ext::WorldChangesetExt, resource::ChangesetResource,
-};
+use bevy_spts_changeset::builder::ChangesetCommands;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::{
     components::{Edge, EdgeVariant, Endpoint, VectorGraphic, VectorGraphicPathStorage},
-    lyon_components::StrokeOptions,
-    material::StrokeColor,
+    lyon_components::{FillOptions, StrokeOptions},
+    material::{FillColor, StrokeColor, VectorGraphicMaterial},
     prelude::VectorGraphicChangesetExt,
 };
 
 use crate::{
     ecs::{InternalObject, ObjectBundle, ObjectType, Position},
-    plugins::{selected::Selectable, undoredo::UndoRedoTag},
+    plugins::selected::{raycast::SelectableHitsWorldExt, ProxiedSelected},
     utils::curve::{cubic_point_at, quadratic_point_at},
     views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
 };
+
+use super::{PenToolBuildingFromEndpointTag, PenToolBuildingVectorObjectTag};
 
 #[derive(Error, Debug)]
 pub enum SplitEdgeError {
@@ -119,174 +117,143 @@ pub fn split_edge_at_t_value(
     Ok(())
 }
 
-#[derive(Resource, Debug, Clone)]
-pub struct PenToolResource {
-    pub preview: PenToolPreview,
+pub(super) fn get_new_vector_graphic_material(world: &mut World) -> Handle<VectorGraphicMaterial> {
+    let mut materials = world.resource_mut::<Assets<VectorGraphicMaterial>>();
+    materials.add(VectorGraphicMaterial::default())
 }
 
-impl PenToolResource {
-    pub fn resource_scope<T>(
-        world: &mut World,
-        f: impl FnOnce(&mut World, Mut<PenToolResource>) -> T,
-    ) -> T {
-        world.resource_scope::<PenToolResource, T>(f)
-    }
+pub(super) fn build_default_vector_graphic(
+    builder: &mut ChangesetCommands,
+    material: Handle<VectorGraphicMaterial>,
+) -> Uid {
+    let vector_graphic = builder
+        .spawn((
+            Name::from("Shape"),
+            ObjectBundle::new(ObjectType::Vector),
+            VectorGraphic::default(),
+            VectorGraphicPathStorage::default(),
+            StrokeOptions::default().with_line_width(5.),
+            StrokeColor(Color::BLACK),
+            FillOptions::default(),
+            FillColor(Color::GRAY.with_a(0.5)),
+            material,
+            PenToolBuildingVectorObjectTag,
+        ))
+        .uid();
+    vector_graphic
 }
 
-impl FromWorld for PenToolResource {
-    fn from_world(world: &mut World) -> Self {
-        Self {
-            preview: PenToolPreview::from_world(world),
-        }
-    }
+/// Strategy when creating a new edge
+pub(super) enum BuildEndpointAndEdgeTarget {
+    NewEndpoint { world_pos: Vec2 },
+    ExistingLinkPrevious(Uid),
+    ExistingLinkNext(Uid),
 }
 
-#[derive(Resource, Debug, Clone)]
-/// PenToolPreview dummy endpoints and line for visualising the next endpoint/line before it's
-/// committed to the VectorObject.
-pub struct PenToolPreview {
-    vector_object: Uid,
-    endpoint_0: Uid,
-    edge: Uid,
-    endpoint_1: Uid,
+pub(super) struct BuildEndpointAndEdgeOptions {
+    pub parent_uid: Uid,
+    pub from_endpoint: Uid,
+    pub edge_variant: EdgeVariant,
 }
+/// * `builder`: ChangesetCommands to build the changeset into
+/// * `vector_object`: The uid of the parent vector object
+/// * `from_endpoint`: The endpoint that we're building off.
+pub(super) fn build_next_endpoint_and_edge(
+    builder: &mut ChangesetCommands,
+    opts: &BuildEndpointAndEdgeOptions,
+    target: &BuildEndpointAndEdgeTarget,
+) -> (Uid, Uid) {
+    builder
+        .entity(opts.from_endpoint)
+        .remove::<PenToolBuildingFromEndpointTag>();
 
-impl PenToolPreview {
-    pub fn set_endpoint_0_world_pos(&self, world: &mut World, world_position: Vec2) {
-        let entity = self.endpoint_0.entity(world).unwrap();
-        let mut position = world.get_mut::<Position>(entity).unwrap();
-        position.0 = world_position;
-    }
-    pub fn set_endpoint_1_world_pos(&self, world: &mut World, world_position: Vec2) {
-        let entity = self.endpoint_1.entity(world).unwrap();
-        let mut position = world.get_mut::<Position>(entity).unwrap();
-        position.0 = world_position;
-    }
-
-    pub fn hide_all(&self, world: &mut World) {
-        let entities = [
-            self.vector_object.entity(world).unwrap(),
-            self.endpoint_0.entity(world).unwrap(),
-            self.endpoint_1.entity(world).unwrap(),
-            self.edge.entity(world).unwrap(),
-        ];
-
-        for entity in entities {
-            let mut visibility = world.get_mut::<Visibility>(entity).unwrap();
-            *visibility = Visibility::Hidden;
-        }
-    }
-
-    pub fn show_all(&self, world: &mut World) {
-        let entities = [
-            self.vector_object.entity(world).unwrap(),
-            self.endpoint_0.entity(world).unwrap(),
-            self.endpoint_1.entity(world).unwrap(),
-            self.edge.entity(world).unwrap(),
-        ];
-
-        for entity in entities {
-            let mut visibility = world.get_mut::<Visibility>(entity).unwrap();
-            *visibility = Visibility::Visible;
-        }
-    }
-
-    pub fn show_only_endpoint_0(&self, world: &mut World) {
-        self.hide_all(world);
-
-        let entity = self.endpoint_0.entity(world).unwrap();
-        let mut visiblity = world.get_mut::<Visibility>(entity).unwrap();
-        *visiblity = Visibility::Visible;
-    }
-
-    pub fn update_to_line(&self, world: &mut World) {
-        let entity = self.edge.entity(world).unwrap();
-        let mut edge_variant = world.get_mut::<EdgeVariant>(entity).unwrap();
-        *edge_variant = EdgeVariant::Line;
-    }
-}
-
-impl FromWorld for PenToolPreview {
-    fn from_world(world: &mut World) -> Self {
-        let mut builder = world.changeset();
-
-        let vector_object = builder
+    let endpoint_uid = match target {
+        BuildEndpointAndEdgeTarget::NewEndpoint { world_pos } => builder
             .spawn((
-                Name::from("PenToolPreview_VectorObject"),
-                ObjectBundle::new(ObjectType::Vector),
-                VectorGraphic::default(),
-                VectorGraphicPathStorage::default(),
-                StrokeOptions::default(),
-                StrokeColor(Color::WHITE),
-                InternalObject,
-            ))
-            .remove::<RaycastMesh<Selectable>>()
-            .apply(Selectable::Locked)
-            .apply(Visibility::Hidden)
-            .uid();
-
-        let endpoint_0 = builder
-            .spawn((
-                Name::from("Endpoint0"),
-                ObjectBundle::new(ObjectType::VectorEndpoint),
+                Name::from("Endpoint"),
+                ObjectBundle::new(ObjectType::VectorEndpoint).with_position(*world_pos),
                 Endpoint::default(),
+                VectorEndpointVM,
                 InternalObject,
+                PenToolBuildingFromEndpointTag,
             ))
-            .remove::<RaycastMesh<Selectable>>()
-            .apply(Selectable::Locked)
-            .apply(Visibility::Hidden)
-            .set_parent(vector_object)
-            .uid();
+            .set_parent(opts.parent_uid)
+            .uid(),
+        BuildEndpointAndEdgeTarget::ExistingLinkNext(uid) => *uid,
+        BuildEndpointAndEdgeTarget::ExistingLinkPrevious(uid) => *uid,
+    };
 
-        let endpoint_1 = builder
-            .spawn((
-                Name::from("Endpoint1"),
-                ObjectBundle::new(ObjectType::VectorEndpoint),
-                Endpoint::default(),
-                InternalObject,
-            ))
-            .remove::<RaycastMesh<Selectable>>()
-            .apply(Selectable::Locked)
-            .apply(Visibility::Hidden)
-            .set_parent(vector_object)
-            .uid();
-
-        let edge = builder
-            .spawn_edge(EdgeVariant::Line, endpoint_0, endpoint_1)
-            .insert((
-                Name::from("Edge"),
-                ObjectBundle::new(ObjectType::VectorEdge),
-                InternalObject,
-            ))
-            .remove::<RaycastMesh<Selectable>>()
-            .apply(Selectable::Locked)
-            .apply(Visibility::Hidden)
-            // .insert(ObjectBundle::new(ObjectType::VectorSegment))
-            .set_parent(vector_object)
-            .uid();
-
-        let changeset = builder.build();
-        ChangesetResource::<UndoRedoTag>::context_scope(world, |world, cx| {
-            changeset
-                .apply(world, cx)
-                .expect("Error creating PenToolPreview.");
-        });
-
-        world
-            .entity_mut(endpoint_0.entity(world).unwrap())
-            .insert(VectorEndpointVM);
-        world
-            .entity_mut(endpoint_1.entity(world).unwrap())
-            .insert(VectorEndpointVM);
-        world
-            .entity_mut(edge.entity(world).unwrap())
-            .insert(VectorEdgeVM);
-
-        Self {
-            vector_object,
-            endpoint_0,
-            endpoint_1,
-            edge,
+    let mut entity_builder = match target {
+        BuildEndpointAndEdgeTarget::NewEndpoint { .. }
+        | BuildEndpointAndEdgeTarget::ExistingLinkPrevious(_) => {
+            builder.spawn_edge(opts.edge_variant, opts.from_endpoint, endpoint_uid)
         }
-    }
+        BuildEndpointAndEdgeTarget::ExistingLinkNext(_) => {
+            builder.spawn_edge(opts.edge_variant, endpoint_uid, opts.from_endpoint)
+        }
+    };
+
+    let edge_uid = entity_builder
+        .insert((
+            Name::from("Edge"),
+            ObjectBundle::new(ObjectType::VectorEdge),
+            InternalObject,
+        ))
+        // .insert(ObjectBundle::new(ObjectType::VectorSegment))
+        .set_parent(opts.parent_uid)
+        .uid();
+
+    (edge_uid, endpoint_uid)
+}
+
+/// Gets the Uid of the vector object currently being build
+pub(super) fn get_current_building_vector_object(world: &mut World) -> Option<Uid> {
+    let mut q_building_vector_object =
+        world.query_filtered::<&Uid, With<PenToolBuildingVectorObjectTag>>();
+    q_building_vector_object.get_single(world).ok().copied()
+}
+
+/// Gets the Uid of the previous endpoint/endpoint we're building from.
+pub(super) fn get_current_building_prev_endpoint(world: &mut World) -> Option<Uid> {
+    let mut q_building_endpoint =
+        world.query_filtered::<&Uid, With<PenToolBuildingFromEndpointTag>>();
+    q_building_endpoint.get_single(world).ok().copied()
+}
+
+pub(super) fn get_top_selectable_endpoint(world: &mut World) -> Option<(Uid, Endpoint)> {
+    world
+        .selectable_hits()
+        .top()
+        .filter(|v| matches!(v.ty, ObjectType::VectorEndpoint))
+        .map(|v| {
+            world
+                .get::<ProxiedSelected>(v.uid.entity(world).unwrap())
+                .unwrap()
+                .target()
+        })
+        .and_then(|uid| {
+            world
+                .get::<Endpoint>(uid.entity(world).unwrap())
+                .copied()
+                .map(|ep| (*uid, ep))
+        })
+}
+
+pub(super) fn get_top_selectable_edge(world: &mut World) -> Option<(Uid, Edge)> {
+    world
+        .selectable_hits()
+        .top()
+        .filter(|v| matches!(v.ty, ObjectType::VectorEdge))
+        .map(|v| {
+            world
+                .get::<ProxiedSelected>(v.uid.entity(world).unwrap())
+                .unwrap()
+                .target()
+        })
+        .and_then(|uid| {
+            world
+                .get::<Edge>(uid.entity(world).unwrap())
+                .copied()
+                .map(|ep| (*uid, ep))
+        })
 }

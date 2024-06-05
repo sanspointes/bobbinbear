@@ -30,15 +30,6 @@ pub enum Selected {
 
 pub type ProxiedSelected = ProxiedComponent<Selected>;
 
-impl Selected {
-    pub fn is_selected(&self) -> bool {
-        match self {
-            Self::Deselected => false,
-            Self::Selected => true,
-        }
-    }
-}
-
 #[derive(Component, Reflect, Default, Tsify, Serialize, Deserialize, Clone, Copy, PartialEq)]
 #[reflect(Component)]
 #[tsify(into_wasm_abi, from_wasm_abi)]

@@ -7,7 +7,6 @@ use bevy::{
     hierarchy::BuildWorldChildren,
     reflect::Reflect,
 };
-use bevy_mod_raycast::markers::SimplifiedMesh;
 use bevy_spts_uid::{Uid, UidRegistry};
 use moonshine_core::{kind::Instance, object::Object};
 

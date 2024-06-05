@@ -1,6 +1,9 @@
-
 use bevy::prelude::*;
-use bevy_spts_changeset::{builder::Changeset, prelude::WorldChangesetExt};
+use bevy_spts_changeset::{
+    builder::{Changeset, ChangesetCommands},
+    changes::Change,
+    prelude::WorldChangesetExt,
+};
 use bevy_spts_fragments::prelude::Uid;
 use bevy_wasm_api::bevy_wasm_api;
 use wasm_bindgen::prelude::*;
@@ -93,20 +96,22 @@ impl SceneApi {
             .get(world, entity)
             .ok()
             .map(
-                |(uid, ty, name, visibility, transform, selected, hovered, inspected)| DetailedObject {
-                    uid: *uid,
-                    ty: *ty,
-                    name: name.map(|name| name.to_string()),
+                |(uid, ty, name, visibility, transform, selected, hovered, inspected)| {
+                    DetailedObject {
+                        uid: *uid,
+                        ty: *ty,
+                        name: name.map(|name| name.to_string()),
 
-                    parent,
-                    children,
+                        parent,
+                        children,
 
-                    visible: matches!(visibility, Visibility::Inherited),
-                    hovered: matches!(hovered, Hovered::Hovered),
-                    selected: matches!(selected, Selected::Selected),
-                    inspected: inspected.is_some(),
+                        visible: matches!(visibility, Visibility::Inherited),
+                        hovered: matches!(hovered, Hovered::Hovered),
+                        selected: matches!(selected, Selected::Selected),
+                        inspected: inspected.is_some(),
 
-                    position: transform.translation.xy(),
+                        position: transform.translation.xy(),
+                    }
                 },
             ))
     }
@@ -183,13 +188,17 @@ impl SceneApi {
 
     /// Inspects an object, uninspects the current inspected object if it has to.
     pub fn inspect(world: &mut World, uid: Uid) -> Result<UndoRedoResult, anyhow::Error> {
-        let changeset = Self::build_inspect_changeset(world, uid);
+        let changeset = Changeset::scoped_commands(world, |world, commands| {
+            Self::build_inspect_changeset(world, uid, commands);
+        });
         UndoRedoApi::execute(world, changeset)
     }
 
     /// Uninspects the currently inspected object (if there is one).
     pub fn uninspect(world: &mut World) -> Result<UndoRedoResult, anyhow::Error> {
-        let changeset = Self::build_uninspect_changeset(world);
+        let changeset = Changeset::scoped_commands(world, |world, builder| {
+            Self::build_uninspect_changeset(world, builder);
+        });
         UndoRedoApi::execute(world, changeset)
     }
 
@@ -208,26 +217,26 @@ impl SceneApi {
 }
 
 impl SceneApi {
-    pub fn build_uninspect_changeset(world: &mut World) -> Changeset {
+    pub fn build_uninspect_changeset(
+        world: &mut World,
+        builder: &mut ChangesetCommands,
+    ) {
         let prev_inspected = world
             .query_filtered::<&Uid, With<Inspected>>()
             .get_single(world)
             .copied();
 
-        let mut builder = world.changeset();
-
         if let Ok(uid) = prev_inspected {
             builder.entity(uid).remove::<Inspected>();
         }
-
-        builder.build()
     }
 
-    pub fn build_inspect_changeset(world: &mut World, uid: Uid) -> Changeset {
-        let mut changeset = Self::build_uninspect_changeset(world);
-        let mut builder = world.changeset();
+    pub fn build_inspect_changeset(
+        world: &mut World,
+        uid: Uid,
+        builder: &mut ChangesetCommands,
+    ) {
+        Self::build_uninspect_changeset(world, builder);
         builder.entity(uid).insert(Inspected);
-        changeset.extend(builder.build());
-        changeset
     }
 }

@@ -27,29 +27,6 @@ pub struct SelectedApi;
 #[allow(dead_code)]
 #[bevy_wasm_api]
 impl SelectedApi {
-    fn query_selected_uids(world: &mut World) -> Vec<Uid> {
-        let selected: Vec<_> = world
-            .query_filtered::<(&Uid, &Selected), Without<ProxiedSelected>>()
-            .iter(world)
-            .filter_map(|(uid, selected)| match selected {
-                Selected::Selected => Some(*uid),
-                Selected::Deselected => None,
-            })
-            .collect();
-        selected
-    }
-
-    fn query_hovered_uids(world: &mut World) -> Vec<Uid> {
-        let to_deselect: Vec<_> = world
-            .query_filtered::<(&Uid, &Hovered), Without<ProxiedHovered>>()
-            .iter(world)
-            .filter_map(|(uid, hovered)| match hovered {
-                Hovered::Hovered => Some(*uid),
-                Hovered::Unhovered => None,
-            })
-            .collect();
-        to_deselect
-    }
     /// Deselects all objects in scene
     ///
     /// * `world`:
@@ -149,5 +126,31 @@ impl SelectedApi {
         Self::unhover_all(world)?;
         Self::set_object_hovered(world, uid, hovered)?;
         Ok(())
+    }
+}
+
+impl SelectedApi {
+    pub fn query_selected_uids(world: &mut World) -> Vec<Uid> {
+        let selected: Vec<_> = world
+            .query_filtered::<(&Uid, &Selected), Without<ProxiedSelected>>()
+            .iter(world)
+            .filter_map(|(uid, selected)| match selected {
+                Selected::Selected => Some(*uid),
+                Selected::Deselected => None,
+            })
+            .collect();
+        selected
+    }
+
+    pub fn query_hovered_uids(world: &mut World) -> Vec<Uid> {
+        let to_deselect: Vec<_> = world
+            .query_filtered::<(&Uid, &Hovered), Without<ProxiedHovered>>()
+            .iter(world)
+            .filter_map(|(uid, hovered)| match hovered {
+                Hovered::Hovered => Some(*uid),
+                Hovered::Unhovered => None,
+            })
+            .collect();
+        to_deselect
     }
 }

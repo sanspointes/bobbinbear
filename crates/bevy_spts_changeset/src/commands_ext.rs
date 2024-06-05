@@ -1,4 +1,4 @@
-use bevy_ecs::world::World;
+use bevy_ecs::{reflect::AppTypeRegistry, world::World};
 
 use crate::builder::ChangesetCommands;
 
@@ -8,6 +8,7 @@ pub trait WorldChangesetExt {
 
 impl WorldChangesetExt for World {
     fn changeset(&self) -> ChangesetCommands {
-        ChangesetCommands::new(self)
+        let app_type_registry = self.get_resource::<AppTypeRegistry>().unwrap();
+        ChangesetCommands::new(app_type_registry)
     }
 }

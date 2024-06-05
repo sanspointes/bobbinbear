@@ -435,7 +435,7 @@ pub fn sys_remesh_vector_graphic(
 
         let mut mesh = Mesh::new(
             PrimitiveTopology::TriangleList,
-            RenderAssetUsages::RENDER_WORLD,
+            RenderAssetUsages::RENDER_WORLD | RenderAssetUsages::MAIN_WORLD,
         );
 
         let VertexBuffers { vertices, indices } = geometry;

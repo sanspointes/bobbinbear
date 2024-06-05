@@ -1,22 +1,19 @@
 use bevy::{
     app::{App, Plugin},
-    ecs::{system::Resource, world::World},
+    ecs::{query::With, system::Resource, world::World},
     input::ButtonState,
     log::warn,
 };
-use bevy_spts_changeset::commands_ext::WorldChangesetExt;
+use bevy_spts_changeset::{builder::Changeset, commands_ext::WorldChangesetExt};
 use bevy_spts_uid::Uid;
 
 use crate::{
-    ecs::Position,
-    plugins::{
-        effect::Effect,
-        selected::{
+    api::scene::SceneApi, ecs::{ObjectType, Position}, plugins::{
+        effect::Effect, inspecting::Inspected, selected::{
             raycast::{SelectableHit, SelectableHitsWorldExt},
             Hovered, Selected, SelectedApi,
-        },
-        undoredo::UndoRedoApi,
-    },
+        }, undoredo::UndoRedoApi
+    }
 };
 
 use super::input::InputMessage;
@@ -40,6 +37,8 @@ pub enum SelectTool {
     PointerDownOnNothing,
 
     MovingSelectedObjects(Vec<(Uid, Position)>),
+
+    SelectingBounds,
 }
 
 pub fn handle_select_tool_input(
@@ -51,6 +50,41 @@ pub fn handle_select_tool_input(
 
     for event in events {
         state = match (&state, event) {
+            (SelectTool::PointerDownOnNothing, InputMessage::DoubleClick { .. }) => {
+                let selectable_hits = world.selectable_hits();
+                warn!("selectable_hits: {selectable_hits:?}");
+
+                let inspected_uid = world.query_filtered::<&Uid, With<Inspected>>().get_single(world).ok();
+                if inspected_uid.is_some() {
+                    SceneApi::uninspect(world).unwrap();
+                }
+                SelectTool::Default
+            }
+
+            (SelectTool::PointerDownOnObject(_), InputMessage::DoubleClick { .. }) => {
+                let top_hit = world.selectable_hits().top().map(|hit| {
+                    (hit.uid, hit.ty)
+                });
+
+                match top_hit {
+                    None => {
+                        let inspected_uid = world.query_filtered::<&Uid, With<Inspected>>().get_single(world).ok();
+                        if inspected_uid.is_some() {
+                            SceneApi::uninspect(world).unwrap();
+                        }
+                        SelectTool::Default
+                    }
+                    Some((uid, ObjectType::Vector)) => {
+                        SceneApi::inspect(world, uid).unwrap();
+                        SelectTool::Default
+                    }
+                    Some((_, _)) => {
+                        // Ignore.. for now
+                        SelectTool::Default
+                    }
+                }
+            }
+
             (SelectTool::Default, InputMessage::PointerMove { .. }) => {
                 let top = world.selectable_hits().top();
                 let target = top.map(|hit| hit.uid);
@@ -98,6 +132,21 @@ pub fn handle_select_tool_input(
                     SelectTool::PointerDownOnNothing
                 }
             }
+
+            (
+                SelectTool::PointerDownOnNothing,
+                InputMessage::DragStart { .. }
+            ) => {
+                SelectTool::SelectingBounds
+            }
+
+            (
+                SelectTool::SelectingBounds,
+                InputMessage::DragEnd { .. }
+            ) => {
+                SelectTool::Default
+            }
+
             (SelectTool::PointerDownOnObject(uid), InputMessage::PointerClick { .. }) => {
                 SelectTool::Hovering(*uid)
             }

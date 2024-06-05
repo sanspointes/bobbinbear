@@ -21,6 +21,7 @@ pub use api::{UndoRedoApi, UndoRedoResult};
 use bevy_spts_vectorgraphic::prelude::*;
 
 use crate::{
+    ecs::{ProxiedPosition, Position},
     plugins::{inspecting::Inspected, selected::Selected},
     tools::{PenToolBuildingFromEndpointTag, PenToolBuildingVectorObjectTag},
     views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
@@ -63,6 +64,8 @@ impl Plugin for UndoRedoPlugin {
             .allow::<Selected>()
             .allow::<Selectable>()
             .allow::<Inspected>()
+            .allow::<Position>()
+            .allow::<ProxiedPosition>()
             // PenTool
             .allow::<PenToolBuildingVectorObjectTag>()
             .allow::<PenToolBuildingFromEndpointTag>();
@@ -76,6 +79,7 @@ impl Plugin for UndoRedoPlugin {
         app.register_type::<Visibility>();
         app.register_type::<ViewVisibility>();
         app.register_type::<InheritedVisibility>();
+        // Generics
         // Vector graphics
         app.register_type::<VectorEdgeVM>();
         app.register_type::<VectorEndpointVM>();
@@ -91,6 +95,8 @@ impl Plugin for UndoRedoPlugin {
         // State tags
         app.register_type::<Selected>();
         app.register_type::<Inspected>();
+        app.register_type::<Position>();
+        app.register_type::<ProxiedPosition>();
         // PenTool
         app.register_type::<PenToolBuildingVectorObjectTag>();
         app.register_type::<PenToolBuildingFromEndpointTag>();
