@@ -4,13 +4,13 @@ mod api;
 mod material;
 pub mod raycast;
 
-use bevy::{ecs::reflect::ReflectComponent, prelude::*, render::view::VisibilitySystems, sprite::Material2dPlugin};
+use bevy::{ecs::reflect::ReflectComponent, prelude::*, render::{render_graph::InputSlotError, view::VisibilitySystems}, sprite::Material2dPlugin};
 use bevy_mod_raycast::deferred::{DeferredRaycastingPlugin, RaycastSystem};
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 
 pub use api::SelectedApi;
-use crate::ecs::{sys_update_proxied_component, ProxiedComponent};
+use crate::{ecs::{sys_update_proxied_component, ProxiedComponent}, tools::InputSet};
 
 use self::{material::SelectionBoundsMaterial, raycast::{sys_selection_raycast_update_helper, sys_selection_raycast_update_ray, sys_setup_selection_raycast, SelectableHits}};
 
@@ -106,7 +106,7 @@ impl Plugin for SelectedPlugin {
             .add_systems(PostStartup, sys_setup_selection_raycast)
             .add_systems(
                 First,
-                sys_selection_raycast_update_ray.before(RaycastSystem::BuildRays::<Selectable>),
+                sys_selection_raycast_update_ray.before(RaycastSystem::BuildRays::<Selectable>).after(InputSet::HandleInputMessages),
             )
             .add_systems(
                 First,

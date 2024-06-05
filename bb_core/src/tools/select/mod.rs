@@ -4,16 +4,21 @@ use bevy::{
     input::ButtonState,
     log::warn,
 };
-use bevy_spts_changeset::{builder::Changeset, commands_ext::WorldChangesetExt};
+use bevy_spts_changeset::commands_ext::WorldChangesetExt;
 use bevy_spts_uid::Uid;
 
 use crate::{
-    api::scene::SceneApi, ecs::{ObjectType, Position}, plugins::{
-        effect::Effect, inspecting::Inspected, selected::{
+    api::scene::SceneApi,
+    ecs::{ObjectType, Position},
+    plugins::{
+        effect::Effect,
+        inspecting::Inspected,
+        selected::{
             raycast::{SelectableHit, SelectableHitsWorldExt},
             Hovered, Selected, SelectedApi,
-        }, undoredo::UndoRedoApi
-    }
+        },
+        undoredo::UndoRedoApi,
+    },
 };
 
 use super::input::InputMessage;
@@ -30,12 +35,7 @@ impl Plugin for SelectToolPlugin {
 pub enum SelectTool {
     #[default]
     Default,
-
-    Hovering(Uid),
-
-    PointerDownOnObject(Uid),
-    PointerDownOnNothing,
-
+    PointerDown,
     MovingSelectedObjects(Vec<(Uid, Position)>),
 
     SelectingBounds,
@@ -50,25 +50,15 @@ pub fn handle_select_tool_input(
 
     for event in events {
         state = match (&state, event) {
-            (SelectTool::PointerDownOnNothing, InputMessage::DoubleClick { .. }) => {
-                let selectable_hits = world.selectable_hits();
-                warn!("selectable_hits: {selectable_hits:?}");
-
-                let inspected_uid = world.query_filtered::<&Uid, With<Inspected>>().get_single(world).ok();
-                if inspected_uid.is_some() {
-                    SceneApi::uninspect(world).unwrap();
-                }
-                SelectTool::Default
-            }
-
-            (SelectTool::PointerDownOnObject(_), InputMessage::DoubleClick { .. }) => {
-                let top_hit = world.selectable_hits().top().map(|hit| {
-                    (hit.uid, hit.ty)
-                });
+            (SelectTool::PointerDown, InputMessage::DoubleClick { .. }) => {
+                let top_hit = world.selectable_hits().top().map(|hit| (hit.uid, hit.ty));
 
                 match top_hit {
                     None => {
-                        let inspected_uid = world.query_filtered::<&Uid, With<Inspected>>().get_single(world).ok();
+                        let inspected_uid = world
+                            .query_filtered::<&Uid, With<Inspected>>()
+                            .get_single(world)
+                            .ok();
                         if inspected_uid.is_some() {
                             SceneApi::uninspect(world).unwrap();
                         }
@@ -86,35 +76,17 @@ pub fn handle_select_tool_input(
             }
 
             (SelectTool::Default, InputMessage::PointerMove { .. }) => {
-                let top = world.selectable_hits().top();
-                let target = top.map(|hit| hit.uid);
-                if let Some(target) = target {
-                    SelectedApi::set_object_hovered(world, target, Hovered::Hovered)?;
-                    SelectTool::Hovering(target)
-                } else {
-                    SelectTool::Default
-                }
-            }
-            (SelectTool::Hovering(prev_hovered), InputMessage::PointerMove { .. }) => {
-                let top = world.selectable_hits().top();
-                if let Some(SelectableHit { entity, uid, .. }) = top {
-                    let target = *uid;
-                    let current_value = *world.get::<Hovered>(*entity).unwrap();
+                SelectedApi::unhover_all(world).unwrap();
 
-                    if uid != prev_hovered {
-                        SelectedApi::set_object_hovered(world, *prev_hovered, Hovered::Unhovered)?;
-                    }
-                    if !matches!(current_value, Hovered::Hovered) {
-                        SelectedApi::set_object_hovered(world, target, Hovered::Hovered)?;
-                    }
-                    SelectTool::Hovering(target)
-                } else {
-                    SelectedApi::set_object_hovered(world, *prev_hovered, Hovered::Unhovered)?;
-                    SelectTool::Default
+                let top = world.selectable_hits().top();
+                if let Some(SelectableHit { uid, .. }) = top {
+                    SelectedApi::set_object_hovered(world, *uid, Hovered::Unhovered).unwrap();
                 }
+
+                SelectTool::Default
             }
-            (SelectTool::Default, InputMessage::PointerDown { modifiers, .. })
-            | (SelectTool::Hovering(_), InputMessage::PointerDown { modifiers, .. }) => {
+
+            (SelectTool::Default, InputMessage::PointerDown { modifiers, .. }) => {
                 let top = world.selectable_hits().top();
                 if let Some(SelectableHit { uid, .. }) = top {
                     let target = *uid;
@@ -127,70 +99,57 @@ pub fn handle_select_tool_input(
                             Selected::Selected,
                         )?;
                     }
-                    SelectTool::PointerDownOnObject(target)
+                }
+                SelectTool::PointerDown
+            }
+
+            (SelectTool::PointerDown, InputMessage::DragStart { .. }) => {
+                let selected = SelectedApi::query_selected_uids(world);
+                let top_hit = world.selectable_hits().top().map(|hit| (hit.uid, hit.ty));
+
+                let dragging_selected = top_hit.map_or(false, |(hit_uid, _)| {
+                    selected.iter().any(|uid| *uid == hit_uid)
+                });
+                if dragging_selected {
+                    let original_positions: Vec<_> = world
+                        .query::<(&Uid, &Position, &Selected)>()
+                        .iter(world)
+                        .filter_map(|(uid, pos, selected)| {
+                            if matches!(selected, Selected::Selected) {
+                                Some((*uid, *pos))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    SelectTool::MovingSelectedObjects(original_positions)
                 } else {
-                    SelectTool::PointerDownOnNothing
+                    SelectTool::SelectingBounds
                 }
             }
 
-            (
-                SelectTool::PointerDownOnNothing,
-                InputMessage::DragStart { .. }
-            ) => {
-                SelectTool::SelectingBounds
-            }
+            (SelectTool::SelectingBounds, InputMessage::DragEnd { .. }) => SelectTool::Default,
 
-            (
-                SelectTool::SelectingBounds,
-                InputMessage::DragEnd { .. }
-            ) => {
-                SelectTool::Default
-            }
+            (SelectTool::PointerDown, InputMessage::PointerClick { .. }) => {
+                let hit_uid = world.selectable_hits().top().map(|hit| hit.uid);
+                let mut q_selected = world.query::<&Selected>();
 
-            (SelectTool::PointerDownOnObject(uid), InputMessage::PointerClick { .. }) => {
-                SelectTool::Hovering(*uid)
-            }
-            (SelectTool::PointerDownOnNothing, InputMessage::PointerClick { .. }) => {
-                let any_selected = world
-                    .query::<&Selected>()
+                let hit_selected = hit_uid.map_or(false, |hit_uid| {
+                    q_selected
+                        .get(world, hit_uid.entity(world).unwrap())
+                        .ok()
+                        .map_or(false, |s| matches!(s, Selected::Selected))
+                });
+
+                let any_selected = q_selected
                     .iter(world)
                     .any(|s| matches!(s, Selected::Selected));
-                if any_selected {
+
+                if !hit_selected && any_selected {
                     SelectedApi::deselect_all(world)?;
                 }
                 SelectTool::Default
-            }
-
-            (
-                SelectTool::PointerDownOnObject(_),
-                InputMessage::DragStart {
-                    world_delta_pos, ..
-                },
-            ) => {
-                let original_positions: Vec<_> = world
-                    .query::<(&Uid, &Position, &Selected)>()
-                    .iter(world)
-                    .filter_map(|(uid, pos, selected)| {
-                        if matches!(selected, Selected::Selected) {
-                            Some((*uid, *pos))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-
-                let mut builder = world.changeset();
-
-                for (target, position) in &original_positions {
-                    let next_position = Position(position.0 + *world_delta_pos);
-                    builder.entity(*target).apply(next_position);
-                }
-
-                let changeset = builder.build();
-
-                UndoRedoApi::execute(world, changeset)?;
-
-                SelectTool::MovingSelectedObjects(original_positions)
             }
 
             (

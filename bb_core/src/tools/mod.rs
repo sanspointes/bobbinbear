@@ -18,6 +18,7 @@ use self::{
 
 pub use types::BobbinTool;
 pub use pen::{ PenToolBuildingVectorObjectTag, PenToolBuildingFromEndpointTag };
+pub use input::InputSet;
 
 mod api;
 mod input;
@@ -55,10 +56,10 @@ pub fn sys_handle_tool_inputs(world: &mut World) {
     match curr_tool {
         BobbinTool::Noop => {}
         BobbinTool::Select => {
-            handle_select_tool_input(world, &input_events, &mut effects);
+            handle_select_tool_input(world, &input_events, &mut effects).unwrap();
         }
         BobbinTool::Pen => {
-            handle_pen_tool_input(world, &input_events, &mut effects);
+            handle_pen_tool_input(world, &input_events, &mut effects).unwrap();
         }
     }
 

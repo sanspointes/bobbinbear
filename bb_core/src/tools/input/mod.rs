@@ -24,6 +24,12 @@ pub struct RaycastRawInput;
 const DRAG_THRESHOLD: f32 = 2.;
 const BG_HIT_Z_INDEX: f32 = -100.;
 
+#[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum InputSet {
+    ConvertInputMessages,
+    HandleInputMessages,
+}
+
 /// The input processor plugin processes raw input (mouse down/up, move, etc)
 /// into more useful events like Click, DragStart, move, etc.
 ///
@@ -38,6 +44,14 @@ impl Plugin for BobbinInputPlugin {
             // Hit plane creation and movement
             .add_systems(Startup, sys_setup_input_plugin.after(sys_setup_viewport))
             // Input events
+            .configure_sets(
+                First,
+                InputSet::ConvertInputMessages.before(InputSet::HandleInputMessages),
+            )
+            .configure_sets(
+                First,
+                InputSet::HandleInputMessages.before(RaycastSystem::BuildRays::<RaycastRawInput>),
+            )
             .add_systems(
                 First,
                 (
@@ -48,9 +62,12 @@ impl Plugin for BobbinInputPlugin {
                     sys_mouse_movement_input, // This also updates the raycast ray
                     sys_keyboard_input,
                 )
-                    .before(RaycastSystem::BuildRays::<RaycastRawInput>),
+                    .in_set(InputSet::ConvertInputMessages),
             )
-            .add_systems(PreUpdate, sys_raw_input_processor);
+            .add_systems(
+                First,
+                sys_raw_input_processor.in_set(InputSet::HandleInputMessages),
+            );
     }
 }
 
