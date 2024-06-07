@@ -14,6 +14,8 @@ use bevy_spts_uid::Uid;
 
 use crate::plugins::selected::{Hovered, ProxiedHovered, ProxiedSelectable, ProxiedSelected, ProxiedVisibility, Selectable, Selected};
 
+pub type ProxiedUid = ProxiedComponent<Uid, ()>;
+
 #[derive(Component, Reflect)]
 #[reflect(Component)]
 /// Marker component for an object that should not be visible in the frontend / editor.
@@ -90,6 +92,7 @@ impl ObjectBundle {
 #[derive(Bundle, Reflect)]
 #[reflect(Bundle)]
 pub struct ProxiedObjectBundle {
+    uid_proxy: ProxiedUid,
     position_proxy: ProxiedPosition,
     visibility_proxy: ProxiedVisibility,
     selected_proxy: ProxiedSelected,
@@ -100,6 +103,7 @@ pub struct ProxiedObjectBundle {
 impl ProxiedObjectBundle {
     pub fn new(target: Uid) -> Self {
         Self {
+            uid_proxy: ProxiedUid::new(target, ()),
             position_proxy: ProxiedPosition::new(target, ProxiedPositionStrategy::Viewport),
             visibility_proxy: ProxiedVisibility::new(target, ()),
             selected_proxy: ProxiedSelected::new(target, ()),
@@ -111,7 +115,7 @@ impl ProxiedObjectBundle {
 
 pub use definitions::ObjectType;
 
-use super::{position::Position, ProxiedPosition, ProxiedPositionStrategy};
+use super::{position::Position, ProxiedComponent, ProxiedPosition, ProxiedPositionStrategy};
 
 #[allow(non_snake_case, clippy::empty_docs)]
 mod definitions {

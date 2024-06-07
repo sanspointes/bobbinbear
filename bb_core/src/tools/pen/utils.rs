@@ -7,7 +7,7 @@ use bevy::{
     hierarchy::Parent,
     math::Vec2,
     render::color::Color,
-    utils::thiserror::Error,
+    utils::{smallvec::SmallVec, thiserror::Error},
 };
 use bevy_spts_changeset::builder::ChangesetCommands;
 use bevy_spts_uid::{Uid, UidRegistry};
@@ -20,7 +20,7 @@ use bevy_spts_vectorgraphic::{
 
 use crate::{
     ecs::{InternalObject, ObjectBundle, ObjectType, Position},
-    plugins::selected::{raycast::SelectableHitsWorldExt, ProxiedSelected},
+    plugins::selected::raycast::SelectableHit,
     utils::curve::{cubic_point_at, quadratic_point_at},
     views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
 };
@@ -218,42 +218,4 @@ pub(super) fn get_current_building_prev_endpoint(world: &mut World) -> Option<Ui
     let mut q_building_endpoint =
         world.query_filtered::<&Uid, With<PenToolBuildingFromEndpointTag>>();
     q_building_endpoint.get_single(world).ok().copied()
-}
-
-pub(super) fn get_top_selectable_endpoint(world: &mut World) -> Option<(Uid, Endpoint)> {
-    world
-        .selectable_hits()
-        .top()
-        .filter(|v| matches!(v.ty, ObjectType::VectorEndpoint))
-        .map(|v| {
-            world
-                .get::<ProxiedSelected>(v.uid.entity(world).unwrap())
-                .unwrap()
-                .target()
-        })
-        .and_then(|uid| {
-            world
-                .get::<Endpoint>(uid.entity(world).unwrap())
-                .copied()
-                .map(|ep| (*uid, ep))
-        })
-}
-
-pub(super) fn get_top_selectable_edge(world: &mut World) -> Option<(Uid, Edge)> {
-    world
-        .selectable_hits()
-        .top()
-        .filter(|v| matches!(v.ty, ObjectType::VectorEdge))
-        .map(|v| {
-            world
-                .get::<ProxiedSelected>(v.uid.entity(world).unwrap())
-                .unwrap()
-                .target()
-        })
-        .and_then(|uid| {
-            world
-                .get::<Edge>(uid.entity(world).unwrap())
-                .copied()
-                .map(|ep| (*uid, ep))
-        })
 }

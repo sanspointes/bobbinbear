@@ -12,15 +12,13 @@ use bevy::{
     log::warn,
     math::{Vec2Swizzles, Vec3Swizzles},
     reflect::Reflect,
-    render::{color::Color, mesh::Mesh},
+    render::mesh::Mesh,
     sprite::Mesh2dHandle,
     transform::components::GlobalTransform,
 };
 use bevy_spts_changeset::{builder::Changeset, commands_ext::WorldChangesetExt};
 use bevy_spts_uid::Uid;
-use bevy_spts_vectorgraphic::
-    components::{EdgeVariant, Endpoint}
-;
+use bevy_spts_vectorgraphic::components::{EdgeVariant, Endpoint};
 
 use crate::{
     api::scene::SceneApi,
@@ -31,7 +29,7 @@ use crate::{
     plugins::{
         effect::Effect,
         model_view::View,
-        selected::raycast::{SelectableHit, SelectableHitsWorldExt},
+        selected::{raycast::SelectableRaycaster, Selectable},
         undoredo::UndoRedoApi,
     },
     utils::mesh::get_intersection_triangle_attribute_data,
@@ -44,7 +42,7 @@ use crate::{
 mod resource;
 mod utils;
 
-use self::utils::{build_default_vector_graphic, get_top_selectable_edge, get_top_selectable_endpoint, split_edge_at_t_value};
+use self::utils::{build_default_vector_graphic, split_edge_at_t_value};
 use self::{
     resource::PenToolResource,
     utils::{
@@ -83,7 +81,6 @@ pub enum PenTool {
 
     BuildingEdge,
     BuildingEdgeHoveringEndpoint(Uid),
-    // BuildingCtrl1,
 }
 
 fn handle_pen_tool_event(
@@ -93,16 +90,17 @@ fn handle_pen_tool_event(
     state: PenTool,
 ) -> PenTool {
     match (&state, event) {
-        (PenTool::Default, InputMessage::PointerMove { world_pos, .. }) => {
+        (PenTool::Default, InputMessage::PointerMove { world_pos, screen_pos, .. }) => {
             PenToolResource::resource_scope(world, |world, res| {
                 res.preview.show_only_endpoint_0(world);
                 res.preview.set_endpoint_0_world_pos(world, *world_pos);
             });
 
-            let top = get_top_selectable_edge(world);
+            let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+            let top = hits.top_if_object_type(ObjectType::VectorEdge);
             match top {
-                Some((uid, _)) => PenTool::HoveringEdge(uid),
-                None => PenTool::Default
+                Some(hit) => PenTool::HoveringEdge(*hit.uid()),
+                None => PenTool::Default,
             }
         }
 
@@ -135,7 +133,7 @@ fn handle_pen_tool_event(
                     .uid();
 
                 SceneApi::build_inspect_changeset(world, vector_graphic, commands);
-            }); 
+            });
             UndoRedoApi::execute(world, changeset).unwrap();
 
             // Show the preview edge
@@ -192,7 +190,7 @@ fn handle_pen_tool_event(
         //             .uid();
         //
         //         SceneApi::build_inspect_changeset(world, vector_graphic, commands);
-        //     }); 
+        //     });
         //
         //     UndoRedoApi::execute(world, changeset).unwrap();
         //
@@ -218,8 +216,7 @@ fn handle_pen_tool_event(
         //
         //     PenTool::BuildingEdge
         // }
-
-        (PenTool::BuildingEdge, InputMessage::PointerMove { world_pos, .. }) => {
+        (PenTool::BuildingEdge, InputMessage::PointerMove { world_pos, screen_pos, .. }) => {
             PenToolResource::resource_scope(world, |world, res| {
                 let mut q_building_endpoint =
                     world.query_filtered::<&Uid, With<PenToolBuildingFromEndpointTag>>();
@@ -231,10 +228,11 @@ fn handle_pen_tool_event(
                     .set_endpoint_0_world_pos(world, from_endpoint_pos.0);
             });
 
-            let top = get_top_selectable_endpoint(world);
-            if let Some((hovering_endpoint, _)) = top {
+            let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+            let top = hits.top_if_object_type(ObjectType::VectorEndpoint);
+            if let Some(hit) = top {
                 let world_pos = world
-                    .get::<GlobalTransform>(hovering_endpoint.entity(world).unwrap())
+                    .get::<GlobalTransform>(hit.uid().entity(world).unwrap())
                     .unwrap()
                     .translation();
 
@@ -242,7 +240,7 @@ fn handle_pen_tool_event(
                     res.preview.set_endpoint_1_world_pos(world, world_pos.xy());
                 });
 
-                PenTool::BuildingEdgeHoveringEndpoint(hovering_endpoint)
+                PenTool::BuildingEdgeHoveringEndpoint(*hit.uid())
             } else {
                 PenToolResource::resource_scope(world, |world, res| {
                     res.preview.set_endpoint_1_world_pos(world, *world_pos);
@@ -282,11 +280,20 @@ fn handle_pen_tool_event(
             PenTool::BuildingEdge
         }
 
-        (PenTool::BuildingEdgeHoveringEndpoint(_), InputMessage::PointerMove { world_pos, .. }) => {
-            let top = get_top_selectable_endpoint(world);
-            if let Some((hovering_endpoint, _)) = top {
+        (
+            PenTool::BuildingEdgeHoveringEndpoint(_),
+            InputMessage::PointerMove {
+                world_pos,
+                screen_pos,
+                ..
+            },
+        ) => {
+            let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+            let top = hits.top_if_object_type(ObjectType::VectorEndpoint);
+
+            if let Some(top) = top {
                 let world_pos = world
-                    .get::<GlobalTransform>(hovering_endpoint.entity(world).unwrap())
+                    .get::<GlobalTransform>(top.uid().entity(world).unwrap())
                     .unwrap()
                     .translation();
 
@@ -294,7 +301,7 @@ fn handle_pen_tool_event(
                     res.preview.set_endpoint_1_world_pos(world, world_pos.xy());
                 });
 
-                PenTool::BuildingEdgeHoveringEndpoint(hovering_endpoint)
+                PenTool::BuildingEdgeHoveringEndpoint(*top.uid())
             } else {
                 PenToolResource::resource_scope(world, |world, res| {
                     res.preview.set_endpoint_1_world_pos(world, *world_pos);
@@ -306,11 +313,19 @@ fn handle_pen_tool_event(
 
         (
             PenTool::BuildingEdgeHoveringEndpoint(hovered_endpoint),
-            InputMessage::PointerClick { world_pos, .. },
+            InputMessage::PointerClick {
+                world_pos,
+                screen_pos,
+                ..
+            },
         ) => {
-            let Some((target_endpoint, endpoint)) = get_top_selectable_endpoint(world) else {
+            let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+            let Some(top) = hits.top_if_object_type(ObjectType::VectorEndpoint) else {
                 return PenTool::BuildingEdgeHoveringEndpoint(*hovered_endpoint);
             };
+
+            let hit_endpoint_uid = *top.uid();
+            let endpoint = *world.get::<Endpoint>(top.entity()).unwrap();
 
             let from_endpoint = get_current_building_prev_endpoint(world).unwrap();
             let parent_vector_graphic = get_current_building_vector_object(world).unwrap();
@@ -330,7 +345,7 @@ fn handle_pen_tool_event(
                         },
                     );
                     builder.entity(endpoint_uid).insert(ProxiedPosition::new(
-                        target_endpoint,
+                        hit_endpoint_uid,
                         ProxiedPositionStrategy::Local,
                     ));
                     PenTool::BuildingEdgeHoveringEndpoint(*hovered_endpoint)
@@ -343,7 +358,7 @@ fn handle_pen_tool_event(
                             from_endpoint,
                             edge_variant: EdgeVariant::Line,
                         },
-                        &BuildEndpointAndEdgeTarget::ExistingLinkPrevious(target_endpoint),
+                        &BuildEndpointAndEdgeTarget::ExistingLinkPrevious(hit_endpoint_uid),
                     );
                     PenTool::Default
                 }
@@ -355,7 +370,7 @@ fn handle_pen_tool_event(
                             from_endpoint,
                             edge_variant: EdgeVariant::Line,
                         },
-                        &BuildEndpointAndEdgeTarget::ExistingLinkNext(target_endpoint),
+                        &BuildEndpointAndEdgeTarget::ExistingLinkNext(hit_endpoint_uid),
                     );
                     PenTool::Default
                 }
@@ -365,27 +380,28 @@ fn handle_pen_tool_event(
             next_state
         }
 
-        (PenTool::HoveringEdge(uid), InputMessage::PointerMove { .. }) => {
-            let top = world.selectable_hits().top();
-            let is_hovering_edge =
-                top.map_or(false, |top| matches!(top.ty, ObjectType::VectorEdge));
-            if !is_hovering_edge {
-                PenTool::Default
+        (PenTool::HoveringEdge(uid), InputMessage::PointerMove { screen_pos, .. }) => {
+            let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+            if let Some(top) = hits.top_if_object_type(ObjectType::VectorEdge) {
+                PenTool::HoveringEdge(*top.uid())
             } else {
-                PenTool::HoveringEdge(*uid)
+                PenTool::Default
             }
         }
-        (PenTool::HoveringEdge(uid), InputMessage::PointerClick { .. }) => {
-            let top = world.selectable_hits().top();
-            if let Some(top) = top {
-                let handle = world.get::<Mesh2dHandle>(top.entity).unwrap();
+        (PenTool::HoveringEdge(uid), InputMessage::PointerClick { screen_pos, .. }) => {
+            let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+            if let Some(top) = hits.top() {
+                let handle = world.get::<Mesh2dHandle>(top.entity()).unwrap();
                 let mesh = world
                     .resource::<Assets<Mesh>>()
                     .get(handle.0.clone_weak())
                     .unwrap();
-                let result =
-                    get_intersection_triangle_attribute_data(mesh, &top.data, ATTRIBUTE_EDGE_T.id);
-                let edge_entity = world.get::<View<VectorEdgeVM>>(top.entity).unwrap();
+                let result = get_intersection_triangle_attribute_data(
+                    mesh,
+                    &top.intersection_data(),
+                    ATTRIBUTE_EDGE_T.id,
+                );
+                let edge_entity = world.get::<View<VectorEdgeVM>>(top.entity()).unwrap();
 
                 if let Ok(crate::utils::mesh::TriangleIntersectionAttributeData::Float32(t_value)) =
                     result
