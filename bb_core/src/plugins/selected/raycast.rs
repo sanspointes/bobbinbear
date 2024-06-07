@@ -1,5 +1,5 @@
 use bevy::{
-    ecs::{prelude::*, system::SystemState}, log::warn, math::Vec2, reflect::TypePath, render::camera::Camera, transform::components::GlobalTransform, utils::smallvec::SmallVec, window::{PrimaryWindow, Window}
+    ecs::{prelude::*, system::SystemState}, math::Vec2, reflect::TypePath, render::camera::Camera, transform::components::GlobalTransform, utils::smallvec::SmallVec, window::{PrimaryWindow, Window}
 };
 
 use bevy_mod_raycast::{
@@ -19,6 +19,7 @@ use super::Selectable;
 #[derive(Debug, Clone)]
 pub struct SelectableHit(pub Entity, pub Uid, pub ObjectType, pub IntersectionData);
 
+#[allow(dead_code)]
 impl SelectableHit {
     pub fn new(entity: Entity, uid: Uid, object_type: ObjectType, data: IntersectionData) -> Self {
         Self(entity, uid, object_type, data)
@@ -102,8 +103,8 @@ impl SelectableRaycaster {
         SmallVec::from_iter(rc.cast_ray(ray, &settings).iter().cloned())
     }
 
-    pub fn raycast_uncached<'w, T: TypePath + Send + Sync + 'static>(
-        world: &'w mut World,
+    pub fn raycast_uncached<T: TypePath + Send + Sync + 'static>(
+        world: &mut World,
         screen_pos: Vec2,
     ) -> SelectableHits {
         // let selectable_hits: &'w SelectableHits = world.get_resource::<SelectableHits>().unwrap();
@@ -124,7 +125,6 @@ impl SelectableRaycaster {
             .into_iter()
             .map(|(entity, data)| {
 
-                warn!("Hit on {entity:?}.");
                 let mut last_entity = entity;
                 let mut curr_entity = Some(entity);
                 let mut curr_uid = None;
@@ -132,7 +132,6 @@ impl SelectableRaycaster {
                 while let Some((uid, maybe_proxy)) = curr_entity.and_then(|e| q_uid.get(e).ok()) {
                     curr_uid = Some(uid);
                     if let Some(proxy) = maybe_proxy {
-                        warn!("- Proxy from {uid:?} to {:?}", proxy.target());
                         curr_entity = uid_registry.get_entity(*proxy.target()).ok();
                         if let Some(e) = curr_entity {
                             last_entity = e;
@@ -145,7 +144,6 @@ impl SelectableRaycaster {
                 let ty = q_object_type.get(entity).unwrap();
                 let uid = curr_uid.unwrap();
 
-                warn!("--> Final hit {uid:?} {ty:?}.");
                 SelectableHit(last_entity, *uid, *ty, data)
             })
             .collect();
@@ -155,15 +153,5 @@ impl SelectableRaycaster {
         //
         // selectable_hits.hits[selectable_hits.hits.len() - 1].1
         hits
-    }
-}
-
-pub trait SelectableHitsWorldExt {
-    fn selectable_hits(&self) -> &SelectableRaycaster;
-}
-
-impl SelectableHitsWorldExt for World {
-    fn selectable_hits(&self) -> &SelectableRaycaster {
-        self.resource::<SelectableRaycaster>()
     }
 }
