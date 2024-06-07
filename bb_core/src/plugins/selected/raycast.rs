@@ -1,5 +1,11 @@
 use bevy::{
-    ecs::{prelude::*, system::SystemState}, math::Vec2, reflect::TypePath, render::camera::Camera, transform::components::GlobalTransform, utils::smallvec::SmallVec, window::{PrimaryWindow, Window}
+    ecs::{prelude::*, system::SystemState},
+    math::Vec2,
+    reflect::TypePath,
+    render::camera::Camera,
+    transform::components::GlobalTransform,
+    utils::smallvec::SmallVec,
+    window::{PrimaryWindow, Window},
 };
 
 use bevy_mod_raycast::{
@@ -43,12 +49,25 @@ pub struct SelectableHits(SmallVec<[SelectableHit; 2]>);
 
 impl FromIterator<SelectableHit> for SelectableHits {
     fn from_iter<T: IntoIterator<Item = SelectableHit>>(iter: T) -> Self {
-        let data: SmallVec::<[SelectableHit; 2]> = SmallVec::from_iter(iter);
+        let data: SmallVec<[SelectableHit; 2]> = SmallVec::from_iter(iter);
         SelectableHits(data)
     }
 }
 
+#[allow(dead_code)]
 impl SelectableHits {
+    pub fn all(&self) -> impl Iterator<Item = &SelectableHit> {
+        self.0.iter()
+    }
+
+    pub fn all_of_object_type(
+        &self,
+        _object_type: ObjectType,
+    ) -> impl Iterator<Item = &SelectableHit> {
+        self.all()
+            .filter(|hit| matches!(hit.object_type(), _object_type))
+    }
+
     pub fn top(&self) -> Option<&SelectableHit> {
         self.0.first()
     }
@@ -56,6 +75,10 @@ impl SelectableHits {
     pub fn top_if_object_type(&self, _object_type: ObjectType) -> Option<&SelectableHit> {
         self.top()
             .filter(|hit| matches!(hit.object_type(), _object_type))
+    }
+
+    pub fn first_of_object_type(&self, _object_type: ObjectType) -> Option<&SelectableHit> {
+        self.all_of_object_type(_object_type).next()
     }
 }
 
@@ -124,7 +147,6 @@ impl SelectableRaycaster {
         let hits: SelectableHits = intersections
             .into_iter()
             .map(|(entity, data)| {
-
                 let mut last_entity = entity;
                 let mut curr_entity = Some(entity);
                 let mut curr_uid = None;

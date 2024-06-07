@@ -1,33 +1,34 @@
 use bevy::{
-    app::{App, Plugin},
+    app::{App, Plugin, Update},
     asset::Assets,
     core::Name,
     ecs::{
         component::Component,
         query::With,
         reflect::ReflectComponent,
+        schedule::IntoSystemConfigs,
         system::Resource,
         world::{FromWorld, World},
     },
     log::warn,
-    math::{Vec2Swizzles, Vec3Swizzles},
+    math::Vec2Swizzles,
     reflect::Reflect,
     render::mesh::Mesh,
     sprite::Mesh2dHandle,
     transform::components::GlobalTransform,
 };
-use bevy_spts_changeset::{builder::Changeset, commands_ext::WorldChangesetExt};
+use bevy_spts_changeset::{builder::{Changeset, ChangesetCommands}, commands_ext::WorldChangesetExt};
 use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::{EdgeVariant, Endpoint};
 
 use crate::{
     api::scene::SceneApi,
     ecs::{
-        InternalObject, ObjectBundle, ObjectType, Position, ProxiedObjectBundle, ProxiedPosition,
+        InternalObject, ObjectBundle, ObjectType, Position, ProxiedObjectBundle,
         ProxiedPositionStrategy,
     },
     plugins::{
-        effect::Effect,
+        effect::{Effect, EffectQue},
         model_view::View,
         selected::{raycast::SelectableRaycaster, Selectable},
         undoredo::UndoRedoApi,
@@ -37,12 +38,16 @@ use crate::{
         vector_edge::{VectorEdgeVM, ATTRIBUTE_EDGE_T},
         vector_endpoint::VectorEndpointVM,
     },
+    PosSet,
 };
 
 mod resource;
 mod utils;
 
-use self::utils::{build_default_vector_graphic, split_edge_at_t_value};
+use self::{
+    resource::PenToolPreview,
+    utils::{build_default_vector_graphic, split_edge_at_t_value},
+};
 use self::{
     resource::PenToolResource,
     utils::{
@@ -58,9 +63,12 @@ pub struct PenToolPlugin;
 
 impl Plugin for PenToolPlugin {
     fn build(&self, app: &mut App) {
-        let pen_tool_resource = PenToolResource::from_world(&mut app.world);
-        app.insert_resource(pen_tool_resource);
-        app.insert_resource(PenTool::default());
+        let res = PenToolResource::from_world(&mut app.world);
+        app.insert_resource(res);
+        app.insert_resource(PenTool::default()).add_systems(
+            Update,
+            sys_update_pen_tool_preview.before(PosSet::Propagate),
+        );
     }
 }
 
@@ -75,6 +83,7 @@ pub struct PenToolBuildingFromEndpointTag;
 #[derive(Resource, Default, Debug, Clone)]
 pub enum PenTool {
     #[default]
+    Deactive,
     Default,
 
     HoveringEdge(Uid),
@@ -98,11 +107,6 @@ fn handle_pen_tool_event(
                 ..
             },
         ) => {
-            PenToolResource::resource_scope(world, |world, res| {
-                res.preview.show_only_endpoint_0(world);
-                res.preview.set_endpoint_0_world_pos(world, *world_pos);
-            });
-
             let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
             let top = hits.top_if_object_type(ObjectType::VectorEdge);
             match top {
@@ -142,14 +146,6 @@ fn handle_pen_tool_event(
                 SceneApi::build_inspect_changeset(world, vector_graphic, commands);
             });
             UndoRedoApi::execute(world, changeset).unwrap();
-
-            // Show the preview edge
-            PenToolResource::resource_scope(world, |world, res| {
-                res.preview.show_all(world);
-                res.preview.set_endpoint_0_world_pos(world, *world_pos);
-                res.preview
-                    .set_endpoint_1_world_pos(world, *world_pos + 0.01);
-            });
 
             PenTool::BuildingEdge
         }
@@ -231,17 +227,6 @@ fn handle_pen_tool_event(
                 ..
             },
         ) => {
-            PenToolResource::resource_scope(world, |world, res| {
-                let mut q_building_endpoint =
-                    world.query_filtered::<&Uid, With<PenToolBuildingFromEndpointTag>>();
-                let from_endpoint = *q_building_endpoint.single(world);
-                let from_endpoint_pos = *world
-                    .bb_get::<Position>(from_endpoint.entity(world).unwrap())
-                    .unwrap();
-                res.preview
-                    .set_endpoint_0_world_pos(world, from_endpoint_pos.0);
-            });
-
             let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
             let top = hits.top_if_object_type(ObjectType::VectorEndpoint);
             if let Some(hit) = top {
@@ -250,16 +235,8 @@ fn handle_pen_tool_event(
                     .unwrap()
                     .translation();
 
-                PenToolResource::resource_scope(world, |world, res| {
-                    res.preview.set_endpoint_1_world_pos(world, world_pos.xy());
-                });
-
                 PenTool::BuildingEdgeHoveringEndpoint(*hit.uid())
             } else {
-                PenToolResource::resource_scope(world, |world, res| {
-                    res.preview.set_endpoint_1_world_pos(world, *world_pos);
-                });
-
                 PenTool::BuildingEdge
             }
         }
@@ -286,11 +263,6 @@ fn handle_pen_tool_event(
             let changeset = builder.build();
             UndoRedoApi::execute(world, changeset).expect("Error building next edge changeset.");
 
-            PenToolResource::resource_scope(world, |world, res| {
-                res.preview
-                    .set_endpoint_0_world_pos(world, from_endpoint_pos.0);
-            });
-
             PenTool::BuildingEdge
         }
 
@@ -306,21 +278,8 @@ fn handle_pen_tool_event(
             let top = hits.top_if_object_type(ObjectType::VectorEndpoint);
 
             if let Some(top) = top {
-                let world_pos = world
-                    .bb_get::<GlobalTransform>(top.uid().entity(world).unwrap())
-                    .unwrap()
-                    .translation();
-
-                PenToolResource::resource_scope(world, |world, res| {
-                    res.preview.set_endpoint_1_world_pos(world, world_pos.xy());
-                });
-
                 PenTool::BuildingEdgeHoveringEndpoint(*top.uid())
             } else {
-                PenToolResource::resource_scope(world, |world, res| {
-                    res.preview.set_endpoint_1_world_pos(world, *world_pos);
-                });
-
                 PenTool::BuildingEdge
             }
         }
@@ -394,7 +353,7 @@ fn handle_pen_tool_event(
             next_state
         }
 
-        (PenTool::HoveringEdge(uid), InputMessage::PointerMove { screen_pos, .. }) => {
+        (PenTool::HoveringEdge(_), InputMessage::PointerMove { screen_pos, .. }) => {
             let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
             if let Some(top) = hits.top_if_object_type(ObjectType::VectorEdge) {
                 PenTool::HoveringEdge(*top.uid())
@@ -412,7 +371,7 @@ fn handle_pen_tool_event(
                     .unwrap();
                 let result = get_intersection_triangle_attribute_data(
                     mesh,
-                    &top.intersection_data(),
+                    top.intersection_data(),
                     ATTRIBUTE_EDGE_T.id,
                 );
                 let edge_entity = world.bb_get::<View<VectorEdgeVM>>(top.entity()).unwrap();
@@ -449,6 +408,34 @@ fn handle_pen_tool_event(
     }
 }
 
+pub fn activate_pen_tool(world: &mut World, _commands: &mut ChangesetCommands, _effects: &mut EffectQue) {
+    let mut tool = world.resource_mut::<PenTool>();
+    *tool = PenTool::Default;
+    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Pen))
+}
+
+pub fn deactivate_pen_tool(world: &mut World, commands: &mut ChangesetCommands, _effects: &mut EffectQue) {
+    let mut tool = world.resource_mut::<PenTool>();
+    *tool = PenTool::Deactive;
+
+    if let Ok(uid) = world
+        .query_filtered::<&Uid, With<PenToolBuildingFromEndpointTag>>()
+        .get_single(world)
+        .copied()
+    {
+        commands.entity(uid).remove::<PenToolBuildingFromEndpointTag>();
+    }
+
+    if let Ok(uid) = world
+        .query_filtered::<&Uid, With<PenToolBuildingVectorObjectTag>>()
+        .get_single(world)
+        .copied()
+    {
+        commands.entity(uid).remove::<PenToolBuildingFromEndpointTag>();
+    }
+
+}
+
 pub fn handle_pen_tool_input(
     world: &mut World,
     events: &Vec<InputMessage>,
@@ -463,4 +450,8 @@ pub fn handle_pen_tool_input(
     *world.resource_mut::<PenTool>() = state;
 
     Ok(())
+}
+
+pub fn sys_update_pen_tool_preview(world: &mut World) {
+    PenToolPreview::refresh(world);
 }

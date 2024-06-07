@@ -124,7 +124,7 @@ mod effects {
     use serde::{Deserialize, Serialize};
     use tsify::Tsify;
 
-    use crate::tools::BobbinTool;
+    use crate::tools::{BobbinCursor, BobbinTool};
 
     #[derive(Event, Tsify, Serialize, Deserialize, Debug, Clone)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
@@ -143,5 +143,6 @@ mod effects {
             uninspected: Option<Uid>,
         },
         ToolChanged(BobbinTool),
+        CursorChanged(BobbinCursor),
     }
 }

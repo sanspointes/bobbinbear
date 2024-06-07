@@ -7,18 +7,21 @@ use bevy::{
     },
 };
 
-use crate::plugins::effect::{Effect, EffectQue};
+use crate::{
+    plugins::effect::{Effect, EffectQue},
+    PosSet,
+};
 
 use self::{
     input::{BobbinInputPlugin, InputMessage},
+    pen::{handle_pen_tool_input, sys_update_pen_tool_preview, PenToolPlugin},
     resource::ToolResource,
     select::{handle_select_tool_input, SelectToolPlugin},
-    pen::{handle_pen_tool_input, PenToolPlugin},
 };
 
-pub use types::BobbinTool;
-pub use pen::{ PenToolBuildingVectorObjectTag, PenToolBuildingFromEndpointTag };
-pub use input::{ InputSet, InputState };
+pub use input::InputState;
+pub use pen::{PenToolBuildingFromEndpointTag, PenToolBuildingVectorObjectTag};
+pub use types::{ BobbinTool, BobbinCursor };
 
 mod api;
 mod input;
@@ -36,8 +39,7 @@ pub struct BobbinToolsPlugin;
 
 impl Plugin for BobbinToolsPlugin {
     fn build(&self, app: &mut App) {
-        app
-            .insert_resource(ToolResource::default())
+        app.insert_resource(ToolResource::default())
             .add_plugins((BobbinInputPlugin, SelectToolPlugin, PenToolPlugin))
             .add_systems(Update, sys_handle_tool_inputs.in_set(ToolSet));
     }

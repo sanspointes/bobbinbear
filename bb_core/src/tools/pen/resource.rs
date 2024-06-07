@@ -1,11 +1,28 @@
-use bevy::{core::Name, ecs::prelude::*, math::Vec2, render::{color::Color, view::Visibility}};
+use bevy::{
+    core::Name,
+    ecs::prelude::*,
+    math::{Vec2, Vec3Swizzles},
+    render::{color::Color, view::Visibility},
+    transform::components::GlobalTransform,
+};
 use bevy_mod_raycast::deferred::RaycastMesh;
 use bevy_spts_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
 use bevy_spts_uid::Uid;
-use bevy_spts_vectorgraphic::{components::{EdgeVariant, Endpoint, VectorGraphic, VectorGraphicPathStorage}, lyon_components::StrokeOptions, material::StrokeColor, prelude::VectorGraphicChangesetExt};
+use bevy_spts_vectorgraphic::{
+    components::{EdgeVariant, Endpoint, VectorGraphic, VectorGraphicPathStorage},
+    lyon_components::StrokeOptions,
+    material::StrokeColor,
+    prelude::VectorGraphicChangesetExt,
+};
 
-use crate::{ecs::{InternalObject, ObjectBundle, ObjectType, Position}, plugins::{selected::Selectable, undoredo::{UndoRedoResult, UndoRedoTag}}, views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM}};
+use crate::{
+    ecs::{InternalObject, ObjectBundle, ObjectType, Position},
+    plugins::{selected::Selectable, undoredo::UndoRedoTag},
+    tools::InputState,
+    views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
+};
 
+use super::{PenTool, PenToolBuildingFromEndpointTag};
 
 #[derive(Resource, Debug, Clone)]
 pub struct PenToolResource {
@@ -40,6 +57,42 @@ pub struct PenToolPreview {
 }
 
 impl PenToolPreview {
+    /// Uses the current state of the world to update the pen tool preview
+    pub fn refresh(world: &mut World) {
+        PenToolResource::resource_scope(world, |world, res| {
+            let state = world.resource::<PenTool>();
+            let input_state = *world.resource::<InputState>();
+
+            match state {
+                PenTool::Deactive => {
+                    res.preview.hide_all(world);
+                }
+                PenTool::Default => {
+                    res.preview.show_only_endpoint_0(world);
+                    res.preview
+                        .set_endpoint_0_world_pos(world, input_state.world_pos());
+                }
+                PenTool::BuildingEdge => {
+                    let pos = world
+                        .query_filtered::<&Position, With<PenToolBuildingFromEndpointTag>>()
+                        .get_single(world).copied();
+                    let Ok(pos) = pos else {
+                        return;
+                    };
+
+                    res.preview.show_all(world);
+                    res.preview.update_to_line(world);
+                    res.preview.set_endpoint_0_world_pos(world, *pos);
+                    res.preview
+                        .set_endpoint_1_world_pos(world, input_state.world_pos());
+                }
+                _ => {
+                    res.preview.hide_all(world);
+                }
+            };
+        });
+    }
+
     pub fn set_endpoint_0_world_pos(&self, world: &mut World, world_position: Vec2) {
         let entity = self.endpoint_0.entity(world).unwrap();
         let mut position = world.get_mut::<Position>(entity).unwrap();

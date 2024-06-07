@@ -7,7 +7,7 @@ use bevy::{
     hierarchy::Parent,
     math::Vec2,
     render::color::Color,
-    utils::{smallvec::SmallVec, thiserror::Error},
+    utils::thiserror::Error,
 };
 use bevy_spts_changeset::builder::ChangesetCommands;
 use bevy_spts_uid::{Uid, UidRegistry};
@@ -20,7 +20,6 @@ use bevy_spts_vectorgraphic::{
 
 use crate::{
     ecs::{InternalObject, ObjectBundle, ObjectType, Position},
-    plugins::selected::raycast::SelectableHit,
     utils::curve::{cubic_point_at, quadratic_point_at},
     views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
 };

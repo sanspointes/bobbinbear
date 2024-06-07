@@ -75,7 +75,7 @@ impl Plugin for BobbinInputPlugin {
     }
 }
 
-#[derive(Resource, Debug)]
+#[derive(Resource, Debug, Clone, Copy)]
 pub enum InputState {
     Default {
         screen_pos: Vec2,
@@ -93,6 +93,40 @@ pub enum InputState {
         screen_pos: Vec2,
         world_pos: Vec2,
     },
+}
+
+#[allow(dead_code)]
+impl InputState {
+    pub fn screen_pos(&self) -> Vec2 {
+        match self {
+            InputState::Default { screen_pos, .. }
+            | InputState::PointerDown { screen_pos, .. }
+            | InputState::Dragging { screen_pos, .. } => *screen_pos,
+        }
+    }
+    pub fn world_pos(&self) -> Vec2 {
+        match self {
+            InputState::Default { world_pos, .. }
+            | InputState::PointerDown { world_pos, .. }
+            | InputState::Dragging { world_pos, .. } => *world_pos,
+        }
+    }
+
+    pub fn screen_start_pos(&self) -> Option<Vec2> {
+        match self {
+            InputState::Default { .. } => None,
+            InputState::PointerDown { screen_start_pos, .. }
+            | InputState::Dragging { screen_start_pos, .. } => Some(*screen_start_pos),
+        }
+    }
+
+    pub fn world_start_pos(&self) -> Option<Vec2> {
+        match self {
+            InputState::Default { .. } => None,
+            InputState::PointerDown { world_start_pos, .. }
+            | InputState::Dragging { world_start_pos, .. } => Some(*world_start_pos),
+        }
+    }
 }
 
 #[derive(Resource)]
@@ -181,7 +215,7 @@ pub fn sys_raw_input_processor(
                         world_delta_pos: world_pos.sub(res.world_start_pos),
                         modifiers: res.modifiers,
                     });
-                } 
+                }
                 if res.is_dragging {
                     to_send.push(InputMessage::DragMove {
                         screen_pos: res.screen_pos,
