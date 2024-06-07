@@ -1,11 +1,5 @@
 use bevy::{
-    ecs::{prelude::*, system::SystemState},
-    math::Vec2,
-    reflect::TypePath,
-    render::camera::Camera,
-    transform::components::GlobalTransform,
-    utils::smallvec::SmallVec,
-    window::{PrimaryWindow, Window},
+    ecs::{prelude::*, system::SystemState}, log::warn, math::Vec2, reflect::TypePath, render::camera::Camera, transform::components::GlobalTransform, utils::smallvec::SmallVec, window::{PrimaryWindow, Window}
 };
 
 use bevy_mod_raycast::{
@@ -129,13 +123,20 @@ impl SelectableRaycaster {
         let hits: SelectableHits = intersections
             .into_iter()
             .map(|(entity, data)| {
+
+                warn!("Hit on {entity:?}.");
+                let mut last_entity = entity;
                 let mut curr_entity = Some(entity);
                 let mut curr_uid = None;
 
                 while let Some((uid, maybe_proxy)) = curr_entity.and_then(|e| q_uid.get(e).ok()) {
                     curr_uid = Some(uid);
                     if let Some(proxy) = maybe_proxy {
+                        warn!("- Proxy from {uid:?} to {:?}", proxy.target());
                         curr_entity = uid_registry.get_entity(*proxy.target()).ok();
+                        if let Some(e) = curr_entity {
+                            last_entity = e;
+                        }
                     } else {
                         curr_entity = None;
                     }
@@ -143,7 +144,9 @@ impl SelectableRaycaster {
 
                 let ty = q_object_type.get(entity).unwrap();
                 let uid = curr_uid.unwrap();
-                SelectableHit(entity, *uid, *ty, data)
+
+                warn!("--> Final hit {uid:?} {ty:?}.");
+                SelectableHit(last_entity, *uid, *ty, data)
             })
             .collect();
         //

@@ -111,6 +111,11 @@ impl ProxiedObjectBundle {
             hovered_proxy: ProxiedHovered::new(target, ()),
         }
     }
+
+    pub fn with_position_proxy_strategy(mut self, proxied_position_strategy: ProxiedPositionStrategy) -> Self {
+        *self.position_proxy.state_mut() = proxied_position_strategy;
+        self
+    }
 }
 
 pub use definitions::ObjectType;

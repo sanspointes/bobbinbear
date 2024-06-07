@@ -23,7 +23,7 @@ use wasm_bindgen::prelude::*;
 /// A unique identifier that can be used to lookup entities, persists between
 ///
 #[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, Copy, Reflect, Component, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Reflect, Component, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "tsify", derive(Tsify))]
 #[cfg_attr(feature = "tsify", tsify(into_wasm_abi, from_wasm_abi))]
 #[reflect(Component)]
@@ -94,6 +94,14 @@ impl Uid {
 pub enum UidError {
     #[error("Unknown error.")]
     Unknown,
+}
+
+impl Debug for Uid {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Uid({:?}", self.0)?;
+        (self as &dyn Display).fmt(f)?;
+        write!(f, ")")
+    }
 }
 
 impl Display for Uid {
