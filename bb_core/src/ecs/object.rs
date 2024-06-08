@@ -12,7 +12,9 @@ use bevy::{
 use bevy_mod_raycast::deferred::RaycastMesh;
 use bevy_spts_uid::Uid;
 
-use crate::plugins::selected::{Hovered, ProxiedHovered, ProxiedSelected, Selectable, Selected};
+use crate::plugins::selected::{Hovered, ProxiedHovered, ProxiedSelectable, ProxiedSelected, ProxiedVisibility, Selectable, Selected};
+
+pub type ProxiedUid = ProxiedComponent<Uid, ()>;
 
 #[derive(Component, Reflect)]
 #[reflect(Component)]
@@ -90,24 +92,35 @@ impl ObjectBundle {
 #[derive(Bundle, Reflect)]
 #[reflect(Bundle)]
 pub struct ProxiedObjectBundle {
+    uid_proxy: ProxiedUid,
     position_proxy: ProxiedPosition,
+    visibility_proxy: ProxiedVisibility,
     selected_proxy: ProxiedSelected,
+    selectable_proxy: ProxiedSelectable,
     hovered_proxy: ProxiedHovered,
 }
 
 impl ProxiedObjectBundle {
     pub fn new(target: Uid) -> Self {
         Self {
+            uid_proxy: ProxiedUid::new(target, ()),
             position_proxy: ProxiedPosition::new(target, ProxiedPositionStrategy::Viewport),
+            visibility_proxy: ProxiedVisibility::new(target, ()),
             selected_proxy: ProxiedSelected::new(target, ()),
+            selectable_proxy: ProxiedSelectable::new(target, ()),
             hovered_proxy: ProxiedHovered::new(target, ()),
         }
+    }
+
+    pub fn with_position_proxy_strategy(mut self, proxied_position_strategy: ProxiedPositionStrategy) -> Self {
+        *self.position_proxy.state_mut() = proxied_position_strategy;
+        self
     }
 }
 
 pub use definitions::ObjectType;
 
-use super::{position::Position, ProxiedPosition, ProxiedPositionStrategy};
+use super::{position::Position, ProxiedComponent, ProxiedPosition, ProxiedPositionStrategy};
 
 #[allow(non_snake_case, clippy::empty_docs)]
 mod definitions {

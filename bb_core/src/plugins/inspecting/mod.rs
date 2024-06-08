@@ -3,17 +3,13 @@ mod vector_object;
 
 use std::collections::VecDeque;
 
-use bevy::{prelude::*};
+use bevy::prelude::*;
 
 use bevy_spts_uid::Uid;
-use bevy_spts_vectorgraphic::{
-    components::{VectorGraphic},
-};
+use bevy_spts_vectorgraphic::components::VectorGraphic;
 pub use components::*;
 
-use crate::plugins::{
-    effect::{Effect},
-};
+use crate::plugins::effect::Effect;
 
 use self::vector_object::{handle_inspect_vector_object, handle_uninspect_vector_object};
 
@@ -95,4 +91,3 @@ fn cleanup_previous_inspection(
         handle_uninspect_vector_object(respond, world, uninspected);
     }
 }
-

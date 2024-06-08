@@ -1,3 +1,4 @@
+use bevy::utils::thiserror;
 use bevy::{
     ecs::{query::QueryEntityError, reflect::ReflectComponent, system::QueryLens},
     prelude::*,
@@ -7,6 +8,20 @@ use bevy_spts_uid::{Uid, UidRegistry};
 use lyon_tessellation::path::Path;
 
 use crate::lyon_components::{FillOptions, StrokeOptions};
+
+#[derive(thiserror::Error, Debug)]
+#[error("The edge with uid: {uid} is not linked to this endpoint.")]
+pub struct RemoveEdgeError {
+    pub uid: Uid,
+}
+
+#[derive(thiserror::Error, Debug)]
+#[error("Tried to link new edge {tried_to_link} but endpoint already linked to two edges ({prev_edge}, {next_edge})")]
+pub struct LinkEdgeError {
+    pub tried_to_link: Uid,
+    pub prev_edge: Uid,
+    pub next_edge: Uid,
+}
 
 #[derive(Component, Clone, Copy, Default, Debug)]
 #[allow(dead_code)]
@@ -55,6 +70,76 @@ impl Endpoint {
             let entity = reg.entity(uid);
             q_edges.get(entity).copied()
         })
+    }
+
+    /// Returns the other edge when given the Uid of one edge.
+    pub fn other_edge_uid(&self, edge_uid: &Uid) -> Option<&Uid> {
+        if let Some(edge) = self.next_edge {
+            if edge == *edge_uid {
+                return self.prev_edge.as_ref();
+            }
+        }
+        if let Some(edge) = self.prev_edge {
+            if edge == *edge_uid {
+                return self.next_edge.as_ref();
+            }
+        }
+        None
+    }
+    pub fn other_edge(
+        &self,
+        q_edges: &mut QueryLens<&Edge>,
+        reg: &mut UidRegistry,
+        edge_uid: &Uid,
+    ) -> Option<Result<Edge, QueryEntityError>> {
+        let other_edge_uid = self.other_edge_uid(edge_uid)?;
+        let q_edges = q_edges.query();
+        let entity = reg.entity(*other_edge_uid);
+        Some(q_edges.get(entity).copied())
+    }
+
+    pub fn can_link_edge(&mut self) -> bool {
+        self.prev_edge.is_none() || self.next_edge.is_none()
+    }
+
+    pub fn link_edge(&mut self, edge_uid: &Uid) -> Result<(), LinkEdgeError> {
+        if self.next_edge.is_none() {
+            self.next_edge = Some(*edge_uid);
+            Ok(())
+        } else if self.prev_edge.is_none() {
+            self.prev_edge = Some(*edge_uid);
+            Ok(())
+        } else {
+            Err(LinkEdgeError {
+                tried_to_link: *edge_uid,
+                prev_edge: self.prev_edge.unwrap(),
+                next_edge: self.next_edge.unwrap(),
+            })
+        }
+    }
+
+    pub fn unlink_edge(&mut self, edge_uid: &Uid) -> Result<(), RemoveEdgeError> {
+        let mut did_remove = false;
+        if let Some(edge) = self.next_edge {
+            if edge == *edge_uid {
+                self.next_edge = None;
+                did_remove = true;
+            }
+        }
+        if let Some(edge) = self.prev_edge {
+            if edge == *edge_uid {
+                self.prev_edge = None;
+                did_remove = true;
+            }
+        }
+
+        if did_remove {
+            Ok(())
+        } else {
+            Err(RemoveEdgeError {
+                uid: *edge_uid,
+            })
+        }
     }
 }
 
@@ -115,6 +200,16 @@ impl Edge {
     ) -> Result<Endpoint, QueryEntityError> {
         let entity = reg.entity(self.next_endpoint);
         q_endpoints.query().get(entity).copied()
+    }
+
+    pub fn other_endpoint_uid(&self, endpoint_uid: &Uid) -> Option<Uid> {
+        if self.next_endpoint == *endpoint_uid {
+            Some(self.prev_endpoint)
+        } else if self.prev_endpoint == *endpoint_uid {
+            Some(self.next_endpoint)
+        } else {
+            None
+        }
     }
 }
 

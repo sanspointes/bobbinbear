@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use as_any::AsAny;
+use bevy_reflect::List;
 
 use std::{
     any::{Any, TypeId},
@@ -49,7 +50,11 @@ impl Change for InsertChange {
             .bundle
             .components()
             .iter()
-            .map(|c| c.try_type_id().unwrap())
+            .map(|c| {
+                c.try_type_id().unwrap_or_else(|_| {
+                    panic!("InsertChange: Could not get type_id of type {c:?}.")
+                })
+            })
             .collect();
 
         for ty_id in &type_ids {
@@ -186,24 +191,31 @@ impl Change for RemoveChange {
             self.target,
         ))?;
 
-        let (components, type_ids): (Vec<_>, Vec<_>) = self
-            .type_ids
-            .iter()
-            .map(|type_id| {
-                let registration = cx.type_registry.get(*type_id).unwrap();
-                let reflect_component = registration.data::<ReflectComponent>().unwrap();
-                let component = reflect_component.reflect_mut(&mut entity_mut).unwrap();
+        let mut components = Vec::with_capacity(self.type_ids.len());
 
-                let cf = ComponentFragment::new(component.clone_value().into());
-                let type_id = cf.try_type_id().unwrap();
-                cf.remove(&mut entity_mut, cx.type_registry).unwrap();
+        for type_id in self.type_ids.iter() {
+            let registration = cx.type_registry.get(*type_id).ok_or_else(|| {
+                anyhow!("RemoveChange: Could not get type_id of type {type_id:?}.")
+            })?;
+            let reflect_component = registration.data::<ReflectComponent>().ok_or_else(|| {
+                anyhow!("RemoveChange: Could not get ReflectComponent of {registration:?}.")
+            })?;
+            let component = reflect_component.reflect_mut(&mut entity_mut).ok_or_else(|| {
+                anyhow!("RemoveChange: Could not reflect the component the target ({}).  It probably doesn't have this component. \n{registration:?}.", self.target)
+            })?;
 
-                (cf, type_id)
-            })
-            .unzip();
+            let cf = ComponentFragment::new(component.clone_value().into());
+            // let type_id = cf.try_type_id().map_err(|reason| {
+            //     anyhow!("RemoveChange: Could not get type id of component fragment.  Reason: {reason} \n {cf:?}")
+            // })?;
+            cf.remove(&mut entity_mut, cx.type_registry).map_err(|reason| {
+                anyhow!("RemoveChange: Could not remove component. {reason} \n {cf:?}")
+            })?;
+            components.push(cf);
+        }
 
         let mut events = world.resource_mut::<Events<ChangesetEvent>>();
-        for ty_id in type_ids.iter() {
+        for ty_id in self.type_ids.iter() {
             events.send(ChangesetEvent::Changed(
                 self.target,
                 *ty_id,

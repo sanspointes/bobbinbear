@@ -1,20 +1,19 @@
 use bevy::{
     app::{App, Plugin},
-    ecs::{system::Resource, world::World},
+    ecs::{query::With, system::Resource, world::World},
     input::ButtonState,
     log::warn,
 };
-use bevy_spts_changeset::commands_ext::WorldChangesetExt;
+use bevy_spts_changeset::{builder::ChangesetCommands, commands_ext::WorldChangesetExt};
 use bevy_spts_uid::Uid;
 
 use crate::{
-    ecs::Position,
+    api::scene::SceneApi,
+    ecs::{ObjectType, Position},
     plugins::{
-        effect::Effect,
-        selected::{
-            raycast::{SelectableHit, SelectableHitsWorldExt},
-            Hovered, Selected, SelectedApi,
-        },
+        effect::{Effect, EffectQue},
+        inspecting::Inspected,
+        selected::{raycast::SelectableRaycaster, Hovered, Selectable, Selected, SelectedApi},
         undoredo::UndoRedoApi,
     },
 };
@@ -31,59 +30,80 @@ impl Plugin for SelectToolPlugin {
 
 #[derive(Resource, Default, Debug, Clone)]
 pub enum SelectTool {
+    Deactive,
     #[default]
     Default,
-
-    Hovering(Uid),
-
-    PointerDownOnObject(Uid),
-    PointerDownOnNothing,
-
+    PointerDown,
     MovingSelectedObjects(Vec<(Uid, Position)>),
+
+    SelectingBounds,
 }
 
 pub fn handle_select_tool_input(
     world: &mut World,
     events: &Vec<InputMessage>,
-    _effects: &mut [Effect],
+    _effects: &mut EffectQue,
 ) -> Result<(), anyhow::Error> {
     let mut state = world.resource::<SelectTool>().clone();
 
     for event in events {
         state = match (&state, event) {
-            (SelectTool::Default, InputMessage::PointerMove { .. }) => {
-                let top = world.selectable_hits().top();
-                let target = top.map(|hit| hit.uid);
-                if let Some(target) = target {
-                    SelectedApi::set_object_hovered(world, target, Hovered::Hovered)?;
-                    SelectTool::Hovering(target)
-                } else {
-                    SelectTool::Default
-                }
-            }
-            (SelectTool::Hovering(prev_hovered), InputMessage::PointerMove { .. }) => {
-                let top = world.selectable_hits().top();
-                if let Some(SelectableHit { entity, uid, .. }) = top {
-                    let target = *uid;
-                    let current_value = *world.get::<Hovered>(*entity).unwrap();
+            (SelectTool::PointerDown, InputMessage::DoubleClick { screen_pos, .. }) => {
+                let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+                let top_hit = hits.top().map(|hit| (*hit.uid(), hit.object_type()));
 
-                    if uid != prev_hovered {
-                        SelectedApi::set_object_hovered(world, *prev_hovered, Hovered::Unhovered)?;
+                match top_hit {
+                    None => {
+                        let inspected_uid = world
+                            .query_filtered::<&Uid, With<Inspected>>()
+                            .get_single(world)
+                            .ok();
+                        if inspected_uid.is_some() {
+                            SceneApi::uninspect(world).unwrap();
+                        }
+                        SelectTool::Default
                     }
-                    if !matches!(current_value, Hovered::Hovered) {
-                        SelectedApi::set_object_hovered(world, target, Hovered::Hovered)?;
+                    Some(hit) => {
+                        #[allow(clippy::single_match)]
+                        match hit {
+                            (uid, ObjectType::Vector) => {
+                                SceneApi::inspect(world, uid).unwrap();
+                            },
+                            _ => (),
+                        }
+                        SelectTool::Default
                     }
-                    SelectTool::Hovering(target)
-                } else {
-                    SelectedApi::set_object_hovered(world, *prev_hovered, Hovered::Unhovered)?;
-                    SelectTool::Default
                 }
             }
-            (SelectTool::Default, InputMessage::PointerDown { modifiers, .. })
-            | (SelectTool::Hovering(_), InputMessage::PointerDown { modifiers, .. }) => {
-                let top = world.selectable_hits().top();
-                if let Some(SelectableHit { uid, .. }) = top {
-                    let target = *uid;
+
+            (SelectTool::Default, InputMessage::PointerMove { screen_pos, .. }) => {
+                SelectedApi::unhover_all(world).unwrap();
+                let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+                let top = hits.top();
+                if let Some(hit) = top {
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Pointer));
+                    SelectedApi::set_object_hovered(world, *hit.uid(), Hovered::Unhovered).unwrap();
+                } else {
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Default));
+                }
+
+                SelectTool::Default
+            }
+
+            (
+                SelectTool::Default,
+                InputMessage::PointerDown {
+                    modifiers,
+                    screen_pos,
+                    ..
+                },
+            ) => {
+                let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+                let top = hits.top();
+
+                if let Some(hit) = top {
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::PointerTap));
+                    let target = *hit.uid();
                     if matches!(modifiers.shift, ButtonState::Pressed) {
                         SelectedApi::set_object_selected(world, target, Selected::Selected)?;
                     } else {
@@ -93,55 +113,70 @@ pub fn handle_select_tool_input(
                             Selected::Selected,
                         )?;
                     }
-                    SelectTool::PointerDownOnObject(target)
                 } else {
-                    SelectTool::PointerDownOnNothing
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::DefaultTap));
                 }
-            }
-            (SelectTool::PointerDownOnObject(uid), InputMessage::PointerClick { .. }) => {
-                SelectTool::Hovering(*uid)
-            }
-            (SelectTool::PointerDownOnNothing, InputMessage::PointerClick { .. }) => {
-                let any_selected = world
-                    .query::<&Selected>()
-                    .iter(world)
-                    .any(|s| matches!(s, Selected::Selected));
-                if any_selected {
-                    SelectedApi::deselect_all(world)?;
-                }
-                SelectTool::Default
+                SelectTool::PointerDown
             }
 
             (
-                SelectTool::PointerDownOnObject(_),
+                SelectTool::PointerDown,
                 InputMessage::DragStart {
-                    world_delta_pos, ..
+                    screen_start_pos, ..
                 },
             ) => {
-                let original_positions: Vec<_> = world
-                    .query::<(&Uid, &Position, &Selected)>()
-                    .iter(world)
-                    .filter_map(|(uid, pos, selected)| {
-                        if matches!(selected, Selected::Selected) {
-                            Some((*uid, *pos))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
+                let selected = SelectedApi::query_selected_uids(world);
+                let hits =
+                    SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_start_pos);
+                let top_hit = hits.top().map(|hit| (hit.uid(), hit.object_type()));
 
-                let mut builder = world.changeset();
+                warn!("top_hit: {top_hit:?}");
+                let dragging_selected = top_hit.map_or(false, |(hit_uid, _)| {
+                    selected.iter().any(|uid| *uid == *hit_uid)
+                });
+                warn!("dragging_selected: {dragging_selected:?}\n{selected:?}");
+                if dragging_selected {
+                    let original_positions: Vec<_> = world
+                        .query::<(&Uid, &Position, &Selected)>()
+                        .iter(world)
+                        .filter_map(|(uid, pos, selected)| {
+                            if matches!(selected, Selected::Selected) {
+                                Some((*uid, *pos))
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
 
-                for (target, position) in &original_positions {
-                    let next_position = Position(position.0 + *world_delta_pos);
-                    builder.entity(*target).apply(next_position);
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::PointerMove));
+                    SelectTool::MovingSelectedObjects(original_positions)
+                } else {
+                    SelectTool::SelectingBounds
                 }
+            }
 
-                let changeset = builder.build();
+            (SelectTool::SelectingBounds, InputMessage::DragEnd { .. }) => SelectTool::Default,
 
-                UndoRedoApi::execute(world, changeset)?;
+            (SelectTool::PointerDown, InputMessage::PointerClick { screen_pos, .. }) => {
+                let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
+                let hit_uid = hits.top().map(|hit| hit.uid());
+                let mut q_selected = world.query::<&Selected>();
 
-                SelectTool::MovingSelectedObjects(original_positions)
+                let hit_selected = hit_uid.map_or(false, |hit_uid| {
+                    q_selected
+                        .get(world, hit_uid.entity(world).unwrap())
+                        .ok()
+                        .map_or(false, |s| matches!(s, Selected::Selected))
+                });
+
+                let any_selected = q_selected
+                    .iter(world)
+                    .any(|s| matches!(s, Selected::Selected));
+
+                if !hit_selected && any_selected {
+                    SelectedApi::deselect_all(world)?;
+                }
+                SelectTool::Default
             }
 
             (
@@ -150,6 +185,7 @@ pub fn handle_select_tool_input(
                     world_delta_pos, ..
                 },
             ) => {
+                _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::PointerMove));
                 let mut builder = world.changeset();
 
                 for (target, position) in original_positions {
@@ -169,6 +205,7 @@ pub fn handle_select_tool_input(
                     world_delta_pos, ..
                 },
             ) => {
+                _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Default));
                 let mut builder = world.changeset();
 
                 for (target, position) in original_positions {
@@ -192,4 +229,23 @@ pub fn handle_select_tool_input(
     *world.resource_mut::<SelectTool>() = state;
 
     Ok(())
+}
+
+pub fn activate_select_tool(
+    world: &mut World,
+    _commands: &mut ChangesetCommands,
+    effects: &mut EffectQue,
+) {
+    let mut tool = world.resource_mut::<SelectTool>();
+    *tool = SelectTool::Default;
+    effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Default))
+}
+
+pub fn deactivate_select_tool(
+    world: &mut World,
+    _commands: &mut ChangesetCommands,
+    _effects: &mut EffectQue,
+) {
+    let mut tool = world.resource_mut::<SelectTool>();
+    *tool = SelectTool::Deactive;
 }

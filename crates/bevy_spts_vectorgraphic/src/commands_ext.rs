@@ -17,8 +17,8 @@ impl Command for LinkEdgeCommand {
     fn apply(self, world: &mut World) {
         let LinkEdgeCommand {
             edge,
-            next_endpoint,
-            prev_endpoint,
+            next_endpoint: next_endpoint_uid,
+            prev_endpoint: prev_endpoint_uid,
         } = self;
         //
         // if let Some(mut edge) = world.get_mut::<Edge>(edge) {
@@ -27,21 +27,38 @@ impl Command for LinkEdgeCommand {
         // } else {
         //     warn!("LinkEdgeCommand: Attempted to get Edge component on enttiy {edge:?}, but none found.");
         // }
-        let mut reg = world.resource_mut::<UidRegistry>();
-        let next_endpoint_e = reg.entity(next_endpoint);
-        let prev_endpoint_e = reg.entity(prev_endpoint);
+        let reg = world.resource::<UidRegistry>();
+        let next_endpoint_e = reg.entity(next_endpoint_uid);
+        let prev_endpoint_e = reg.entity(prev_endpoint_uid);
 
-        if let Some(mut endpoint) = world.get_mut::<Endpoint>(next_endpoint_e) {
-            endpoint.prev_edge = Some(edge);
-        } else {
-            warn!("LinkEdgeCommand: Attempted to get Endpoint component on entity {next_endpoint:?}, but none found.");
-            return;
+        let endpoints = world.get_many_entities_mut([prev_endpoint_e, next_endpoint_e]).map(|[prev, next]| (prev, next));
+
+        let endpoints = match  endpoints {
+            Ok(ep) => ep,
+            Err(reason) => {
+                warn!("LinkEdgeCommand: Provided entities for next_endpoint ({next_endpoint_uid}) or prev_endpoint ({prev_endpoint_uid}) do not exist.. {reason:?}");
+                return;
+            }
         };
-        if let Some(mut endpoint) = world.get_mut::<Endpoint>(prev_endpoint_e) {
-            endpoint.next_edge = Some(edge);
+
+        let (mut prev, mut next) = endpoints;
+        let endpoints = (prev.get_mut::<Endpoint>(), next.get_mut::<Endpoint>());
+
+        if let (Some(mut prev_endpoint), Some(mut next_endpoint)) = endpoints  {
+            if !prev_endpoint.can_link_edge() {
+                warn!("LinkEdgeCommand: Tried to link to endpoint {prev_endpoint_uid} but all link slots are full.");
+                return;
+            }
+            if !next_endpoint.can_link_edge() {
+                warn!("LinkEdgeCommand: Tried to link to endpoint {next_endpoint_uid} but all link slots are full.");
+                return;
+            }
+
+            prev_endpoint.link_edge(&edge).unwrap();
+            next_endpoint.link_edge(&edge).unwrap();
         } else {
-            warn!("LinkEdgeCommand: Attempted to get Endpoint component on entity {prev_endpoint:?}, but none found.");
-        };
+            warn!("LinkEdgeCommand: Tried to link edge between endpoints {prev_endpoint_uid} and {next_endpoint_uid} but couldn't get `Endpoint` components.")
+        }
     }
 }
 
@@ -119,7 +136,7 @@ impl VectorGraphicCommandsExt for Commands<'_, '_> {
                     edge.next_endpoint
                 )
             });
-        endpoint.prev_edge = None;
+        endpoint.unlink_edge(&edge_uid).unwrap();
 
         let mut endpoint = q_endpoints
             .get_mut(reg.entity(edge.prev_endpoint))
@@ -129,7 +146,7 @@ impl VectorGraphicCommandsExt for Commands<'_, '_> {
                     edge.prev_endpoint
                 )
             });
-        endpoint.next_edge = None
+        endpoint.unlink_edge(&edge_uid).unwrap();
     }
 }
 

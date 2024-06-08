@@ -18,9 +18,12 @@ pub mod components;
 pub mod lyon_components;
 pub mod systems;
 mod utils;
+pub mod material;
 
 #[cfg(feature = "changeset")]
 mod changeset;
+
+pub const SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(3296418235224473622063937256920);
 
 pub mod prelude {
     pub use super::{VectorGraphicPlugin, VectorGraphicSet};
@@ -30,6 +33,7 @@ pub mod prelude {
     pub use crate::systems::*;
     #[cfg(feature = "changeset")]
     pub use crate::changeset::*;
+    pub use crate::material::*;
 }
 
 // Re-export lyon
@@ -40,7 +44,7 @@ pub mod lyon_path {
     pub use lyon_path::*;
 }
 
-use bevy::{prelude::*, transform::TransformSystem};
+use bevy::{asset::load_internal_asset, prelude::*, sprite::Material2dPlugin, transform::TransformSystem};
 
 use systems::{
     sys_add_spawned_edges_to_vector_graphic, sys_add_spawned_endpoints_to_vector_graphic,
@@ -48,6 +52,8 @@ use systems::{
     sys_remesh_vector_graphic, sys_remove_despawned_edges_from_vector_graphic,
     sys_remove_despawned_endpoints_from_vector_graphic,
 };
+
+use crate::material::{sys_sync_vector_graphic_material, VectorGraphicMaterial};
 
 #[derive(SystemSet, Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub enum VectorGraphicSet {
@@ -68,6 +74,14 @@ impl Plugin for VectorGraphicPlugin {
     fn build(&self, app: &mut App) {
         let fill_tess = lyon_tessellation::FillTessellator::new();
         let stroke_tess = lyon_tessellation::StrokeTessellator::new();
+        load_internal_asset!(
+            app,
+            SHADER_HANDLE,
+            "./shaders/vector_graphic_material.wgsl",
+            Shader::from_wgsl
+        );
+        app.add_plugins(Material2dPlugin::<VectorGraphicMaterial>::default());
+
         app.insert_resource(SptsFillTessellator(fill_tess))
             .insert_resource(SptsStrokeTessellator(stroke_tess));
 
@@ -101,5 +115,7 @@ impl Plugin for VectorGraphicPlugin {
             PostUpdate,
             sys_remesh_vector_graphic.in_set(VectorGraphicSet::Remesh),
         );
+
+        app.add_systems(PostUpdate, sys_sync_vector_graphic_material);
     }
 }

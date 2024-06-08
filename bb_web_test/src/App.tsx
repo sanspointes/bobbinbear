@@ -12,6 +12,7 @@ import { useBBApp } from './hooks/useBobbinBear/app';
 import { createResizeObserver } from '@solid-primitives/resize-observer';
 import LoadingOverlay from './components/loading-overlay';
 import { Toolbar } from './features/toolbar';
+import clsx from 'clsx';
 
 function App() {
     const app = useBBApp();
@@ -29,8 +30,8 @@ function App() {
             },
             onComplete() {
                 setLoading(0.8);
-                setLoadingStatus('Booting Up...')
-            }
+                setLoadingStatus('Booting Up...');
+            },
         });
         setCtx(createBobbinBearContext());
         setTimeout(() => {
@@ -73,7 +74,10 @@ function App() {
                         >
                             <canvas
                                 id="bb-canvas"
-                                class="absolute top-0 left-0 ring-transparent"
+                                class={clsx(
+                                    'absolute top-0 left-0 ring-transparent',
+                                    `cursor-${ctx()?.tools.cursor()}`,
+                                )}
                             />
                         </div>
                     </div>

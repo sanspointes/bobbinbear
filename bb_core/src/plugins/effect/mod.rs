@@ -117,19 +117,20 @@ pub fn sys_emit_effects(world: &mut World) {
     res.forward_effects_to_js();
 }
 
-#[allow(non_snake_case)]
+#[allow(non_snake_case, clippy::empty_docs)]
 mod effects {
     use bevy::ecs::event::Event;
     use bevy_spts_fragments::prelude::Uid;
     use serde::{Deserialize, Serialize};
     use tsify::Tsify;
 
-    use crate::tools::BobbinTool;
+    use crate::tools::{BobbinCursor, BobbinTool};
 
     #[derive(Event, Tsify, Serialize, Deserialize, Debug, Clone)]
     #[tsify(into_wasm_abi, from_wasm_abi)]
     #[serde(tag = "tag", content = "value")]
     pub enum Effect {
+        Ready,
         // Whenever the selection changes
         SelectionChanged(Vec<Uid>),
 
@@ -142,5 +143,6 @@ mod effects {
             uninspected: Option<Uid>,
         },
         ToolChanged(BobbinTool),
+        CursorChanged(BobbinCursor),
     }
 }

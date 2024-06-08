@@ -1,6 +1,7 @@
-use bevy::{app::{App, Plugin, PreStartup}, asset::Assets, ecs::system::{Res, ResMut, Resource, SystemParam}, prelude::Deref, render::mesh::Mesh, sprite::Mesh2dHandle};
+use bevy::{app::{App, Plugin, PreStartup}, asset::{Assets, Handle}, ecs::system::{Res, ResMut, Resource, SystemParam}, math::primitives::{Circle, Rectangle}, prelude::Deref, render::mesh::Mesh, sprite::Mesh2dHandle};
+use bevy_mod_raycast::markers::SimplifiedMesh;
 
-use self::handles::build_mesh_endpoint_handle;
+use self::handles::{build_mesh_control_handle, build_mesh_endpoint_handle};
 
 mod handles;
 
@@ -20,12 +21,29 @@ impl Plugin for BobbinMeshesPlugin {
 
 #[derive(Resource, Default)]
 pub struct BobbinMeshesResource {
+    endpoint_simplified_mesh: Option<Handle<Mesh>>,
     endpoint_mesh: Option<Mesh2dHandle>,
+
+    control_simplified_mesh: Option<Handle<Mesh>>,
+    control_mesh: Option<Mesh2dHandle>,
 }
 
 impl BobbinMeshesResource {
+    pub fn endpoint_simplified_mesh(&self) -> SimplifiedMesh {
+        SimplifiedMesh {
+            mesh: self.endpoint_simplified_mesh.clone().unwrap(),
+        }
+    }
     pub fn endpoint_mesh(&self) -> Mesh2dHandle {
         self.endpoint_mesh.as_ref().unwrap().clone()
+    }
+    pub fn control_simplified_mesh(&self) -> SimplifiedMesh {
+        SimplifiedMesh {
+            mesh: self.control_simplified_mesh.clone().unwrap(),
+        }
+    }
+    pub fn control_mesh(&self) -> Mesh2dHandle {
+        self.control_mesh.as_ref().unwrap().clone()
     }
 }
 
@@ -36,6 +54,16 @@ fn sys_setup(
     let endpoint_mesh = build_mesh_endpoint_handle();
     let handle = Mesh2dHandle(meshes.add(endpoint_mesh));
     res.endpoint_mesh = Some(handle);
+
+    let endpoint_simplified_mesh = meshes.add(Circle::new(8.));
+    res.endpoint_simplified_mesh = Some(endpoint_simplified_mesh);
+
+    let control_mesh = build_mesh_control_handle();
+    let handle = Mesh2dHandle(meshes.add(control_mesh));
+    res.control_mesh = Some(handle);
+
+    let control_simplified_mesh = meshes.add(Rectangle::new(8., 8.));
+    res.control_simplified_mesh = Some(control_simplified_mesh);
 }
 
 #[derive(SystemParam, Deref)]

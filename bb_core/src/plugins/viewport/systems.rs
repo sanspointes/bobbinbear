@@ -20,6 +20,7 @@ pub fn sys_setup_viewport(
             },
             ..Default::default()
         })
+        .insert(VisibilityBundle::default())
         .insert(BobbinViewport::default())
         .insert(Name::from("Viewport"))
         .id();

@@ -1,8 +1,8 @@
 use std::{any::TypeId, fmt::Display, sync::Arc};
 
 use anyhow::anyhow;
-use bevy_ecs::{bundle::Bundle, component::Component, reflect::AppTypeRegistry, world::World};
-use bevy_reflect::{FromReflect, Reflect};
+use bevy_ecs::{bundle::Bundle, component::Component, reflect::AppTypeRegistry, world::{Mut, World}};
+use bevy_reflect::{FromReflect, Reflect, TypeRegistry};
 use bevy_spts_fragments::prelude::{
     BundleFragment, BundleToFragment, EntityFragment, Uid,
 };
@@ -33,6 +33,23 @@ impl Display for Changeset {
 }
 
 impl Changeset {
+    /// Uses resource_scope to create a ChangesetCommands without breaking mutable world access.
+    /// WARN: If you try to borrow `AppTypeRegistry` from world it will panic.  Instead use `commands.type_registry`.
+    ///
+    /// * `world`: 
+    /// * `f`: 
+    pub fn scoped_commands(
+        world: &mut World,
+        f: impl FnOnce(&mut World, &mut ChangesetCommands),
+    ) -> Self {
+        let v = world.resource_scope::<AppTypeRegistry, Self>(|world, type_registry: Mut<AppTypeRegistry>| {
+            let mut changeset_commands = ChangesetCommands::new(&type_registry);
+            (f)(world, &mut changeset_commands);
+            changeset_commands.build()
+        });
+        v
+    }
+
     pub fn apply(
         &self,
         world: &mut World,
@@ -100,23 +117,34 @@ impl Changeset {
 
         Ok(Changeset { changes: inverse_changes })
     }
+
+    pub fn extend(&mut self, other: Changeset) -> &mut Self {
+        self.changes.extend(other.changes);
+        self
+    }
 }
 
 /// A builder for [`Changeset`] that mirrors the Bevy native [`Commands`] api.
 ///
 /// When you've finished building your changeset call `build()` to recieve the [Changeset].
 pub struct ChangesetCommands<'w> {
-    world: &'w World,
+    type_registry: &'w AppTypeRegistry,
     changes: Vec<Arc<dyn Change>>,
 }
 
 impl<'w> ChangesetCommands<'w> {
+    pub fn type_registry(&self) -> std::sync::RwLockReadGuard<TypeRegistry> {
+        self.type_registry.read()
+    }
+    pub fn changes(&self) -> &Vec<Arc<dyn Change>> {
+        &self.changes
+    }
     /// Creates a new ChangesetCommands from the world.
     ///
     /// * `world`:
-    pub fn new(world: &'w World) -> Self {
+    pub fn new(type_registry: &'w AppTypeRegistry) -> Self {
         Self {
-            world,
+            type_registry,
             changes: Vec::default(),
         }
     }
@@ -196,10 +224,7 @@ impl<'w> ChangesetCommands<'w> {
     ) -> EntityChangeset<'w, 'a> {
         let uid = Uid::default();
 
-        let bundle = {
-            let type_registry = self.world.resource::<AppTypeRegistry>().read();
-            bundle.to_fragment(&type_registry)
-        };
+        let bundle = bundle.to_fragment(&self.type_registry.read());
 
         let change = SpawnChange::new(EntityFragment::new(uid, bundle), None);
         self.add(Arc::new(change));
@@ -271,10 +296,7 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
     /// changeset_commands.entity(uid).insert(MyComponent(0));
     /// ```
     pub fn insert<B: Bundle + Reflect + FromReflect>(&mut self, bundle: B) -> &mut Self {
-        let bundle = {
-            let type_registry = self.builder.world.resource::<AppTypeRegistry>().read();
-            bundle.to_fragment(&type_registry)
-        };
+        let bundle = bundle.to_fragment(&self.builder.type_registry.read());
 
         self.builder
             .add(Arc::new(InsertChange::new(self.target, bundle)));
@@ -304,10 +326,7 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
     /// changeset_commands.entity(uid).apply(MyComponent(0));
     /// ```
     pub fn apply<B: Bundle + Reflect + FromReflect>(&mut self, bundle: B) -> &mut Self {
-        let bundle = {
-            let type_registry = self.builder.world.resource::<AppTypeRegistry>().read();
-            bundle.to_fragment(&type_registry)
-        };
+        let bundle = bundle.to_fragment(&self.builder.type_registry.read());
         self.builder
             .add(Arc::new(ApplyChange::new(self.target, bundle)));
         self

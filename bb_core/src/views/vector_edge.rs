@@ -216,7 +216,7 @@ fn update_vector_edge_mesh(
         // Compute AABB
         let aabb = mesh.compute_aabb();
         if aabb.is_none() {
-            warn!("Generated edge mesh could not generate an Aabb box. {mesh:?}");
+            // warn!("Generated edge mesh could not generate an Aabb box. {mesh:?}");
         }
         (mesh, aabb)
     };

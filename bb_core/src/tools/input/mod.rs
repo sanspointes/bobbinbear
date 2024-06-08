@@ -4,7 +4,7 @@ use std::{mem::discriminant, ops::Sub};
 
 use bevy::{
     input::{keyboard::KeyboardInput, mouse::MouseButtonInput, ButtonState},
-    math::Vec3Swizzles,
+    math::{Vec2, Vec3Swizzles},
     prelude::*,
     sprite::MaterialMesh2dBundle,
     utils::HashSet,
@@ -21,8 +21,14 @@ pub use self::types::{InputMessage, ModifiersState, RawInputMessage};
 #[derive(Debug, Clone, Reflect)]
 pub struct RaycastRawInput;
 
-const DRAG_THRESHOLD: f32 = 2.;
+const DRAG_THRESHOLD: f32 = 5.;
 const BG_HIT_Z_INDEX: f32 = -100.;
+
+#[derive(SystemSet, Clone, PartialEq, Eq, Debug, Hash)]
+pub enum InputSet {
+    ConvertInputMessages,
+    HandleInputMessages,
+}
 
 /// The input processor plugin processes raw input (mouse down/up, move, etc)
 /// into more useful events like Click, DragStart, move, etc.
@@ -32,12 +38,24 @@ pub struct BobbinInputPlugin;
 impl Plugin for BobbinInputPlugin {
     fn build(&self, app: &mut App) {
         app.insert_resource(RawInputResource::default())
+            .insert_resource(InputState::Default {
+                screen_pos: Vec2::default(),
+                world_pos: Vec2::default(),
+            })
             .add_event::<RawInputMessage>()
             .add_event::<InputMessage>()
             .add_plugins(DeferredRaycastingPlugin::<RaycastRawInput>::default())
             // Hit plane creation and movement
             .add_systems(Startup, sys_setup_input_plugin.after(sys_setup_viewport))
             // Input events
+            .configure_sets(
+                First,
+                InputSet::ConvertInputMessages.before(InputSet::HandleInputMessages),
+            )
+            .configure_sets(
+                First,
+                InputSet::HandleInputMessages.before(RaycastSystem::BuildRays::<RaycastRawInput>),
+            )
             .add_systems(
                 First,
                 (
@@ -48,9 +66,66 @@ impl Plugin for BobbinInputPlugin {
                     sys_mouse_movement_input, // This also updates the raycast ray
                     sys_keyboard_input,
                 )
-                    .before(RaycastSystem::BuildRays::<RaycastRawInput>),
+                    .in_set(InputSet::ConvertInputMessages),
             )
-            .add_systems(PreUpdate, sys_raw_input_processor);
+            .add_systems(
+                First,
+                sys_raw_input_processor.in_set(InputSet::HandleInputMessages),
+            );
+    }
+}
+
+#[derive(Resource, Debug, Clone, Copy)]
+pub enum InputState {
+    Default {
+        screen_pos: Vec2,
+        world_pos: Vec2,
+    },
+    PointerDown {
+        screen_start_pos: Vec2,
+        world_start_pos: Vec2,
+        screen_pos: Vec2,
+        world_pos: Vec2,
+    },
+    Dragging {
+        screen_start_pos: Vec2,
+        world_start_pos: Vec2,
+        screen_pos: Vec2,
+        world_pos: Vec2,
+    },
+}
+
+#[allow(dead_code)]
+impl InputState {
+    pub fn screen_pos(&self) -> Vec2 {
+        match self {
+            InputState::Default { screen_pos, .. }
+            | InputState::PointerDown { screen_pos, .. }
+            | InputState::Dragging { screen_pos, .. } => *screen_pos,
+        }
+    }
+    pub fn world_pos(&self) -> Vec2 {
+        match self {
+            InputState::Default { world_pos, .. }
+            | InputState::PointerDown { world_pos, .. }
+            | InputState::Dragging { world_pos, .. } => *world_pos,
+        }
+    }
+
+    pub fn screen_start_pos(&self) -> Option<Vec2> {
+        match self {
+            InputState::Default { .. } => None,
+            InputState::PointerDown { screen_start_pos, .. }
+            | InputState::Dragging { screen_start_pos, .. } => Some(*screen_start_pos),
+        }
+    }
+
+    pub fn world_start_pos(&self) -> Option<Vec2> {
+        match self {
+            InputState::Default { .. } => None,
+            InputState::PointerDown { world_start_pos, .. }
+            | InputState::Dragging { world_start_pos, .. } => Some(*world_start_pos),
+        }
     }
 }
 
@@ -59,9 +134,9 @@ pub struct RawInputResource {
     is_dragging: bool,
     left_pressed: bool,
     // right_pressed: bool,
-    cur_pos: Vec2,
-    down_pos: Vec2,
-    down_pos_world: Vec2,
+    screen_pos: Vec2,
+    screen_start_pos: Vec2,
+    world_start_pos: Vec2,
     modifiers: ModifiersState,
 
     double_click_timeout: f32, // TODO: Move to settings resource.
@@ -72,9 +147,9 @@ impl Default for RawInputResource {
         Self {
             is_dragging: false,
             left_pressed: false,
-            cur_pos: Vec2::default(),
-            down_pos: Vec2::default(),
-            down_pos_world: Vec2::default(),
+            screen_pos: Vec2::default(),
+            screen_start_pos: Vec2::default(),
+            world_start_pos: Vec2::default(),
             modifiers: ModifiersState::default(),
             double_click_timeout: 0.3f32,
             last_click_time: 0.0f32,
@@ -91,18 +166,19 @@ impl Default for RawInputResource {
 pub fn sys_raw_input_processor(
     time: Res<Time>,
     mut res: ResMut<RawInputResource>,
+    mut state: ResMut<InputState>,
     mut ev_reader: EventReader<RawInputMessage>,
     mut ev_writer: EventWriter<InputMessage>,
     bg_hit_query: Query<&RaycastMesh<RaycastRawInput>, With<InputHitPlaneTag>>,
     q_window: Query<&Window, With<PrimaryWindow>>,
 ) {
-    let mut world_point = Vec2::new(0., 0.);
+    let mut world_pos = Vec2::new(0., 0.);
 
     if let Ok(raycast_source) = bg_hit_query.get_single() {
         let intersections = raycast_source.intersections();
 
         if let Some((_, data)) = intersections.first() {
-            world_point = data.position().xy();
+            world_pos = data.position().xy();
         } else {
             warn!("Warn: Input system cannot get world position of mouse!.");
         }
@@ -119,52 +195,82 @@ pub fn sys_raw_input_processor(
     for msg in ev_reader.read() {
         match msg {
             RawInputMessage::PointerMove(pos) => {
-                res.cur_pos.x = pos.x;
-                res.cur_pos.y = window_size.y - pos.y;
+                res.screen_pos.x = pos.x;
+                res.screen_pos.y = window_size.y - pos.y;
 
+                let screen_start_pos = res.screen_start_pos;
+                let screen_pos = res.screen_pos;
+                let world_start_pos = res.world_start_pos;
                 if res.left_pressed
                     && !res.is_dragging
-                    && res.cur_pos.distance(res.down_pos) > DRAG_THRESHOLD
+                    && res.screen_pos.distance(res.screen_start_pos) > DRAG_THRESHOLD
                 {
                     res.is_dragging = true;
                     to_send.push(InputMessage::DragStart {
-                        screen_pos: res.cur_pos,
-                        screen_start_pos: res.down_pos,
-                        screen_delta_pos: res.cur_pos.sub(res.down_pos),
-                        world_pos: world_point,
-                        world_start_pos: res.down_pos_world,
-                        world_delta_pos: world_point.sub(res.down_pos_world),
-                        modifiers: res.modifiers,
-                    })
-                } else if res.is_dragging {
-                    to_send.push(InputMessage::DragMove {
-                        screen_pos: res.cur_pos,
-                        screen_start_pos: res.down_pos,
-                        screen_delta_pos: res.cur_pos.sub(res.down_pos),
-                        world_pos: world_point,
-                        world_start_pos: res.down_pos_world,
-                        world_delta_pos: world_point.sub(res.down_pos_world),
+                        screen_pos,
+                        screen_start_pos,
+                        screen_delta_pos: res.screen_pos.sub(res.screen_start_pos),
+                        world_pos,
+                        world_start_pos,
+                        world_delta_pos: world_pos.sub(res.world_start_pos),
                         modifiers: res.modifiers,
                     });
+                }
+                if res.is_dragging {
+                    to_send.push(InputMessage::DragMove {
+                        screen_pos: res.screen_pos,
+                        screen_start_pos: res.screen_start_pos,
+                        screen_delta_pos: res.screen_pos.sub(res.screen_start_pos),
+                        world_pos,
+                        world_start_pos: res.world_start_pos,
+                        world_delta_pos: world_pos.sub(res.world_start_pos),
+                        modifiers: res.modifiers,
+                    });
+                    *state = InputState::Dragging {
+                        screen_start_pos,
+                        world_start_pos,
+                        screen_pos,
+                        world_pos,
+                    }
                 } else {
                     to_send.push(InputMessage::PointerMove {
-                        screen_pos: res.cur_pos,
-                        world_pos: world_point,
+                        screen_pos: res.screen_pos,
+                        world_pos,
                         modifiers: res.modifiers,
                     });
+                    if res.left_pressed {
+                        *state = InputState::PointerDown {
+                            screen_start_pos,
+                            world_start_pos,
+                            screen_pos,
+                            world_pos,
+                        };
+                    } else {
+                        *state = InputState::Default {
+                            screen_pos,
+                            world_pos,
+                        };
+                    }
                 }
             }
             RawInputMessage::PointerInput { pressed, button } => match (button, pressed) {
                 (MouseButton::Left, ButtonState::Pressed) => {
                     if !res.left_pressed {
                         res.left_pressed = true;
-                        res.down_pos = res.cur_pos;
-                        res.down_pos_world = world_point;
+                        res.screen_start_pos = res.screen_pos;
+                        res.world_start_pos = world_pos;
+
                         to_send.push(InputMessage::PointerDown {
-                            screen_pos: res.cur_pos,
-                            world_pos: world_point,
+                            screen_pos: res.screen_pos,
+                            world_pos,
                             modifiers: res.modifiers,
                         });
+                        *state = InputState::PointerDown {
+                            screen_start_pos: res.screen_start_pos,
+                            world_start_pos: res.world_start_pos,
+                            screen_pos: res.screen_pos,
+                            world_pos,
+                        };
                     }
                 }
                 (MouseButton::Left, ButtonState::Released) => {
@@ -172,16 +278,25 @@ pub fn sys_raw_input_processor(
                     if res.is_dragging {
                         res.is_dragging = false;
                         to_send.push(InputMessage::DragEnd {
-                            screen_pos: res.cur_pos,
-                            screen_start_pos: res.down_pos,
-                            screen_delta_pos: res.cur_pos.sub(res.down_pos),
-                            world_pos: world_point,
-                            world_start_pos: res.down_pos_world,
-                            world_delta_pos: world_point.sub(res.down_pos_world),
+                            screen_pos: res.screen_pos,
+                            screen_start_pos: res.screen_start_pos,
+                            screen_delta_pos: res.screen_pos.sub(res.screen_start_pos),
+                            world_pos,
+                            world_start_pos: res.world_start_pos,
+                            world_delta_pos: world_pos.sub(res.world_start_pos),
                             modifiers: res.modifiers,
                         });
+                        *state = InputState::Default {
+                            screen_pos: res.screen_pos,
+                            world_pos,
+                        };
                     } else {
                         let curr_time = time.elapsed_seconds();
+
+                        *state = InputState::Default {
+                            screen_pos: res.screen_pos,
+                            world_pos,
+                        };
 
                         if curr_time < res.last_click_time + res.double_click_timeout {
                             res.last_click_time = 0f32;
@@ -191,16 +306,16 @@ pub fn sys_raw_input_processor(
                                 res.last_click_time, res.double_click_timeout
                             );
                             to_send.push(InputMessage::DoubleClick {
-                                screen_pos: res.cur_pos,
-                                world_pos: world_point,
+                                screen_pos: res.screen_start_pos,
+                                world_pos: res.world_start_pos,
                                 modifiers: res.modifiers,
                             });
                         } else {
                             res.last_click_time = time.elapsed_seconds();
 
                             to_send.push(InputMessage::PointerClick {
-                                screen_pos: res.cur_pos,
-                                world_pos: world_point,
+                                screen_pos: res.screen_start_pos,
+                                world_pos: res.world_start_pos,
                                 modifiers: res.modifiers,
                             });
                         }

@@ -1,11 +1,13 @@
 use std::collections::VecDeque;
 
-use bevy::{ecs::system::SystemState, prelude::*};
+use bevy::prelude::*;
 use bevy_spts_uid::Uid;
 use bevy_spts_vectorgraphic::components::{Edge, Endpoint};
 
 use crate::{
-    ecs::InternalObject, plugins::effect::Effect, views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
+    ecs::InternalObject,
+    plugins::effect::Effect,
+    views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
 };
 
 pub fn handle_inspect_vector_object(
@@ -14,6 +16,7 @@ pub fn handle_inspect_vector_object(
     inspected: Uid,
 ) {
     let parent_entity = inspected.entity(world).unwrap();
+    warn!("handle_inspect_vector_object {parent_entity:?}-{inspected}");
     let mut changed = vec![inspected];
 
     // Create inspection views for vector endpoints
@@ -30,6 +33,7 @@ pub fn handle_inspect_vector_object(
         .collect();
 
     for (entity, uid) in endpoint_entities {
+        warn!("Inserting VectorEndpointVM on {entity:?}");
         world
             .entity_mut(entity)
             .insert(VectorEndpointVM)
@@ -51,6 +55,7 @@ pub fn handle_inspect_vector_object(
         .collect();
 
     for (entity, uid) in edge_entities {
+        warn!("Inserting VectorEdgeVM on {entity:?}");
         world
             .entity_mut(entity)
             .insert(VectorEdgeVM)
@@ -67,6 +72,7 @@ pub fn handle_uninspect_vector_object(
     uninspected: Uid,
 ) {
     let parent_entity = uninspected.entity(world).unwrap();
+    warn!("handle_uninspect_vector_object {parent_entity:?}-{uninspected}");
     let mut changed = vec![uninspected];
 
     // Create inspection views for vector endpoints
@@ -83,6 +89,7 @@ pub fn handle_uninspect_vector_object(
         .collect();
 
     for (entity, uid) in endpoint_entities {
+        warn!("Removing VectorEndpointVM on {entity:?}");
         world
             .entity_mut(entity)
             .remove::<VectorEndpointVM>()
@@ -104,6 +111,7 @@ pub fn handle_uninspect_vector_object(
         .collect();
 
     for (entity, uid) in edge_entities {
+        warn!("Removing VectorEdgeVM on {entity:?}");
         world
             .entity_mut(entity)
             .remove::<VectorEdgeVM>()

@@ -2,6 +2,7 @@
 //! and removes the dependency on moonshine_core::load
 
 use std::any::TypeId;
+use std::fmt::Debug;
 
 use bevy::{
     app::prelude::*,
@@ -142,7 +143,7 @@ impl<'a, T: Kind> ViewBuilder<'a, T> {
 }
 
 /// [`Component`] of an [`Entity`] associated with a [`View`].
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct Model<T: Kind> {
     view: Instance<View<T>>,
 }
@@ -161,7 +162,7 @@ impl<T: Kind> Model<T> {
 }
 
 /// [`Component`] of an [`Entity`] associated with a [`Model`].
-#[derive(Component)]
+#[derive(Component, Debug)]
 pub struct View<T: Kind> {
     model: Instance<T>,
 }

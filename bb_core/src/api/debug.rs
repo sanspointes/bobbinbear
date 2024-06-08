@@ -16,19 +16,21 @@ pub struct DebugApi;
 #[bevy_wasm_api]
 impl DebugApi {
     pub fn spawn_line(world: &mut World) -> Result<UndoRedoResult, anyhow::Error> {
-        let mut sys_state = SystemState::<ResMut<Assets<ColorMaterial>>>::new(world);
+        let mut sys_state = SystemState::<ResMut<Assets<VectorGraphicMaterial>>>::new(world);
         let mut materials = sys_state.get_mut(world);
-        let material = materials.add(Color::RED);
+        let material = materials.add(VectorGraphicMaterial::default());
 
         let mut builder = world.changeset();
         let vector_graphic = builder
             .spawn((
-                Name::from("Box"),
+                Name::from("Shape"),
                 ObjectBundle::new(ObjectType::Vector),
                 VectorGraphic::default(),
                 VectorGraphicPathStorage::default(),
-                StrokeOptions::default(),
+                StrokeOptions::default().with_line_width(3.),
+                StrokeColor(Color::BLACK),
                 FillOptions::default(),
+                FillColor(Color::GRAY),
                 material,
             ))
             .uid();
@@ -69,19 +71,21 @@ impl DebugApi {
         Ok(result)
     }
     pub fn spawn_box(world: &mut World) -> Result<UndoRedoResult, anyhow::Error> {
-        let mut sys_state = SystemState::<ResMut<Assets<ColorMaterial>>>::new(world);
+        let mut sys_state = SystemState::<ResMut<Assets<VectorGraphicMaterial>>>::new(world);
         let mut materials = sys_state.get_mut(world);
-        let material = materials.add(Color::RED);
+        let material = materials.add(VectorGraphicMaterial::default());
 
         let mut builder = world.changeset();
         let vector_graphic = builder
             .spawn((
-                Name::from("Box"),
+                Name::from("Shape"),
                 ObjectBundle::new(ObjectType::Vector),
                 VectorGraphic::default(),
                 VectorGraphicPathStorage::default(),
-                StrokeOptions::default(),
+                StrokeOptions::default().with_line_width(3.),
+                StrokeColor(Color::BLACK),
                 FillOptions::default(),
+                FillColor(Color::GRAY),
                 material,
             ))
             .uid();

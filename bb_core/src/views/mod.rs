@@ -1,9 +1,7 @@
 use bevy::{
-    app::{Plugin, PostUpdate, Update},
+    app::{Plugin, Update},
     ecs::schedule::{IntoSystemConfigs, IntoSystemSetConfigs, SystemSet},
-    transform::TransformSystem,
 };
-use bevy_spts_vectorgraphic::VectorGraphicSet;
 
 use crate::{plugins::model_view::RegisterView, tools::ToolSet, views::vector_edge::VectorEdgeVM, PosSet};
 
