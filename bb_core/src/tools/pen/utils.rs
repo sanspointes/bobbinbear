@@ -57,10 +57,10 @@ pub fn get_position_of_edge_at_t_value(
 
 pub fn split_edge_at_t_value(
     world: &World,
-    changeset: &mut ChangesetCommands,
+    commands: &mut ChangesetCommands,
     edge_e: Entity,
     t_value: f32,
-) -> Result<(), SplitEdgeError> {
+) -> Result<(Uid, Uid, Uid), SplitEdgeError> {
     let edge = world.get::<Edge>(edge_e).copied();
     let edge_variant = world.get::<EdgeVariant>(edge_e).copied();
 
@@ -75,9 +75,9 @@ pub fn split_edge_at_t_value(
 
     let split_position = get_position_of_edge_at_t_value(world, &edge, &edge_variant, t_value);
 
-    changeset.despawn_edge(*edge_uid);
+    commands.despawn_edge(*edge_uid);
 
-    let split_endpoint_uid = changeset
+    let split_endpoint_uid = commands
         .spawn((
             Name::from("Endpoint"),
             ObjectBundle::new(ObjectType::VectorEndpoint).with_position(split_position),
@@ -88,7 +88,7 @@ pub fn split_edge_at_t_value(
         .uid();
 
     // TODO: handle quadratic / cubics using derivative methods in crate::utils::curve
-    changeset
+    let edge_0 = commands
         .spawn_edge(
             EdgeVariant::Line,
             edge.prev_endpoint_uid(),
@@ -99,8 +99,9 @@ pub fn split_edge_at_t_value(
             ObjectBundle::new(ObjectType::VectorEdge),
             VectorEdgeVM,
         ))
-        .set_parent(parent_uid);
-    changeset
+        .set_parent(parent_uid)
+        .uid();
+    let edge_1 = commands
         .spawn_edge(
             EdgeVariant::Line,
             split_endpoint_uid,
@@ -111,9 +112,10 @@ pub fn split_edge_at_t_value(
             ObjectBundle::new(ObjectType::VectorEdge),
             VectorEdgeVM,
         ))
-        .set_parent(parent_uid);
+        .set_parent(parent_uid)
+        .uid();
 
-    Ok(())
+    Ok((split_endpoint_uid, edge_0, edge_1))
 }
 
 pub(super) fn get_new_vector_graphic_material(world: &mut World) -> Handle<VectorGraphicMaterial> {
@@ -154,55 +156,23 @@ pub(super) struct BuildEndpointAndEdgeOptions {
     pub from_endpoint: Uid,
     pub edge_variant: EdgeVariant,
 }
-/// * `builder`: ChangesetCommands to build the changeset into
-/// * `vector_object`: The uid of the parent vector object
-/// * `from_endpoint`: The endpoint that we're building off.
-pub(super) fn build_next_endpoint_and_edge(
+
+pub(super) fn build_next_endpoint(
     builder: &mut ChangesetCommands,
-    opts: &BuildEndpointAndEdgeOptions,
-    target: &BuildEndpointAndEdgeTarget,
-) -> (Uid, Uid) {
+    position: Vec2,
+    parent: Uid,
+) -> Uid {
     builder
-        .entity(opts.from_endpoint)
-        .remove::<PenToolBuildingFromEndpointTag>();
-
-    let endpoint_uid = match target {
-        BuildEndpointAndEdgeTarget::NewEndpoint { world_pos } => builder
-            .spawn((
-                Name::from("Endpoint"),
-                ObjectBundle::new(ObjectType::VectorEndpoint).with_position(*world_pos),
-                Endpoint::default(),
-                VectorEndpointVM,
-                InternalObject,
-                PenToolBuildingFromEndpointTag,
-            ))
-            .set_parent(opts.parent_uid)
-            .uid(),
-        BuildEndpointAndEdgeTarget::ExistingLinkNext(uid) => *uid,
-        BuildEndpointAndEdgeTarget::ExistingLinkPrevious(uid) => *uid,
-    };
-
-    let mut entity_builder = match target {
-        BuildEndpointAndEdgeTarget::NewEndpoint { .. }
-        | BuildEndpointAndEdgeTarget::ExistingLinkPrevious(_) => {
-            builder.spawn_edge(opts.edge_variant, opts.from_endpoint, endpoint_uid)
-        }
-        BuildEndpointAndEdgeTarget::ExistingLinkNext(_) => {
-            builder.spawn_edge(opts.edge_variant, endpoint_uid, opts.from_endpoint)
-        }
-    };
-
-    let edge_uid = entity_builder
-        .insert((
-            Name::from("Edge"),
-            ObjectBundle::new(ObjectType::VectorEdge),
+        .spawn((
+            Name::from("Endpoint"),
+            ObjectBundle::new(ObjectType::VectorEndpoint).with_position(position),
+            Endpoint::default(),
+            VectorEndpointVM,
             InternalObject,
+            PenToolBuildingFromEndpointTag,
         ))
-        // .insert(ObjectBundle::new(ObjectType::VectorSegment))
-        .set_parent(opts.parent_uid)
-        .uid();
-
-    (edge_uid, endpoint_uid)
+        .set_parent(parent)
+        .uid()
 }
 
 /// Gets the Uid of the vector object currently being build

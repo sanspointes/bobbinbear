@@ -1,4 +1,4 @@
-import start, { AppApi, Effect, setup_bb_core } from 'bb_core';
+import start, { AppApi, BobbinCursor, Effect, setup_bb_core } from 'bb_core';
 import wasmUrl from 'bb_core/pkg/bb_core_bg.wasm?url';
 import fetchProgress, { FetchProgressInitOptions } from 'fetch-progress';
 import { createSignal, onCleanup } from 'solid-js';

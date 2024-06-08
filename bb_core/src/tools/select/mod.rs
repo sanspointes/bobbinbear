@@ -4,14 +4,14 @@ use bevy::{
     input::ButtonState,
     log::warn,
 };
-use bevy_spts_changeset::commands_ext::WorldChangesetExt;
+use bevy_spts_changeset::{builder::ChangesetCommands, commands_ext::WorldChangesetExt};
 use bevy_spts_uid::Uid;
 
 use crate::{
     api::scene::SceneApi,
     ecs::{ObjectType, Position},
     plugins::{
-        effect::Effect,
+        effect::{Effect, EffectQue},
         inspecting::Inspected,
         selected::{raycast::SelectableRaycaster, Hovered, Selectable, Selected, SelectedApi},
         undoredo::UndoRedoApi,
@@ -30,6 +30,7 @@ impl Plugin for SelectToolPlugin {
 
 #[derive(Resource, Default, Debug, Clone)]
 pub enum SelectTool {
+    Deactive,
     #[default]
     Default,
     PointerDown,
@@ -41,7 +42,7 @@ pub enum SelectTool {
 pub fn handle_select_tool_input(
     world: &mut World,
     events: &Vec<InputMessage>,
-    _effects: &mut [Effect],
+    _effects: &mut EffectQue,
 ) -> Result<(), anyhow::Error> {
     let mut state = world.resource::<SelectTool>().clone();
 
@@ -62,12 +63,14 @@ pub fn handle_select_tool_input(
                         }
                         SelectTool::Default
                     }
-                    Some((uid, ObjectType::Vector)) => {
-                        SceneApi::inspect(world, uid).unwrap();
-                        SelectTool::Default
-                    }
-                    Some((_, _)) => {
-                        // Ignore.. for now
+                    Some(hit) => {
+                        #[allow(clippy::single_match)]
+                        match hit {
+                            (uid, ObjectType::Vector) => {
+                                SceneApi::inspect(world, uid).unwrap();
+                            },
+                            _ => (),
+                        }
                         SelectTool::Default
                     }
                 }
@@ -78,7 +81,10 @@ pub fn handle_select_tool_input(
                 let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
                 let top = hits.top();
                 if let Some(hit) = top {
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Pointer));
                     SelectedApi::set_object_hovered(world, *hit.uid(), Hovered::Unhovered).unwrap();
+                } else {
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Default));
                 }
 
                 SelectTool::Default
@@ -96,6 +102,7 @@ pub fn handle_select_tool_input(
                 let top = hits.top();
 
                 if let Some(hit) = top {
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::PointerTap));
                     let target = *hit.uid();
                     if matches!(modifiers.shift, ButtonState::Pressed) {
                         SelectedApi::set_object_selected(world, target, Selected::Selected)?;
@@ -106,6 +113,8 @@ pub fn handle_select_tool_input(
                             Selected::Selected,
                         )?;
                     }
+                } else {
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::DefaultTap));
                 }
                 SelectTool::PointerDown
             }
@@ -139,6 +148,7 @@ pub fn handle_select_tool_input(
                         })
                         .collect();
 
+                    _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::PointerMove));
                     SelectTool::MovingSelectedObjects(original_positions)
                 } else {
                     SelectTool::SelectingBounds
@@ -175,6 +185,7 @@ pub fn handle_select_tool_input(
                     world_delta_pos, ..
                 },
             ) => {
+                _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::PointerMove));
                 let mut builder = world.changeset();
 
                 for (target, position) in original_positions {
@@ -194,6 +205,7 @@ pub fn handle_select_tool_input(
                     world_delta_pos, ..
                 },
             ) => {
+                _effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Default));
                 let mut builder = world.changeset();
 
                 for (target, position) in original_positions {
@@ -217,4 +229,23 @@ pub fn handle_select_tool_input(
     *world.resource_mut::<SelectTool>() = state;
 
     Ok(())
+}
+
+pub fn activate_select_tool(
+    world: &mut World,
+    _commands: &mut ChangesetCommands,
+    effects: &mut EffectQue,
+) {
+    let mut tool = world.resource_mut::<SelectTool>();
+    *tool = SelectTool::Default;
+    effects.push_effect(Effect::CursorChanged(super::BobbinCursor::Default))
+}
+
+pub fn deactivate_select_tool(
+    world: &mut World,
+    _commands: &mut ChangesetCommands,
+    _effects: &mut EffectQue,
+) {
+    let mut tool = world.resource_mut::<SelectTool>();
+    *tool = SelectTool::Deactive;
 }

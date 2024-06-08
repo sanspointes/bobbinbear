@@ -38,6 +38,7 @@ bevy-inspector-egui = "0.24.0"
 bevy_mod_raycast = { git = "https://github.com/connorgmeehan/bevy_mod_raycast/", branch = "feat/triangle-indices", version = "0.17.0", features = ["2d"] }
 moonshine-core = "0.1.1"
 pretty-type-name = "1.0.1"
+itertools = "0.13.0"
 
 [features] 
 default = ["minimal_bevy"]

@@ -1,9 +1,5 @@
 use bevy::{
-    core::Name,
-    ecs::prelude::*,
-    math::{Vec2, Vec3Swizzles},
-    render::{color::Color, view::Visibility},
-    transform::components::GlobalTransform,
+    core::Name, ecs::prelude::*, log::warn, math::{Vec2, Vec3Swizzles}, render::{color::Color, view::Visibility}, transform::components::GlobalTransform
 };
 use bevy_mod_raycast::deferred::RaycastMesh;
 use bevy_spts_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
@@ -105,6 +101,7 @@ impl PenToolPreview {
     }
 
     pub fn hide_all(&self, world: &mut World) {
+        warn!("hide all");
         let entities = [
             self.vector_object.entity(world).unwrap(),
             self.endpoint_0.entity(world).unwrap(),
@@ -119,6 +116,7 @@ impl PenToolPreview {
     }
 
     pub fn show_all(&self, world: &mut World) {
+        warn!("hide all");
         let entities = [
             self.vector_object.entity(world).unwrap(),
             self.endpoint_0.entity(world).unwrap(),

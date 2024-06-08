@@ -115,4 +115,35 @@
 #root {
   width: 100vw;
   height: 100vh;
+
+  cursor: url(/cursors/cursor_default.png) 32 32, default !important;
+}
+
+a, button {
+  cursor: url(/cursors/cursor_pointer.png) 32 32, pointer !important;
+}
+
+.cursor-Default {
+    cursor: url(/cursors/cursor_default.png) 32 32, default !important;
+}
+.cursor-DefaultTap {
+    cursor: url(/cursors/cursor_default_tap.png) 32 32, default !important;
+}
+.cursor-Pointer {
+    cursor: url(/cursors/cursor_pointer.png) 32 32, default !important;
+}
+.cursor-PointerTap {
+    cursor: url(/cursors/cursor_pointer_tap.png) 32 32, default !important;
+}
+.cursor-PointerMove {
+    cursor: url(/cursors/cursor_move.png) 32 32, default !important;
+}
+.cursor-Pen {
+    cursor: url(/cursors/cursor_pen.png) 32 32, default !important;
+}
+.cursor-PenSplitEdge {
+    cursor: url(/cursors/cursor_pen_plus.png) 32 32, default !important;
+}
+.cursor-PenSameEndpoint {
+    cursor: url(/cursors/cursor_pen_plus.png) 32 32, default !important;
 }
