@@ -1,5 +1,6 @@
 //! Lifecycle methods for handling when edges/endpoints are spawned/despawned.
 
+use core::panic;
 use std::fmt::Debug;
 
 use bevy::{
@@ -145,70 +146,102 @@ pub fn sys_check_vector_graphic_children_changed(
     }
 }
 
-/// Start at endpoint e3,
-/// iter forward e4, e5, e6, end
-/// iter back e2, e1, reverse it so it's e1, e2
-/// Add forward to back so it's e1 ... e6
+pub enum TraverseEndpointsDirectedResult {
+    Closed,
+    DeadEnd,
+}
 
-// TODO: Fix edgecase where 2 endpoint line, e0 -> edge_a -> e1.
-// If starting at e1 it won't see e0.
+/// Returns Vec<Entity> containing the endpoint/edge walk.
+/// [Entity (Edge), Entity(Endpoint), ...]
+/// WARN: Different from traverse_endpoints as it doesn't contain the start_endpoint in the output.
+fn traverse_endpoints_directed(
+    start_endpoint_uid: &Uid,
+    first_edge_uid: &Uid,
+    q_endpoints: &mut QueryLens<&Endpoint>,
+    q_edges: &mut QueryLens<&Edge>,
+    reg: &mut UidRegistry,
+    out: &mut Vec<Entity>,
+) -> Result<TraverseEndpointsDirectedResult, VectorGraphicError> {
+    let q_endpoints = q_endpoints.query();
+    let q_edges = q_edges.query();
+
+    let start_endpoint_e = reg.get_entity(*start_endpoint_uid)?;
+    let start_endpoint = *q_endpoints.get(start_endpoint_e)?;
+
+    let mut behind_edge_uid = None;
+    let mut curr_endpoint_uid = *start_endpoint_uid;
+    let mut curr_endpoint = start_endpoint;
+    loop {
+        let maybe_next_edge_uid = match behind_edge_uid {
+            Some(behind_edge_uid) => curr_endpoint.other_edge_uid(&behind_edge_uid),
+            None => Some(first_edge_uid),
+        };
+
+        let Some(next_edge_uid) = maybe_next_edge_uid else {
+            return Ok(TraverseEndpointsDirectedResult::DeadEnd)
+        };
+        let next_edge_e = reg.get_entity(*next_edge_uid)?;
+        let next_edge = q_edges.get(next_edge_e)?;
+
+        let Some(next_endpoint_uid) = next_edge.other_endpoint_uid(&curr_endpoint_uid) else {
+            return Ok(TraverseEndpointsDirectedResult::DeadEnd)
+        };
+        let next_endpoint_e = reg.get_entity(next_endpoint_uid)?;
+        let next_endpoint = *q_endpoints.get(next_endpoint_e)?;
+
+        out.push(next_edge_e);
+        out.push(next_endpoint_e);
+        if next_endpoint_uid == *start_endpoint_uid {
+            return Ok(TraverseEndpointsDirectedResult::Closed);
+        }
+        curr_endpoint_uid = next_endpoint_uid;
+        behind_edge_uid = Some(*next_edge_uid);
+        curr_endpoint = next_endpoint;
+    }
+}
+
+/// Returns Vec<Entity> containing the endpoint/edge walk.
+/// [ Entity (Endpoint),
+///     (Entity (Edge), Entity (Endpoint))... Repeating
+/// ]
+/// WARN: Length is always >= 1 as start_endpoint is included in Vec. 
 fn traverse_endpoints(
-    start_endpoint: Uid,
+    start_endpoint_uid: &Uid,
     q_endpoints: &mut QueryLens<&Endpoint>,
     q_edges: &mut QueryLens<&Edge>,
     reg: &mut UidRegistry,
 ) -> Result<Vec<Entity>, VectorGraphicError> {
-    let first_e = reg.get_entity(start_endpoint)?;
-    let first = *q_endpoints.query().get(first_e)?;
+    let start_endpoint_e = reg.get_entity(*start_endpoint_uid)?;
+    let start_endpoint = *q_endpoints.query().get(start_endpoint_e)?;
+    // warn!("traverse_endpoints: Starting at {first_e:?} ({start_endpoint})");
 
-    let mut needs_reverse = true;
-    let mut endpoints = vec![];
+    let Some(forward_first_edge_uid) = start_endpoint.prev_edge_entity().or(start_endpoint.next_edge_entity()) else {
+        return Ok(vec![])
+    };
+    let maybe_backward_first_edge_uid = start_endpoint.other_edge_uid(&forward_first_edge_uid);
 
-    if first.next_edge_entity().is_some() {
-        let mut curr = first;
-        endpoints.push(first_e);
-        loop {
-            let Some(edge) = curr.next_edge(q_edges, reg) else {
-                break;
-            };
-            let edge = edge?;
+    let mut forward_walk = vec![start_endpoint_e];
+    let result = traverse_endpoints_directed(start_endpoint_uid, &forward_first_edge_uid, q_endpoints, q_edges, reg, &mut forward_walk)?;
 
-            let endpoint_uid = edge.next_endpoint_uid();
-            let endpoint_entity = reg.get_entity(endpoint_uid)?;
-            warn!("Traverse forward - next endpoint: {endpoint_entity:?}");
-            curr = *q_endpoints.query().get(endpoint_entity)?;
-            endpoints.push(endpoint_entity);
+    match (maybe_backward_first_edge_uid, result) {
+        (Some(backward_back_edge), TraverseEndpointsDirectedResult::DeadEnd) => {
+            let mut back_walk = vec![];
+            traverse_endpoints_directed(start_endpoint_uid, backward_back_edge, q_endpoints, q_edges, reg, &mut back_walk)?;
 
-            if endpoint_uid == start_endpoint {
-                needs_reverse = false; // Loop complete
-                break;
-            }
+            back_walk.reverse();
+            back_walk.extend(forward_walk);
+            Ok(back_walk)
+        }
+        (Some(_), TraverseEndpointsDirectedResult::Closed) => {
+            Ok(forward_walk)
+        }
+        (None, TraverseEndpointsDirectedResult::Closed) => {
+            panic!("Impossible.  Can't have a closed loop without a back_edge on first endpoint.")
+        }
+        (None, TraverseEndpointsDirectedResult::DeadEnd) => {
+            Ok(forward_walk)
         }
     }
-    if first.prev_edge_entity().is_some() && needs_reverse {
-        let mut curr = first;
-        let mut reverse_endpoints = vec![];
-        loop {
-            let Some(edge) = curr.prev_edge(q_edges, reg) else {
-                break;
-            };
-            let edge = edge?;
-            let endpoint_uid = edge.prev_endpoint_uid();
-            let endpoint_entity = reg.get_entity(endpoint_uid)?;
-            if endpoint_uid == start_endpoint {
-                break;
-            }
-            curr = *q_endpoints.query().get(endpoint_entity)?;
-            reverse_endpoints.push(endpoint_entity);
-        }
-
-        reverse_endpoints.reverse();
-        reverse_endpoints.extend(endpoints.iter());
-
-        endpoints = reverse_endpoints;
-    }
-
-    Ok(endpoints)
 }
 
 /// Builds Vec<Vec<Entity>> of all endpoint paths that need to be regenerated.
@@ -253,7 +286,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
         };
         // Collect endpoints in path
         let endpoints = traverse_endpoints(
-            uid,
+            &uid,
             &mut q_endpoints.transmute_lens::<&Endpoint>(),
             &mut q_edges.transmute_lens::<&Edge>(),
             &mut reg,
@@ -270,8 +303,9 @@ pub fn sys_collect_vector_graph_path_endpoints(
         //     .collect();
 
         unvisited.remove(&entity);
-        for e in endpoints.iter() {
-            unvisited.remove(e);
+        for chunk in endpoints.as_slice().chunks(2) {
+            let endpoint_e = unsafe { chunk.get_unchecked(0) };
+            unvisited.remove(endpoint_e);
         }
 
         if endpoints.len() <= 1 {
@@ -286,7 +320,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
 
     // Build the paths
     for vector_grapic_entity in changed_vector_graphics {
-        let Some(paths) = vector_graphic_path_endpoints
+        let Some(paths_walks_2d) = vector_graphic_path_endpoints
             .get(&vector_grapic_entity) else {
             // warn!("sys_mark_vector_graph_path_starts: Tried to get endpoints of vector_grapic_entity({vector_grapic_entity:?}) but not in hashmap.");
             continue;
@@ -299,34 +333,32 @@ pub fn sys_collect_vector_graph_path_endpoints(
 
         let mut pb = Path::builder();
 
-        for path in paths {
-            if path.len() <= 1 {
-                warn!("sys_collect_vector_graph_path_endpoints: Endpoints path too short({path:?}).");
+        for path_walk in paths_walks_2d {
+            if path_walk.len() <= 1 {
+                warn!("sys_collect_vector_graph_path_endpoints: Endpoints path too short({path_walk:?}).");
                 continue;
             }
+            let first_endpoint_e = path_walk.first().unwrap();
 
-            let mut path_iter = path.iter();
-
-            let e_first = *path_iter.next().unwrap(); // Safety `path.len() < 2` above
-            let (_, _, endpoint, _, transform) =
-                q_endpoints.get(e_first).expect("Could not get endpoint.");
-
+            let (_, _, _, _, transform) =
+                q_endpoints.get(*first_endpoint_e).expect("Could not get endpoint.");
             pb.begin(transform.translation.xy().to_point());
 
-            let mut curr_endpoint = *endpoint;
-            let mut e_last = e_first;
-
-            for e_endpoint in path_iter {
-                let next_edge_uid = curr_endpoint.next_edge_entity().unwrap();
-                let (_, edge, edge_variant, _) = q_edges
-                    .get(reg.entity(next_edge_uid))
+            let remaining_walk_slice = &path_walk[1..];
+            for chunk in remaining_walk_slice.chunks(2) {
+                let Some(edge_e) = chunk.first() else {
+                    panic!("sys_collect_vector_graph_path_endpoints: Couldn't get first endpoint, maybe the walk is malformed.");
+                };
+                let Some(endpoint_e) = chunk.get(1) else {
+                    panic!("sys_collect_vector_graph_path_endpoints: Couldn't get first edge, maybe the walk is malformed.");
+                };
+                let (_, _, edge_variant, _) = q_edges
+                    .get(*edge_e)
                     .unwrap();
-                let next_endpoint_uid = edge.next_endpoint_uid();
-                let (_, _, next_endpoint, _, transform) =
-                    q_endpoints.get(reg.entity(next_endpoint_uid)).unwrap();
+                let (_, _, _, _, transform) =
+                    q_endpoints.get(*endpoint_e).unwrap();
 
                 let to_point = transform.translation.xy().to_point();
-
                 match edge_variant {
                     EdgeVariant::Line => {
                         pb.line_to(to_point);
@@ -338,12 +370,9 @@ pub fn sys_collect_vector_graph_path_endpoints(
                         pb.cubic_bezier_to(ctrl1.to_point(), ctrl2.to_point(), to_point);
                     }
                 }
-
-                curr_endpoint = *next_endpoint;
-                e_last = *e_endpoint;
             }
 
-            let is_closed = e_last == e_first;
+            let is_closed = path_walk.last().unwrap() == first_endpoint_e;
             pb.end(is_closed);
         }
 
