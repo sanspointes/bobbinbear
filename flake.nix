@@ -68,6 +68,22 @@
                 pkgs.nodePackages.typescript
                 pkgs.nodePackages.typescript-language-server
             ];
+            aarch64-darwin = [
+                # Rust deps
+                pkgs.clang
+                pkgs.iconv
+                pkgs.darwin.libobjc
+                pkgs.darwin.apple_sdk.frameworks.AppKit
+                rustPlatform.bindgenHook
+
+
+                # Monorepo build system
+                turbo.packages.${system}.default
+                pkgs.nodejs
+                pkgs.nodePackages.pnpm
+                pkgs.nodePackages.typescript
+                pkgs.nodePackages.typescript-language-server
+            ];
         };
       in {
         devShells.default = with pkgs; mkShell rec {
