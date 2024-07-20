@@ -1,6 +1,4 @@
-use bevy::{
-    core::Name, ecs::prelude::*, log::warn, math::{Vec2, Vec3Swizzles}, render::{color::Color, view::Visibility}, transform::components::GlobalTransform
-};
+use bevy::{color::Color, core::Name, ecs::prelude::*, log::warn, math::Vec2, render::view::Visibility};
 use bevy_mod_raycast::deferred::RaycastMesh;
 use bevy_spts_changeset::{commands_ext::WorldChangesetExt, resource::ChangesetResource};
 use bevy_spts_uid::Uid;
@@ -71,7 +69,8 @@ impl PenToolPreview {
                 PenTool::BuildingEdge => {
                     let pos = world
                         .query_filtered::<&Position, With<PenToolBuildingFromEndpointTag>>()
-                        .get_single(world).copied();
+                        .get_single(world)
+                        .copied();
                     let Ok(pos) = pos else {
                         return;
                     };

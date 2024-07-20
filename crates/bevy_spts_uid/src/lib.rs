@@ -1,4 +1,5 @@
-use bevy_utils::{tracing::{info, warn}, HashMap, Uuid};
+use bevy_utils::{tracing::warn, HashMap};
+use uuid::Uuid;
 use core::panic;
 use std::fmt::{Debug, Display};
 use thiserror::Error;
@@ -14,6 +15,8 @@ use bevy_ecs::{
 use bevy_reflect::Reflect;
 
 pub mod extension;
+
+pub use uuid;
 
 #[cfg(feature = "tsify")]
 use tsify::Tsify;
@@ -33,9 +36,9 @@ pub struct Uid(#[cfg_attr(feature = "serde", serde(with = "uuid_string"))] (u64,
 mod uuid_string {
     use std::str::FromStr;
 
-    use bevy_utils::Uuid;
     use serde::{Deserialize, Serialize};
     use serde::{Deserializer, Serializer};
+    use uuid::Uuid;
 
     pub fn serialize<S: Serializer>(v: &(u64, u64), s: S) -> Result<S::Ok, S::Error> {
         let uuid = Uuid::from_u64_pair(v.0, v.1);

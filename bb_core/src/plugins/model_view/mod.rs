@@ -60,7 +60,7 @@ impl RegisterView for App {
     ) -> &mut Self {
         debug!("Registering view in schedule {spawn_schedule:?} {despawn_schedule:?}");
         self.add_systems(spawn_schedule, spawn::<T, V>);
-        let mut viewables = self.world.get_resource_or_insert_with(Viewables::default);
+        let mut viewables = self.world_mut().get_resource_or_insert_with(Viewables::default);
         if !viewables.is_viewable_kind::<T>() {
             viewables.add_kind::<T>();
             self.add_systems(despawn_schedule, despawn::<T, V>);
@@ -77,7 +77,7 @@ impl RegisterView for App {
         ) -> &mut Self {
         debug!("Registering view in schedule {spawn_schedule:?} {despawn_schedule:?}");
         self.add_systems(spawn_schedule, spawn::<T, V>.in_set(spawn_set));
-        let mut viewables = self.world.get_resource_or_insert_with(Viewables::default);
+        let mut viewables = self.world_mut().get_resource_or_insert_with(Viewables::default);
         if !viewables.is_viewable_kind::<T>() {
             viewables.add_kind::<T>();
             self.add_systems(despawn_schedule, despawn::<T, V>.in_set(despawn_set));

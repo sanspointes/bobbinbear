@@ -6,12 +6,12 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy_app = "0.13"
-bevy_ecs = "0.13"
-bevy_hierarchy = "0.13"
-bevy_reflect = "0.13"
-bevy_scene = "0.13"
-bevy_utils = "0.13"
+bevy_app = "0.14"
+bevy_ecs = "0.14"
+bevy_hierarchy = "0.14"
+bevy_reflect = "0.14"
+bevy_scene = "0.14"
+bevy_utils = "0.14"
 serde = { version = "1.0.197", features = ["derive"], optional = true }
 smallvec = "1.13.1"
 thiserror = "1.0.57"

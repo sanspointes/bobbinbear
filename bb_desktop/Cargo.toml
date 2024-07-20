@@ -15,9 +15,9 @@ resolver = "2"
 
 [dependencies]
 bb_core = { path = "../bb_core" }
-bevy = "0.13.0"
-bevy-inspector-egui = "0.23.2"
-bevy_mod_debugdump = { version = "0.10.0", optional = true }
+bevy = "0.14.0"
+bevy-inspector-egui = "0.25"
+bevy_mod_debugdump = { version = "0.11.0", optional = true }
 
 [features]
 graph = ["dep:bevy_mod_debugdump"]

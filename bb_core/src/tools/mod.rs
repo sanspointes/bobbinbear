@@ -2,9 +2,9 @@ use bevy::{
     app::{App, Plugin, Update},
     ecs::{
         event::Events,
-        schedule::{IntoSystemConfigs, State, SystemSet},
+        schedule::{IntoSystemConfigs, SystemSet},
         world::World,
-    },
+    }, state::app::AppExtStates,
 };
 
 use crate::plugins::effect::EffectQue;
@@ -36,8 +36,8 @@ pub struct BobbinToolsPlugin;
 
 impl Plugin for BobbinToolsPlugin {
     fn build(&self, app: &mut App) {
+        app.insert_state(BobbinTool::default());
         app
-            .insert_state(BobbinTool::default())
             .insert_resource(ToolResource::default())
             .add_plugins((BobbinInputPlugin, SelectToolPlugin, PenToolPlugin))
             .add_systems(Update, sys_handle_tool_inputs.in_set(ToolSet));

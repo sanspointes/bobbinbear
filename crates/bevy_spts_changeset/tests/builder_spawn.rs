@@ -1,6 +1,6 @@
 //! # builder_spawn
 //!
-//! Integration tests relating to spawn/despawn of entities using the changeset builder. 
+//! Integration tests relating to spawn/despawn of entities using the changeset builder.
 
 use bevy_app::App;
 use bevy_ecs::{
@@ -10,7 +10,9 @@ use bevy_ecs::{
 use bevy_reflect::Reflect;
 use bevy_spts_uid::UidRegistry;
 
-use bevy_spts_changeset::{commands_ext::WorldChangesetExt, events::ChangesetEvent, resource::ChangesetResource};
+use bevy_spts_changeset::{
+    commands_ext::WorldChangesetExt, events::ChangesetEvent, resource::ChangesetResource,
+};
 
 #[derive(Component, Reflect, Default)]
 #[reflect(Component)]
@@ -61,14 +63,14 @@ fn build_app() -> App {
 
 #[test]
 fn spawn_single_component() {
-    let app = build_app();
-    let mut world = app.world;
+    let mut app = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.spawn(Comp1).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let undo = changeset.apply(world, cx).unwrap();
 
         let entity = uid.entity(world).unwrap();
@@ -81,14 +83,14 @@ fn spawn_single_component() {
 
 #[test]
 fn spawn_tuple_bundle() {
-    let app = build_app();
-    let mut world = app.world;
+    let mut app = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.spawn((Comp1, Comp2)).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let undo = changeset.apply(world, cx).unwrap();
 
         let entity = uid.entity(world).unwrap();
@@ -101,14 +103,14 @@ fn spawn_tuple_bundle() {
 
 #[test]
 fn spawn_nested_struct_bundle_in_tuple_bundle() {
-    let app = build_app();
-    let mut world = app.world;
+    let mut app = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.spawn((Comp3, Comp4, Bundle1::default())).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let undo = changeset.apply(world, cx).unwrap();
 
         let entity = uid.entity(world).unwrap();
@@ -121,14 +123,14 @@ fn spawn_nested_struct_bundle_in_tuple_bundle() {
 
 #[test]
 fn spawn_struct_bundle() {
-    let app = build_app();
-    let mut world = app.world;
+    let mut app = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.spawn(Bundle1::default()).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let undo = changeset.apply(world, cx).unwrap();
 
         let entity = uid.entity(world).unwrap();
@@ -141,14 +143,14 @@ fn spawn_struct_bundle() {
 
 #[test]
 fn spawn_nested_struct_bundle_in_struct_bundle() {
-    let app = build_app();
-    let mut world = app.world;
+    let mut app = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.spawn((Comp1, Comp2, Bundle1::default())).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let undo = changeset.apply(world, cx).unwrap();
 
         let entity = uid.entity(world).unwrap();
@@ -161,8 +163,8 @@ fn spawn_nested_struct_bundle_in_struct_bundle() {
 
 #[test]
 fn adds_removes_from_uid_registry() {
-    let app = build_app();
-    let mut world = app.world;
+    let mut app = build_app();
+    let world = app.world_mut();
 
     let mut change_commands = world.changeset();
 
@@ -170,7 +172,7 @@ fn adds_removes_from_uid_registry() {
 
     let changeset = change_commands.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         assert!(uid.entity(world).is_none());
 
         let undo = changeset.apply(world, cx).unwrap();

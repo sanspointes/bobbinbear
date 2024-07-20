@@ -49,8 +49,6 @@ pub fn setup_bb_core(canvas_id: String) {
     let mut app = App::new();
 
     // Disable asset metadata checking.
-    app.insert_resource(AssetMetaCheck::Never);
-
     let default_plugins = DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
             title: "Bobbin Bear :: Embroidery Editor".to_string(),
@@ -60,12 +58,15 @@ pub fn setup_bb_core(canvas_id: String) {
             ..Default::default()
         }),
         ..Default::default()
+    }).set(AssetPlugin {
+        meta_check: AssetMetaCheck::Never,
+        ..Default::default()
     });
     app.add_plugins(default_plugins);
 
     setup(&mut app);
 
-    app.run()
+    app.run();
 }
 
 #[derive(SystemSet, Clone, PartialEq, Eq, Hash, Debug)]

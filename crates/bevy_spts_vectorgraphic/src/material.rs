@@ -1,20 +1,15 @@
 use bevy::{
-    asset::{Asset, Assets, Handle},
-    ecs::{
+    asset::{Asset, Assets, Handle}, color::{Color, LinearRgba}, ecs::{
         component::Component,
         query::{Changed, Or},
-        reflect::ReflectComponent,
+        reflect::{ReflectComponent},
         system::{Query, ResMut},
-    },
-    reflect::{std_traits::ReflectDefault, Reflect},
-    render::{
-        color::Color,
-        mesh::{Mesh, MeshVertexAttribute, MeshVertexBufferLayout},
+    }, reflect::{std_traits::ReflectDefault, Reflect}, render::{
+        mesh::{Mesh, MeshVertexAttribute, MeshVertexBufferLayoutRef},
         render_resource::{
             AsBindGroup, RenderPipelineDescriptor, SpecializedMeshPipelineError, VertexFormat,
         },
-    },
-    sprite::{Material2d, Material2dKey},
+    }, sprite::{Material2d, Material2dKey}
 };
 
 use crate::SHADER_HANDLE;
@@ -27,9 +22,9 @@ pub const ATTRIBUTE_SHAPE_MIX: MeshVertexAttribute =
 #[reflect(Default, Debug)]
 pub struct VectorGraphicMaterial {
     #[uniform(0)]
-    fill_color: Color,
+    fill_color: LinearRgba,
     #[uniform(1)]
-    stroke_color: Color,
+    stroke_color: LinearRgba,
 }
 
 impl Material2d for VectorGraphicMaterial {
@@ -42,11 +37,11 @@ impl Material2d for VectorGraphicMaterial {
 
     fn specialize(
         descriptor: &mut RenderPipelineDescriptor,
-        layout: &MeshVertexBufferLayout,
+        layout: &MeshVertexBufferLayoutRef,
         _key: Material2dKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
         // Position + theme mix vertex attributes
-        let vertex_layout = layout.get_layout(&[
+        let vertex_layout = layout.0.get_layout(&[
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
             Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
             ATTRIBUTE_SHAPE_MIX.at_shader_location(5),
@@ -82,10 +77,10 @@ pub fn sys_sync_vector_graphic_material(
             continue;
         };
         if let Some(fill) = fill {
-            mat.fill_color = fill.0;
+            mat.fill_color = fill.0.into();
         }
         if let Some(stroke) = stroke {
-            mat.stroke_color = stroke.0;
+            mat.stroke_color = stroke.0.into();
         }
     }
 }

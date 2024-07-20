@@ -7,11 +7,11 @@ edition = "2021"
 
 [dependencies]
 anyhow = "1.0.80"
-bevy_app = "0.13"
-bevy_ecs = "0.13"
-bevy_hierarchy = "0.13"
-bevy_reflect = "0.13"
-bevy_scene = "0.13"
+bevy_app = "0.14"
+bevy_ecs = "0.14"
+bevy_hierarchy = "0.14"
+bevy_reflect = "0.14"
+bevy_scene = "0.14"
 serde = { version = "1.0.196", features = ["derive"], optional = true }
 uuid = { version = "1.7.0", features = ["v4", "serde"] }
 

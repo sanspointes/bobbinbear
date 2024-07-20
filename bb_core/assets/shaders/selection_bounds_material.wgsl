@@ -52,7 +52,7 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 #endif
 
 #ifdef VERTEX_POSITIONS
-    var model = mesh_functions::get_model_matrix(vertex.instance_index);
+    var model = mesh_functions::get_world_from_local(vertex.instance_index);
     let scaled_pos = vec3<f32>(
         vertex.position.x * dimensions.x,
         vertex.position.y * dimensions.y,

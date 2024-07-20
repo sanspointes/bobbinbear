@@ -1,6 +1,5 @@
 use anyhow::anyhow;
 use as_any::AsAny;
-use bevy_reflect::List;
 
 use std::{
     any::{Any, TypeId},

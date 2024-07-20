@@ -1,8 +1,9 @@
 use std::{fmt::Debug, marker::PhantomData};
 
 use bevy::{
-    core::Name, ecs::{component::Component, entity::Entity, world::World}, utils::thiserror::Error
+    core::Name, ecs::{component::Component, entity::Entity, world::World},
 };
+use thiserror::Error;
 
 use crate::ecs::ObjectType;
 

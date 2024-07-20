@@ -1,14 +1,13 @@
 use core::panic;
 
 use bevy::{
-    app::{App, Plugin, Update},
-    asset::{Assets, Handle},
+    app::{App, Plugin},
+    asset::Assets,
     core::Name,
     ecs::{
         component::Component,
         query::With,
         reflect::ReflectComponent,
-        schedule::IntoSystemConfigs,
         system::Resource,
         world::{FromWorld, World},
     },
@@ -49,8 +48,7 @@ use crate::{
     views::{
         vector_edge::{VectorEdgeVM, ATTRIBUTE_EDGE_T},
         vector_endpoint::VectorEndpointVM,
-    },
-    PosSet,
+    }
 };
 
 mod resource;
@@ -74,7 +72,7 @@ pub struct PenToolPlugin;
 
 impl Plugin for PenToolPlugin {
     fn build(&self, app: &mut App) {
-        let res = PenToolResource::from_world(&mut app.world);
+        let res = PenToolResource::from_world(&mut app.world_mut());
         app.insert_resource(res);
         app.insert_resource(PenTool::default());
         // .add_systems(
@@ -128,7 +126,7 @@ fn handle_pen_tool_event(
                 }
                 Some(SelectableHit(e, _, ObjectType::VectorEdge, data)) => {
                     let handle = world.bb_get::<Mesh2dHandle>(*e).unwrap().0.clone_weak();
-                    let mesh = world.resource::<Assets<Mesh>>().get(handle).unwrap();
+                    let mesh = world.resource::<Assets<Mesh>>().get(&handle).unwrap();
                     let result =
                         get_intersection_triangle_attribute_data(mesh, data, ATTRIBUTE_EDGE_T.id);
 
@@ -171,7 +169,7 @@ fn handle_pen_tool_event(
                     let handle = world.bb_get::<Mesh2dHandle>(*entity).unwrap();
                     let mesh = world
                         .resource::<Assets<Mesh>>()
-                        .get(handle.0.clone_weak())
+                        .get(&handle.0)
                         .unwrap();
                     let edge_entity = world.bb_get::<View<VectorEdgeVM>>(*entity).unwrap();
                     let result =
@@ -322,7 +320,7 @@ fn handle_pen_tool_event(
                 }
                 Some(SelectableHit(e, _, ObjectType::VectorEdge, data)) => {
                     let handle = world.bb_get::<Mesh2dHandle>(*e).unwrap().0.clone_weak();
-                    let mesh = world.resource::<Assets<Mesh>>().get(handle).unwrap();
+                    let mesh = world.resource::<Assets<Mesh>>().get(&handle).unwrap();
                     let result =
                         get_intersection_triangle_attribute_data(mesh, data, ATTRIBUTE_EDGE_T.id);
 
@@ -399,9 +397,7 @@ fn handle_pen_tool_event(
                             .insert(ProxiedPosition::new(*uid, ProxiedPositionStrategy::Local));
                         Some(new_endpoint_uid)
                     } else {
-                        commands
-                            .entity(*uid)
-                            .insert(PenToolBuildingFromEndpointTag);
+                        commands.entity(*uid).insert(PenToolBuildingFromEndpointTag);
                         Some(*uid)
                     }
                 }
@@ -411,7 +407,7 @@ fn handle_pen_tool_event(
                         .unwrap()
                         .0
                         .clone_weak();
-                    let mesh = world.resource::<Assets<Mesh>>().get(handle).unwrap();
+                    let mesh = world.resource::<Assets<Mesh>>().get(&handle).unwrap();
 
                     let result =
                         get_intersection_triangle_attribute_data(mesh, data, ATTRIBUTE_EDGE_T.id);

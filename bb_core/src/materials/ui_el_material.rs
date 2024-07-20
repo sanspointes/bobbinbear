@@ -2,7 +2,7 @@
 use bevy::{
     prelude::*,
     render::{
-        mesh::{MeshVertexAttribute, MeshVertexBufferLayout},
+        mesh::{MeshVertexAttribute, MeshVertexBufferLayoutRef},
         render_resource::{
             AsBindGroup, RenderPipelineDescriptor, ShaderRef, ShaderType, SpecializedMeshPipelineError, VertexFormat
         },
@@ -25,7 +25,7 @@ impl Plugin for UiElementMaterialPlugin {
         app.add_plugins(Material2dPlugin::<UiElementMaterial>::default());
         app.insert_resource(Assets::<UiElementMaterial>::default());
 
-        let mut materials = app.world.resource_mut::<Assets<UiElementMaterial>>();
+        let mut materials = app.world_mut().resource_mut::<Assets<UiElementMaterial>>();
         let default = materials.add(UiElementMaterial::default());
         let selected = materials.add(UiElementMaterial {
             state: UiElState {
@@ -87,14 +87,14 @@ pub struct UiElementMaterial {
     #[uniform(0)]
     pub state: UiElState,
     #[uniform(1)]
-    pub theme_color: Color,
+    pub theme_color: LinearRgba,
 }
 
 impl Default for UiElementMaterial {
     fn default() -> Self {
         Self {
             state: UiElState::default(),
-            theme_color: Color::rgba(0.033, 0.527, 0.869, 1.)
+            theme_color: LinearRgba::new(0.033, 0.527, 0.869, 1.)
         }
     }
 }
@@ -108,11 +108,11 @@ impl Material2d for UiElementMaterial {
     }
     fn specialize(
         descriptor: &mut RenderPipelineDescriptor,
-        layout: &MeshVertexBufferLayout,
+        layout: &MeshVertexBufferLayoutRef,
         _key: Material2dKey<Self>,
     ) -> Result<(), SpecializedMeshPipelineError> {
         // Position + theme mix vertex attributes
-        let vertex_layout = layout.get_layout(&[
+        let vertex_layout = layout.0.get_layout(&[
             Mesh::ATTRIBUTE_POSITION.at_shader_location(0),
             Mesh::ATTRIBUTE_NORMAL.at_shader_location(1),
             ATTRIBUTE_THEME_MIX.at_shader_location(5),

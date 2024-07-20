@@ -30,7 +30,7 @@ impl DebugApi {
                 StrokeOptions::default().with_line_width(3.),
                 StrokeColor(Color::BLACK),
                 FillOptions::default(),
-                FillColor(Color::GRAY),
+                FillColor(Color::srgb(0.5, 0.5, 0.5)),
                 material,
             ))
             .uid();
@@ -85,7 +85,7 @@ impl DebugApi {
                 StrokeOptions::default().with_line_width(3.),
                 StrokeColor(Color::BLACK),
                 FillOptions::default(),
-                FillColor(Color::GRAY),
+                FillColor(Color::srgb(0.5, 0.5, 0.5)),
                 material,
             ))
             .uid();

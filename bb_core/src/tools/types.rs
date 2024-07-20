@@ -1,4 +1,4 @@
-use bevy::ecs::schedule::States;
+use bevy::state::state::States;
 use serde::{Deserialize, Serialize};
 use tsify::Tsify;
 

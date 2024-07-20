@@ -8,12 +8,9 @@ use bevy::{
         schedule::{NodeId, Schedule},
         world::World,
     },
-    utils::{
-        hashbrown::HashMap,
-        petgraph::{graphmap::GraphMap, Directed, Direction},
-        smallvec::SmallVec,
-    },
+    utils::hashbrown::HashMap,
 };
+use smallvec::SmallVec;
 
 #[allow(non_snake_case)]
 pub mod definitions {
@@ -80,7 +77,7 @@ impl<'a> ScheduleGrapher<'a> {
         let graph = schedule.graph();
         let hierarchy = graph.hierarchy();
         let hierarchy_graph = hierarchy.graph();
-        let dependency = graph.dependency();
+        // let dependency = graph.dependency();
 
         let mut node_id_remap: HashMap<NodeId, NodeId> = HashMap::new();
 
@@ -89,7 +86,7 @@ impl<'a> ScheduleGrapher<'a> {
             for (id, sys_set, _) in graph.system_sets() {
                 if sys_set.system_type().is_some() {
                     let mut children = hierarchy_graph
-                        .neighbors_directed(id, bevy::utils::petgraph::Direction::Outgoing);
+                        .neighbors_directed(id, petgraph::Direction::Outgoing);
                     if let Some(system_node_id) = children.next() {
                         node_id_remap.insert(id, system_node_id);
                     }
@@ -171,8 +168,8 @@ impl GraphNode {
     fn neighbors_directed<'s>(
         &'s self,
         cx: &'s ScheduleGrapher,
-        graph_map: &'s GraphMap<NodeId, (), Directed>,
-        direction: Direction,
+        graph_map: &'s petgraph::graphmap::GraphMap<NodeId, (), petgraph::Directed>,
+        direction: petgraph::prelude::Direction,
     ) -> impl Iterator<Item = GraphNode> + 's {
         graph_map
             .neighbors_directed(self.0, direction)
@@ -183,7 +180,7 @@ impl GraphNode {
         &'s self,
         cx: &'s ScheduleGrapher,
     ) -> impl Iterator<Item = GraphNode> + 's {
-        use bevy::utils::petgraph::Direction::Outgoing;
+        use petgraph::Direction::Outgoing;
 
         self.neighbors_directed(cx, cx.schedule.graph().hierarchy().graph(), Outgoing)
     }
@@ -192,7 +189,7 @@ impl GraphNode {
         &'s self,
         cx: &'s ScheduleGrapher,
     ) -> impl Iterator<Item = GraphNode> + 's {
-        use bevy::utils::petgraph::Direction::Incoming;
+        use petgraph::Direction::Incoming;
 
         self.neighbors_directed(cx, cx.schedule.graph().dependency().graph(), Incoming)
     }
@@ -201,7 +198,7 @@ impl GraphNode {
         &'s self,
         cx: &'s ScheduleGrapher,
     ) -> impl Iterator<Item = GraphNode> + 's {
-        use bevy::utils::petgraph::Direction::Outgoing;
+        use petgraph::Direction::Outgoing;
 
         self.neighbors_directed(cx, cx.schedule.graph().dependency().graph(), Outgoing)
     }
@@ -240,7 +237,12 @@ impl GraphNode {
     pub fn format_definition(&self, cx: &ScheduleGrapher, f: &mut Formatter) -> std::fmt::Result {
         match self.0 {
             NodeId::Set(_) => {
-                writeln!(f, "subgraph {}[\"{}\"]", self.graph_id(), self.graph_name(cx))?;
+                writeln!(
+                    f,
+                    "subgraph {}[\"{}\"]",
+                    self.graph_id(),
+                    self.graph_name(cx)
+                )?;
                 writeln!(f, "direction {}", cx.settings.graph_direction)?;
                 for child in self.hierarchy_children(cx) {
                     child.format_definition(cx, f)?;
@@ -267,7 +269,7 @@ impl GraphNode {
 
 fn escape_html_punctuation(input: &str) -> String {
     let mut result = String::new();
-    
+
     for ch in input.chars() {
         match ch {
             ':' => result.push_str("&#58;"),
@@ -282,6 +284,6 @@ fn escape_html_punctuation(input: &str) -> String {
             _ => result.push(ch),
         }
     }
-    
+
     result
 }

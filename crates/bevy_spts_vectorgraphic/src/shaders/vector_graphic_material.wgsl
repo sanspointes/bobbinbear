@@ -51,7 +51,7 @@ fn vertex(vertex: Vertex) -> VertexOutput {
 #endif
 
 #ifdef VERTEX_POSITIONS
-    var model = mesh_functions::get_model_matrix(vertex.instance_index);
+    var model = mesh_functions::get_world_from_local(vertex.instance_index);
     let pos = vertex.position + vec3<f32>(0., vertex.shape_mix * 0.01, 0.);
     let world_position = mesh_functions::mesh2d_position_local_to_world(
         model,

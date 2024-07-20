@@ -2,8 +2,9 @@
     "lspconfig": {
         "rust_analyzer": {
             "rust-analyzer.cargo.features": ["changeset", "wasm-bindgen"],
+            "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
             "rust-analyzer.check.command": "clippy",
-            "rust-analyzer.check.extraArgs": ["--profile", "rust-analyzer"]
+            "rust-analyzer.check.extraArgs": ["--profile", "rust-analyzer", "--target", "wasm32-unknown-unknown"]
         }
     }
 }

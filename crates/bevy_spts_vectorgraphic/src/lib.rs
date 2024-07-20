@@ -16,24 +16,22 @@
 pub mod commands_ext;
 pub mod components;
 pub mod lyon_components;
+pub mod material;
 pub mod systems;
 mod utils;
-pub mod material;
 
 #[cfg(feature = "changeset")]
 mod changeset;
 
-pub const SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(3296418235224473622063937256920);
-
 pub mod prelude {
     pub use super::{VectorGraphicPlugin, VectorGraphicSet};
+    #[cfg(feature = "changeset")]
+    pub use crate::changeset::*;
     pub use crate::commands_ext;
     pub use crate::components::*;
     pub use crate::lyon_components::*;
-    pub use crate::systems::*;
-    #[cfg(feature = "changeset")]
-    pub use crate::changeset::*;
     pub use crate::material::*;
+    pub use crate::systems::*;
 }
 
 // Re-export lyon
@@ -44,8 +42,15 @@ pub mod lyon_path {
     pub use lyon_path::*;
 }
 
-use bevy::{asset::load_internal_asset, prelude::*, sprite::Material2dPlugin, transform::TransformSystem};
-
+use bevy::{
+    app::{App, Plugin, PostUpdate},
+    asset::{load_internal_asset, Handle},
+    ecs::{schedule::{IntoSystemConfigs, IntoSystemSetConfigs, SystemSet}, system::Resource},
+    prelude::{Deref, DerefMut},
+    render::render_resource::Shader,
+    sprite::Material2dPlugin,
+    transform::TransformSystem,
+};
 use systems::{
     sys_add_spawned_edges_to_vector_graphic, sys_add_spawned_endpoints_to_vector_graphic,
     sys_check_vector_graphic_children_changed, sys_collect_vector_graph_path_endpoints,
@@ -54,6 +59,8 @@ use systems::{
 };
 
 use crate::material::{sys_sync_vector_graphic_material, VectorGraphicMaterial};
+
+pub const SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(3296418235224473622063937256920);
 
 #[derive(SystemSet, Clone, Debug, Copy, PartialEq, Eq, Hash)]
 pub enum VectorGraphicSet {
@@ -91,7 +98,9 @@ impl Plugin for VectorGraphicPlugin {
                 VectorGraphicSet::DetectChanges,
                 VectorGraphicSet::UpdatePath,
                 VectorGraphicSet::Remesh,
-            ).chain().before(TransformSystem::TransformPropagate),
+            )
+                .chain()
+                .before(TransformSystem::TransformPropagate),
         );
 
         app.add_systems(

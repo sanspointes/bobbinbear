@@ -15,7 +15,7 @@ struct TestComponent {
 #[test]
 pub fn test_from_component() {
     let mut app = App::new();
-    let world = &mut app.world;
+    let world = &mut app.world_mut();
 
     let mut tr = TypeRegistry::new();
     tr.register::<TestComponent>();
@@ -26,7 +26,7 @@ pub fn test_from_component() {
     let cf = ComponentFragment::from_component(&component);
 
     let mut entity_mut = world.spawn_empty();
-    cf.insert_to_entity_world_mut(&tr, &mut entity_mut).unwrap();
+    cf.insert(&mut entity_mut, &tr).unwrap();
     let entity = entity_mut.id();
 
     let c = world.get::<TestComponent>(entity);
@@ -37,7 +37,7 @@ pub fn test_from_component() {
 #[test]
 pub fn test_from_entity_and_type_id() {
     let mut app = App::new();
-    let world = &mut app.world;
+    let world = &mut app.world_mut();
 
     let mut tr = TypeRegistry::new();
     tr.register::<TestComponent>();
@@ -63,7 +63,7 @@ pub fn test_from_entity_and_type_id() {
 
     // Re-add component via the ComponentFragment
     let mut entity_mut = world.entity_mut(entity);
-    cf.insert_to_entity_world_mut(&tr, &mut entity_mut).unwrap();
+    cf.insert(&mut entity_mut, &tr).unwrap();
 
     // Check entity has component again
     let c = world.get::<TestComponent>(entity);

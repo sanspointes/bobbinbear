@@ -1,8 +1,4 @@
-use bevy::{
-    input::common_conditions::input_toggle_active,
-    prelude::*,
-    utils::{HashSet, Uuid},
-};
+use bevy::{input::common_conditions::input_toggle_active, prelude::*, utils::HashSet};
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
 fn main() {
@@ -32,8 +28,6 @@ fn main() {
 }
 
 pub fn setup(world: &mut World) {
-    let result = bb_core::api::debug::DebugApi::spawn_circle(world);
-    println!("Spawned circle {result:?}");
     let result = bb_core::api::debug::DebugApi::spawn_box(world);
     println!("Spawned box {result:?}");
 }

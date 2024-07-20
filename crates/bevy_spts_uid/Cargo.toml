@@ -6,14 +6,15 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bevy_ecs = "0.13.0"
-bevy_reflect = "0.13.0"
-bevy_utils = "0.13.0"
+bevy_ecs = "0.14.0"
+bevy_reflect = "0.14.0"
+bevy_utils = "0.14.0"
 serde = { version = "1.0.197", features = ["derive"], optional = true }
 serde-wasm-bindgen = "0.6.5"
 thiserror = "1.0.58"
 tsify = { version = "0.4.5", features = ["js"], default-features = false, optional = true }
 wasm-bindgen = { version = "0.2.92", optional = true }
+uuid = { version = "1.10.0", features = ["v4"] }
 
 [features]
 serde = ["dep:serde"]

@@ -130,7 +130,7 @@ impl BundleFragment {
         type_registry: &TypeRegistry,
     ) -> Result<(), ComponentApplyError> {
         for component in &mut self.components {
-            component.swap(entity, type_registry)?;
+            component.swap(&mut * entity, type_registry)?;
         }
         Ok(())
     }

@@ -58,7 +58,7 @@ tsify = "0.4.5"
 # code size when deploying.
 bevy = { version = "0.12.1", default-features = false }
 bevy_mod_raycast = "0.16"
-bevy-inspector-egui = { version = "0.22", optional = true }
+bevy-inspector-egui = { version = "0.25", optional = true }
 bevy-debug-text-overlay = { version = "7.0.0", default-features = false, features = ["builtin-font"] }
 
 crossbeam-channel = "0.5.8"

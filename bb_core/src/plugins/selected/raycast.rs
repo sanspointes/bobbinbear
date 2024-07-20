@@ -4,7 +4,6 @@ use bevy::{
     reflect::TypePath,
     render::camera::Camera,
     transform::components::GlobalTransform,
-    utils::smallvec::SmallVec,
     window::{PrimaryWindow, Window},
 };
 
@@ -14,6 +13,7 @@ use bevy_mod_raycast::{
     primitives::{ray_from_screenspace, IntersectionData},
 };
 use bevy_spts_uid::{Uid, UidRegistry};
+use smallvec::SmallVec;
 
 use crate::{
     ecs::{ObjectType, ProxiedUid},

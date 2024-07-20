@@ -54,21 +54,21 @@ fn build_app() -> (App, Uid) {
     app.register_type::<Bundle2>();
 
     let uid = Uid::default();
-    app.world.spawn(uid);
+    app.world_mut().spawn(uid);
 
     (app, uid)
 }
 
 #[test]
 fn insert_single_component() {
-    let (app, uid) = build_app();
-    let mut world = app.world;
+    let (mut app, uid) = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.entity(uid).insert(Comp1(0)).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let entity = uid.entity(world).unwrap();
         assert!(world.get::<Comp1>(entity).is_none());
 
@@ -83,14 +83,14 @@ fn insert_single_component() {
 
 #[test]
 fn insert_tuple_bundle() {
-    let (app, uid) = build_app();
-    let mut world = app.world;
+    let (mut app, uid) = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.entity(uid).insert((Comp1(0), Comp2)).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let entity = uid.entity(world).unwrap();
         assert!(world.get::<Comp1>(entity).is_none());
         assert!(world.get::<Comp2>(entity).is_none());
@@ -108,14 +108,14 @@ fn insert_tuple_bundle() {
 
 #[test]
 fn insert_nested_struct_bundle_in_tuple_bundle() {
-    let (app, uid) = build_app();
-    let mut world = app.world;
+    let (mut app, uid) = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.entity(uid).insert((Comp3, Comp4, Bundle1::default())).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let entity = uid.entity(world).unwrap();
         assert!(world.get::<Comp1>(entity).is_none());
         assert!(world.get::<Comp2>(entity).is_none());
@@ -133,14 +133,14 @@ fn insert_nested_struct_bundle_in_tuple_bundle() {
 
 #[test]
 fn insert_struct_bundle() {
-    let (app, uid) = build_app();
-    let mut world = app.world;
+    let (mut app, uid) = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.entity(uid).insert(Bundle1::default()).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let entity = uid.entity(world).unwrap();
         assert!(world.get::<Comp1>(entity).is_none());
         assert!(world.get::<Comp2>(entity).is_none());
@@ -158,14 +158,14 @@ fn insert_struct_bundle() {
 
 #[test]
 fn insert_nested_struct_bundle_in_struct_bundle() {
-    let (app, uid) = build_app();
-    let mut world = app.world;
+    let (mut app, uid) = build_app();
+    let world = app.world_mut();
 
     let mut changeset = world.changeset();
     let uid = changeset.entity(uid).insert((Comp1(0), Comp2, Bundle1::default())).uid();
     let changeset = changeset.build();
 
-    ChangesetResource::<MyChangeset>::context_scope(&mut world, |world, cx| {
+    ChangesetResource::<MyChangeset>::context_scope(world, |world, cx| {
         let entity = uid.entity(world).unwrap();
         assert!(world.get::<Comp1>(entity).is_none());
         assert!(world.get::<Comp2>(entity).is_none());

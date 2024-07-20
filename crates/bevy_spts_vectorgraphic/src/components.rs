@@ -1,4 +1,4 @@
-use bevy::utils::thiserror;
+use thiserror;
 use bevy::{
     ecs::{query::QueryEntityError, reflect::ReflectComponent, system::QueryLens},
     prelude::*,

@@ -12,6 +12,6 @@ pub struct AppApi;
 impl AppApi {
     pub async fn exit(world: &mut World) {
         let mut exit_events = world.resource_mut::<Events<AppExit>>();
-        exit_events.send(AppExit);
+        exit_events.send(AppExit::Success);
     }
 }

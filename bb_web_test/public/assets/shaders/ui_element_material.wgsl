@@ -66,7 +66,7 @@ fn vertex(vertex: Vertex) -> VertexOutput {
     let scale = (f32(state.hovered) * 1.);
     let pos = vertex.position + vertex.normal * scale;
 
-    var model = mesh_functions::get_model_matrix(vertex.instance_index);
+    var model = mesh_functions::get_world_from_local(vertex.instance_index);
     let world_position = mesh_functions::mesh2d_position_local_to_world(
         model,
         vec4<f32>(pos, 1.0)

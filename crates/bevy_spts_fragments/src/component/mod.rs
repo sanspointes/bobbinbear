@@ -4,7 +4,7 @@ use bevy_ecs::{
     component::Component,
     entity::Entity,
     reflect::ReflectComponent,
-    world::{EntityRef, EntityWorldMut, World},
+    world::{EntityMut, EntityRef, EntityWorldMut, FilteredEntityMut, World},
 };
 use bevy_reflect::{Reflect, TypeInfo, TypeRegistry};
 
@@ -157,13 +157,13 @@ impl ComponentFragment {
         type_registry: &TypeRegistry,
     ) -> Result<(), ComponentApplyError> {
         let comp = self.get_reflect_component(type_registry)?;
-        let reflected = comp.reflect_mut(entity).ok_or_else(|| {
+        let reflected = comp.reflect_mut(&mut *entity).ok_or_else(|| {
             ComponentApplyError::ComponentMissingOnEntity {
                 type_path: self.component.reflect_type_path().to_string(),
             }
         })?;
         let reflected: Arc<_> = reflected.clone_value().into();
-        comp.apply(entity, &*self.component);
+        comp.apply(&mut *entity, &*self.component);
         self.component = reflected;
         Ok(())
     }

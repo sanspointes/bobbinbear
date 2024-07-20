@@ -1,8 +1,10 @@
 use bevy::{
-    ecs::system::{Command, EntityCommands, QueryLens},
+    log::warn,
+    ecs::world::{World, Command, EntityWorldMut},
+    ecs::system::{Commands, QueryLens, EntityCommands},
     prelude::*,
 };
-use bevy_spts_uid::{Uid, UidRegistry};
+use bevy_spts_uid::{extension::EntityCommandsExt, Uid, UidRegistry};
 
 use crate::prelude::{Edge, EdgeVariant, Endpoint};
 
@@ -31,9 +33,11 @@ impl Command for LinkEdgeCommand {
         let next_endpoint_e = reg.entity(next_endpoint_uid);
         let prev_endpoint_e = reg.entity(prev_endpoint_uid);
 
-        let endpoints = world.get_many_entities_mut([prev_endpoint_e, next_endpoint_e]).map(|[prev, next]| (prev, next));
+        let endpoints = world
+            .get_many_entities_mut([prev_endpoint_e, next_endpoint_e])
+            .map(|[prev, next]| (prev, next));
 
-        let endpoints = match  endpoints {
+        let endpoints = match endpoints {
             Ok(ep) => ep,
             Err(reason) => {
                 warn!("LinkEdgeCommand: Provided entities for next_endpoint ({next_endpoint_uid}) or prev_endpoint ({prev_endpoint_uid}) do not exist.. {reason:?}");
@@ -44,7 +48,7 @@ impl Command for LinkEdgeCommand {
         let (mut prev, mut next) = endpoints;
         let endpoints = (prev.get_mut::<Endpoint>(), next.get_mut::<Endpoint>());
 
-        if let (Some(mut prev_endpoint), Some(mut next_endpoint)) = endpoints  {
+        if let (Some(mut prev_endpoint), Some(mut next_endpoint)) = endpoints {
             if !prev_endpoint.can_link_edge() {
                 warn!("LinkEdgeCommand: Tried to link to endpoint {prev_endpoint_uid} but all link slots are full.");
                 return;
@@ -225,5 +229,3 @@ impl VectorGraphicWorldExt for World {
         endpoint.next_edge = None
     }
 }
-
-

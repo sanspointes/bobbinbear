@@ -16,7 +16,7 @@ pub fn build_mesh_endpoint_handle() -> Mesh {
     inner_mesh.insert_attribute(ATTRIBUTE_THEME_BASE, vec![1.; inner_mesh.count_vertices()]);
     inner_mesh.insert_attribute(ATTRIBUTE_THEME_BASE_OPACITY, vec![1.; inner_mesh.count_vertices()]);
 
-    mesh.merge(inner_mesh);
+    mesh.merge(&inner_mesh);
 
     mesh.remove_attribute(Mesh::ATTRIBUTE_UV_0);
 
@@ -46,7 +46,7 @@ pub fn build_mesh_control_handle() -> Mesh {
     inner_mesh.insert_attribute(ATTRIBUTE_THEME_BASE, vec![1.; inner_mesh.count_vertices()]);
     inner_mesh.insert_attribute(ATTRIBUTE_THEME_BASE_OPACITY, vec![1.; inner_mesh.count_vertices()]);
 
-    mesh.merge(inner_mesh);
+    mesh.merge(&inner_mesh);
 
     mesh.remove_attribute(Mesh::ATTRIBUTE_UV_0);
 

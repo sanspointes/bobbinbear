@@ -1,9 +1,9 @@
 use bevy::{
     math::{Vec3, Vec3A},
     render::mesh::{Mesh, MeshVertexAttributeId, VertexAttributeValues},
-    utils::thiserror::Error,
 };
 use bevy_mod_raycast::primitives::IntersectionData;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum TriangleIntersectionAttributeDataError {

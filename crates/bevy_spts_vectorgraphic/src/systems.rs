@@ -3,14 +3,19 @@
 use core::panic;
 use std::fmt::Debug;
 
-use bevy::{
-    ecs::{
-        entity::{EntityHashMap, EntityHashSet},
-        query::QueryEntityError,
-        system::QueryLens,
-    }, prelude::*, render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}, sprite::Mesh2dHandle, utils::HashMap
-};
+// use bevy::{
+//     ecs::{
+//         entity::{EntityHashMap, EntityHashSet},
+//         query::QueryEntityError,
+//         system::QueryLens,
+//     }, prelude::*, render::{mesh::Indices, render_asset::RenderAssetUsages, render_resource::PrimitiveTopology}, sprite::Mesh2dHandle, utils::HashMap
+// };
 
+use bevy::{
+    asset::Assets, ecs::{
+        entity::{Entity, EntityHashMap, EntityHashSet}, query::{Added, Changed, Or, QueryEntityError, With, Without}, removal_detection::RemovedComponents, system::{Commands, Query, QueryLens, ResMut}
+    }, hierarchy::Parent, log::warn, math::Vec3Swizzles, render::{mesh::{Indices, Mesh, PrimitiveTopology}, render_asset::RenderAssetUsages}, sprite::Mesh2dHandle, transform::components::Transform, utils::HashMap
+};
 use bevy_spts_uid::{Uid, UidRegistry, UidRegistryError};
 use lyon_tessellation::{
     path::Path, BuffersBuilder, FillVertexConstructor, StrokeVertexConstructor, VertexBuffers,
@@ -124,9 +129,20 @@ pub fn sys_remove_despawned_edges_from_vector_graphic(
 pub fn sys_check_vector_graphic_children_changed(
     q_changed_endpoint: Query<
         &Parent,
-        (Or<(Changed<Endpoint>, Changed<Transform>)>, Without<Edge>, With<Endpoint>),
+        (
+            Or<(Changed<Endpoint>, Changed<Transform>)>,
+            Without<Edge>,
+            With<Endpoint>,
+        ),
     >,
-    q_changed_edge: Query<&Parent, (Or<(Changed<Edge>, Changed<EdgeVariant>)>, Without<Endpoint>, With<Edge>)>,
+    q_changed_edge: Query<
+        &Parent,
+        (
+            Or<(Changed<Edge>, Changed<EdgeVariant>)>,
+            Without<Endpoint>,
+            With<Edge>,
+        ),
+    >,
     mut q_vector_graphic: Query<
         (&mut VectorGraphic, &mut VectorGraphicPathStorage),
         Without<Endpoint>,
@@ -178,13 +194,13 @@ fn traverse_endpoints_directed(
         };
 
         let Some(next_edge_uid) = maybe_next_edge_uid else {
-            return Ok(TraverseEndpointsDirectedResult::DeadEnd)
+            return Ok(TraverseEndpointsDirectedResult::DeadEnd);
         };
         let next_edge_e = reg.get_entity(*next_edge_uid)?;
         let next_edge = q_edges.get(next_edge_e)?;
 
         let Some(next_endpoint_uid) = next_edge.other_endpoint_uid(&curr_endpoint_uid) else {
-            return Ok(TraverseEndpointsDirectedResult::DeadEnd)
+            return Ok(TraverseEndpointsDirectedResult::DeadEnd);
         };
         let next_endpoint_e = reg.get_entity(next_endpoint_uid)?;
         let next_endpoint = *q_endpoints.get(next_endpoint_e)?;
@@ -204,7 +220,7 @@ fn traverse_endpoints_directed(
 /// [ Entity (Endpoint),
 ///     (Entity (Edge), Entity (Endpoint))... Repeating
 /// ]
-/// WARN: Length is always >= 1 as start_endpoint is included in Vec. 
+/// WARN: Length is always >= 1 as start_endpoint is included in Vec.
 fn traverse_endpoints(
     start_endpoint_uid: &Uid,
     q_endpoints: &mut QueryLens<&Endpoint>,
@@ -215,32 +231,45 @@ fn traverse_endpoints(
     let start_endpoint = *q_endpoints.query().get(start_endpoint_e)?;
     // warn!("traverse_endpoints: Starting at {first_e:?} ({start_endpoint})");
 
-    let Some(forward_first_edge_uid) = start_endpoint.prev_edge_entity().or(start_endpoint.next_edge_entity()) else {
-        return Ok(vec![])
+    let Some(forward_first_edge_uid) = start_endpoint
+        .prev_edge_entity()
+        .or(start_endpoint.next_edge_entity())
+    else {
+        return Ok(vec![]);
     };
     let maybe_backward_first_edge_uid = start_endpoint.other_edge_uid(&forward_first_edge_uid);
 
     let mut forward_walk = vec![start_endpoint_e];
-    let result = traverse_endpoints_directed(start_endpoint_uid, &forward_first_edge_uid, q_endpoints, q_edges, reg, &mut forward_walk)?;
+    let result = traverse_endpoints_directed(
+        start_endpoint_uid,
+        &forward_first_edge_uid,
+        q_endpoints,
+        q_edges,
+        reg,
+        &mut forward_walk,
+    )?;
 
     match (maybe_backward_first_edge_uid, result) {
         (Some(backward_back_edge), TraverseEndpointsDirectedResult::DeadEnd) => {
             let mut back_walk = vec![];
-            traverse_endpoints_directed(start_endpoint_uid, backward_back_edge, q_endpoints, q_edges, reg, &mut back_walk)?;
+            traverse_endpoints_directed(
+                start_endpoint_uid,
+                backward_back_edge,
+                q_endpoints,
+                q_edges,
+                reg,
+                &mut back_walk,
+            )?;
 
             back_walk.reverse();
             back_walk.extend(forward_walk);
             Ok(back_walk)
         }
-        (Some(_), TraverseEndpointsDirectedResult::Closed) => {
-            Ok(forward_walk)
-        }
+        (Some(_), TraverseEndpointsDirectedResult::Closed) => Ok(forward_walk),
         (None, TraverseEndpointsDirectedResult::Closed) => {
             panic!("Impossible.  Can't have a closed loop without a back_edge on first endpoint.")
         }
-        (None, TraverseEndpointsDirectedResult::DeadEnd) => {
-            Ok(forward_walk)
-        }
+        (None, TraverseEndpointsDirectedResult::DeadEnd) => Ok(forward_walk),
     }
 }
 
@@ -320,8 +349,7 @@ pub fn sys_collect_vector_graph_path_endpoints(
 
     // Build the paths
     for vector_grapic_entity in changed_vector_graphics {
-        let Some(paths_walks_2d) = vector_graphic_path_endpoints
-            .get(&vector_grapic_entity) else {
+        let Some(paths_walks_2d) = vector_graphic_path_endpoints.get(&vector_grapic_entity) else {
             // warn!("sys_mark_vector_graph_path_starts: Tried to get endpoints of vector_grapic_entity({vector_grapic_entity:?}) but not in hashmap.");
             continue;
         };
@@ -340,8 +368,9 @@ pub fn sys_collect_vector_graph_path_endpoints(
             }
             let first_endpoint_e = path_walk.first().unwrap();
 
-            let (_, _, _, _, transform) =
-                q_endpoints.get(*first_endpoint_e).expect("Could not get endpoint.");
+            let (_, _, _, _, transform) = q_endpoints
+                .get(*first_endpoint_e)
+                .expect("Could not get endpoint.");
             pb.begin(transform.translation.xy().to_point());
 
             let remaining_walk_slice = &path_walk[1..];
@@ -352,11 +381,8 @@ pub fn sys_collect_vector_graph_path_endpoints(
                 let Some(endpoint_e) = chunk.get(1) else {
                     panic!("sys_collect_vector_graph_path_endpoints: Couldn't get first edge, maybe the walk is malformed.");
                 };
-                let (_, _, edge_variant, _) = q_edges
-                    .get(*edge_e)
-                    .unwrap();
-                let (_, _, _, _, transform) =
-                    q_endpoints.get(*endpoint_e).unwrap();
+                let (_, _, edge_variant, _) = q_edges.get(*edge_e).unwrap();
+                let (_, _, _, _, transform) = q_endpoints.get(*endpoint_e).unwrap();
 
                 let to_point = transform.translation.xy().to_point();
                 match edge_variant {

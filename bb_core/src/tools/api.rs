@@ -1,4 +1,8 @@
-use bevy::{ecs::{change_detection::DetectChangesMut, schedule::{NextState, State}, world::World}, log::warn};
+use bevy::{
+    ecs::world::World,
+    log::warn,
+    state::state::{NextState, State},
+};
 use bevy_spts_changeset::builder::Changeset;
 use bevy_wasm_api::bevy_wasm_api;
 
@@ -23,7 +27,6 @@ pub struct ToolApi;
 #[bevy_wasm_api]
 impl ToolApi {
     pub fn set_base_tool(world: &mut World, tool: BobbinTool) {
-
         let changeset = Changeset::scoped_commands(world, |world, commands| {
             world.resource_scope::<EffectQue, ()>(|world, mut effect_que| {
                 let prev_tool = world.resource::<State<BobbinTool>>();
@@ -49,6 +52,6 @@ impl ToolApi {
             })
         });
 
-        UndoRedoApi::execute(world, changeset);
+        UndoRedoApi::execute(world, changeset).unwrap();
     }
 }

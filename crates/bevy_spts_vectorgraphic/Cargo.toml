@@ -10,7 +10,7 @@ reflect = []
 changeset = ['dep:bevy_spts_changeset', 'dep:anyhow']
 
 [dependencies]
-bevy = { version = "0.13.0", default-features = false, features = [
+bevy = { version = "0.14.0", default-features = false, features = [
     "bevy_sprite",
     "bevy_render",
     "bevy_core_pipeline",
@@ -23,11 +23,11 @@ bevy_spts_uid = { version = "0.1.0", path = "../bevy_spts_uid" }
 # Changeset deps
 bevy_spts_changeset = { version = "0.1.0", path = "../bevy_spts_changeset", optional = true }
 anyhow = { version = "1", optional = true }
+thiserror = "1.0.62"
 
 [dev-dependencies]
-bevy = { version = "0.13", default-features = false, features = [
+bevy = { version = "0.14", default-features = false, features = [
     "x11",
     "bevy_asset",
 ] }
-bevy-inspector-egui = "0.23.3"
-bevy_xpbd_2d = "0.4.2"
+bevy-inspector-egui = "0.25.0"

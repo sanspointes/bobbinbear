@@ -118,7 +118,7 @@ pub fn it_works_with_a_closed_shape() {
 
     app.update();
 
-    let world = &mut app.world;
+    let world = &mut app.world_mut();
     let (vg, _) = build_box(world);
     world
         .entity_mut(vg)
@@ -126,9 +126,9 @@ pub fn it_works_with_a_closed_shape() {
 
     app.update();
 
-    let world = &mut app.world;
+    let world = &mut app.world_mut();
     let result = world.query::<&VectorGraphicPathStorage>().single(world);
-    assert!(matches!(result, VectorGraphicPathStorage::Calculated(_)));
+    assert!(result.path().is_some());
 }
 
 #[test]
@@ -143,7 +143,7 @@ pub fn it_works_with_an_open_shape() {
 
         app.update();
 
-        let world = &mut app.world;
+        let world = &mut app.world_mut();
         let (vg, (p0, p1, p2, _)) = build_endpoints(world);
         world.spawn_edge(EdgeVariant::Line, p0, p1).set_parent(vg);
         world
@@ -162,8 +162,8 @@ pub fn it_works_with_an_open_shape() {
 
         app.update();
 
-        let world = &mut app.world;
+        let world = &mut app.world_mut();
         let result = world.query::<&VectorGraphicPathStorage>().single(world);
-        assert!(matches!(result, VectorGraphicPathStorage::Calculated(_)));
+        assert!(result.path().is_some());
     });
 }

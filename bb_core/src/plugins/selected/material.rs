@@ -30,10 +30,10 @@ pub(super) fn selection_bounds_mesh() -> Mesh {
 #[derive(Asset, TypePath, AsBindGroup, Debug, Clone)]
 pub(super) struct SelectionBoundsMaterial {
     #[uniform(0)]
-    pub color: Color,
+    pub color: LinearRgba,
 
     #[uniform(1)]
-    pub border_color: Color,
+    pub border_color: LinearRgba,
 
     #[uniform(2)]
     pub border_width: f32,

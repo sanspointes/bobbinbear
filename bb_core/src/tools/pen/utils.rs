@@ -1,14 +1,9 @@
 //! # Pen Utilities
 
 use bevy::{
-    asset::{Assets, Handle},
-    core::Name,
-    ecs::{entity::Entity, query::With, world::World},
-    hierarchy::Parent,
-    math::Vec2,
-    render::color::Color,
-    utils::thiserror::Error,
+    asset::{Assets, Handle}, color::Color, core::Name, ecs::{entity::Entity, query::With, world::World}, hierarchy::Parent, math::Vec2
 };
+use thiserror::Error;
 use bevy_spts_changeset::builder::ChangesetCommands;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::{
@@ -136,7 +131,7 @@ pub(super) fn build_default_vector_graphic(
             StrokeOptions::default().with_line_width(5.),
             StrokeColor(Color::BLACK),
             FillOptions::default(),
-            FillColor(Color::GRAY.with_a(0.5)),
+            FillColor(Color::srgba(0.5, 0.5, 0.5, 0.5)),
             material,
             PenToolBuildingVectorObjectTag,
         ))
