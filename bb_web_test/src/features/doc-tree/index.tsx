@@ -3,7 +3,7 @@ import { DocTreeList } from './DocTreeList';
 
 export function DocTree() {
     return (
-        <div>
+        <div class='h-full overflow-y-scroll'>
             <DocTreeHead />
             <DocTreeList />
         </div>

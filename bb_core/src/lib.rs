@@ -7,6 +7,7 @@ mod plugins;
 mod tools;
 mod utils;
 mod views;
+mod bb_changeset;
 
 use bevy::asset::AssetMetaCheck;
 use bevy::input::common_conditions::input_toggle_active;

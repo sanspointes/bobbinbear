@@ -77,6 +77,7 @@ pub struct VectorEdgeVM;
 
 impl BuildView<VectorEdgeVM> for VectorEdgeVM {
     fn build(world: &World, object: Object<VectorEdgeVM>, view: &mut ViewBuilder<VectorEdgeVM>) {
+        warn!("Spawning view for edge. {object:?}");
         // Build the proxied viewport object
         let material = world.resource::<UiElementMaterialCache>().default.clone();
         let endpoint_uid = world.resource::<UidRegistry>().uid(object.entity());
@@ -291,11 +292,11 @@ fn update_vector_edge_mesh(
         let simplified_mesh = SimplifiedMesh { mesh: meshes.add(simplified_mesh) };
         let handle = Mesh2dHandle(meshes.add(mesh));
 
-        let mut entity_mut = world.entity_mut(view_entity);
-        entity_mut.insert(handle);
-        entity_mut.insert(simplified_mesh);
+        let mut view_entity_mut = world.entity_mut(view_entity);
+        view_entity_mut.insert(handle);
+        view_entity_mut.insert(simplified_mesh);
         if let Some(aabb) = aabb {
-            entity_mut.insert(aabb);
+            view_entity_mut.insert(aabb);
         }
     });
 }
@@ -323,18 +324,18 @@ pub fn sys_update_vector_edge_vm_mesh_when_endpoint_move(
             .map(|uid| r_uid_registry.entity(uid))
             .and_then(|e| q_edge.get(e).ok());
         let next_stale_edge = next_edge.filter(|(e, _)| !updated_edges.contains(e));
-        if let Some((entity, model)) = next_stale_edge {
-            updated_edges.insert(entity);
-            update_vector_edge_mesh(world, entity, model.view().entity(), &mut commands);
+        if let Some((model_entity, model)) = next_stale_edge {
+            updated_edges.insert(model_entity);
+            update_vector_edge_mesh(world, model_entity, model.view().entity(), &mut commands);
         }
         let prev_edge = moved_endpoint
             .prev_edge_entity()
             .map(|uid| r_uid_registry.entity(uid))
             .and_then(|e| q_edge.get(e).ok());
         let prev_stale_edge = prev_edge.filter(|(e, _)| !updated_edges.contains(e));
-        if let Some((entity, model)) = prev_stale_edge {
-            updated_edges.insert(entity);
-            update_vector_edge_mesh(world, entity, model.view().entity(), &mut commands);
+        if let Some((model_entity, model)) = prev_stale_edge {
+            updated_edges.insert(model_entity);
+            update_vector_edge_mesh(world, model_entity, model.view().entity(), &mut commands);
         }
     }
 }

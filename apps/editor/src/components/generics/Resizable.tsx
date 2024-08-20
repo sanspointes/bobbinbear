@@ -3,10 +3,8 @@ import clsx from 'clsx';
 import {
     ComponentProps,
     createEffect,
-    createMemo,
     createSignal,
     type JSX,
-    mergeProps,
     splitProps,
 } from 'solid-js';
 

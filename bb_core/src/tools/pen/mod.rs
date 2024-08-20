@@ -2,7 +2,6 @@ use core::panic;
 
 use bevy::{
     app::{App, Plugin},
-    asset::Assets,
     core::Name,
     ecs::{
         component::Component,
@@ -11,11 +10,10 @@ use bevy::{
         system::Resource,
         world::{FromWorld, World},
     },
+    input::{keyboard::KeyCode, ButtonState},
     log::warn,
     math::{Vec2Swizzles, Vec3Swizzles},
     reflect::Reflect,
-    render::mesh::Mesh,
-    sprite::Mesh2dHandle,
     transform::components::GlobalTransform,
 };
 use bevy_spts_changeset::{
@@ -33,38 +31,28 @@ use crate::{
     ecs::{InternalObject, ObjectBundle, ObjectType, ProxiedPosition, ProxiedPositionStrategy},
     plugins::{
         effect::{Effect, EffectQue},
-        model_view::View,
         selected::{
             raycast::{SelectableHit, SelectableRaycaster},
             Selectable,
         },
         undoredo::UndoRedoApi,
     },
-    tools::pen::utils::build_next_endpoint,
-    utils::{
-        mesh::{get_intersection_triangle_attribute_data, TriangleIntersectionAttributeData},
-        safe_world_ext::BBSafeWorldExt,
-    },
-    views::{
-        vector_edge::{VectorEdgeVM, ATTRIBUTE_EDGE_T},
-        vector_endpoint::VectorEndpointVM,
-    }
+    tools::pen::{actions::PenToolActions, utils::spawn_child_endpoint},
+    views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
 };
 
+mod actions;
 mod resource;
 mod utils;
 
 use self::{
     resource::PenToolPreview,
-    utils::{build_default_vector_graphic, get_position_of_edge_at_t_value, split_edge_at_t_value},
-};
-use self::{
-    resource::PenToolResource,
     utils::{
-        get_current_building_prev_endpoint, get_current_building_vector_object,
-        get_new_vector_graphic_material,
+        build_default_vector_graphic, get_position_of_edge_at_t_value, get_t_value_of_edge_hit,
+        split_edge_at_t_value,
     },
 };
+use self::{resource::PenToolResource, utils::get_new_vector_graphic_material};
 
 use super::{input::InputMessage, BobbinCursor};
 
@@ -72,7 +60,7 @@ pub struct PenToolPlugin;
 
 impl Plugin for PenToolPlugin {
     fn build(&self, app: &mut App) {
-        let res = PenToolResource::from_world(&mut app.world_mut());
+        let res = PenToolResource::from_world(app.world_mut());
         app.insert_resource(res);
         app.insert_resource(PenTool::default());
         // .add_systems(
@@ -105,6 +93,7 @@ fn handle_pen_tool_event(
     event: &InputMessage,
     state: PenTool,
 ) -> PenTool {
+    warn!("Pen tool: {state:?}");
     match (&state, event) {
         (
             PenTool::Default,
@@ -125,12 +114,7 @@ fn handle_pen_tool_event(
                     hit_world_pos
                 }
                 Some(SelectableHit(e, _, ObjectType::VectorEdge, data)) => {
-                    let handle = world.bb_get::<Mesh2dHandle>(*e).unwrap().0.clone_weak();
-                    let mesh = world.resource::<Assets<Mesh>>().get(&handle).unwrap();
-                    let result =
-                        get_intersection_triangle_attribute_data(mesh, data, ATTRIBUTE_EDGE_T.id);
-
-                    if let Ok(TriangleIntersectionAttributeData::Float32(t_value)) = result {
+                    if let Ok(t_value) = get_t_value_of_edge_hit(world, *e, data) {
                         _effects.push_effect(Effect::CursorChanged(BobbinCursor::PenSplitEdge));
                         let edge = world.get::<Edge>(*e).unwrap();
                         let edge_variant = world.get::<EdgeVariant>(*e).unwrap();
@@ -161,35 +145,32 @@ fn handle_pen_tool_event(
                 ..
             },
         ) => {
+            let mut actions = PenToolActions::new(world);
             let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
             let top = hits.top();
 
             match top {
-                Some(SelectableHit(entity, _, ObjectType::VectorEdge, data)) => {
-                    let handle = world.bb_get::<Mesh2dHandle>(*entity).unwrap();
-                    let mesh = world
-                        .resource::<Assets<Mesh>>()
-                        .get(&handle.0)
+                Some(SelectableHit(_endpoint_e, endpoint_uid, ObjectType::VectorEndpoint, _)) => {
+                    actions
+                        .set_building_from_endpoint_tag(world, *endpoint_uid)
                         .unwrap();
-                    let edge_entity = world.bb_get::<View<VectorEdgeVM>>(*entity).unwrap();
-                    let result =
-                        get_intersection_triangle_attribute_data(mesh, data, ATTRIBUTE_EDGE_T.id);
-                    if let Ok(TriangleIntersectionAttributeData::Float32(t_value)) = result {
-                        let mut changeset = world.changeset();
-                        match split_edge_at_t_value(
-                            world,
-                            &mut changeset,
-                            edge_entity.model().entity(),
-                            t_value,
-                        ) {
-                            Ok(_) => {
-                                UndoRedoApi::execute(world, changeset.build()).unwrap();
-                            }
-                            Err(reason) => {
-                                warn!("Could not split edge because {reason:?}");
-                            }
-                        }
-                    }
+                    actions.finish(world).unwrap();
+
+                    PenTool::BuildingEdge
+                }
+                Some(SelectableHit(edge_e, edge_uid, ObjectType::VectorEdge, data)) => {
+                    let t_value = get_t_value_of_edge_hit(world, *edge_e, data).unwrap();
+                    let endpoint_uid = actions.split_edge(world, *edge_uid, t_value).unwrap();
+                    actions
+                        .changeset_scope(world, |_, commands| {
+                            commands.entity(endpoint_uid).insert(VectorEndpointVM);
+                        })
+                        .unwrap();
+                    actions
+                        .set_building_from_endpoint_tag(world, endpoint_uid)
+                        .unwrap();
+                    actions.finish(world).unwrap();
+
                     PenTool::BuildingEdge
                 }
                 Some(_) => PenTool::Default,
@@ -199,7 +180,8 @@ fn handle_pen_tool_event(
                         .get_single(world)
                         .copied();
 
-                    let changeset = Changeset::scoped_commands(world, |world, commands| {
+                    let mut actions = PenToolActions::new(world);
+                    let endpoint_uid = actions.changeset_scope(world, |world, commands| {
                         let vector_graphic = {
                             if let Ok(vector_graphic) = vector_graphic {
                                 vector_graphic
@@ -215,17 +197,16 @@ fn handle_pen_tool_event(
                                 ObjectBundle::new(ObjectType::VectorEndpoint)
                                     .with_position(world_pos.xy()),
                                 Endpoint::default(),
-                                VectorEndpointVM,
                                 InternalObject,
-                                PenToolBuildingFromEndpointTag,
+                                VectorEndpointVM,
                             ))
                             .set_parent(vector_graphic)
-                            .uid();
-
-                        SceneApi::build_inspect_changeset(world, vector_graphic, commands);
+                            .uid()
                     });
+                    actions
+                        .set_building_from_endpoint_tag(world, endpoint_uid.unwrap())
+                        .unwrap();
 
-                    UndoRedoApi::execute(world, changeset).unwrap();
                     PenTool::BuildingEdge
                 }
             }
@@ -319,12 +300,7 @@ fn handle_pen_tool_event(
                     hit_world_pos
                 }
                 Some(SelectableHit(e, _, ObjectType::VectorEdge, data)) => {
-                    let handle = world.bb_get::<Mesh2dHandle>(*e).unwrap().0.clone_weak();
-                    let mesh = world.resource::<Assets<Mesh>>().get(&handle).unwrap();
-                    let result =
-                        get_intersection_triangle_attribute_data(mesh, data, ATTRIBUTE_EDGE_T.id);
-
-                    if let Ok(TriangleIntersectionAttributeData::Float32(t_value)) = result {
+                    if let Ok(t_value) = get_t_value_of_edge_hit(world, *e, data) {
                         _effects.push_effect(Effect::CursorChanged(BobbinCursor::PenSplitEdge));
                         let edge = world.get::<Edge>(*e).unwrap();
                         let edge_variant = world.get::<EdgeVariant>(*e).unwrap();
@@ -363,116 +339,84 @@ fn handle_pen_tool_event(
                 ..
             },
         ) => {
-            warn!("BuildingEdge + PointerClick");
-            let Some(parent_vector_graphic) = get_current_building_vector_object(world) else {
-                warn!("BuildingEdge + PointerClick: Couldn't get PenToolBuildingVectorObjectTag");
-                return PenTool::BuildingEdge {};
-            };
-            let Some(from_endpoint_uid) = get_current_building_prev_endpoint(world) else {
-                warn!("BuildingEdge + PointerClick: Couldn't get PenToolBuildingFromEndpointTag");
-                return PenTool::BuildingEdge {};
-            };
+            let mut actions = PenToolActions::new(world);
 
             let hits = SelectableRaycaster::raycast_uncached::<Selectable>(world, *screen_pos);
-
-            let mut commands = world.changeset();
-            commands
-                .entity(from_endpoint_uid)
-                .remove::<PenToolBuildingFromEndpointTag>();
-
-            let to_endpoint_uid = match hits.top() {
-                Some(SelectableHit(entity, uid, ObjectType::VectorEndpoint, _)) => {
-                    let endpoint = world.get::<Endpoint>(*entity).unwrap();
-
-                    let needs_new_endpoint = matches!(
-                        (endpoint.prev_edge_entity(), endpoint.next_edge_entity()),
-                        (Some(_), Some(_))
-                    );
-
-                    if needs_new_endpoint {
-                        let new_endpoint_uid =
-                            build_next_endpoint(&mut commands, *world_pos, parent_vector_graphic);
-                        commands
-                            .entity(new_endpoint_uid)
-                            .insert(ProxiedPosition::new(*uid, ProxiedPositionStrategy::Local));
-                        Some(new_endpoint_uid)
-                    } else {
-                        commands.entity(*uid).insert(PenToolBuildingFromEndpointTag);
-                        Some(*uid)
-                    }
+            match hits.top() {
+                Some(SelectableHit(_, endpoint_uid, ObjectType::VectorEndpoint, _)) => {
+                    let (edge_uid, maybe_new_endpoint_uid) = actions
+                        .spawn_edge_to_endpoint(world, *endpoint_uid)
+                        .unwrap();
+                    actions
+                        .set_building_from_endpoint_tag(world, *endpoint_uid)
+                        .unwrap();
+                    actions
+                        .changeset_scope(world, |_, commands| {
+                            commands.entity(edge_uid).insert(VectorEdgeVM);
+                            if let Some(new_endpoint_uid) = maybe_new_endpoint_uid {
+                                commands.entity(new_endpoint_uid).insert(VectorEndpointVM);
+                            }
+                        })
+                        .unwrap();
                 }
-                Some(SelectableHit(entity, _, ObjectType::VectorEdge, data)) => {
-                    let handle = world
-                        .bb_get::<Mesh2dHandle>(*entity)
-                        .unwrap()
-                        .0
-                        .clone_weak();
-                    let mesh = world.resource::<Assets<Mesh>>().get(&handle).unwrap();
-
-                    let result =
-                        get_intersection_triangle_attribute_data(mesh, data, ATTRIBUTE_EDGE_T.id);
-                    let edge_entity = world.bb_get::<View<VectorEdgeVM>>(*entity).unwrap();
-
-                    result
-                        .ok()
-                        .and_then(|v| match v {
-                            TriangleIntersectionAttributeData::Float32(v) => Some(v),
-                            _ => None,
+                Some(SelectableHit(edge_e, edge_uid, ObjectType::VectorEdge, data)) => {
+                    let t_value = get_t_value_of_edge_hit(world, *edge_e, data).unwrap();
+                    let endpoint_uid = actions.split_edge(world, *edge_uid, t_value).unwrap();
+                    actions
+                        .changeset_scope(world, |_, commands| {
+                            commands.entity(endpoint_uid).insert(VectorEndpointVM);
                         })
-                        .and_then(|t_value| {
-                            split_edge_at_t_value(
-                                world,
-                                &mut commands,
-                                edge_entity.model().entity(),
-                                t_value,
-                            )
-                            .ok()
+                        .unwrap();
+                    let (edge_uid, _) =
+                        actions.spawn_edge_to_endpoint(world, endpoint_uid).unwrap();
+                    actions
+                        .set_building_from_endpoint_tag(world, endpoint_uid)
+                        .unwrap();
+                    actions
+                        .changeset_scope(world, |_, commands| {
+                            commands.entity(edge_uid).insert(VectorEdgeVM);
                         })
-                        .map(|(endpoint_uid, _, _)| endpoint_uid)
+                        .unwrap();
                 }
                 _ => {
-                    let endpoint_uid =
-                        build_next_endpoint(&mut commands, *world_pos, parent_vector_graphic);
-
-                    Some(endpoint_uid)
+                    let endpoint_uid = actions.spawn_new_endpoint(world, *world_pos).unwrap();
+                    actions
+                        .changeset_scope(world, |_, commands| {
+                            commands.entity(endpoint_uid).insert(VectorEndpointVM);
+                        })
+                        .unwrap();
+                    let (edge_uid, _) =
+                        actions.spawn_edge_to_endpoint(world, endpoint_uid).unwrap();
+                    actions
+                        .set_building_from_endpoint_tag(world, endpoint_uid)
+                        .unwrap();
+                    actions
+                        .changeset_scope(world, |_, commands| {
+                            commands.entity(edge_uid).insert(VectorEdgeVM);
+                        })
+                        .unwrap();
                 }
             };
 
-            let Some(to_endpoint_uid) = to_endpoint_uid else {
-                return PenTool::BuildingEdge;
-            };
-
-            let maybe_to_endpoint_data = to_endpoint_uid
-                .get_entity(world)
-                .ok()
-                .and_then(|e| world.get::<Endpoint>(e));
-
-            let mut edge_entity_commands = match maybe_to_endpoint_data {
-                Some(endpoint) => {
-                    match (endpoint.prev_edge_entity(), endpoint.next_edge_entity()) {
-                        (Some(_), Some(_)) => panic!("Impossible.  If both slots are full a new endpoint should have been spawned above."),
-                        (None, None) | (None, Some(_)) => commands.spawn_edge(EdgeVariant::Line, from_endpoint_uid, to_endpoint_uid),
-                        // When prev slot is taken but next is empty, need to reverse direction of
-                        // the edge.
-                        (Some(_), None) => commands.spawn_edge(EdgeVariant::Line, to_endpoint_uid, from_endpoint_uid),
-                    }
-                }
-                None => commands.spawn_edge(EdgeVariant::Line, from_endpoint_uid, to_endpoint_uid),
-            };
-
-            edge_entity_commands
-                .insert((
-                    Name::from("Edge"),
-                    ObjectBundle::new(ObjectType::VectorEdge),
-                    InternalObject,
-                ))
-                // .insert(ObjectBundle::new(ObjectType::VectorSegment))
-                .set_parent(parent_vector_graphic);
-
-            let changeset = commands.build();
-            UndoRedoApi::execute(world, changeset).expect("Error building next edge changeset.");
+            actions.finish(world).unwrap();
 
             PenTool::BuildingEdge
+        }
+        (
+            PenTool::BuildingEdge,
+            InputMessage::Keyboard {
+                pressed: ButtonState::Pressed,
+                key: KeyCode::Escape,
+                ..
+            },
+        ) => {
+            let mut actions = PenToolActions::new(world);
+            actions.clear_building_from_endpoint_tag(world).unwrap();
+            actions.finish(world).unwrap();
+            PenToolResource::resource_scope(world, |world, r| {
+                r.preview.show_only_endpoint_0(world);
+            });
+            PenTool::Default
         }
 
         (state, ev) => {

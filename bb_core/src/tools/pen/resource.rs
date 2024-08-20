@@ -100,7 +100,6 @@ impl PenToolPreview {
     }
 
     pub fn hide_all(&self, world: &mut World) {
-        warn!("hide all");
         let entities = [
             self.vector_object.entity(world).unwrap(),
             self.endpoint_0.entity(world).unwrap(),
@@ -115,7 +114,6 @@ impl PenToolPreview {
     }
 
     pub fn show_all(&self, world: &mut World) {
-        warn!("hide all");
         let entities = [
             self.vector_object.entity(world).unwrap(),
             self.endpoint_0.entity(world).unwrap(),

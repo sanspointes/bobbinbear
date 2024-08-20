@@ -53,7 +53,7 @@ function App() {
     return (
         <>
             <LoadingOverlay progress={loading()} status={loadingStatus()} />
-            <div class="flex flex-col w-full h-full min-h-screen">
+            <div class="flex flex-col w-full h-screen">
                 <Show when={loading() === 1}>
                     <BobbinBearContext.Provider value={ctx()}>
                         <Toolbar />
@@ -62,7 +62,7 @@ function App() {
                 <div class="flex items-stretch grow">
                     <Show when={loading() === 1}>
                         <BobbinBearContext.Provider value={ctx()}>
-                            <div class="w-[300px]">
+                            <div class="w-[300px] overflow-y-scroll">
                                 <DocTree />
                             </div>
                         </BobbinBearContext.Provider>
@@ -83,7 +83,7 @@ function App() {
                     </div>
                     <Show when={loading() === 1}>
                         <BobbinBearContext.Provider value={ctx()}>
-                            <div class="w-[300px]">
+                            <div class="w-[300px] overflow-y-scroll">
                                 <Inspector />
                             </div>
                         </BobbinBearContext.Provider>

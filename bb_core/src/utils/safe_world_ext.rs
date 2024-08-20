@@ -1,7 +1,9 @@
 use std::{fmt::Debug, marker::PhantomData};
 
 use bevy::{
-    core::Name, ecs::{component::Component, entity::Entity, world::World},
+    core::Name,
+    ecs::{component::Component, entity::Entity, world::World},
+    log::warn,
 };
 use thiserror::Error;
 
@@ -52,7 +54,7 @@ impl BBSafeWorldExt for World {
     fn bb_get<C: Component + Debug>(&self, entity: Entity) -> Result<&C, BBGetError<C>> {
         let v = self.get(entity);
         v.ok_or_else(|| {
-            if let Some(entity_ref) = self.get_entity(entity) {
+            let error = if let Some(entity_ref) = self.get_entity(entity) {
                 let components: Vec<String> = entity_ref
                     .archetype()
                     .components()
@@ -73,7 +75,9 @@ impl BBSafeWorldExt for World {
                     entity,
                     pd: PhantomData::<C>,
                 }
-            }
+            };
+            warn!("bb_get Error {error}.");
+            error
         })
     }
 

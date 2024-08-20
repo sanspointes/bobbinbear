@@ -338,7 +338,6 @@ pub fn sys_collect_vector_graph_path_endpoints(
         }
 
         if endpoints.len() <= 1 {
-            warn!("sys_collect_vector_graph_path_endpoints: Endpoints too short({endpoints:?}).");
             continue;
         }
 

@@ -16,7 +16,7 @@ export function Sidebar() {
 
     return (
         <Resizable
-            class="p-4 bg-orange-500 border-l border-orange-700 border-solid w-[400px] box-border"
+            class="p-4 bg-orange-500 border-l border-orange-700 border-solid w-[400px] box-border overflow-y-scroll"
             handlePosition="left"
             defaultWidth={200}
             minWidth={200}

@@ -69,6 +69,16 @@ impl UndoRedoApi {
             Ok(UndoRedoResult::PerformedChange)
         })
     }
+
+    /// Pushes a changeset that has already been applied to the world to the undo stack.
+    ///
+    /// * `world`: 
+    /// * `applied_changeset`: Inverse changeset of the changeset that's already been executed in
+    /// the world.
+    pub fn push_already_applied(world: &mut World, applied_changeset: Changeset) {
+        let mut res = world.resource_mut::<UndoRedoResource>();
+        res.undo_stack.push(applied_changeset);
+    }
 }
 
 #[allow(dead_code)]

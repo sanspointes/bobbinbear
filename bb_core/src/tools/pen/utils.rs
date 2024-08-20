@@ -1,9 +1,16 @@
 //! # Pen Utilities
 
 use bevy::{
-    asset::{Assets, Handle}, color::Color, core::Name, ecs::{entity::Entity, query::With, world::World}, hierarchy::Parent, math::Vec2
+    asset::{Assets, Handle},
+    color::Color,
+    core::Name,
+    ecs::{entity::Entity, query::With, world::World},
+    hierarchy::Parent,
+    math::Vec2,
+    render::mesh::Mesh,
+    sprite::Mesh2dHandle,
 };
-use thiserror::Error;
+use bevy_mod_raycast::primitives::IntersectionData;
 use bevy_spts_changeset::builder::ChangesetCommands;
 use bevy_spts_uid::{Uid, UidRegistry};
 use bevy_spts_vectorgraphic::{
@@ -12,11 +19,20 @@ use bevy_spts_vectorgraphic::{
     material::{FillColor, StrokeColor, VectorGraphicMaterial},
     prelude::VectorGraphicChangesetExt,
 };
+use thiserror::Error;
 
 use crate::{
     ecs::{InternalObject, ObjectBundle, ObjectType, Position},
-    utils::curve::{cubic_point_at, quadratic_point_at},
-    views::{vector_edge::VectorEdgeVM, vector_endpoint::VectorEndpointVM},
+    plugins::model_view::Model,
+    utils::{
+        curve::{cubic_point_at, quadratic_point_at},
+        mesh::{get_intersection_triangle_attribute_data, TriangleIntersectionAttributeDataError},
+        safe_world_ext::BBSafeWorldExt,
+    },
+    views::{
+        vector_edge::{VectorEdgeVM, ATTRIBUTE_EDGE_T},
+        vector_endpoint::VectorEndpointVM,
+    },
 };
 
 use super::{PenToolBuildingFromEndpointTag, PenToolBuildingVectorObjectTag};
@@ -113,6 +129,42 @@ pub fn split_edge_at_t_value(
     Ok((split_endpoint_uid, edge_0, edge_1))
 }
 
+#[derive(Error, Debug)]
+pub enum GetHitEdgeTValueError {
+    #[error("The enity ({0:?}) doesn't have a mesh2d handle.")]
+    NoMeshHandle(Entity),
+    #[error("The entity has a mesh2d handle ({0:?}) but there's no mesh in the world.")]
+    NoMeshInWorld(Mesh2dHandle),
+    #[error("Error while reading the ATTRIBUTE_EDGE_T attribut: {0:?}")]
+    AttributeError(TriangleIntersectionAttributeDataError),
+}
+/// Gets the t_value of a hit on a given edge (automatically resolves model or view)
+pub fn get_t_value_of_edge_hit(
+    world: &World,
+    entity: Entity,
+    data: &IntersectionData,
+) -> Result<f32, GetHitEdgeTValueError> {
+    let resolved_entity: Entity = world
+        .bb_get::<Model<VectorEdgeVM>>(entity)
+        .ok()
+        .map(|m| m.view().entity())
+        .unwrap_or(entity);
+    let handle = world
+        .bb_get::<Mesh2dHandle>(resolved_entity)
+        .map_err(|_| GetHitEdgeTValueError::NoMeshHandle(entity))?;
+    let mesh = world
+        .resource::<Assets<Mesh>>()
+        .get(&handle.0)
+        .ok_or_else(|| GetHitEdgeTValueError::NoMeshInWorld(handle.clone()))?;
+
+    get_intersection_triangle_attribute_data(mesh, data, ATTRIBUTE_EDGE_T.id)
+        .map(|v| match v {
+            crate::utils::mesh::TriangleIntersectionAttributeData::Float32(v) => v,
+            _ => unreachable!("Never."),
+        })
+        .map_err(GetHitEdgeTValueError::AttributeError)
+}
+
 pub(super) fn get_new_vector_graphic_material(world: &mut World) -> Handle<VectorGraphicMaterial> {
     let mut materials = world.resource_mut::<Assets<VectorGraphicMaterial>>();
     materials.add(VectorGraphicMaterial::default())
@@ -152,7 +204,7 @@ pub(super) struct BuildEndpointAndEdgeOptions {
     pub edge_variant: EdgeVariant,
 }
 
-pub(super) fn build_next_endpoint(
+pub(super) fn spawn_child_endpoint(
     builder: &mut ChangesetCommands,
     position: Vec2,
     parent: Uid,
@@ -164,10 +216,21 @@ pub(super) fn build_next_endpoint(
             Endpoint::default(),
             VectorEndpointVM,
             InternalObject,
-            PenToolBuildingFromEndpointTag,
         ))
         .set_parent(parent)
         .uid()
+}
+
+pub(super) fn set_build_from_endpoint(
+    world: &mut World,
+    builder: &mut ChangesetCommands,
+    endpoint_uid: Uid,
+) {
+    let prev = world.query_filtered::<&Uid, With<PenToolBuildingFromEndpointTag>>().get_single(world);
+    if let Ok(uid) = prev {
+        builder.entity(*uid).remove::<PenToolBuildingFromEndpointTag>();
+    }
+    builder.entity(endpoint_uid).insert(PenToolBuildingFromEndpointTag);
 }
 
 /// Gets the Uid of the vector object currently being build

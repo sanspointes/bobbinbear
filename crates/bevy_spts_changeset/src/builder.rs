@@ -1,11 +1,15 @@
-use std::{any::TypeId, fmt::Display, sync::Arc};
+use std::{any::TypeId, collections::VecDeque, fmt::Display, sync::Arc};
 
 use anyhow::anyhow;
-use bevy_ecs::{bundle::Bundle, component::Component, reflect::AppTypeRegistry, world::{Mut, World}};
-use bevy_reflect::{FromReflect, Reflect, TypeRegistry};
-use bevy_spts_fragments::prelude::{
-    BundleFragment, BundleToFragment, EntityFragment, Uid,
+use bevy_ecs::{
+    bundle::Bundle,
+    component::Component,
+    reflect::AppTypeRegistry,
+    world::{Mut, World},
 };
+use bevy_reflect::{FromReflect, Reflect};
+use bevy_spts_fragments::prelude::{BundleFragment, BundleToFragment, EntityFragment, Uid};
+use bevy_utils::tracing::warn;
 
 use crate::{
     changes::{
@@ -22,6 +26,13 @@ pub struct Changeset {
     changes: Vec<Arc<dyn Change>>,
 }
 
+impl FromIterator<Changeset> for Changeset {
+    fn from_iter<T: IntoIterator<Item = Changeset>>(iter: T) -> Self {
+        let changes: Vec<_> = iter.into_iter().flat_map(|c| c.changes).collect();
+        Self { changes }
+    }
+}
+
 impl Display for Changeset {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "ChangeSet [\n")?;
@@ -36,17 +47,19 @@ impl Changeset {
     /// Uses resource_scope to create a ChangesetCommands without breaking mutable world access.
     /// WARN: If you try to borrow `AppTypeRegistry` from world it will panic.  Instead use `commands.type_registry`.
     ///
-    /// * `world`: 
-    /// * `f`: 
+    /// * `world`:
+    /// * `f`:
     pub fn scoped_commands(
         world: &mut World,
         f: impl FnOnce(&mut World, &mut ChangesetCommands),
     ) -> Self {
-        let v = world.resource_scope::<AppTypeRegistry, Self>(|world, type_registry: Mut<AppTypeRegistry>| {
-            let mut changeset_commands = ChangesetCommands::new(&type_registry);
-            (f)(world, &mut changeset_commands);
-            changeset_commands.build()
-        });
+        let v = world.resource_scope::<AppTypeRegistry, Self>(
+            |world, type_registry: Mut<AppTypeRegistry>| {
+                let mut changeset_commands = ChangesetCommands::new(&type_registry);
+                (f)(world, &mut changeset_commands);
+                changeset_commands.build()
+            },
+        );
         v
     }
 
@@ -92,17 +105,16 @@ impl Changeset {
             return Err(anyhow!("Changesets have different lengths."));
         }
 
-        let next_changes: Result<Vec<_>, _> = self.changes.iter().zip(other.changes.iter().rev()).map(|(a, b)| {
-            match a.is_repeatable(b.clone()) {
-                Ok(()) => {
-                    Ok((b.clone(), Some(a)))
-                }
-                Err(NotRepeatableReason::ChangesWorldLayout) => {
-                    Ok((b.clone(), None))
-                }
+        let next_changes: Result<Vec<_>, _> = self
+            .changes
+            .iter()
+            .zip(other.changes.iter().rev())
+            .map(|(a, b)| match a.is_repeatable(b.clone()) {
+                Ok(()) => Ok((b.clone(), Some(a))),
+                Err(NotRepeatableReason::ChangesWorldLayout) => Ok((b.clone(), None)),
                 Err(reason) => Err(reason),
-            }
-        }).collect();
+            })
+            .collect();
         let next_changes = next_changes?;
 
         let mut inverse_changes = Vec::with_capacity(next_changes.len());
@@ -115,7 +127,9 @@ impl Changeset {
 
         inverse_changes.reverse();
 
-        Ok(Changeset { changes: inverse_changes })
+        Ok(Changeset {
+            changes: inverse_changes,
+        })
     }
 
     pub fn extend(&mut self, other: Changeset) -> &mut Self {
@@ -131,14 +145,7 @@ pub struct ChangesetCommands<'w> {
     type_registry: &'w AppTypeRegistry,
     changes: Vec<Arc<dyn Change>>,
 }
-
 impl<'w> ChangesetCommands<'w> {
-    pub fn type_registry(&self) -> std::sync::RwLockReadGuard<TypeRegistry> {
-        self.type_registry.read()
-    }
-    pub fn changes(&self) -> &Vec<Arc<dyn Change>> {
-        &self.changes
-    }
     /// Creates a new ChangesetCommands from the world.
     ///
     /// * `world`:
@@ -147,6 +154,18 @@ impl<'w> ChangesetCommands<'w> {
             type_registry,
             changes: Vec::default(),
         }
+    }
+
+    /// Creates a new ChangesetCommands that is valid within the scope function.
+    pub fn changeset_scope<U>(
+        world: &mut World,
+        scope: impl FnOnce(&mut World, &mut ChangesetCommands) -> U,
+    ) -> (U, Changeset) {
+        world.resource_scope::<AppTypeRegistry, (U, Changeset)>(|world, app_type_registry| {
+            let mut changeset_commands = ChangesetCommands::new(&app_type_registry);
+            let ret_val = (scope)(world, &mut changeset_commands);
+            (ret_val, changeset_commands.build())
+        })
     }
 
     /// Adds an arbitrary [Change] to the world.  This allows you to define your own custom
@@ -440,5 +459,52 @@ impl<'w, 'a> EntityChangeset<'w, 'a> {
 
     pub fn uid(&self) -> Uid {
         self.target
+    }
+}
+
+#[derive(Debug, Default)]
+pub struct MultiChangesetBuilder {
+    pub applied_changesets: VecDeque<Changeset>,
+    pub changesets: VecDeque<Changeset>,
+}
+impl MultiChangesetBuilder {
+    /// Creates a function where a changeset is valid.  Within this function you can't mutate the
+    /// world.
+    pub fn changeset_scope<U>(
+        &mut self,
+        world: &mut World,
+        scope: impl FnOnce(&mut World, &mut ChangesetCommands) -> U,
+    ) -> U {
+        let (ret_val, changeset) = ChangesetCommands::changeset_scope(world, |world, commands| {
+            scope(world, commands)
+        });
+        self.changesets.push_back(changeset);
+        ret_val
+    }
+
+    /// Applies any pending changesets and moves them into `applied_changesets`.
+    pub fn apply(
+        &mut self,
+        world: &mut World,
+        cx: &mut ChangesetContext,
+    ) -> Result<(), anyhow::Error> {
+        warn!("Applying {:?} changesets.", self.changesets.len());
+        while let Some(cs) = self.changesets.pop_front() {
+            warn!("- Applying {cs:?}");
+            let v = cs.apply(world, cx)?;
+            self.applied_changesets.push_back(v)
+        }
+        Ok(())
+    }
+
+    pub fn apply_and_build(
+        mut self,
+        world: &mut World,
+        cx: &mut ChangesetContext,
+    ) -> Result<Changeset, anyhow::Error> {
+        self.apply(world, cx)?;
+
+        warn!("apply_and_build on changes {:?}", self.applied_changesets);
+        Ok(Changeset::from_iter(self.applied_changesets.into_iter().rev()))
     }
 }

@@ -52,6 +52,8 @@ impl ToolApi {
             })
         });
 
-        UndoRedoApi::execute(world, changeset).unwrap();
+        if let Err(reason) = UndoRedoApi::execute(world, changeset) {
+            warn!("Error while setting base tool:\n {reason:?}");
+        }
     }
 }
